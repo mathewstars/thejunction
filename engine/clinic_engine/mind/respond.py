@@ -2,6 +2,9 @@
 
 Order of authority:
 1. Patient rules filter the catalog (they always beat lessons).
+1b. Before any lesson exists, what the person said helps in onboarding
+   (preferences) sets the starting order. Once a lesson is active, lessons
+   re-rank instead. Preferences never remove an action either.
 2. Lessons re-rank what is left. They can never remove an action, add one,
    or leave the list empty.
 3. The first action wins. A model may only word it afterwards (see gates.py).
@@ -12,6 +15,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from .catalog import ACTIONS, WEEKDAYS, context_for_hour
+from .lanvi_config import PREFERENCE_ACTIONS
 from .thresholds import T, Thresholds
 
 LESSON_WEIGHT = 2.5  # one lesson moves an action about two places
@@ -44,7 +48,7 @@ def allowed_actions(rules: list[dict], local: datetime, log: list | None = None)
 
 
 def rank_actions(rules: list[dict], lessons: list[dict], local: datetime,
-                 log: dict | None = None) -> list[str]:
+                 log: dict | None = None, preferences: list[str] | None = None) -> list[str]:
     """Rules filter, lessons re-rank. Returns the ordered list. `log` (optional)
     receives the steps, for the decision trace; it never changes the order."""
     rule_log: list | None = [] if log is not None else None
@@ -52,9 +56,17 @@ def rank_actions(rules: list[dict], lessons: list[dict], local: datetime,
     ctx = context_for_hour(local.hour)
     score = {a: float(ACTIONS[a].base_rank) for a in acts}
     moves = []
+    pref_moves = []
+    if preferences and not any(x.get("status") == "active" for x in lessons):
+        # Preferred actions first, in the order the person chose them.
+        order = [a for p in preferences for a in PREFERENCE_ACTIONS.get(p, ())]
+        for i, a in enumerate(dict.fromkeys(order)):
+            if a in score:
+                score[a] = -100.0 + i
+                pref_moves.append(a)
     for lesson in lessons:
         if lesson.get("status") != "active" or lesson["action"] not in score \
-                or lesson.get("config_id"):  # config lessons shape round_config only
+                or lesson.get("config_id"):  # lessons of the earlier design never re-rank
             continue
         if lesson["context"] not in ("any", ctx):
             continue
@@ -66,7 +78,9 @@ def rank_actions(rules: list[dict], lessons: list[dict], local: datetime,
     ranked = sorted(acts, key=lambda a: (score[a], ACTIONS[a].base_rank))
     if log is not None:
         log.update(catalog=sorted(ACTIONS, key=lambda a: ACTIONS[a].base_rank), context=ctx,
-                   rules=rule_log, lessons=moves, ranked=ranked)
+                   rules=rule_log, preferences={"helps": list(preferences or []),
+                                                "moved_first": pref_moves},
+                   lessons=moves, ranked=ranked)
     return ranked
 
 
@@ -109,6 +123,7 @@ def needs_response(items: list[dict], suggestions: list[dict], today: str,
     return None
 
 
-def pick_action(rules: list[dict], lessons: list[dict], local: datetime) -> str | None:
-    ranked = rank_actions(rules, lessons, local)
+def pick_action(rules: list[dict], lessons: list[dict], local: datetime,
+                preferences: list[str] | None = None) -> str | None:
+    ranked = rank_actions(rules, lessons, local, None, preferences)
     return ranked[0] if ranked else None

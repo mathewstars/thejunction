@@ -7,8 +7,10 @@ from fastapi import APIRouter, Depends, Path, Request
 
 from .. import service
 from ..mind import views
-from ..models import (AnalysisOut, AnswerIn, DailyIn, DailyOut, FeedbackIn, NoteIn, NoteOut,
-                      PairIn, PairOut, RoundIn, RoundOut, RuleWrap, TodayOut)
+from ..models import (ActivityIn, ActivityOut, ActivityReadingOut, AnalysisOut, AnswerIn,
+                      CheckinOptionsOut, DailyIn, DailyOut, FeedbackIn, NoteIn, NoteOut, PairIn,
+                      PairOut, PreferencesIn, PreferencesOut, RoundIn, RoundOut, RuleWrap,
+                      TodayOut, WanderingAnswerIn)
 from ..security import Principal
 from .deps import ctx_of, device_only, errors, open_rate_limit, rid_of
 
@@ -39,10 +41,69 @@ async def daily(body: DailyIn, request: Request, p: Principal = Depends(device_o
     return await service.ingest_days(ctx_of(request), p, days, rid_of(request))
 
 
+@router.post("/activities", response_model=ActivityOut,
+             responses=errors(401, 403, 404, 409, 413, 422, 429),
+             summary="Send one activity record: focus, breathing or check-in")
+async def activities(body: ActivityIn, request: Request, p: Principal = Depends(device_only)):
+    """One record per activity, idempotent by `id`: the same record again is
+    answered without new XP; a different record under a used id is refused
+    (409). Values that cannot be true are rejected (422) and logged.
+
+    Typed words in a check-in are untrusted data with exactly the note's
+    treatment: classified into enums only, never followed, never logged,
+    never sent outside the server. If they ask for help, `crisis` is true and
+    the help block is included, as for a note.
+
+    The answer says what Lanvi shows next: XP gained, the new total, stage,
+    glow and one line from the fixed set. XP is for showing up: the same
+    whatever the score."""
+    rec = body.model_dump(mode="json")
+    rec["started_at"] = body.started_at.astimezone(timezone.utc).isoformat()
+    return await service.record_activity(ctx_of(request), p, rec, rid_of(request))
+
+
+@router.get("/activities/{activity_id}/reading", response_model=ActivityReadingOut,
+            responses=errors(401, 403, 404, 429), summary="Status of the session reading")
+async def activity_reading(request: Request, activity_id: str = Path(pattern=CID),
+                           p: Principal = Depends(device_only)):
+    """A neutral line from a fixed set when the reading is ready. Never the
+    reading itself, never anything about mood or the face."""
+    return service.activity_reading(ctx_of(request), p, activity_id)
+
+
+@router.get("/checkin/options", response_model=CheckinOptionsOut,
+            responses=errors(401, 403, 429), summary="What the evening check-in offers to tap")
+async def checkin_options(request: Request, p: Principal = Depends(device_only)):
+    return service.checkin_options()
+
+
+@router.put("/preferences", response_model=PreferencesOut, responses=AUTH_ERRORS,
+            summary="Onboarding: what helps (music, moving, people, quiet)")
+async def preferences(body: PreferencesIn, request: Request, p: Principal = Depends(device_only)):
+    """Stored as the starting order of suggestions, used until the first lesson
+    exists. Replaces the earlier answer. Lanvi answers with one fixed line."""
+    return await service.set_preferences(ctx_of(request), p, body.helps, rid_of(request))
+
+
+@router.post("/lanvi/wanderings/{wandering_id}/answer",
+             responses=errors(401, 403, 404, 422, 429),
+             summary="Answer the question of the story Lanvi brought back")
+async def wandering_answer(body: WanderingAnswerIn, request: Request,
+                           wandering_id: str = Path(pattern=r"^wander-[0-9]{4,6}$"),
+                           p: Principal = Depends(device_only)):
+    """Only while `lanvi.wandering.state` is `back` and the id matches. The
+    answer is stored as an enum (a or b)."""
+    return await service.answer_wandering(ctx_of(request), p, wandering_id, body.answer,
+                                          rid_of(request))
+
+
 @router.post("/rounds", response_model=RoundOut, responses=errors(401, 403, 404, 413, 422, 429),
-             summary="Send one AR round record (schema 2)")
+             summary="Deprecated: send one AR round record (schema 2)", deprecated=True)
 async def rounds(body: RoundIn, request: Request, p: Principal = Depends(device_only)):
-    """Idempotent by `id`. Implausible values reject the round (422). Weak
+    """Deprecated: the AR round was cut from the design. Kept so an app still
+    on the earlier design does not break; use POST /v1/activities.
+
+    Idempotent by `id`. Implausible values reject the round (422). Weak
     tracking, a small play area or an interrupted round are kept but marked
     low quality. The movement reading (level 2) runs in the background."""
     rec = body.model_dump(mode="json", by_alias=True)
@@ -51,19 +112,22 @@ async def rounds(body: RoundIn, request: Request, p: Principal = Depends(device_
 
 
 @router.get("/rounds/{round_id}/analysis", response_model=AnalysisOut,
-            responses=errors(401, 403, 404, 429), summary="Status of the movement reading")
+            responses=errors(401, 403, 404, 429), deprecated=True,
+            summary="Deprecated: status of the movement reading of an AR round")
 async def round_analysis(request: Request, round_id: str = Path(pattern=CID),
                          p: Principal = Depends(device_only)):
-    """Returns a plain line from a fixed set when the reading is ready.
-    Never the reading itself."""
+    """Deprecated with POST /v1/rounds. Returns a plain line from a fixed set
+    when the reading is ready. Never the reading itself."""
     return service.round_analysis(ctx_of(request), p, round_id)
 
 
 @router.get("/today", response_model=TodayOut, responses=errors(401, 403, 429),
-            summary="Status, today's suggestion, round config and the crisis block")
+            summary="Status, today's suggestion, Lanvi and the crisis block")
 async def today(request: Request, p: Principal = Depends(device_only)):
     """`crisis` is always present. `status` is one of no_baseline, within,
-    outside, no_data; missing data is shown as no_data, never as within."""
+    outside, no_data; missing data is shown as no_data, never as within.
+    `lanvi` holds XP, stage, glow, the wandering (with a story when one waits)
+    and the line Lanvi says today. `round_config` is deprecated."""
     ctx = ctx_of(request)
     return views.today_view(ctx.mind, service.repo_for(ctx, p), ctx.settings)
 

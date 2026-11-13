@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .lines import suggestion_template
+
 
 @dataclass(frozen=True)
 class ActionSpec:
@@ -19,35 +21,46 @@ class ActionSpec:
     keywords: tuple[str, ...]  # words that name this action in a sentence
     numbers: tuple[str, ...] = ()  # numbers the sentence may mention
     seated_ok: bool = False
-    round_mode: str | None = None  # standing | seated, when the action is an AR round
     plain_name: str = ""
+    activity: str | None = None  # focus | breathing | checkin, when the action is an activity
 
 
 ACTIONS: dict[str, ActionSpec] = {a.id: a for a in [
-    ActionSpec("ar_round", "ar", 0,
-               "How about a two-minute round of catching lights in your room?",
-               ("catch", "catching", "lights", "round"), ("two", "2"),
-               round_mode="standing", plain_name="catching lights"),
-    ActionSpec("ar_round_seated", "ar", 1,
-               "How about a two-minute round of catching lights from your chair?",
-               ("catch", "catching", "lights", "round", "chair", "seated"), ("two", "2"),
-               seated_ok=True, round_mode="seated", plain_name="catching lights, seated"),
-    ActionSpec("walk_10min", "walk", 2,
-               "How about a ten-minute walk, at your own pace?",
+    ActionSpec("breathing", "breathing", 0, suggestion_template("breathing"),
+               ("breathe", "breath", "breaths", "breathing"), (), seated_ok=True,
+               plain_name="Breathe with Lanvi", activity="breathing"),
+    ActionSpec("focus_game", "focus", 1, suggestion_template("focus_game"),
+               ("spark", "sparks", "snow", "snowflakes", "game"), (), seated_ok=True,
+               plain_name="Sparks and snow", activity="focus"),
+    ActionSpec("walk_10min", "walk", 2, suggestion_template("walk_10min"),
                ("walk", "walking", "stroll"), ("ten", "10"), plain_name="a short walk"),
-    ActionSpec("daylight_10min", "daylight", 3,
-               "How about ten minutes by a window or outside in the daylight?",
+    ActionSpec("daylight_10min", "daylight", 3, suggestion_template("daylight_10min"),
                ("daylight", "outside", "outdoors", "sunlight", "window"), ("ten", "10"),
                plain_name="some daylight"),
-    ActionSpec("call_someone", "call", 4,
-               "How about a short call or message to someone you like?",
+    ActionSpec("call_someone", "call", 4, suggestion_template("call_someone"),
                ("call", "phone", "message", "text", "chat"), (), seated_ok=True,
                plain_name="reaching out to someone"),
-    ActionSpec("breathing_2min", "breathing", 5,
-               "How about two minutes of slow breathing, wherever you are?",
-               ("breathing", "breathe", "breath"), ("two", "2"), seated_ok=True,
-               plain_name="slow breathing"),
+    ActionSpec("checkin", "checkin", 5, suggestion_template("checkin"),
+               ("things", "check", "tonight"), ("three", "3"), seated_ok=True,
+               plain_name="the evening check-in", activity="checkin"),
 ]}
+
+# Activity type (as the app sends it) -> catalog action.
+ACTIVITY_ACTION = {a.activity: a.id for a in ACTIONS.values() if a.activity}
+ACTIVITY_TYPES = ("focus", "breathing", "checkin")
+
+# Names for actions of the earlier design, so old stored records still read.
+# They can never be suggested again.
+LEGACY_ACTION_NAMES = {"ar_round": "an AR round (earlier design)",
+                       "ar_round_seated": "a seated AR round (earlier design)",
+                       "breathing_2min": "slow breathing (earlier design)"}
+
+
+def plain_name(action: str) -> str:
+    if action in ACTIONS:
+        return ACTIONS[action].plain_name
+    return LEGACY_ACTION_NAMES.get(action, action.replace("_", " "))
+
 
 CONTEXTS = ("morning", "afternoon", "evening", "any")
 EFFECTS = ("prefer", "avoid")
@@ -60,11 +73,12 @@ RATIONALES = {
     "offered_not_done": "avoid",
     "done_and_worse": "avoid",
     "patient_said_too_much": "avoid",
-    # Lessons about round configs (they carry a config_id).
-    "config_finished_more": "prefer",
-    "config_stopped_early": "avoid",
+    # Lessons about activities, from how they went: "breathing in the evening
+    # is usually finished", "the focus game is often stopped early".
+    "activity_finished_more": "prefer",
+    "activity_stopped_early": "avoid",
 }
-ROUND_RATIONALES = ("config_finished_more", "config_stopped_early")
+ACTIVITY_RATIONALES = ("activity_finished_more", "activity_stopped_early")
 
 # Rule templates the patient can set. Typed parameters, no free text.
 RULE_TYPES = ("quiet_hours", "seated_only", "max_suggestions_per_day", "no_action")
@@ -74,7 +88,7 @@ WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 QUESTIONS = {
     "prefer_morning": "Does {name} suit you better in the morning?",
     "too_much": "Was {name} too much on some days?",
-    "seated_better": "Would catching lights from a chair be easier for you?",
+    "prefer_evening": "Does {name} suit you better in the evening?",
     "helped": "Did {name} help on the days you tried it?",
 }
 QUESTION_ANSWERS = ("yes", "no", "not_sure")
@@ -91,15 +105,10 @@ def context_for_hour(hour: int) -> str:
     return "evening"
 
 
-CONFIG_NAMES = {"seated_gentle": "gentle seated rounds", "near_gentle": "gentle rounds close by",
-                "standard": "standard rounds", "wide": "wide rounds",
-                "wide_high": "wide rounds with high lights"}
-
-
 def lesson_text(action: str, effect: str, context: str, config_id: str | None = None) -> str:
     """Plain-language text for a lesson. Written by code, never by a model."""
-    name = CONFIG_NAMES.get(config_id, "") if config_id else ACTIONS[action].plain_name
+    name = plain_name(action)
     when = "" if context == "any" else f" in the {context}"
     if effect == "prefer":
-        return f"{name.capitalize()}{when} seemed to suit you, so it comes first now."
-    return f"{name.capitalize()}{when} was often not right for you, so it is offered less."
+        return f"{name[0].upper() + name[1:]}{when} seemed to suit you, so it comes first now."
+    return f"{name[0].upper() + name[1:]}{when} was often not right for you, so it is offered less."

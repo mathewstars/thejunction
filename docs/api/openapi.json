@@ -174,13 +174,468 @@
         ]
       }
     },
+    "/v1/activities": {
+      "post": {
+        "tags": [
+          "device"
+        ],
+        "summary": "Send one activity record: focus, breathing or check-in",
+        "description": "One record per activity, idempotent by `id`: the same record again is\nanswered without new XP; a different record under a used id is refused\n(409). Values that cannot be true are rejected (422) and logged.\n\nTyped words in a check-in are untrusted data with exactly the note's\ntreatment: classified into enums only, never followed, never logged,\nnever sent outside the server. If they ask for help, `crisis` is true and\nthe help block is included, as for a note.\n\nThe answer says what Lanvi shows next: XP gained, the new total, stage,\nglow and one line from the fixed set. XP is for showing up: the same\nwhatever the score.",
+        "operationId": "activities_v1_activities_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/FocusActivityIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BreathingActivityIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CheckinActivityIn"
+                  }
+                ],
+                "title": "Body",
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "focus": "#/components/schemas/FocusActivityIn",
+                    "breathing": "#/components/schemas/BreathingActivityIn",
+                    "checkin": "#/components/schemas/CheckinActivityIn"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/activities/{activity_id}/reading": {
+      "get": {
+        "tags": [
+          "device"
+        ],
+        "summary": "Status of the session reading",
+        "description": "A neutral line from a fixed set when the reading is ready. Never the\nreading itself, never anything about mood or the face.",
+        "operationId": "activity_reading_v1_activities__activity_id__reading_get",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "activity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$",
+              "title": "Activity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityReadingOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/checkin/options": {
+      "get": {
+        "tags": [
+          "device"
+        ],
+        "summary": "What the evening check-in offers to tap",
+        "operationId": "checkin_options_v1_checkin_options_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinOptionsOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/preferences": {
+      "put": {
+        "tags": [
+          "device"
+        ],
+        "summary": "Onboarding: what helps (music, moving, people, quiet)",
+        "description": "Stored as the starting order of suggestions, used until the first lesson\nexists. Replaces the earlier answer. Lanvi answers with one fixed line.",
+        "operationId": "preferences_v1_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/lanvi/wanderings/{wandering_id}/answer": {
+      "post": {
+        "tags": [
+          "device"
+        ],
+        "summary": "Answer the question of the story Lanvi brought back",
+        "description": "Only while `lanvi.wandering.state` is `back` and the id matches. The\nanswer is stored as an enum (a or b).",
+        "operationId": "wandering_answer_v1_lanvi_wanderings__wandering_id__answer_post",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "wandering_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^wander-[0-9]{4,6}$",
+              "title": "Wandering Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WanderingAnswerIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/rounds": {
       "post": {
         "tags": [
           "device"
         ],
-        "summary": "Send one AR round record (schema 2)",
-        "description": "Idempotent by `id`. Implausible values reject the round (422). Weak\ntracking, a small play area or an interrupted round are kept but marked\nlow quality. The movement reading (level 2) runs in the background.",
+        "summary": "Deprecated: send one AR round record (schema 2)",
+        "description": "Deprecated: the AR round was cut from the design. Kept so an app still\non the earlier design does not break; use POST /v1/activities.\n\nIdempotent by `id`. Implausible values reject the round (422). Weak\ntracking, a small play area or an interrupted round are kept but marked\nlow quality. The movement reading (level 2) runs in the background.",
         "operationId": "rounds_v1_rounds_post",
         "requestBody": {
           "content": {
@@ -264,6 +719,7 @@
             }
           }
         },
+        "deprecated": true,
         "security": [
           {
             "bearer": []
@@ -276,9 +732,10 @@
         "tags": [
           "device"
         ],
-        "summary": "Status of the movement reading",
-        "description": "Returns a plain line from a fixed set when the reading is ready.\nNever the reading itself.",
+        "summary": "Deprecated: status of the movement reading of an AR round",
+        "description": "Deprecated with POST /v1/rounds. Returns a plain line from a fixed set\nwhen the reading is ready. Never the reading itself.",
         "operationId": "round_analysis_v1_rounds__round_id__analysis_get",
+        "deprecated": true,
         "security": [
           {
             "bearer": []
@@ -365,8 +822,8 @@
         "tags": [
           "device"
         ],
-        "summary": "Status, today's suggestion, round config and the crisis block",
-        "description": "`crisis` is always present. `status` is one of no_baseline, within,\noutside, no_data; missing data is shown as no_data, never as within.",
+        "summary": "Status, today's suggestion, Lanvi and the crisis block",
+        "description": "`crisis` is always present. `status` is one of no_baseline, within,\noutside, no_data; missing data is shown as no_data, never as within.\n`lanvi` holds XP, stage, glow, the wandering (with a story when one waits)\nand the line Lanvi says today. `round_config` is deprecated.",
         "operationId": "today_v1_today_get",
         "responses": {
           "200": {
@@ -1626,7 +2083,7 @@
         "tags": [
           "admin"
         ],
-        "summary": "Regenerate the demo patient's 28 normal days, rounds and history",
+        "summary": "Regenerate the demo patient's 28 normal days, activities and history",
         "description": "Keeps the clinic, the patient and the paired device.",
         "operationId": "demo_reset_v1_demo_reset_post",
         "responses": {
@@ -1913,7 +2370,8 @@
         "tags": [
           "admin"
         ],
-        "summary": "Run the movement reading again for one round",
+        "summary": "Run the level-2 reading again for one activity (or an earlier round)",
+        "description": "With `activity_id`: the session reading of a focus or breathing session\nwith a face summary. With `round_id`: the movement reading of an AR round\nof the earlier design.",
         "operationId": "demo_analyze_v1_demo_analyze_post",
         "requestBody": {
           "content": {
@@ -1995,6 +2453,142 @@
   },
   "components": {
     "schemas": {
+      "ActivityOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "xp_gained": {
+            "type": "integer",
+            "title": "Xp Gained",
+            "description": "XP this record earned now (0 when re-sent)."
+          },
+          "xp_total": {
+            "type": "integer",
+            "title": "Xp Total"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "kit",
+              "young_fox",
+              "grown_fox"
+            ],
+            "title": "Stage"
+          },
+          "next_stage_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Stage At"
+          },
+          "glow": {
+            "type": "number",
+            "title": "Glow",
+            "description": "0 to 1. A full glow starts a wandering."
+          },
+          "wandering": {
+            "type": "string",
+            "enum": [
+              "home",
+              "away",
+              "back"
+            ],
+            "title": "Wandering"
+          },
+          "line": {
+            "$ref": "#/components/schemas/LineOut",
+            "description": "One line for Lanvi to say now, from a fixed set."
+          },
+          "crisis": {
+            "type": "boolean",
+            "title": "Crisis",
+            "description": "True when typed check-in words asked for help.",
+            "default": false
+          },
+          "crisis_block": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CrisisBlock"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present when crisis is true."
+          },
+          "reading": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "failed",
+              "off",
+              "not_allowed",
+              "not_applicable"
+            ],
+            "title": "Reading",
+            "description": "The session reading (level 2) for a focus or breathing session with a face summary: pending, or off / not_allowed. not_applicable for a check-in or a session without a face summary. Fetch the line from GET /v1/activities/{id}/reading."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "xp_gained",
+          "xp_total",
+          "stage",
+          "next_stage_at",
+          "glow",
+          "wandering",
+          "line",
+          "reading"
+        ],
+        "title": "ActivityOut"
+      },
+      "ActivityReadingOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "failed",
+              "off",
+              "not_allowed",
+              "not_applicable"
+            ],
+            "title": "Status"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line",
+            "description": "Neutral line for the patient, from a fixed set. Never about mood or the face."
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ActivityReadingOut"
+      },
       "AnalysisOut": {
         "properties": {
           "status": {
@@ -2035,16 +2629,36 @@
             "title": "Patient Id"
           },
           "round_id": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{8,64}$",
-            "title": "Round Id"
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{8,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Id",
+            "description": "An AR round (earlier design)."
+          },
+          "activity_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{8,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activity Id",
+            "description": "A focus or breathing activity."
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "patient_id",
-          "round_id"
+          "patient_id"
         ],
         "title": "AnalyzeIn"
       },
@@ -2066,6 +2680,270 @@
           "answer"
         ],
         "title": "AnswerIn"
+      },
+      "BreathingActivityIn": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "title": "Id",
+            "description": "Client-generated id. Re-sending the same record is safe and earns nothing twice; a different record under the same id is refused (409)."
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "duration_s": {
+            "type": "number",
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Duration S"
+          },
+          "completed": {
+            "type": "boolean",
+            "title": "Completed"
+          },
+          "ended_by": {
+            "type": "string",
+            "enum": [
+              "finished",
+              "user_stopped",
+              "interrupted"
+            ],
+            "title": "Ended By"
+          },
+          "suggestion_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion Id",
+            "description": "The suggestion this answers, if it was played from one."
+          },
+          "type": {
+            "type": "string",
+            "const": "breathing",
+            "title": "Type"
+          },
+          "time_played_s": {
+            "type": "number",
+            "maximum": 3600.0,
+            "minimum": 0.0,
+            "title": "Time Played S"
+          },
+          "breaths_completed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 200.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breaths Completed"
+          },
+          "face": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FaceSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "started_at",
+          "duration_s",
+          "completed",
+          "ended_by",
+          "type",
+          "time_played_s"
+        ],
+        "title": "BreathingActivityIn",
+        "description": "Breathe with Lanvi, 1 minute."
+      },
+      "CheckinActivityIn": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "title": "Id",
+            "description": "Client-generated id. Re-sending the same record is safe and earns nothing twice; a different record under the same id is refused (409)."
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "duration_s": {
+            "type": "number",
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Duration S"
+          },
+          "completed": {
+            "type": "boolean",
+            "title": "Completed"
+          },
+          "ended_by": {
+            "type": "string",
+            "enum": [
+              "finished",
+              "user_stopped",
+              "interrupted"
+            ],
+            "title": "Ended By"
+          },
+          "suggestion_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion Id",
+            "description": "The suggestion this answers, if it was played from one."
+          },
+          "type": {
+            "type": "string",
+            "const": "checkin",
+            "title": "Type"
+          },
+          "good_things": {
+            "items": {
+              "$ref": "#/components/schemas/CheckinItem"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Good Things",
+            "description": "Up to 3 good things from today."
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckinItem"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "One small nice thing for tomorrow."
+          },
+          "plan_done": {
+            "type": "string",
+            "enum": [
+              "yes",
+              "no",
+              "not_asked"
+            ],
+            "title": "Plan Done",
+            "description": "Whether yesterday's plan happened, when the app asked.",
+            "default": "not_asked"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "started_at",
+          "duration_s",
+          "completed",
+          "ended_by",
+          "type"
+        ],
+        "title": "CheckinActivityIn",
+        "description": "Evening check-in, once a day."
+      },
+      "CheckinItem": {
+        "properties": {
+          "catalog_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z_]{2,40}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Id"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CheckinItem",
+        "description": "Either a catalog id the person tapped, or a few typed words (not both).\nTyped text is untrusted data: classified like a note, never followed,\nnever logged, never sent outside the server."
+      },
+      "CheckinOption": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "CheckinOption"
+      },
+      "CheckinOptionsOut": {
+        "properties": {
+          "good_things": {
+            "items": {
+              "$ref": "#/components/schemas/CheckinOption"
+            },
+            "type": "array",
+            "title": "Good Things"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/CheckinOption"
+            },
+            "type": "array",
+            "title": "Plans"
+          }
+        },
+        "type": "object",
+        "required": [
+          "good_things",
+          "plans"
+        ],
+        "title": "CheckinOptionsOut"
       },
       "ClinicDemo": {
         "properties": {
@@ -2323,6 +3201,105 @@
         ],
         "title": "ErrorResponse"
       },
+      "FaceSummary": {
+        "properties": {
+          "smile_rate_per_min": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 120.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smile Rate Per Min"
+          },
+          "smile_intensity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smile Intensity",
+            "description": "0 to 1."
+          },
+          "facial_activity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facial Activity",
+            "description": "How much the face moved, 0 to 1."
+          },
+          "blink_rate_per_min": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 120.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blink Rate Per Min"
+          },
+          "look_down_share": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Look Down Share",
+            "description": "Share of time looking down, 0 to 1."
+          },
+          "head_tilt_deg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Tilt Deg"
+          },
+          "tracking_quality": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Tracking Quality",
+            "description": "0 to 1. Below 0.6 the summary is kept but never used for the person's own normal."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tracking_quality"
+        ],
+        "title": "FaceSummary",
+        "description": "Numbers only, from the front camera during the activity, when the person\nallowed it. No frames, no images, no landmarks."
+      },
       "FeedbackIn": {
         "properties": {
           "id": {
@@ -2370,6 +3347,114 @@
         ],
         "title": "FeedbackIn"
       },
+      "FocusActivityIn": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "title": "Id",
+            "description": "Client-generated id. Re-sending the same record is safe and earns nothing twice; a different record under the same id is refused (409)."
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "duration_s": {
+            "type": "number",
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Duration S"
+          },
+          "completed": {
+            "type": "boolean",
+            "title": "Completed"
+          },
+          "ended_by": {
+            "type": "string",
+            "enum": [
+              "finished",
+              "user_stopped",
+              "interrupted"
+            ],
+            "title": "Ended By"
+          },
+          "suggestion_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion Id",
+            "description": "The suggestion this answers, if it was played from one."
+          },
+          "type": {
+            "type": "string",
+            "const": "focus",
+            "title": "Type"
+          },
+          "correct_taps": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Correct Taps"
+          },
+          "wrong_taps": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Wrong Taps",
+            "description": "Tapped a snowflake."
+          },
+          "misses": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Misses",
+            "description": "Sparks that faded untapped."
+          },
+          "reaction_ms": {
+            "items": {
+              "type": "integer",
+              "maximum": 10000.0,
+              "minimum": 0.0
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Reaction Ms",
+            "description": "Reaction time per tap in whole milliseconds. The server computes its own statistics."
+          },
+          "face": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FaceSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "started_at",
+          "duration_s",
+          "completed",
+          "ended_by",
+          "type",
+          "correct_taps",
+          "wrong_taps",
+          "misses"
+        ],
+        "title": "FocusActivityIn",
+        "description": "Sparks and snow, about 45 seconds."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2382,6 +3467,68 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "LanviOut": {
+        "properties": {
+          "xp": {
+            "type": "integer",
+            "title": "Xp"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "kit",
+              "young_fox",
+              "grown_fox"
+            ],
+            "title": "Stage"
+          },
+          "next_stage_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Stage At"
+          },
+          "glow": {
+            "type": "number",
+            "title": "Glow",
+            "description": "0 to 1."
+          },
+          "wandering": {
+            "$ref": "#/components/schemas/WanderingOut"
+          },
+          "line": {
+            "$ref": "#/components/schemas/LineOut",
+            "description": "The line Lanvi says today, from the fixed set."
+          },
+          "plan_to_ask": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanToAsk"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Yesterday's plan, to ask about in tonight's check-in; null if none."
+          }
+        },
+        "type": "object",
+        "required": [
+          "xp",
+          "stage",
+          "next_stage_at",
+          "glow",
+          "wandering",
+          "line",
+          "plan_to_ask"
+        ],
+        "title": "LanviOut"
       },
       "LightLog": {
         "properties": {
@@ -2456,6 +3603,24 @@
           "caught"
         ],
         "title": "LightLog"
+      },
+      "LineOut": {
+        "properties": {
+          "template_id": {
+            "type": "string",
+            "title": "Template Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "template_id",
+          "text"
+        ],
+        "title": "LineOut"
       },
       "LoginIn": {
         "properties": {
@@ -2557,12 +3722,12 @@
           "action": {
             "type": "string",
             "enum": [
-              "ar_round",
-              "ar_round_seated",
+              "breathing",
+              "focus_game",
+              "checkin",
               "walk_10min",
               "daylight_10min",
-              "call_someone",
-              "breathing_2min"
+              "call_someone"
             ],
             "title": "Action"
           }
@@ -2742,6 +3907,78 @@
           "points"
         ],
         "title": "Path"
+      },
+      "PlanToAsk": {
+        "properties": {
+          "checkin_id": {
+            "type": "string",
+            "title": "Checkin Id"
+          },
+          "plan_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Id",
+            "description": "Catalog id, or null when the plan was typed (the app has the words on the phone)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "checkin_id",
+          "plan_id"
+        ],
+        "title": "PlanToAsk"
+      },
+      "PreferencesIn": {
+        "properties": {
+          "helps": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "music",
+                "moving",
+                "people",
+                "quiet"
+              ]
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 0,
+            "title": "Helps",
+            "description": "What helps, in the order the person chose. The starting order of suggestions."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "helps"
+        ],
+        "title": "PreferencesIn"
+      },
+      "PreferencesOut": {
+        "properties": {
+          "helps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Helps"
+          },
+          "line": {
+            "$ref": "#/components/schemas/LineOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "helps",
+          "line"
+        ],
+        "title": "PreferencesOut"
       },
       "QuietHours": {
         "properties": {
@@ -3179,6 +4416,59 @@
         ],
         "title": "SeatedOnlyParams"
       },
+      "StoryAnswer": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "a",
+              "b"
+            ],
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "StoryAnswer"
+      },
+      "StoryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/StoryAnswer"
+            },
+            "type": "array",
+            "title": "Answers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "question",
+          "answers"
+        ],
+        "title": "StoryOut"
+      },
       "SuggestionOut": {
         "properties": {
           "id": {
@@ -3229,10 +4519,14 @@
               }
             ]
           },
+          "lanvi": {
+            "$ref": "#/components/schemas/LanviOut"
+          },
           "round_config": {
             "additionalProperties": true,
             "type": "object",
-            "title": "Round Config"
+            "title": "Round Config",
+            "description": "Deprecated: for apps of the earlier AR design only."
           },
           "attention": {
             "type": "string",
@@ -3252,6 +4546,7 @@
         "required": [
           "status",
           "suggestion",
+          "lanvi",
           "round_config",
           "attention",
           "crisis",
@@ -3277,6 +4572,25 @@
             "type": "boolean",
             "title": "Changed"
           },
+          "headline": {
+            "type": "string",
+            "title": "Headline",
+            "description": "At most 6 words, from a fixed set, for one row."
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "attention_opened",
+              "attention_raised",
+              "attention_closed",
+              "suggested",
+              "message_sent",
+              "refused",
+              "nothing"
+            ],
+            "title": "Outcome",
+            "description": "The most important thing the chain did."
+          },
           "entries": {
             "items": {
               "$ref": "#/components/schemas/TraceEntryOut"
@@ -3291,6 +4605,8 @@
           "at",
           "trigger",
           "changed",
+          "headline",
+          "outcome",
           "entries"
         ],
         "title": "TraceChainOut"
@@ -3599,6 +4915,78 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WanderingAnswerIn": {
+        "properties": {
+          "answer": {
+            "type": "string",
+            "enum": [
+              "a",
+              "b"
+            ],
+            "title": "Answer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "answer"
+        ],
+        "title": "WanderingAnswerIn"
+      },
+      "WanderingOut": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "home",
+              "away",
+              "back"
+            ],
+            "title": "State",
+            "description": "home: nothing going on; away: Lanvi is wandering until returns_at; back: a story waits for an answer."
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "returns_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Returns At"
+          },
+          "story": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "id",
+          "returns_at",
+          "story"
+        ],
+        "title": "WanderingOut"
       }
     },
     "securitySchemes": {

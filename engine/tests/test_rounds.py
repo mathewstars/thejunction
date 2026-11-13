@@ -361,5 +361,6 @@ def test_model_proposing_unknown_config_refused():
                                      "rationale_code": "config_finished_more"}], "questions": []})
     env = Env(local=FakeLocal(review=reply))
     review = env.run(env.mind.run_review(env.repo(), "t"))
-    assert any(r["reason"] in ("config_not_in_catalog", "unknown_evidence") for r in review["refused"])
+    assert any(r["reason"] in ("config_not_in_catalog", "unknown_evidence", "action_not_in_catalog")
+               for r in review["refused"])
     assert not any(a.get("config_id") == "turbo_mode" for a in review["accepted"])

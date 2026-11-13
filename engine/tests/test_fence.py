@@ -97,11 +97,11 @@ def test_every_lesson_has_provenance_and_rejection_sticks(env):
     for x in lessons:
         assert x["review_id"].startswith("rev_") and x["source"] in ("code", "local")
         assert x["evidence_ids"]
-    lid = next(x["id"] for x in lessons if x["action"] == "ar_round")
+    lid = next(x["id"] for x in lessons if x["action"] == "breathing")
     env.client.post(f"/v1/mind/lessons/{lid}/reject", headers=env.H)
     env.run(env.mind.run_review(env.repo(), "again"))
     active = [x for x in env.repo().lessons_doc()["lessons"]
-              if x["status"] == "active" and x["action"] == "ar_round" and x["effect"] == "prefer"]
+              if x["status"] == "active" and x["action"] == "breathing" and x["effect"] == "prefer"]
     assert active == []
 
 

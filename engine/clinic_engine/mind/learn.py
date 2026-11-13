@@ -11,16 +11,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
-from .catalog import (ACTIONS, CONTEXTS, QUESTIONS, RATIONALES, ROUND_RATIONALES,
-                      context_for_hour, lesson_text)
-from .round_configs import ROUND_CONFIGS
+from .catalog import (ACTIONS, ACTIVITY_ACTION, ACTIVITY_RATIONALES, CONTEXTS, QUESTIONS,
+                      RATIONALES, context_for_hour, lesson_text)
 from .thresholds import T, Thresholds
 
 # question code -> (effect, rationale, context, action override)
 _ANSWER_LESSONS = {
     "helped": ("prefer", "patient_said_yes", "any", None),
     "prefer_morning": ("prefer", "patient_said_yes", "morning", None),
-    "seated_better": ("prefer", "patient_said_yes", "any", "ar_round_seated"),
+    "prefer_evening": ("prefer", "patient_said_yes", "evening", None),
     "too_much": ("avoid", "patient_said_too_much", "any", None),
 }
 
@@ -50,14 +49,16 @@ def outcome_for(suggestion: dict, series_by_date: dict[str, dict], th: Threshold
 
 
 def evidence_table(suggestions: list[dict], series: list[dict], questions: list[dict],
-                   tz_hour_of, th: Thresholds = T, rounds: list[dict] | None = None) -> list[dict]:
-    """One row per resolved suggestion, per answered question, per good round."""
+                   tz_hour_of, th: Thresholds = T, activities: list[dict] | None = None) -> list[dict]:
+    """One row per resolved suggestion, per answered question, per activity.
+    Rounds of the earlier AR design are no longer evidence (their actions left
+    the catalog)."""
     by_date = {s["date"]: s for s in series}
     rows = []
     for s in suggestions:
         if s["status"] == "open":
             continue
-        done = s.get("answer") == "did_it" or bool(s.get("round_completed"))
+        done = s.get("answer") == "did_it" or bool(s.get("round_completed")) or bool(s.get("played"))
         outcome, delta = outcome_for(s, by_date, th) if done else ("unknown", None)
         rows.append({
             "id": s["id"], "kind": "suggestion", "action": s["action"],
@@ -65,18 +66,16 @@ def evidence_table(suggestions: list[dict], series: list[dict], questions: list[
             "date": s["date"], "done": done, "answer": s.get("answer") or "no_answer",
             "felt": s.get("felt"), "outcome": outcome, "delta": delta,
         })
-    for r in rounds or []:
-        if r.get("quality") != "good" or r["mode"] == "screen":
-            continue
-        reading = (r.get("analysis") or {}).get("reading") or {}
+    for a in activities or []:
+        if a.get("ended_by") == "interrupted" or a["type"] not in ACTIVITY_ACTION:
+            continue  # an interruption says nothing about the activity
+        reading = (a.get("analysis") or {}).get("reading") or {}
         rows.append({
-            "id": r["id"], "kind": "round",
-            "action": "ar_round_seated" if r["mode"] == "seated" else "ar_round",
-            "context": context_for_hour(tz_hour_of(r["started_at"])),
-            "date": r["started_at"][:10], "config_id": r["config"]["config_id"],
-            "finished": r["ended_by"] == "finished", "stopped": r["ended_by"] == "user_stopped",
-            "energy_bucket": r.get("energy_bucket") or "unknown",
-            "pattern": reading.get("pattern"),
+            "id": a["id"], "kind": "activity", "action": ACTIVITY_ACTION[a["type"]],
+            "context": context_for_hour(tz_hour_of(a["started_at"])),
+            "date": a["started_at"][:10],
+            "finished": a["ended_by"] == "finished", "stopped": a["ended_by"] == "user_stopped",
+            "pattern": reading.get("compared_to_usual"),
             "done": True, "answer": None, "felt": None, "outcome": "unknown", "delta": None,
         })
     for q in questions:
@@ -105,10 +104,10 @@ def supports(rationale: str, row: dict) -> bool:
     if rationale == "patient_said_yes":
         return row["kind"] == "answer" and row["answer"] == "yes" and \
             _ANSWER_LESSONS[row["question"]][1] == "patient_said_yes"
-    if rationale == "config_finished_more":
-        return row["kind"] == "round" and row["finished"]
-    if rationale == "config_stopped_early":
-        return row["kind"] == "round" and row["stopped"]
+    if rationale == "activity_finished_more":
+        return row["kind"] == "activity" and row["finished"]
+    if rationale == "activity_stopped_early":
+        return row["kind"] == "activity" and row["stopped"]
     if rationale == "patient_said_too_much":
         return row["kind"] == "answer" and row["answer"] == "yes" and row["question"] == "too_much"
     return False
@@ -116,9 +115,9 @@ def supports(rationale: str, row: dict) -> bool:
 
 def _relevant(rows: list[dict], action: str, context: str, rationale: str,
               config_id: str | None = None) -> list[dict]:
-    if rationale in ROUND_RATIONALES:
-        return [r for r in rows if r["kind"] == "round" and r["action"] == action
-                and r["config_id"] == config_id and (context == "any" or r["context"] == context)]
+    if rationale in ACTIVITY_RATIONALES:
+        return [r for r in rows if r["kind"] == "activity" and r["action"] == action
+                and (context == "any" or r["context"] == context)]
     kind = "answer" if rationale.startswith("patient_said") else "suggestion"
     return [r for r in rows if r["kind"] == kind and r["action"] == action
             and (context == "any" or r["context"] == context)]
@@ -144,12 +143,11 @@ def validate_lesson(p: dict, rows: list[dict], lessons_doc: dict, th: Thresholds
     if RATIONALES[rat] != p["effect"]:
         return Verdict(False, "rationale_effect_mismatch")
     cfg = p.get("config_id")
-    if cfg is not None and cfg not in ROUND_CONFIGS:
+    if cfg is not None:
+        # Round configs belonged to the earlier AR design; no lesson may carry one.
         return Verdict(False, "config_not_in_catalog")
-    if (rat in ROUND_RATIONALES) != (cfg is not None):
-        return Verdict(False, "config_rationale_mismatch")
-    if cfg is not None and p["action"] not in ("ar_round", "ar_round_seated"):
-        return Verdict(False, "config_needs_round_action")
+    if rat in ACTIVITY_RATIONALES and not ACTIONS[p["action"]].activity:
+        return Verdict(False, "rationale_needs_activity_action")
     ids = p.get("evidence_ids") or []
     if len(ids) != len(set(ids)):
         return Verdict(False, "duplicate_evidence")
@@ -159,8 +157,6 @@ def validate_lesson(p: dict, rows: list[dict], lessons_doc: dict, th: Thresholds
     cited = [by_id[i] for i in ids]
     if any(r["action"] != p["action"] for r in cited):
         return Verdict(False, "evidence_other_action")
-    if cfg is not None and any(r.get("config_id") != cfg for r in cited):
-        return Verdict(False, "evidence_other_config")
     if p["context"] != "any" and any(r["context"] != p["context"] for r in cited):
         return Verdict(False, "evidence_other_context")
     need = 1 if rat.startswith("patient_said") else th.min_evidence
@@ -188,7 +184,7 @@ def code_candidates(rows: list[dict], th: Thresholds = T) -> list[dict]:
         found: dict[tuple[str, str], dict] = {}
         for ctx in CONTEXTS[::-1]:  # "any" first
             for rat, effect in RATIONALES.items():
-                if rat in ROUND_RATIONALES or (effect, "any") in found:
+                if rat in ACTIVITY_RATIONALES or (effect, "any") in found:
                     continue
                 relevant = _relevant(rows, action, ctx, rat)
                 backing = [r for r in relevant if supports(rat, r)]
@@ -201,32 +197,32 @@ def code_candidates(rows: list[dict], th: Thresholds = T) -> list[dict]:
         if effects == {"prefer", "avoid"}:
             continue  # the evidence disagrees with itself; learn nothing yet
         out.extend(found.values())
-    # Round configs: which config gets finished, which gets stopped early.
-    for action in ("ar_round", "ar_round_seated"):
-        for cfg in ROUND_CONFIGS:
-            cfound: dict = {}
-            for ctx in CONTEXTS[::-1]:
-                for rat in ROUND_RATIONALES:
-                    effect = RATIONALES[rat]
-                    if (effect, "any") in cfound:
-                        continue
-                    relevant = _relevant(rows, action, ctx, rat, cfg)
-                    backing = [r for r in relevant if supports(rat, r)]
-                    if len(backing) >= th.min_evidence and \
-                            len(backing) / len(relevant) >= th.support_fraction:
-                        cfound.setdefault((effect, ctx), {
-                            "action": action, "effect": effect, "context": ctx,
-                            "config_id": cfg, "evidence_ids": [r["id"] for r in backing],
-                            "rationale_code": rat})
-            # "finished" is the normal case: only learn a config preference
-            # when it differs from how other configs went in that context.
-            for (effect, ctx), c in cfound.items():
-                if effect == "prefer":
-                    others = [r for r in rows if r["kind"] == "round" and r["action"] == action
-                              and r["config_id"] != cfg and (ctx == "any" or r["context"] == ctx)]
-                    if not others or sum(1 for r in others if r["stopped"]) / len(others) < 0.5:
-                        continue
-                out.append(c)
+    # Activities: which one gets finished, which gets stopped early, and when.
+    for action, spec in ACTIONS.items():
+        if not spec.activity:
+            continue
+        afound: dict = {}
+        for ctx in CONTEXTS[::-1]:
+            for rat in ACTIVITY_RATIONALES:
+                effect = RATIONALES[rat]
+                if (effect, "any") in afound:
+                    continue
+                relevant = _relevant(rows, action, ctx, rat)
+                backing = [r for r in relevant if supports(rat, r)]
+                if len(backing) >= th.min_evidence and \
+                        len(backing) / len(relevant) >= th.support_fraction:
+                    afound.setdefault((effect, ctx), {
+                        "action": action, "effect": effect, "context": ctx,
+                        "evidence_ids": [r["id"] for r in backing], "rationale_code": rat})
+        # "Finished" is the normal case: only learn a preference when the
+        # other activities in that context were often stopped early.
+        for (effect, ctx), c in afound.items():
+            if effect == "prefer":
+                others = [r for r in rows if r["kind"] == "activity" and r["action"] != action
+                          and (ctx == "any" or r["context"] == ctx)]
+                if not others or sum(1 for r in others if r["stopped"]) / len(others) < 0.5:
+                    continue
+            out.append(c)
     return out
 
 
@@ -238,8 +234,6 @@ def code_questions(rows: list[dict], lessons: list[dict], questions: list[dict])
         not_done = [r for r in rows if r["kind"] == "suggestion" and r["action"] == action
                     and not r["done"]]
         if len(not_done) >= 2 and action not in lesson_actions:
-            if action == "ar_round" and ("seated_better", "ar_round_seated") not in asked:
-                return [{"code": "seated_better", "action": "ar_round_seated"}]
             if ("too_much", action) not in asked:
                 return [{"code": "too_much", "action": action}]
     return []
@@ -250,8 +244,6 @@ def validate_question(q: dict, questions: list[dict]) -> Verdict:
         return Verdict(False, "question_not_in_catalog")
     if q.get("action") not in ACTIONS:
         return Verdict(False, "action_not_in_catalog")
-    if q["code"] == "seated_better" and q["action"] != "ar_round_seated":
-        return Verdict(False, "question_action_mismatch")
     if any(x["code"] == q["code"] and x["action"] == q["action"] for x in questions):
         return Verdict(False, "already_asked")
     return Verdict(True)

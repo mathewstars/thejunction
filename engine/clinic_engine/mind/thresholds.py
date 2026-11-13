@@ -55,6 +55,38 @@ class Thresholds:
     # Two weak rounds in a row let the deviation watcher open one low day earlier.
     round_weak_lowers_deviation_by: int = 1
 
+    # Activities (docs/game-design.md): own normal per activity type and per
+    # feature, robust median and MAD over the person's earlier sessions.
+    activity_baseline_min: int = 5  # earlier sessions of the same type before any z
+    activity_baseline_max: int = 20
+    activity_min_reactions: int = 5  # a focus session needs this many reaction times
+    reaction_min_ms: int = 120  # faster taps are anticipations; left out of the median
+    # A face summary enters a baseline only when tracking was good enough.
+    # A low-quality summary is stored and shown, never used.
+    face_min_quality: float = 0.6
+    # Watchers on activities. Each looks at the last `activity_window`
+    # sessions of its kind and needs `activity_min_hits` of them.
+    activity_window: int = 3
+    activity_min_hits: int = 2
+    slower_reaction_z: float = 1.5  # median reaction time this far ABOVE own normal (slower)
+    face_flat_z: float = -1.5  # facial activity or smiling this far below own normal
+    checkins_habit_min: int = 3  # check-ins in the 14 days before, so stopping means something
+    checkins_stopped_days: int = 3  # no check-in for this many days
+    plans_not_done_in_a_row: int = 3  # plans answered "no" this many times in a row
+    activity_not_played_in_a_row: int = 3  # offered activities left unplayed in a row
+    # Rules for how activity signals combine with the daily data:
+    # 1. Slower reactions and a flatter face open an item at "watch" only.
+    #    On their own they never go higher, never trigger a suggestion and
+    #    never produce any text for the person.
+    # 2. They rise to "attention" only while a movement drop (deviation) is
+    #    held: the daily data moved too.
+    # 3. Either of them active lets the deviation watcher open one low day
+    #    earlier (like two weak rounds did); never below two low days. They
+    #    add weight; they never open a deviation alone.
+    # 4. Check-ins stopped, plans repeatedly not done and activities offered
+    #    but not played follow the same rule 1 and 2.
+    activity_lowers_deviation_by: int = 1
+
     # Responder.
     suggestion_cooldown_hours: float = 6.0
     suggestion_ttl_hours: float = 20.0
@@ -92,6 +124,14 @@ PLAUSIBLE = {
 ROUND_MIN_SCALE = {
     "caught_share": 0.05, "median_reaction_s": 0.2, "median_speed_m_s": 0.05,
     "coverage": 0.05, "still_share": 0.05, "vertical_range_m": 0.05, "fade": 0.05,
+}
+
+# Floors for activity feature spreads, in each feature's own unit.
+ACTIVITY_MIN_SCALE = {
+    "median_reaction_ms": 40.0, "reaction_spread_ms": 25.0, "error_rate": 0.05,
+    "time_played_s": 5.0, "good_things": 0.5,
+    "smile_rate_per_min": 0.5, "smile_intensity": 0.05, "facial_activity": 0.05,
+    "blink_rate_per_min": 2.0, "look_down_share": 0.05, "head_tilt_deg": 2.0,
 }
 
 METRICS = ("steps", "walking_speed_m_s", "hrv_ms", "sleep_h")

@@ -66,6 +66,12 @@ class PatientRepo:
     def rounds(self) -> list[dict]:
         return sorted(self.docs("rounds"), key=lambda r: r["started_at"])
 
+    def activities(self) -> list[dict]:
+        return sorted(self.docs("activities"), key=lambda a: (a["started_at"], a["id"]))
+
+    def preferences(self) -> list[str]:
+        return (self.get("mind/preferences.json") or {}).get("helps", [])
+
     def feedback(self) -> list[dict]:
         return sorted(self.docs("feedback"), key=lambda f: f["received_at"])
 

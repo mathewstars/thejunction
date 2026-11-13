@@ -48,7 +48,7 @@ def _audit(request: Request, p: Principal, action: str, **detail) -> None:
 
 
 @router.post("/demo/reset", responses=errors(401, 403, 404, 429),
-             summary="Regenerate the demo patient's 28 normal days, rounds and history")
+             summary="Regenerate the demo patient's 28 normal days, activities and history")
 async def demo_reset(request: Request, p: Principal = Depends(demo_actor)):
     """Keeps the clinic, the patient and the paired device."""
     st, ctx = _demo(request), ctx_of(request)
@@ -73,6 +73,8 @@ async def demo_scenario(body: ScenarioIn, request: Request, p: Principal = Depen
         today = repo.local(ctx.clock.now()).date()
         seed.apply_scenario(ctx.store, c, pid, today, body.name, seed=14)
         seed.write_rounds(ctx.store, c, pid, today, repo.tz(), seed=14, dip=body.name == "dip")
+        seed.write_activities(ctx.store, c, pid, today, repo.tz(), seed=14,
+                              dip=body.name == "dip")
         await ctx.mind.publish("scenario", c, pid, name=body.name)
     _audit(request, p, "demo_scenario", patient_id=pid, name=body.name)
     from ..mind.watchers import compute_status
@@ -99,11 +101,22 @@ async def review_run(body: ReviewIn, request: Request, p: Principal = Depends(de
 
 
 @router.post("/demo/analyze", responses=errors(401, 403, 404, 422, 429),
-             summary="Run the movement reading again for one round")
+             summary="Run the level-2 reading again for one activity (or an earlier round)")
 async def demo_analyze(body: AnalyzeIn, request: Request, p: Principal = Depends(demo_actor)):
+    """With `activity_id`: the session reading of a focus or breathing session
+    with a face summary. With `round_id`: the movement reading of an AR round
+    of the earlier design."""
     ctx = ctx_of(request)
     c = _locate(request, p, body.patient_id)
     repo = ctx.mind.repo(c, body.patient_id)
+    if body.activity_id is not None:
+        rec = repo.get(f"activities/{body.activity_id}.json")
+        if rec is None:
+            raise ApiError(404, "not_found", "Activity not found.")
+        analysis = await ctx.mind.run_session_reading(repo, body.activity_id, take_lock=True)
+        _audit(request, p, "demo_analyze", patient_id=body.patient_id,
+               activity_id=body.activity_id)
+        return analysis
     if repo.get(f"rounds/{body.round_id}.json") is None:
         raise ApiError(404, "not_found", "Round not found.")
     analysis = await ctx.mind.run_reading(repo, body.round_id, take_lock=True)

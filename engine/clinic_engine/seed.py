@@ -174,13 +174,13 @@ def write_rounds(store: Store, clinic_id: str, patient_id: str, today, tz: ZoneI
 def write_example_suggestions(store: Store, clinic_id: str, patient_id: str, today,
                               tz: ZoneInfo) -> dict:
     """Earlier episodes, so the mind has something to learn from:
-    catching lights was done three times and the next days went up;
+    breathing with Lanvi was done three times and the next days went up;
     a walk was offered three times and not done. Returns day-shape factors."""
     base = f"clinics/{clinic_id}/patients/{patient_id}/"
     shaped = {}
-    plan = [(-22, "ar_round", "did_it", "good"), (-21, "walk_10min", "not_today", None),
-            (-18, "ar_round", "did_it", "ok"), (-17, "walk_10min", "not_today", None),
-            (-14, "ar_round", "did_it", "good"), (-13, "walk_10min", "not_today", None)]
+    plan = [(-22, "breathing", "did_it", "good"), (-21, "walk_10min", "not_today", None),
+            (-18, "breathing", "did_it", "ok"), (-17, "walk_10min", "not_today", None),
+            (-14, "breathing", "did_it", "good"), (-13, "walk_10min", "not_today", None)]
     from .mind.catalog import ACTIONS
     for off, action, answer, felt in plan:
         d = today + timedelta(days=off)
@@ -190,21 +190,136 @@ def write_example_suggestions(store: Store, clinic_id: str, patient_id: str, tod
             "id": sid, "action": action, "text": ACTIONS[action].template, "wording": "template",
             "created_at": created.isoformat(), "date": d.isoformat(), "status": "answered",
             "attention_ids": [], "attention_kind": "example", "answer": answer, "felt": felt,
-            "round_completed": answer == "did_it", "example": True,
+            "round_completed": False, "played": answer == "did_it", "example": True,
+            "line_id": action + ".1",
             "resolved_at": (created + timedelta(hours=2)).isoformat()})
-        if action == "ar_round":
+        if action == "breathing":
             shaped[off] = 0.8
             shaped[off + 1] = 1.12
             shaped[off + 2] = 1.12
     return shaped
 
 
+# Two weeks of example activities: (day offset, local time, type, how it went).
+# Focus in the morning is mostly stopped early (so a lesson can be learned);
+# breathing in the evening is finished; check-ins most evenings.
+ACTIVITY_PLAN = [
+    (-13, "21:00", "breathing", "finished"),
+    (-12, "21:30", "checkin", "walk"),
+    (-11, "09:10", "focus", "user_stopped"),
+    (-10, "21:00", "breathing", "finished"),
+    (-9, "09:20", "focus", "user_stopped"), (-9, "21:30", "checkin", "call_someone"),
+    (-7, "21:30", "checkin", "walk"),
+    (-6, "09:05", "focus", "user_stopped"), (-6, "21:00", "breathing", "finished"),
+    (-5, "15:20", "focus", "finished"), (-5, "21:30", "checkin", "music"),
+    (-4, "09:15", "focus", "finished"), (-4, "21:00", "breathing", "finished"),
+    (-3, "15:10", "focus", "finished"), (-3, "21:30", "checkin", "daylight"),
+    (-2, "15:00", "focus", "finished"), (-2, "21:00", "breathing", "finished"),
+    (-2, "21:30", "checkin", "walk"),
+    (-1, "15:05", "focus", "finished"), (-1, "21:00", "breathing", "finished"),
+    (-1, "21:30", "checkin", "coffee_outside"),
+    (0, "08:30", "breathing", "finished"),
+]
+DIP_ACTIVITY_DAYS = 3  # the dip makes sessions from this many days back slower and flatter
+GOOD_THINGS = ["walked", "good_food", "talked_to_someone", "music", "rested", "laughed",
+               "outside", "got_something_done"]
+
+
+def _face(rng: random.Random, flat: float = 1.0) -> dict:
+    return {"smile_rate_per_min": round(max(0.0, rng.gauss(2.6, 0.25) * flat * flat), 2),
+            "smile_intensity": round(max(0.0, min(1.0, rng.gauss(0.36, 0.03) * flat)), 2),
+            "facial_activity": round(max(0.0, min(1.0, rng.gauss(0.52, 0.03) * flat)), 2),
+            "blink_rate_per_min": round(rng.gauss(16.0, 1.2), 1),
+            "look_down_share": round(max(0.0, min(1.0, rng.gauss(0.2, 0.03) / flat)), 2),
+            "head_tilt_deg": round(rng.gauss(3.0, 1.0), 1),
+            "tracking_quality": round(min(1.0, rng.gauss(0.86, 0.03)), 2)}
+
+
+def make_activity(rng: random.Random, aid: str, started: datetime, typ: str, how: str,
+                  dip: bool, prev_plan: bool) -> dict:
+    rec = {"id": aid, "type": typ, "started_at": started.isoformat(), "suggestion_id": None}
+    if typ == "focus":
+        slow = 1.35 if dip else 1.0
+        n = rng.randint(16, 20) if how == "finished" else rng.randint(7, 10)
+        rts = [int(max(200, rng.gauss(520, 55) * slow)) for _ in range(n)]
+        rec.update(duration_s=45.0 if how == "finished" else round(rng.uniform(18, 28), 1),
+                   correct_taps=n - 1, wrong_taps=1, misses=rng.randint(1, 3) + (2 if dip else 0),
+                   reaction_ms=rts[: n], face=_face(rng, 0.5 if dip else 1.0))
+    elif typ == "breathing":
+        if dip and rng.random() < 0.7:
+            how = "user_stopped"
+        played = 60.0 if how == "finished" else round(rng.uniform(20, 35), 1)
+        rec.update(duration_s=played, time_played_s=played,
+                   breaths_completed=6 if how == "finished" else int(played // 10),
+                   face=_face(rng, 0.5 if dip else 1.0))
+    else:
+        k = 1 if dip else rng.choice([2, 3, 3])
+        rec.update(duration_s=round(rng.uniform(40, 80), 1),
+                   good_things=[{"catalog_id": g} for g in rng.sample(GOOD_THINGS, k)],
+                   plan={"catalog_id": how},
+                   plan_done=("no" if dip else rng.choice(["yes", "yes", "no"]))
+                   if prev_plan else "not_asked")
+        how = "finished"
+    rec.update(completed=how == "finished", ended_by=how)
+    return rec
+
+
+def write_activities(store: Store, clinic_id: str, patient_id: str, today, tz: ZoneInfo,
+                     seed: int, dip: bool = False, now: datetime | None = None) -> None:
+    """About two weeks of example activities with face summaries. The same ids
+    every time, so switching scenarios never takes XP away (XP awards are
+    keyed by record id and never removed)."""
+    from .mind.activities import process_activity
+    rng = random.Random(seed + 31)
+    base = f"clinics/{clinic_id}/patients/{patient_id}/activities/"
+    for key in store.list(base):
+        if (store.get(key) or {}).get("example"):
+            store.delete(key)
+    now = now or datetime.now(timezone.utc)
+    previous: list[dict] = []
+    had_plan = False
+    for n, (off, hm, typ, how) in enumerate(ACTIVITY_PLAN):
+        h, m = (int(x) for x in hm.split(":"))
+        started = datetime.combine(today + timedelta(days=off), time(h, m), tzinfo=tz)
+        if started.astimezone(timezone.utc) > now:
+            continue
+        a = make_activity(rng, f"example-act-{n:03d}", started.astimezone(timezone.utc), typ, how,
+                          dip and off > -DIP_ACTIVITY_DAYS, had_plan)
+        if typ == "checkin":
+            had_plan = True
+        rec = process_activity(a, previous)
+        rec.update(example=True, received_at=a["started_at"], content_sha256="example",
+                   crisis=False, analysis={"status": "not_applicable" if typ == "checkin"
+                                           else "off"})
+        store.put(base + f"{rec['id']}.json", rec)
+        previous.append(rec)
+
+
+def settle_lanvi(store: Store, clinic_id: str, patient_id: str, now: datetime) -> None:
+    """Give the seeded XP, and for the demo let Lanvi be back with a story."""
+    from .mind import lanvi_config, xp
+    from .mind.repo import PatientRepo
+    repo = PatientRepo(store, clinic_id, patient_id)
+    st, _ = xp.sync(repo, now, save=False)
+    told = max(0, xp.total(st) // lanvi_config.GLOW_CAPACITY_XP - 1)
+    st["glow_spent"] = (told + 1) * lanvi_config.GLOW_CAPACITY_XP
+    ids = __import__("clinic_engine.mind.lines", fromlist=["x"]).story_ids()
+    st["wanderings"] = [{"id": f"wander-{k + 1:04d}", "story_id": ids[k % len(ids)],
+                         "answer": "a", "example": True} for k in range(told)]
+    st["wandering"] = {"state": "back", "id": f"wander-{told + 1:04d}",
+                       "started_at": (now - timedelta(hours=5)).isoformat(),
+                       "returns_at": (now - timedelta(hours=2)).isoformat(),
+                       "returned_at": (now - timedelta(hours=2)).isoformat(),
+                       "story_id": ids[told % len(ids)]}
+    repo.put(xp.STATE_KEY, st)
+
+
 # ---- whole demo ------------------------------------------------------------------------------
 
 def wipe_patient(store: Store, clinic_id: str, patient_id: str) -> None:
     base = f"clinics/{clinic_id}/patients/{patient_id}/"
-    for folder in ("days", "rounds", "suggestions", "feedback", "notes", "attention", "mind",
-                   "rejected"):
+    for folder in ("days", "rounds", "activities", "lanvi", "suggestions", "feedback", "notes",
+                   "attention", "mind", "rejected"):
         store.delete_prefix(base + folder + "/")
     for key in store.list(f"clinics/{clinic_id}/attention_index/"):
         if (store.get(key) or {}).get("patient_id") == patient_id:
@@ -215,7 +330,10 @@ def wipe_patient(store: Store, clinic_id: str, patient_id: str) -> None:
 
 
 def fill_patient(store: Store, clinic_id: str, patient_id: str, now: datetime, seed: int,
-                 scenario: str = "normal", rounds: bool = True, history: bool = True) -> None:
+                 scenario: str = "normal", rounds: bool = True, history: bool = True,
+                 activities: bool = True) -> None:
+    """`rounds` adds example AR rounds of the earlier design (shown as
+    earlier rounds); `activities` adds about two weeks of Lanvi activities."""
     rec = store.get(f"clinics/{clinic_id}/patients/{patient_id}/patient.json")
     tz = ZoneInfo(rec["timezone"])
     today = now.astimezone(tz).date()
@@ -225,6 +343,11 @@ def fill_patient(store: Store, clinic_id: str, patient_id: str, now: datetime, s
         apply_scenario(store, clinic_id, patient_id, today, "dip", seed)
     if rounds:
         write_rounds(store, clinic_id, patient_id, today, tz, seed, dip=scenario == "dip")
+    if activities:
+        write_activities(store, clinic_id, patient_id, today, tz, seed, dip=scenario == "dip",
+                         now=now)
+        if history:
+            settle_lanvi(store, clinic_id, patient_id, now)
 
 
 async def settle(app_mind, clinic_id: str, patient_id: str, review: bool = True) -> None:
@@ -259,7 +382,8 @@ def create_demo(store: Store, settings: Settings, now: datetime, extra: int = 0,
     # A second, mock clinic so tenant isolation has something to refuse.
     other = create_clinic(store, "Mock clinic (example)", now)
     other_pid = create_patient(store, other, "Example C-001", tz, now, example=True)
-    fill_patient(store, other, other_pid, now, seed=500, rounds=False, history=False)
+    fill_patient(store, other, other_pid, now, seed=500, rounds=False, history=False,
+                 activities=False)
     state = {"clinic_id": clinic, "clinician_id": clinician, "patient_id": patient,
              "extra_patient_ids": extras, "mock_clinic_id": other, "mock_patient_id": other_pid,
              "created_at": now.isoformat()}

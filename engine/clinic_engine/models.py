@@ -1,8 +1,10 @@
 """Request and response models.
 
-All request models forbid unknown fields. There is exactly ONE free-text
-field in the whole API: NoteIn.text. Everything else is numbers, dates,
-ids and enums.
+All request models forbid unknown fields. Free text exists in exactly two
+places, and both get the same treatment (classified into enums only, never
+followed, never logged, never sent outside the server): NoteIn.text and the
+typed items of a check-in (CheckinItem.text). Everything else is numbers,
+dates, ids and enums.
 """
 
 from __future__ import annotations
@@ -10,7 +12,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Annotated, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import (BaseModel, ConfigDict, Field, StringConstraints, field_validator,
+                      model_validator)
 
 ClientId = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{8,64}$")]
 ServerId = Annotated[str, StringConstraints(pattern=r"^[a-z]{1,6}_[0-9a-f]{24}$")]
@@ -147,6 +150,195 @@ class RoundIn(Strict):
         return v
 
 
+# ---- device: activities (docs/game-design.md) ---------------------------------------
+
+class FaceSummary(Strict):
+    """Numbers only, from the front camera during the activity, when the person
+    allowed it. No frames, no images, no landmarks."""
+    smile_rate_per_min: Optional[float] = Field(None, ge=0, le=120)
+    smile_intensity: Optional[float] = Field(None, ge=0, le=1, description="0 to 1.")
+    facial_activity: Optional[float] = Field(None, ge=0, le=1,
+                                             description="How much the face moved, 0 to 1.")
+    blink_rate_per_min: Optional[float] = Field(None, ge=0, le=120)
+    look_down_share: Optional[float] = Field(None, ge=0, le=1,
+                                             description="Share of time looking down, 0 to 1.")
+    head_tilt_deg: Optional[float] = Field(None, ge=-90, le=90)
+    tracking_quality: float = Field(ge=0, le=1, description="0 to 1. Below 0.6 the summary is "
+                                    "kept but never used for the person's own normal.")
+
+
+class _ActivityBase(Strict):
+    id: ClientId = Field(description="Client-generated id. Re-sending the same record is safe "
+                                     "and earns nothing twice; a different record under the same "
+                                     "id is refused (409).")
+    started_at: datetime
+    duration_s: float = Field(ge=0, le=86400)
+    completed: bool
+    ended_by: Literal["finished", "user_stopped", "interrupted"]
+    suggestion_id: Optional[ServerId] = Field(None, description="The suggestion this answers, "
+                                                                "if it was played from one.")
+
+    @field_validator("started_at")
+    @classmethod
+    def _aware(cls, v: datetime) -> datetime:
+        if v.tzinfo is None:
+            raise ValueError("started_at needs a time zone, e.g. Z")
+        return v
+
+
+class FocusActivityIn(_ActivityBase):
+    """Sparks and snow, about 45 seconds."""
+    type: Literal["focus"]
+    correct_taps: int = Field(ge=0, le=1000)
+    wrong_taps: int = Field(ge=0, le=1000, description="Tapped a snowflake.")
+    misses: int = Field(ge=0, le=1000, description="Sparks that faded untapped.")
+    reaction_ms: list[Annotated[int, Field(ge=0, le=10000)]] = Field(
+        default_factory=list, max_length=200,
+        description="Reaction time per tap in whole milliseconds. The server computes its own "
+                    "statistics.")
+    face: Optional[FaceSummary] = None
+
+
+class BreathingActivityIn(_ActivityBase):
+    """Breathe with Lanvi, 1 minute."""
+    type: Literal["breathing"]
+    time_played_s: float = Field(ge=0, le=3600)
+    breaths_completed: Optional[int] = Field(None, ge=0, le=200)
+    face: Optional[FaceSummary] = None
+
+
+GoodThingId = Annotated[str, StringConstraints(pattern=r"^[a-z_]{2,40}$")]
+TypedText = Annotated[str, StringConstraints(min_length=1, max_length=120)]
+
+
+class CheckinItem(Strict):
+    """Either a catalog id the person tapped, or a few typed words (not both).
+    Typed text is untrusted data: classified like a note, never followed,
+    never logged, never sent outside the server."""
+    catalog_id: Optional[GoodThingId] = None
+    text: Optional[TypedText] = None
+
+    @model_validator(mode="after")
+    def _one(self):
+        if (self.catalog_id is None) == (self.text is None):
+            raise ValueError("give either catalog_id or text")
+        return self
+
+
+class CheckinActivityIn(_ActivityBase):
+    """Evening check-in, once a day."""
+    type: Literal["checkin"]
+    good_things: list[CheckinItem] = Field(default_factory=list, max_length=3,
+                                           description="Up to 3 good things from today.")
+    plan: Optional[CheckinItem] = Field(None, description="One small nice thing for tomorrow.")
+    plan_done: Literal["yes", "no", "not_asked"] = Field(
+        "not_asked", description="Whether yesterday's plan happened, when the app asked.")
+
+
+ActivityIn = Annotated[Union[FocusActivityIn, BreathingActivityIn, CheckinActivityIn],
+                       Field(discriminator="type")]
+
+
+class LineOut(BaseModel):
+    template_id: str
+    text: str
+
+
+class ActivityOut(BaseModel):
+    id: str
+    type: str
+    xp_gained: int = Field(description="XP this record earned now (0 when re-sent).")
+    xp_total: int
+    stage: Literal["kit", "young_fox", "grown_fox"]
+    next_stage_at: Optional[int]
+    glow: float = Field(description="0 to 1. A full glow starts a wandering.")
+    wandering: Literal["home", "away", "back"]
+    line: LineOut = Field(description="One line for Lanvi to say now, from a fixed set.")
+    crisis: bool = Field(False, description="True when typed check-in words asked for help.")
+    crisis_block: Optional["CrisisBlock"] = Field(None, description="Present when crisis is true.")
+    reading: Literal["pending", "ready", "failed", "off", "not_allowed", "not_applicable"] = Field(
+        description="The session reading (level 2) for a focus or breathing session with a face "
+                    "summary: pending, or off / not_allowed. not_applicable for a check-in or a "
+                    "session without a face summary. Fetch the line from "
+                    "GET /v1/activities/{id}/reading.")
+
+
+class ActivityReadingOut(BaseModel):
+    status: Literal["pending", "ready", "failed", "off", "not_allowed", "not_applicable"]
+    line: Optional[str] = Field(None, description="Neutral line for the patient, from a fixed "
+                                                  "set. Never about mood or the face.")
+
+
+class CheckinOption(BaseModel):
+    id: str
+    label: str
+
+
+class CheckinOptionsOut(BaseModel):
+    good_things: list[CheckinOption]
+    plans: list[CheckinOption]
+
+
+class PreferencesIn(Strict):
+    helps: list[Literal["music", "moving", "people", "quiet"]] = Field(
+        min_length=0, max_length=4, description="What helps, in the order the person chose. "
+                                                "The starting order of suggestions.")
+
+    @field_validator("helps")
+    @classmethod
+    def _unique(cls, v: list[str]) -> list[str]:
+        if len(set(v)) != len(v):
+            raise ValueError("each preference once")
+        return v
+
+
+class PreferencesOut(BaseModel):
+    helps: list[str]
+    line: LineOut
+
+
+class WanderingAnswerIn(Strict):
+    answer: Literal["a", "b"]
+
+
+class StoryAnswer(BaseModel):
+    id: Literal["a", "b"]
+    text: str
+
+
+class StoryOut(BaseModel):
+    id: str
+    text: str
+    question: str
+    answers: list[StoryAnswer]
+
+
+class WanderingOut(BaseModel):
+    state: Literal["home", "away", "back"] = Field(description="home: nothing going on; away: "
+                                                   "Lanvi is wandering until returns_at; back: a "
+                                                   "story waits for an answer.")
+    id: Optional[str]
+    returns_at: Optional[str]
+    story: Optional[StoryOut]
+
+
+class PlanToAsk(BaseModel):
+    checkin_id: str
+    plan_id: Optional[str] = Field(description="Catalog id, or null when the plan was typed "
+                                               "(the app has the words on the phone).")
+
+
+class LanviOut(BaseModel):
+    xp: int
+    stage: Literal["kit", "young_fox", "grown_fox"]
+    next_stage_at: Optional[int]
+    glow: float = Field(description="0 to 1.")
+    wandering: WanderingOut
+    line: LineOut = Field(description="The line Lanvi says today, from the fixed set.")
+    plan_to_ask: Optional[PlanToAsk] = Field(description="Yesterday's plan, to ask about in "
+                                                         "tonight's check-in; null if none.")
+
+
 class RoundOut(BaseModel):
     id: str
     quality: Literal["good", "low"]
@@ -184,7 +376,8 @@ class SuggestionOut(BaseModel):
 class TodayOut(BaseModel):
     status: Literal["no_baseline", "within", "outside", "no_data"]
     suggestion: Optional[SuggestionOut]
-    round_config: dict
+    lanvi: LanviOut
+    round_config: dict = Field(description="Deprecated: for apps of the earlier AR design only.")
     attention: str = Field(description="Short patient-safe summary.")
     crisis: CrisisBlock = Field(description="Always present.")
     product_name: str
@@ -253,8 +446,8 @@ class MaxPerDay(Strict):
 
 
 class NoActionParams(Strict):
-    action: Literal["ar_round", "ar_round_seated", "walk_10min", "daylight_10min",
-                    "call_someone", "breathing_2min"]
+    action: Literal["breathing", "focus_game", "checkin", "walk_10min", "daylight_10min",
+                    "call_someone"]
 
 
 class NoAction(Strict):
@@ -300,6 +493,8 @@ class ClinicMeOut(BaseModel):
     demo: ClinicDemo
 
 
+ActivityOut.model_rebuild()
+
 TraceLayer = Literal["trigger", "watchers", "attention", "response", "level1", "level2",
                      "notifier", "learning"]
 
@@ -322,6 +517,10 @@ class TraceChainOut(BaseModel):
     at: str
     trigger: str
     changed: bool
+    headline: str = Field(description="At most 6 words, from a fixed set, for one row.")
+    outcome: Literal["attention_opened", "attention_raised", "attention_closed", "suggested",
+                     "message_sent", "refused", "nothing"] = Field(
+        description="The most important thing the chain did.")
     entries: list[TraceEntryOut]
 
 
@@ -364,4 +563,11 @@ class ReviewIn(Strict):
 
 class AnalyzeIn(Strict):
     patient_id: ServerId
-    round_id: ClientId
+    round_id: Optional[ClientId] = Field(None, description="An AR round (earlier design).")
+    activity_id: Optional[ClientId] = Field(None, description="A focus or breathing activity.")
+
+    @model_validator(mode="after")
+    def _one(self):
+        if (self.round_id is None) == (self.activity_id is None):
+            raise ValueError("give either round_id or activity_id")
+        return self

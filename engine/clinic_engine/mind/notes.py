@@ -1,4 +1,5 @@
-"""The patient note: the one free-text field, handled as untrusted data.
+"""Free text from the patient (a note, or typed words in a check-in),
+handled as untrusted data. Both go through exactly this code.
 
 Processing is classification only:
   A. code: a multilingual lexicon check (data/note_lexicon.json)
@@ -28,16 +29,14 @@ from pathlib import Path
 
 LEXICON_PATH = Path(__file__).resolve().parent.parent / "data" / "note_lexicon.json"
 
-# Vetted replies. Short, warm, non-clinical. No advice beyond the catalog
-# action or the help block.
-REPLY_TEMPLATES = {
-    "help": "Thank you for telling us. You do not have to carry this alone. The help contacts are right here.",
-    "low_1": "Thank you for sharing this. Small steps count, and today's idea is here if it helps.",
-    "low_2": "Thank you for telling us how today is. Go gently, one small thing at a time.",
-    "ok": "Thank you. Good to hear from you.",
-    "good": "Thank you, that is good to hear.",
-    "neutral": "Thank you for your note. It is saved for you.",
-}
+# Vetted replies, in Lanvi's voice: the "replies" set of data/lanvi_lines.json.
+# Short, warm, non-clinical. No advice beyond the catalog action or the help block.
+def reply_templates() -> dict[str, str]:
+    from .lines import reply_templates as _r
+    return _r()
+
+
+REPLY_TEMPLATES = reply_templates()
 
 
 def templates_for(mood: str | None, crisis: bool) -> list[str]:

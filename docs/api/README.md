@@ -2,7 +2,7 @@
 
 The full contract is `openapi.json` in this folder (exported from the running code with `python -m clinic_engine.export_openapi`). This page is the short version: auth, the calls in order, examples, errors.
 
-The product name is not decided; the server reads it from `PRODUCT_NAME` (default `Angel`) and returns it in `GET /v1/today`.
+The product is Lanvi, a small Arctic fox on the phone (`docs/game-design.md`). The server reads the name from `PRODUCT_NAME` (set it to `Lanvi`; the code default is still `Angel`) and returns it in `GET /v1/today`.
 
 ## Run it locally
 
@@ -56,41 +56,101 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
    ```
    `hrv_ms` and `sleep_h` are optional (watch only). Values that cannot be true (negative, absurd, future dates, two different values for one date in one batch) come back in `rejected` with a reason and are never used.
 
-3. **Ask what to show.**
+3. **Onboarding: what helps** (once, may be sent again to change it).
+   ```sh
+   curl -X PUT $B/v1/preferences -H "Authorization: Bearer $DT" -H 'Content-Type: application/json' \
+     -d '{"helps":["moving","quiet"]}'
+   # {"helps":["moving","quiet"],"line":{"template_id":"preferences.moving","text":"Got it. I'll start with walks."}}
+   ```
+   `helps`: up to four of `music | moving | people | quiet`, in the order chosen. It sets the starting order of suggestions until the first lesson exists.
+
+4. **Ask what to show.**
    ```sh
    curl $B/v1/today -H "Authorization: Bearer $DT"
    ```
    ```json
    {"status": "outside",
-    "suggestion": {"id": "sug_...", "action": "ar_round", "text": "How about a two-minute round of catching lights in your room?", "created_at": "..."},
-    "round_config": {"config_id": "near_gentle", "mode_hint": "standing", "layout_seed": 47776, "lights_total": 10,
-                     "distance_band": "near", "height_band": "mid", "light_life_s": 9, "catch_radius_m": 0.35, "duration_s": 120},
+    "suggestion": {"id": "sug_...", "action": "breathing", "text": "Want to breathe with me for a minute?", "created_at": "..."},
+    "lanvi": {"xp": 385, "stage": "grown_fox", "next_stage_at": null, "glow": 0.7,
+              "wandering": {"state": "back", "id": "wander-0006", "returns_at": "...",
+                            "story": {"id": "story.reindeer", "text": "I met a reindeer by a frozen lake. ...",
+                                      "question": "Should I help her count tomorrow?",
+                                      "answers": [{"id": "a", "text": "Yes, help her"}, {"id": "b", "text": "Let her count alone"}]}},
+              "line": {"template_id": "back.1", "text": "I'm back. I have a little story for you."},
+              "plan_to_ask": {"checkin_id": "...", "plan_id": "coffee_outside"}},
+    "round_config": {"...": "deprecated, for apps of the earlier AR design"},
     "attention": "Your movement has been lower than your usual for a few days.",
-    "crisis": {"text": "Angel is not an emergency service. In an emergency, call 112. Otherwise, contact your clinic.",
+    "crisis": {"text": "Lanvi is not an emergency service. In an emergency, call 112. Otherwise, contact your clinic.",
                "contacts": [{"label": "Emergency number", "phone": "112"}], "reviewed_by_clinician": false},
-    "product_name": "Angel"}
+    "product_name": "Lanvi"}
    ```
    - `status`: `no_baseline` (fewer than 14 days yet), `within`, `outside`, `no_data`. Missing data is always `no_data`, never `within`.
-   - `suggestion` is at most one, or null. Show `text` as is.
+   - `suggestion` is at most one, or null. Show `text` as is. Actions: `breathing`, `focus_game`, `checkin`, `walk_10min`, `daylight_10min`, `call_someone`.
+   - `lanvi` (the server counts XP; the app only shows it):
+
+     | Field | Meaning |
+     |---|---|
+     | `xp` | total XP, never goes down |
+     | `stage` | `kit` (0), `young_fox` (100), `grown_fox` (300) |
+     | `next_stage_at` | XP of the next stage, or null at the last one |
+     | `glow` | 0 to 1; full starts a wandering |
+     | `wandering.state` | `home`, `away` (until `returns_at`), `back` (a story waits) |
+     | `wandering.id`, `wandering.returns_at` | while away or back |
+     | `wandering.story` | when back: `id`, `text`, `question`, two `answers` (`a`, `b`) |
+     | `line` | `{template_id, text}`: what Lanvi says today, from the fixed set |
+     | `plan_to_ask` | yesterday's plan to ask about tonight (`plan_id` is null when it was typed), or null |
+
    - `crisis` is **always** present. While `reviewed_by_clinician` is false, show it as draft wording.
+   - XP rules (design values in `engine/clinic_engine/mind/lanvi_config.py`): Sparks and snow played 10, Breathe with Lanvi 10, evening check-in 10, yesterday's plan done 15, a day walked or slept around own normal 5. Same XP whatever the score; stopped early still counts. Each record counts once, and per day at most 2 focus, 2 breathing and 1 check-in award. No streaks.
 
-4. **Play a round, then send it** (schema 2, see `docs/game-interface.md` section 3). Send `config` exactly as received. Idempotent by your `id`.
+5. **After an activity, send it.** One record per activity, idempotent by your `id`.
    ```sh
-   curl -X POST $B/v1/rounds -H "Authorization: Bearer $DT" -H 'Content-Type: application/json' -d @round.json
-   # {"id":"...","quality":"good","energy_bucket":"usual","analysis":"off","after_round":{"template_id":"done","text":"Round done. Well done for showing up."}}
+   curl -X POST $B/v1/activities -H "Authorization: Bearer $DT" -H 'Content-Type: application/json' -d @activity.json
+   # {"id":"...","type":"focus","xp_gained":10,"xp_total":350,"stage":"grown_fox","next_stage_at":null,"glow":0.9,
+   #  "wandering":"home","line":{"template_id":"focus_done","text":"Thanks for playing with me. The sparks liked that."},
+   #  "crisis":false,"crisis_block":null,"reading":"off"}
    ```
-   - `screen` mode: no `path`, and `dist_m` / `height_m` are null.
-   - Implausible values reject the round with 422 `implausible_round`.
-   - `analysis` is `pending` when the level-2 movement reading runs (in the background), else `off` or `not_allowed`. Poll `GET /v1/rounds/{id}/analysis` for `{"status":"ready","line":"..."}`; `line` is from a fixed set.
+   Fields (every record):
 
-5. **Answer the suggestion.** Enums only. Idempotent by your `id`.
+   | Field | Type |
+   |---|---|
+   | `id` | your id, 8 to 64 of `A-Z a-z 0-9 _ -` |
+   | `type` | `focus`, `breathing` or `checkin` |
+   | `started_at` | ISO time with a zone |
+   | `duration_s` | number |
+   | `completed` | bool |
+   | `ended_by` | `finished`, `user_stopped`, `interrupted` |
+   | `suggestion_id` | optional: the suggestion it was played from |
+
+   `focus` (Sparks and snow): `correct_taps`, `wrong_taps` (tapped a snowflake), `misses` (whole numbers), `reaction_ms` (list of whole milliseconds, at most 200; the server computes the statistics), optional `face`.
+
+   `breathing` (Breathe with Lanvi): `time_played_s`, optional `breaths_completed`, optional `face`.
+
+   `checkin` (evening, once a day): `good_things` (0 to 3 items), `plan` (one item or null), `plan_done` (`yes | no | not_asked`, about yesterday's plan). An item is either `{"catalog_id": "walked"}` (ids from `GET /v1/checkin/options`) or `{"text": "a few words"}` (at most 120 characters), never both.
+
+   `face` (only on focus and breathing, only when the person allowed the camera; numbers only, no frames, images or landmarks): `smile_rate_per_min`, `smile_intensity` (0-1), `facial_activity` (0-1), `blink_rate_per_min`, `look_down_share` (0-1), `head_tilt_deg`, all optional, and `tracking_quality` (0-1, required). Below 0.6 the summary is kept but not used.
+
+   - Re-sending the same record answers with `xp_gained: 0`; a different record under a used id is 409.
+   - Implausible values reject the record with 422 `implausible_activity` (logged).
+   - `crisis: true` (with `crisis_block`) when typed check-in words ask for help: show the help screen at once, as for a note.
+   - `reading`: `pending` when the level-2 session reading runs in the background, `off`, `not_allowed`, or `not_applicable` (a check-in, or no face summary). Poll `GET /v1/activities/{id}/reading` for `{"status":"ready","line":"..."}`; the line is neutral and from a fixed set.
+
+6. **A story came back.** When `lanvi.wandering.state` is `back`:
+   ```sh
+   curl -X POST $B/v1/lanvi/wanderings/wander-0006/answer -H "Authorization: Bearer $DT" \
+     -H 'Content-Type: application/json' -d '{"answer":"a"}'
+   ```
+
+7. **Earlier AR design (deprecated).** `POST /v1/rounds` and `GET /v1/rounds/{id}/analysis` still work so an older app does not break. Do not build on them.
+
+8. **Answer the suggestion** (when it was not played as an activity). Enums only. Idempotent by your `id`.
    ```sh
    curl -X POST $B/v1/feedback -H "Authorization: Bearer $DT" -H 'Content-Type: application/json' \
      -d '{"id":"fb-7f3a91c2","suggestion_id":"sug_...","answer":"did_it","felt":"ok"}'
    ```
    `answer`: `did_it | not_today | something_else`. `felt` (optional): `rough | ok | good`.
 
-6. **A few words (optional).** See "The one free-text field" below.
+9. **A few words (optional).** See "Free text" below.
    ```sh
    curl -X POST $B/v1/notes -H "Authorization: Bearer $DT" -H 'Content-Type: application/json' \
      -d '{"id":"note-5c1d0a77","text":"slept badly, quiet day"}'
@@ -98,10 +158,10 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
    ```
    When `crisis` is true, show `crisis_block` right away.
 
-7. **"What works for you"** screen.
+10. **"What works for you"** screen.
    ```sh
    curl $B/v1/mind -H "Authorization: Bearer $DT"
-   # {"rules":[...],"lessons":[{"id":"les_...","text":"Catching lights seemed to suit you, so it comes first now.","evidence_count":3,...}],
+   # {"rules":[...],"lessons":[{"id":"les_...","text":"Breathe with Lanvi seemed to suit you, so it comes first now.","evidence_count":3,...}],
    #  "questions":[{"id":"q_...","text":"Was a short walk too much on some days?","answers":["yes","no","not_sure"]}]}
    curl -X POST $B/v1/mind/lessons/les_.../reject   -H "Authorization: Bearer $DT"
    curl -X POST $B/v1/mind/questions/q_.../answer  -H "Authorization: Bearer $DT" -H 'Content-Type: application/json' -d '{"answer":"yes"}'
@@ -111,13 +171,13 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
    ```
    Rule templates: `quiet_hours {from, to}`, `seated_only {weekdays: [mon..sun]}`, `max_suggestions_per_day {n: 0..5}`, `no_action {action}`. The person's rules always beat what the mind has learned. A rejected lesson does not come back from the same evidence.
 
-Ids you generate (`id` of rounds, feedback, notes) are 8 to 64 characters of `A-Z a-z 0-9 _ -`; a UUID works.
+Ids you generate (`id` of activities, feedback, notes) are 8 to 64 characters of `A-Z a-z 0-9 _ -`; a UUID works.
 
-## The one free-text field, and why everything else is enums
+## Free text, and why everything else is enums
 
-There is exactly **one** free-text field in the whole API: `POST /v1/notes` `text`, at most 280 characters. Everything else is numbers, dates, ids and enums, and every request model rejects unknown fields. This removes the prompt-injection surface on purpose: nothing a person types can steer what the server does.
+Free text exists in exactly two places: `POST /v1/notes` `text` (at most 280 characters) and the typed items of a check-in (`good_things[].text`, `plan.text`, at most 120 characters each). Both go through the same code. Everything else is numbers, dates, ids and enums, and every request model rejects unknown fields. This removes the prompt-injection surface on purpose: nothing a person types can steer what the server does.
 
-How the note is treated:
+How the text is treated (a typed check-in item is stored as a note with `source: "checkin"`; the activity record keeps only a reference):
 
 - It is untrusted data. It is never an instruction, never placed into a system prompt, never copied into lessons, summaries, notifications or logs, and it never leaves the server (the level-2 input gate refuses any pack that would carry it).
 - It is only classified: a word-list check in code (English, Finnish, Slovak; a draft list in `engine/clinic_engine/data/note_lexicon.json`, not yet reviewed by a clinician) plus, when available, the local model through the gates. The model may only return a fixed JSON of enums: `mood`, `asks_for_help`, `topic`, and one reply template id from a list.
@@ -138,8 +198,9 @@ The engine serves a plain web page for clinicians at `/` (files in `engine/clini
 | `GET /healthz` | Product name on the login screen |
 | `POST /v1/clinic/login` | Session token, kept in memory and `sessionStorage` only |
 | `GET /v1/clinic/me` | Product name, clinic name, and whether the demo panel may be shown (`demo.enabled`) |
-| `GET /v1/clinic/patients` | One line per patient, those needing a look first |
-| `GET /v1/clinic/patients/{id}` | Detail; `progress.band` gives the own-normal band for the charts |
+| `GET /v1/clinic/patients` | One line per patient, those needing a look first. Also `spark` (28 daily movement z-scores, null for missing days), `since` (oldest held item), `level` (highest held level) and `reason_short` (at most 6 words, from a fixed set) |
+| `GET /v1/clinic/patients/{id}` | Detail; `progress.band` gives the own-normal band for the charts. `activities` has per type (`focus`, `breathing`, `checkin`) the sessions with date, completed, headline `values` and their `z` against own normal (or null), the face summary with tracking quality, the checked session reading, and `counts` (offered, played when offered, played, finished) for the last 7 and 28 days. `lanvi` has `xp` and `stage` (small facts, not clinical signals) |
+| `GET /v1/clinic/patients/{id}/trace` | The decision trace; every chain has a `headline` (at most 6 words) and an `outcome` (`attention_opened`, `attention_raised`, `attention_closed`, `suggested`, `message_sent`, `refused`, `nothing`) |
 | `GET /v1/clinic/patients/{id}/rounds/{round_id}` | Round detail; `usual_round` (or null) gives a usual round of the same mode for the second trail |
 | `POST /v1/clinic/attention/{id}/ack` | The Acknowledge button |
 | `/v1/demo/...`, `/v1/review/run` | The demo panel, only for the demo clinic while demo mode is on |
@@ -160,7 +221,7 @@ Every error has the same shape, and the same `request_id` is in the `X-Request-I
 | 404 | `not_found` | not found, or not yours (the server does not say which) |
 | 409 | `conflict` | an id you sent before is reused for something else |
 | 413 | `body_too_large` | body over 256 KB |
-| 422 | `invalid_request`, `implausible_round` | shape, enum or plausibility failures; the input is never echoed |
+| 422 | `invalid_request`, `implausible_activity`, `implausible_round` | shape, enum or plausibility failures; the input is never echoed |
 | 429 | `rate_limited` | per token (about 120 a minute), and per address for pairing and login |
 | 500 | `server_error` | |
 
@@ -168,4 +229,4 @@ Every write and every refusal is written to an audit log (codes and ids only, ne
 
 ## What the server does with the data (one paragraph)
 
-Each day is compared with the person's own normal (median and MAD of their earlier days, robust z-scores). Watchers hold attention items (`deviation`, `novelty`, `silence`, `oddity`, `ignored`, `asked_for_help`, round watchers) with a level `watch`, `attention` or `urgent` ("needs review today", never an emergency or a diagnosis). Code picks one action from a fixed catalog; the local model may only word it, through an output gate with a fixed-template fallback. Learning builds an evidence table, and every lesson (from code or a model) is recomputed by code before it is used. Every model call, at both levels, passes an input gate (allowlisted, and for Gemini anonymized) and an output gate (strict JSON schema and content checks), in `engine/clinic_engine/mind/gates.py`.
+Each day is compared with the person's own normal (median and MAD of their earlier days, robust z-scores). Each activity is compared with the person's own earlier sessions of the same type (reaction time, errors, time played, good things, and the face summary when tracking was good). Watchers hold attention items (`deviation`, `novelty`, `silence`, `oddity`, `ignored`, `asked_for_help`, `low_notes`, and for activities `slower_reactions`, `face_flat`, `checkins_stopped`, `plans_not_done`, `not_played`) with a level `watch`, `attention` or `urgent` ("needs review today", never an emergency or a diagnosis). Activity signals alone stay at `watch`; they rise only while the daily data also shows a drop. Nothing about mood or the face is ever shown to the person. Code picks one action from a fixed catalog; the local model may only choose one of Lanvi's fixed lines for it (`engine/clinic_engine/data/lanvi_lines.json`), through an output gate, with the first line as the fallback. Learning builds an evidence table, and every lesson (from code or a model) is recomputed by code before it is used. Every model call, at both levels, passes an input gate (allowlisted, and for Gemini anonymized) and an output gate (strict JSON schema and content checks), in `engine/clinic_engine/mind/gates.py`.

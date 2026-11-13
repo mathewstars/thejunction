@@ -31,14 +31,15 @@ def test_level1_review_pack_is_allowlisted_and_reply_is_validated():
     def reply(pack):
         nonlocal good_reply
         ev = pack.payload["evidence"]
-        refs = [e["ref"] for e in ev if e["action"] == "ar_round" and e.get("done")
+        refs = [e["ref"] for e in ev if e["action"] == "breathing" and e.get("kind") == "suggestion"
+                and e.get("done")
                 and e.get("outcome") == "improved"]
         good_reply = json.dumps({"lessons": [
-            {"action": "ar_round", "effect": "prefer", "context": "morning",
+            {"action": "breathing", "effect": "prefer", "context": "morning",
              "evidence_ids": refs, "rationale_code": "done_and_improved"},
             {"action": "teleport", "effect": "prefer", "context": "any",
              "evidence_ids": refs, "rationale_code": "done_and_improved"}],
-            "questions": [{"code": "prefer_morning", "action": "ar_round"}]})
+            "questions": [{"code": "prefer_morning", "action": "breathing"}]})
         return good_reply
 
     env = Env(local=FakeLocal(review=reply))
@@ -73,22 +74,24 @@ def test_level1_review_prose_and_extra_keys_refused():
 # ---- level 1: wording ----------------------------------------------------------------------
 
 def test_wording_goes_through_both_gates():
-    env = Env(local=FakeLocal(wording="You might feel less depressed after catching lights."))
+    env = Env(local=FakeLocal(wording="You might feel less depressed after a breath."))
     env.client.post("/v1/demo/scenario", headers=env.A, json={"name": "dip"})
     s = env.client.get("/v1/today", headers=env.H).json()["suggestion"]
     assert s is not None
     pack = [p for p in env.local.packs if p.task == "wording"][-1]
-    assert set(pack.payload) == {"action", "example", "allowed_numbers"}
+    assert set(pack.payload) == {"action", "lines"}
     from clinic_engine.mind.catalog import ACTIONS
-    assert s["text"] == ACTIONS[s["action"]].template  # fell back to the template
-    assert any(e["reason"] == "banned_vocabulary" for e in env.audit(outcome="refused"))
+    assert s["text"] == ACTIONS[s["action"]].template  # fell back to the first line
+    assert any(e["reason"] == "line_not_in_set" for e in env.audit(outcome="refused"))
 
 
 def test_wording_from_model_used_when_clean():
-    env = Env(local=FakeLocal(wording="Fancy a quick two-minute round of catching lights?"))
+    env = Env(local=FakeLocal(wording=lambda pack: pack.payload["lines"][1]["id"]))
     env.client.post("/v1/demo/scenario", headers=env.A, json={"name": "dip"})
     s = env.client.get("/v1/today", headers=env.H).json()["suggestion"]
-    assert s["text"] == "Fancy a quick two-minute round of catching lights?"
+    from clinic_engine.mind.lines import suggestion_lines
+    assert s["text"] == suggestion_lines(s["action"])[1]["text"]
+
 
 
 # ---- level 2: second opinion ---------------------------------------------------------------
@@ -190,7 +193,7 @@ def test_local_client_calls_openai_compatible_endpoint_and_falls_back():
         return httpx.Response(200, json={"choices": [{"message": {"content": "hi"}}]})
 
     s = Settings(local_llm_base_url="http://model.internal.example/v1", local_llm_model="m")
-    pack = INPUT_GATE.wording_pack("ar_round")
+    pack = INPUT_GATE.wording_pack("breathing")
     assert asyncio.run(LocalModel(s, httpx.MockTransport(handler)).complete(pack)) == "hi"
     assert seen[0]["model"] == "m" and seen[0]["messages"] == pack.messages
 

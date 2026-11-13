@@ -21,7 +21,12 @@ from .thresholds import METRICS, PLAUSIBLE, T, Thresholds
 
 LEVELS = ("watch", "attention", "urgent")
 KINDS = ("deviation", "novelty", "silence", "oddity", "ignored", "asked_for_help", "low_notes",
-         "weak_rounds", "round_mismatch", "fading", "stopped_early", "not_played")
+         "weak_rounds", "round_mismatch", "fading", "stopped_early", "not_played",
+         "slower_reactions", "face_flat", "checkins_stopped", "plans_not_done")
+# Kinds that sit at "watch" alone and rise to "attention" only while a
+# movement drop is held (thresholds.py, rules for activity signals).
+WEIGHT_ONLY = ("ignored", "low_notes", "weak_rounds", "not_played", "slower_reactions",
+               "face_flat", "checkins_stopped", "plans_not_done")
 # Kinds the responder answers with a suggestion.
 RESPONDABLE = ("deviation", "novelty", "low_notes")
 
@@ -42,8 +47,40 @@ class View:
     oddities: list[dict]  # recent rejected records: {at, date, reason}
     notes: list[dict]  # recent note classifications: {at, crisis, mood, ...}, no text
     contacts: list[str] = field(default_factory=list)  # ISO dates with rounds/feedback/notes
-    rounds: list[dict] = field(default_factory=list)  # processed rounds, oldest first
+    rounds: list[dict] = field(default_factory=list)  # processed rounds (earlier design)
+    activities: list[dict] = field(default_factory=list)  # processed activities, oldest first
+    tz: object = None  # the patient's time zone
     th: Thresholds = T
+
+    def of_type(self, typ: str) -> list[dict]:
+        return [a for a in self.activities if a["type"] == typ]
+
+    def slower_reactions(self) -> list[dict]:
+        """Focus sessions among the last few whose reaction time is clearly
+        slower than own normal; [] unless at least activity_min_hits."""
+        th = self.th
+        last = [a for a in self.of_type("focus")
+                if (a.get("z") or {}).get("median_reaction_ms") is not None][-th.activity_window:]
+        hits = [a for a in last if a["z"]["median_reaction_ms"] >= th.slower_reaction_z
+                or _read(a, "reactions") == "slower"]
+        return hits if len(last) >= th.activity_window and len(hits) >= th.activity_min_hits else []
+
+    def face_flat(self) -> list[dict]:
+        """Good-quality face sessions (focus or breathing) among the last few
+        where facial activity or smiling is clearly below own normal."""
+        th = self.th
+        last = [a for a in self.activities if a.get("face_quality") == "good"
+                and any(v is not None for v in (a.get("face_z") or {}).values())][-th.activity_window:]
+        def flat(a: dict) -> bool:
+            fz = a["face_z"]
+            return any(fz.get(k) is not None and fz[k] <= th.face_flat_z
+                       for k in ("facial_activity", "smile_rate_per_min")) \
+                or _read(a, "expression") == "less_expressive"
+        hits = [a for a in last if flat(a)]
+        return hits if len(last) >= th.activity_window and len(hits) >= th.activity_min_hits else []
+
+    def activity_weight(self) -> bool:
+        return bool(self.slower_reactions() or self.face_flat())
 
     def scored_rounds(self) -> list[dict]:
         """Good-quality rounds that have an energy bucket (own baseline exists)."""
@@ -62,6 +99,11 @@ class View:
     def last_closed(self, kind: str) -> dict | None:
         closed = [it for it in self.items if it["kind"] == kind and it["state"] == "closed"]
         return max(closed, key=lambda it: it["closed_at"]) if closed else None
+
+
+def _read(a: dict, field: str) -> str | None:
+    """A claim from the level-2 session reading that code confirmed."""
+    return (((a.get("analysis") or {}).get("reading")) or {}).get(field)
 
 
 @dataclass
@@ -98,10 +140,18 @@ def deviation_now(view: View) -> tuple[bool, list[dict]]:
     th = view.th
     window = recent_scored(view, th.deviation_lookback, th.deviation_lookback + 2)
     lows = [s for s in window if s["movement_z"] <= th.low_day_z]
+    return len(lows) >= deviation_need(view), lows
+
+
+def deviation_need(view: View) -> int:
+    """Low days needed. Weak rounds, slower reactions or a flatter face add
+    weight: one low day fewer, never fewer than two. Never a deviation alone."""
+    th = view.th
     need = th.deviation_min_low
-    if view.weak_rounds():
-        need = max(2, need - th.round_weak_lowers_deviation_by)
-    return len(lows) >= need, lows
+    if view.weak_rounds() or view.activity_weight():
+        need = max(2, need - max(th.round_weak_lowers_deviation_by,
+                                 th.activity_lowers_deviation_by))
+    return need
 
 
 def silent(view: View) -> bool:
@@ -315,24 +365,81 @@ def watch_stopped_early(view: View) -> list[Op]:
                    "finished_again")
 
 
+PLAYABLE = ("breathing", "focus_game", "checkin", "ar_round", "ar_round_seated")
+
+
 def watch_not_played(view: View) -> list[Op]:
-    """Rounds offered but not played, several in a row."""
+    """Activities (or, earlier, rounds) offered but not played, several in a row."""
     th = view.th
-    played_for = {r.get("suggestion_id") for r in view.rounds}
-    offered = [s for s in view.suggestions if s["action"] in ("ar_round", "ar_round_seated")
-               and s["status"] != "open"]
-    last = offered[-th.round_not_played_in_a_row:]
+    played_for = {r.get("suggestion_id") for r in view.rounds} | \
+        {a.get("suggestion_id") for a in view.activities}
+    offered = [s for s in view.suggestions if s["action"] in PLAYABLE and s["status"] != "open"]
+    last = offered[-th.activity_not_played_in_a_row:]
     def played(s: dict) -> bool:
-        return s["id"] in played_for or s.get("round_completed") or s.get("answer") == "did_it"
-    active = len(last) >= th.round_not_played_in_a_row and not any(played(s) for s in last)
+        return s["id"] in played_for or s.get("round_completed") or s.get("played") \
+            or s.get("answer") == "did_it"
+    active = len(last) >= th.activity_not_played_in_a_row and not any(played(s) for s in last)
     return _simple(view, "not_played", active, last[0]["date"] if active else None,
-                   "rounds_offered_not_played", {"in_a_row": len(last)} if active else {},
+                   "activities_offered_not_played", {"in_a_row": len(last)} if active else {},
                    "played_again")
+
+
+# ---- activity watchers (docs/game-design.md; rules in thresholds.py) -------------------
+
+def _local_day(view: View, iso: str) -> date:
+    dt = datetime.fromisoformat(iso)
+    return (dt.astimezone(view.tz) if view.tz else dt).date()
+
+
+def watch_slower_reactions(view: View) -> list[Op]:
+    hits = view.slower_reactions()
+    return _simple(view, "slower_reactions", bool(hits),
+                   _local_day(view, hits[0]["started_at"]).isoformat() if hits else None,
+                   "reactions_slower_than_usual",
+                   {"slower_sessions": len(hits), "of_last": view.th.activity_window,
+                    "max_z": max(a["z"]["median_reaction_ms"] for a in hits)} if hits else {},
+                   "reactions_usual_again")
+
+
+def watch_face_flat(view: View) -> list[Op]:
+    hits = view.face_flat()
+    return _simple(view, "face_flat", bool(hits),
+                   _local_day(view, hits[0]["started_at"]).isoformat() if hits else None,
+                   "face_less_active_than_usual",
+                   {"flat_sessions": len(hits), "of_last": view.th.activity_window} if hits else {},
+                   "face_usual_again")
+
+
+def watch_checkins_stopped(view: View) -> list[Op]:
+    th = view.th
+    days = sorted({_local_day(view, a["started_at"]) for a in view.of_type("checkin")})
+    recent_cut = view.today - timedelta(days=th.checkins_stopped_days - 1)
+    habit_from = recent_cut - timedelta(days=14)
+    habit = [d for d in days if habit_from <= d < recent_cut]
+    recent = [d for d in days if d >= recent_cut]
+    active = len(habit) >= th.checkins_habit_min and not recent
+    since = (max(habit) + timedelta(days=1)).isoformat() if active else None
+    return _simple(view, "checkins_stopped", active, since, "checkins_stopped",
+                   {"days_without": (view.today - max(habit)).days,
+                    "checkins_before": len(habit)} if active else {},
+                   "checkin_again")
+
+
+def watch_plans_not_done(view: View) -> list[Op]:
+    th = view.th
+    answered = [a for a in view.of_type("checkin") if a.get("plan_done") in ("yes", "no")]
+    last = answered[-th.plans_not_done_in_a_row:]
+    active = len(last) >= th.plans_not_done_in_a_row and all(a["plan_done"] == "no" for a in last)
+    return _simple(view, "plans_not_done", active,
+                   _local_day(view, last[0]["started_at"]).isoformat() if active else None,
+                   "plans_repeatedly_not_done", {"in_a_row": len(last)} if active else {},
+                   "plan_done_again")
 
 
 WATCHERS = [watch_silence, watch_oddity, watch_deviation, watch_novelty, watch_ignored,
             watch_help, watch_low_notes, watch_weak_rounds, watch_round_mismatch, watch_fading,
-            watch_stopped_early, watch_not_played]
+            watch_stopped_early, watch_not_played, watch_slower_reactions, watch_face_flat,
+            watch_checkins_stopped, watch_plans_not_done]
 
 
 def run_watchers(view: View) -> list[Op]:
@@ -352,10 +459,13 @@ def escalate(items: list[dict], view: View, why: dict[str, str] | None = None) -
          suggestions are being left unanswered, or
       b) the drop is followed by silence (no data while it is held), or
       c) it has been held for 10 days or more.
-    - ignored, low_notes, weak_rounds and not_played rise from "watch" to
-      "attention" while a deviation is held (the round adds evidence).
-    - two weak rounds in a row also let the deviation open one low day
-      earlier (see deviation_now); rounds never open a deviation alone.
+    - ignored, low_notes, weak_rounds, not_played and the activity kinds
+      (slower_reactions, face_flat, checkins_stopped, plans_not_done) rise
+      from "watch" to "attention" only while a deviation is held. Alone they
+      stay at "watch".
+    - two weak rounds in a row, slower reactions or a flatter face also let
+      the deviation open one low day earlier (see deviation_need); they never
+      open a deviation alone.
     - asked_for_help is always "urgent".
     Levels never go down while an item is held.
 
@@ -382,7 +492,7 @@ def escalate(items: list[dict], view: View, why: dict[str, str] | None = None) -
                 rule = ("deep_drop_and_unanswered" if deep and "ignored" in open_by_kind
                         else "silence_while_held" if "silence" in open_by_kind
                         else "held_too_long")
-        elif kind in ("ignored", "low_notes", "weak_rounds", "not_played") and dev is not None:
+        elif kind in WEIGHT_ONLY and dev is not None:
             level = level_max(level, "attention")
             rule = "raised_while_drop_held"
         elif kind == "asked_for_help":

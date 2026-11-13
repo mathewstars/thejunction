@@ -32,7 +32,8 @@ from ..security import new_id
 from ..store import Store
 from . import learn
 from .baseline import baseline_for, daily_series, has_baseline, series_against
-from .catalog import ACTIONS, QUESTIONS
+from . import lines, xp
+from .catalog import QUESTIONS, plain_name
 from .gates import INPUT_GATE, OUTPUT_GATE, GateError, GateRefusal
 from .repo import PatientRepo
 from .respond import blocked_reason, needs_response, pick_action, rank_actions
@@ -67,7 +68,7 @@ class FixedClock(Clock):
 
 @dataclass
 class Event:
-    kind: str  # day | round | feedback | note | rule | lesson_rejected | question_answered | ack | tick | scenario
+    kind: str  # day | activity | round | feedback | note | rule | preferences | lesson_rejected | question_answered | ack | tick | scenario | reading
     clinic_id: str
     patient_id: str
     at: str
@@ -93,7 +94,8 @@ class Bus:
 
 # ---- the mind -------------------------------------------------------------------------
 
-REVIEW_TRIGGERS = ("feedback", "round", "question_answered", "lesson_rejected")
+REVIEW_TRIGGERS = ("feedback", "round", "activity", "question_answered", "lesson_rejected",
+                   "preferences")
 
 
 class Mind:
@@ -184,11 +186,14 @@ class Mind:
                      for f in repo.feedback()]
         notes = repo.note_classes()
         contacts += [datetime.fromisoformat(n["at"]).astimezone(tz).date().isoformat() for n in notes]
+        acts = repo.activities()
+        contacts += [datetime.fromisoformat(a["started_at"]).astimezone(tz).date().isoformat()
+                     for a in acts]
         return View(today=today, now=now, days=days, series=series,
                     has_baseline=has_baseline(baseline_for(days, today, self.th)),
                     items=repo.items(), suggestions=repo.suggestions(),
                     oddities=repo.oddities(), notes=notes, contacts=contacts,
-                    rounds=repo.rounds(), th=self.th)
+                    rounds=repo.rounds(), activities=acts, tz=tz, th=self.th)
 
     # ---- the event handler -------------------------------------------------------------
 
@@ -202,6 +207,11 @@ class Mind:
         if ch is not None and not ch.has_trigger:
             ch.add("trigger", ev.kind, trigger_detail(repo, ev.kind, ev.data))
         self.expire_suggestions(repo, now)
+        try:
+            # Lanvi's XP and wanderings: only ever adds; never part of a decision.
+            xp.sync(repo, now)
+        except Exception:  # noqa: BLE001
+            log.exception("xp sync failed")
         await self.observe(repo, patient, now)
         await self.respond(repo, now)
         if ev.kind in REVIEW_TRIGGERS:
@@ -353,7 +363,8 @@ class Mind:
                                                      "kind": target["kind"], "because": blocked})
             return None
         lessons = repo.lessons_doc().get("lessons", [])
-        action = pick_action(rules, lessons, local)
+        prefs = repo.preferences()
+        action = pick_action(rules, lessons, local, prefs)
         if action is None:
             self.audit(repo, "suggestion", "refused", "no_action_allowed_by_rules")
             self.trace(repo, "response", "none", {"attention_id": target["id"],
@@ -361,14 +372,15 @@ class Mind:
                                                   "because": "no_action_allowed_by_rules"})
             return None
         explain: dict = {}
-        rank_actions(rules, lessons, local, explain)
-        text, wording = await self.word(repo, action)
+        rank_actions(rules, lessons, local, explain, prefs)
+        text, wording, wording_line = await self.word(repo, action)
         considered = [x["id"] for x in lessons if x.get("status") == "active"]
         s = {"id": new_id("sug"), "action": action, "text": text, "wording": wording,
              "created_at": now.isoformat(), "date": today, "status": "open",
              "attention_ids": [target["id"]], "attention_kind": target["kind"],
-             "ranked": rank_actions(rules, lessons, local), "lessons_considered": considered,
-             "answer": None, "felt": None, "round_completed": False}
+             "ranked": rank_actions(rules, lessons, local, None, prefs),
+             "lessons_considered": considered, "line_id": wording_line,
+             "answer": None, "felt": None, "round_completed": False, "played": False}
         repo.put(f"suggestions/{s['id']}.json", s)
         self.audit(repo, "suggestion", suggestion_id=s["id"], action_id=action, wording=wording,
                    attention_id=target["id"])
@@ -378,30 +390,33 @@ class Mind:
                    notable=True)
         return s
 
-    async def word(self, repo: PatientRepo, action: str) -> tuple[str, str]:
-        """Level 1 may word the action; the output gate decides; else the template."""
-        template = ACTIONS[action].template
+    async def word(self, repo: PatientRepo, action: str) -> tuple[str, str, str]:
+        """Level 1 may CHOOSE one of Lanvi's fixed lines for the action; the
+        output gate decides; else the first line. Returns (text, by, line id)."""
+        options = lines.suggestion_lines(action)
+        first = options[0]
         if not getattr(self.local, "configured", False):
-            self.trace(repo, "level1", "off", {"task": "wording", "used": "template"})
-            return template, "template"
+            self.trace(repo, "level1", "off", {"task": "wording", "used": "template",
+                                               "line_id": first["id"]})
+            return first["text"], "template", first["id"]
         pack = INPUT_GATE.wording_pack(action)
         raw = await self.local.complete(pack)
-        res = OUTPUT_GATE.wording(raw, action)
-        saw = {"fields": sorted(pack.payload), "action": action}
+        res = OUTPUT_GATE.choose_line(raw, action)
+        saw = {"fields": sorted(pack.payload), "action": action,
+               "lines_offered": [x["id"] for x in options]}
         if res.ok:
             self.trace(repo, "level1", "accepted",
-                       {"task": "wording", "saw": saw,
-                        "returned": {"sentence_words": len(res.value.split())},
-                        "verdict": "accepted", "used": "model"})
-            return res.value, "model"
+                       {"task": "wording", "saw": saw, "returned": {"line_id": res.value["id"]},
+                        "verdict": "accepted", "used": "model", "line_id": res.value["id"]})
+            return res.value["text"], "model", res.value["id"]
         for r in res.refusals:
             self.refuse(repo, r)
         self.trace(repo, "level1", "no_reply" if raw is None else "refused",
                    {"task": "wording", "saw": saw,
-                    "returned": None if raw is None else {"sentence_words": len(raw.split())},
+                    "returned": None if raw is None else {"words": len(raw.split())},
                     "verdict": "refused", "reasons": [r.reason for r in res.refusals],
-                    "used": "template"}, notable=raw is not None)
-        return template, "template"
+                    "used": "template", "line_id": first["id"]}, notable=raw is not None)
+        return first["text"], "template", first["id"]
 
     # ---- 5: learn ----------------------------------------------------------------------
 
@@ -429,7 +444,7 @@ class Mind:
         rows = learn.evidence_table(
             repo.suggestions(), series, repo.questions(),
             lambda iso: datetime.fromisoformat(iso).astimezone(tz).hour, self.th,
-            rounds=repo.rounds())
+            activities=repo.activities())
         return rows, series
 
     async def run_review(self, repo: PatientRepo, trigger: str) -> dict:
@@ -465,7 +480,7 @@ class Mind:
                                           outcome="refused", limit=20)
                       if e.get("action") == "gate_refusal"]
             pack = INPUT_GATE.review_pack(1, rows, series, today, recent, doc.get("lessons", []),
-                                          rounds=repo.rounds())
+                                          rounds=repo.rounds(), activities=repo.activities())
             raw = await self.local.complete(pack, json_mode=True)
             models["level1"] = "no_reply" if raw is None else "replied"
             l1 = {"task": "review", "saw": {"fields": sorted(k for k in pack.payload
@@ -487,10 +502,9 @@ class Mind:
                             "used": "model_and_code" if res.ok else "code_only"},
                            notable=bool(res.refusals))
                 if res.ok:
-                    keys = {(a["action"], a["effect"], a["context"], a.get("config_id"))
-                            for a in accepted}
+                    keys = {(a["action"], a["effect"], a["context"]) for a in accepted}
                     for p in res.value["lessons"]:
-                        key = (p["action"], p["effect"], p["context"], p.get("config_id"))
+                        key = (p["action"], p["effect"], p["context"])
                         if key not in keys:
                             accepted.append({**p, "source": "local"})
                             keys.add(key)
@@ -543,7 +557,7 @@ class Mind:
         for q in new_questions:
             if len(open_q) + len(added_q) >= self.th.max_open_questions:
                 break
-            name = ACTIONS[q["action"]].plain_name
+            name = plain_name(q["action"])
             added_q.append({"id": new_id("q"), "code": q["code"], "action": q["action"],
                             "text": QUESTIONS[q["code"]].format(name=name),
                             "status": "open", "created_at": now.isoformat(),
@@ -676,6 +690,112 @@ class Mind:
                        dropped=len(analysis.get("dropped", [])))
             if analysis["status"] == "ready":
                 await self.publish("reading", repo.clinic_id, repo.patient_id, round_id=round_id)
+
+        if take_lock:
+            async with self.lock(repo.clinic_id, repo.patient_id):
+                await store()
+        else:
+            await store()
+        return analysis
+
+    # ---- the session reading (level 2, background) ------------------------------------
+
+    def session_reading_state(self, repo: PatientRepo, rec: dict) -> str:
+        """pending | off | not_allowed | not_applicable, decided when the activity arrives."""
+        from .session_reading import applies
+        if not applies(rec):
+            return "not_applicable"
+        if self.outreach is None or not self.outreach.gemini_on:
+            return "off"
+        if not (repo.patient() or {}).get("allow_outside_processing"):
+            return "not_allowed"
+        return "pending"
+
+    async def schedule_session_reading(self, repo: PatientRepo, activity_id: str) -> None:
+        if self.settings.review_inline:
+            await self.run_session_reading(repo, activity_id)
+            return
+
+        async def bg() -> None:
+            try:
+                await self.run_session_reading(repo, activity_id, take_lock=True)
+            except Exception:  # noqa: BLE001
+                log.exception("session reading failed")
+
+        task = asyncio.get_running_loop().create_task(bg())
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    async def run_session_reading(self, repo: PatientRepo, activity_id: str,
+                                  take_lock: bool = False) -> dict:
+        with self.tracer.chain(repo.clinic_id, repo.patient_id, "reading_requested"):
+            return await self._run_session_reading(repo, activity_id, take_lock)
+
+    async def _run_session_reading(self, repo: PatientRepo, activity_id: str,
+                                   take_lock: bool) -> dict:
+        from .session_reading import earlier_sessions
+        rec = repo.get(f"activities/{activity_id}.json")
+        if rec is None:
+            return {"status": "failed"}
+        state = self.session_reading_state(repo, rec)
+        if state != "pending":
+            return {"status": state}
+        now = self.clock.now()
+        earlier = earlier_sessions(rec, repo.activities())
+        analysis: dict = {"status": "failed", "read_by": "level2", "checked_by": "code",
+                          "at": now.isoformat()}
+        refusals: list[GateRefusal] = []
+        sent: list[str] = []
+        try:
+            pack = INPUT_GATE.session_pack(rec, earlier)
+            sent = sorted(pack.payload["session"])
+            raw = await self.outreach.gemini_complete(pack)
+            if raw is None:
+                analysis["reason"] = "no_reply"
+            else:
+                res = OUTPUT_GATE.session_reading(raw, rec, earlier)
+                refusals.extend(res.refusals)
+                if res.ok:
+                    analysis.update(status="ready", reading=res.value["reading"],
+                                    dropped=res.value["dropped"])
+                else:
+                    analysis["reason"] = "refused"
+        except GateError as ge:
+            refusals.append(ge.refusal)
+            analysis["reason"] = "input_refused"
+        try:
+            reading = analysis.get("reading") or {}
+            self.trace(repo, "level2", "accepted" if analysis["status"] == "ready" else
+                       "not_sent" if analysis.get("reason") == "input_refused" else
+                       "no_reply" if analysis.get("reason") == "no_reply" else "refused", {
+                           "task": "session_reading", "activity_id": activity_id,
+                           "type": rec["type"], "anonymized": True,
+                           "sent_fields": sent, "earlier_sessions": len(earlier),
+                           "returned": {k: reading.get(k) for k in
+                                        ("reactions", "expression", "eyes", "compared_to_usual",
+                                         "from_session", "confidence")} or None,
+                           "confirmed": [e.get("claim") for e in reading.get("evidence", [])],
+                           "dropped": [{"field": d.get("field"), "reason": d.get("reason")}
+                                       for d in analysis.get("dropped", [])],
+                           "verdict": analysis["status"],
+                           "reasons": [r.reason for r in refusals]},
+                       notable=bool(refusals))
+        except Exception:  # noqa: BLE001
+            pass
+
+        async def store() -> None:
+            cur = repo.get(f"activities/{activity_id}.json")
+            if cur is None:
+                return
+            cur["analysis"] = analysis
+            repo.put(f"activities/{activity_id}.json", cur)
+            for r in refusals:
+                self.refuse(repo, r)
+            self.audit(repo, "session_reading", activity_id=activity_id,
+                       status=analysis["status"], dropped=len(analysis.get("dropped", [])))
+            if analysis["status"] == "ready":
+                await self.publish("reading", repo.clinic_id, repo.patient_id,
+                                   activity_id=activity_id)
 
         if take_lock:
             async with self.lock(repo.clinic_id, repo.patient_id):

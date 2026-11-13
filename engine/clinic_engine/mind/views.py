@@ -12,7 +12,8 @@ from datetime import date, datetime, timedelta
 from ..audit import list_audit
 from ..help import help_block
 from .notes import lexicon_reviewed
-from .catalog import ACTIONS
+from . import lanvi_config, lines, xp
+from .catalog import ACTIONS, ACTIVITY_ACTION, plain_name
 from .repo import PatientRepo
 from .round_configs import ROUND_DURATION_S
 from .rounds import pick_round_config
@@ -44,11 +45,52 @@ def today_view(mind, repo: PatientRepo, settings) -> dict:
         "status": status,
         "suggestion": None if not sug else {"id": sug["id"], "action": sug["action"],
                                             "text": sug["text"], "created_at": sug["created_at"]},
+        "lanvi": lanvi_block(repo, view, sug),
         "round_config": cfg,
         "attention": PATIENT_SUMMARY[status],
         "crisis": help_block(settings),
         "product_name": settings.product_name,
     }
+
+
+def lanvi_line(view: View, st: dict, sug: dict | None, key: str) -> dict:
+    """The one line Lanvi says today. Never guilt, never about mood or the face."""
+    w = st["wandering"]["state"]
+    if w == "back":
+        return lines.pick("back", key)
+    today = view.today.isoformat()
+    before = [c for c in view.contacts if c < today]
+    if today not in view.contacts and before and \
+            (view.today - date.fromisoformat(max(before))).days >= lanvi_config.WELCOME_BACK_AFTER_DAYS:
+        return lines.pick("welcome_back", key)
+    if w == "away":
+        return lines.pick("away", key)
+    if sug is not None:
+        return {"template_id": sug.get("line_id") or "suggestion", "text": sug["text"]}
+    return lines.pick("hello", key)
+
+
+def plan_to_ask(repo: PatientRepo, view: View) -> dict | None:
+    """Yesterday's (or the last earlier) plan, unless today's check-in answered it."""
+    checkins = view.of_type("checkin")
+    tz = repo.tz()
+    day = lambda a: datetime.fromisoformat(a["started_at"]).astimezone(tz).date()  # noqa: E731
+    earlier = [a for a in checkins if day(a) < view.today and a.get("plan")]
+    if not earlier:
+        return None
+    last = earlier[-1]
+    answered = [a for a in checkins if a["started_at"] > last["started_at"]
+                and a.get("plan_done") in ("yes", "no")]
+    if answered or (view.today - day(last)).days > 2:
+        return None
+    return {"checkin_id": last["id"], "plan_id": (last["plan"] or {}).get("catalog_id")}
+
+
+def lanvi_block(repo: PatientRepo, view: View, sug: dict | None) -> dict:
+    st = xp.load(repo)
+    return {**xp.facts(st), "wandering": xp.wandering_out(st),
+            "line": lanvi_line(view, st, sug, repo.patient_id + view.today.isoformat()),
+            "plan_to_ask": plan_to_ask(repo, view)}
 
 
 def mind_view(repo: PatientRepo) -> dict:
@@ -89,9 +131,55 @@ def _summary(view: View, status: str, items: list[dict]) -> str:
     answered = [s for s in view.suggestions if s.get("answer")]
     if answered:
         last = answered[-1]
-        parts.append(f"Last suggestion: {ACTIONS[last['action']].plain_name}, "
+        parts.append(f"Last suggestion: {plain_name(last['action'])}, "
                      f"answer: {last['answer'].replace('_', ' ')}.")
     return " ".join(parts)
+
+
+REASON_SHORT = {
+    "deviation": "Movement down {n} days", "silence": "No data {n} days",
+    "asked_for_help": "Asked for help", "novelty": "One unusual day", "oddity": "Odd values sent",
+    "ignored": "Suggestions left unanswered", "low_notes": "Low mood in notes",
+    "weak_rounds": "Weak rounds", "round_mismatch": "Rounds and days disagree",
+    "fading": "Slowing within rounds", "stopped_early": "Rounds stopped early",
+    "not_played": "Activities offered, not played", "slower_reactions": "Slower reactions",
+    "face_flat": "Less facial movement", "checkins_stopped": "Check-ins stopped",
+    "plans_not_done": "Plans not done",
+    "within": "Within own normal", "no_baseline": "Learning own normal",
+    "no_data": "No data {n} days", "no_data_never": "No data yet", "outside": "Movement down {n} days",
+}
+# Which held kind names the row first, at the same level.
+_KIND_ORDER = ("asked_for_help", "deviation", "silence", "novelty", "slower_reactions", "face_flat",
+               "checkins_stopped", "plans_not_done", "not_played", "ignored", "low_notes",
+               "oddity", "weak_rounds", "round_mismatch", "fading", "stopped_early")
+
+
+def reason_short(view: View, status: str, items: list[dict]) -> str:
+    """At most 6 words, chosen by code from REASON_SHORT. No sentences."""
+    last = max((date.fromisoformat(d) for d in view.days
+                if date.fromisoformat(d) <= view.today), default=None)
+    def fill(key: str) -> str:
+        if key in ("deviation", "outside"):
+            _, lows = deviation_now(view)
+            return REASON_SHORT[key].format(n=max(len(lows), 1))
+        if key in ("silence", "no_data"):
+            if last is None:
+                return REASON_SHORT["no_data_never"]
+            return REASON_SHORT[key].format(n=(view.today - last).days)
+        return REASON_SHORT[key]
+    if items:
+        top = max(LEVELS.index(i["level"]) for i in items)
+        kinds = [i["kind"] for i in items if LEVELS.index(i["level"]) == top]
+        kinds.sort(key=lambda k: _KIND_ORDER.index(k) if k in _KIND_ORDER else 99)
+        if kinds[0] in REASON_SHORT:
+            return fill(kinds[0])
+    return fill(status)
+
+
+def spark(view: View, days: int = 28) -> list[float | None]:
+    """The main movement z per day for the last `days` days; None when missing."""
+    by = {s["date"]: s["movement_z"] for s in view.series}
+    return [by.get((view.today - timedelta(days=k)).isoformat()) for k in range(days - 1, -1, -1)]
 
 
 def clinician_line(mind, repo: PatientRepo) -> dict:
@@ -101,6 +189,9 @@ def clinician_line(mind, repo: PatientRepo) -> dict:
     patient = repo.patient()
     top = max((LEVELS.index(i["level"]) for i in items), default=-1)
     return {
+        "since": min((i["since"] for i in items), default=None),
+        "reason_short": reason_short(view, status, items),
+        "spark": spark(view),
         "patient_id": repo.patient_id, "label": patient["label"],
         "example": bool(patient.get("example")), "status": status,
         "level": LEVELS[top] if top >= 0 else None,
@@ -212,7 +303,10 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
                                     "evidence_ids": x["evidence_ids"]}} for x in lessons],
         "questions": repo.questions(),
         "reviews": repo.reviews()[-10:],
-        "notes": [{"id": n["id"], "at": n["at"],
+        "activities": activities_block(mind, repo, view, share),
+        "lanvi": {k: v for k, v in xp.facts(xp.load(repo)).items() if k in ("xp", "stage")},
+        "preferences": repo.preferences(),
+        "notes": [{"id": n["id"], "at": n["at"], "source": n.get("source", "note"),
                    "classification": {k: n["classification"][k]
                                       for k in ("mood", "topic", "crisis", "asks_for_help", "model")},
                    **({"text": n["text"]} if share else {})} for n in repo.notes()],
@@ -224,6 +318,90 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
                           "note_lexicon_reviewed_by_clinician": lexicon_reviewed()},
         "progress": progress(mind, repo, view, rows),
     }
+
+
+# ---- activities for the clinician: compact and easy to draw ---------------------------------
+
+HEADLINE = {"focus": ("median_reaction_ms", "error_rate"), "breathing": ("time_played_s",),
+            "checkin": ("good_things",)}
+
+
+def _face_out(a: dict) -> dict | None:
+    face = a.get("face")
+    if not face:
+        return None
+    return {**{k: face.get(k) for k in ("smile_rate_per_min", "smile_intensity", "facial_activity",
+                                         "blink_rate_per_min", "look_down_share", "head_tilt_deg",
+                                         "tracking_quality")},
+            "quality": a.get("face_quality"),
+            "z": {k: v for k, v in (a.get("face_z") or {}).items()} or None}
+
+
+def _reading_out(a: dict) -> dict:
+    an = a.get("analysis") or {"status": "not_applicable"}
+    out = {"status": an["status"]}
+    if an["status"] == "ready":
+        out.update(read_by=an.get("read_by"), checked_by=an.get("checked_by"), at=an.get("at"),
+                   reading=an.get("reading"), dropped=an.get("dropped", []))
+    return out
+
+
+def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
+    tz = repo.tz()
+    notes = {n["id"]: n for n in repo.notes()} if share else {}
+
+    def item(ref: dict | None, kind: str) -> dict | None:
+        if ref is None:
+            return None
+        if "catalog_id" in ref:
+            return {"catalog_id": ref["catalog_id"], "label": lines.label(kind, ref["catalog_id"])}
+        out = {"typed": True}
+        if share and ref.get("note_id") in notes:
+            out["text"] = notes[ref["note_id"]]["text"]
+        return out
+
+    by_type: dict = {}
+    for t in ("focus", "breathing", "checkin"):
+        sessions = []
+        for a in view.of_type(t):
+            f = a.get("features") or {}
+            s = {"id": a["id"], "started_at": a["started_at"],
+                 "date": datetime.fromisoformat(a["started_at"]).astimezone(tz).date().isoformat(),
+                 "completed": bool(a["completed"]), "ended_by": a["ended_by"],
+                 "after_suggestion": bool(a.get("suggestion_id")), "example": bool(a.get("example")),
+                 "values": {k: f.get(k) for k in HEADLINE[t]},
+                 "z": {k: (a.get("z") or {}).get(k) for k in HEADLINE[t]}}
+            if t in ("focus", "breathing"):
+                s["face"] = _face_out(a)
+                s["reading"] = _reading_out(a)
+            else:
+                s["good_things"] = [item(g, "good_things") for g in a.get("good_things") or []]
+                s["plan"] = item(a.get("plan"), "plans")
+                s["plan_done"] = a.get("plan_done")
+                s["asked_for_help"] = bool(a.get("crisis"))
+            sessions.append(s)
+        usual = {}
+        if sessions:
+            last = view.of_type(t)[-1]
+            usual = {k: v for k, v in (last.get("usual") or {}).items()
+                     if k in HEADLINE[t] or k.startswith("face.")}
+        by_type[t] = {"sessions": sessions, "usual": usual}
+
+    def counts(days: int) -> dict:
+        cut = (view.today - timedelta(days=days - 1)).isoformat()
+        out = {}
+        for t, action in ACTIVITY_ACTION.items():
+            offered = [s for s in view.suggestions if s["action"] == action and s["date"] >= cut]
+            done = [a for a in view.of_type(t) if
+                    datetime.fromisoformat(a["started_at"]).astimezone(tz).date().isoformat() >= cut]
+            played_for = {a.get("suggestion_id") for a in done}
+            out[t] = {"offered": len(offered),
+                      "played_when_offered": sum(1 for s in offered if s["id"] in played_for),
+                      "played": len(done),
+                      "finished": sum(1 for a in done if a["ended_by"] == "finished")}
+        return out
+
+    return {**by_type, "counts": {"last_7_days": counts(7), "last_28_days": counts(28)}}
 
 
 def clinician_round(repo: PatientRepo, round_id: str, mind=None) -> dict | None:

@@ -65,15 +65,19 @@ def test_daily_upload_that_opens_attention_is_one_chain_in_layer_order():
 
 
 def test_refused_model_answer_shows_in_level1_with_reason():
-    env = Env(local=FakeLocal(wording="You might feel less depressed after catching lights."))
+    env = Env(local=FakeLocal(wording="You might feel less depressed after a breath."))
     env.client.post("/v1/demo/scenario", headers=env.A, json={"name": "dip"})
     chains = get_trace(env, changed_only="true")["chains"]
     l1 = [e for c in chains for e in c["entries"] if e["layer"] == "level1"
           and e["detail"].get("task") == "wording"]
     assert l1 and l1[0]["code"] == "refused" and l1[0]["notable"]
-    assert "banned_vocabulary" in l1[0]["detail"]["reasons"]
+    assert "line_not_in_set" in l1[0]["detail"]["reasons"]
     assert l1[0]["detail"]["used"] == "template"
-    assert l1[0]["detail"]["saw"]["fields"] == ["action", "allowed_numbers", "example"]
+    assert l1[0]["detail"]["saw"]["fields"] == ["action", "lines"]
+    assert chains[0]["headline"] and len(chains[0]["headline"].split()) <= 6
+    assert {c["outcome"] for c in chains} <= {"attention_opened", "attention_raised",
+                                              "attention_closed", "suggested", "message_sent",
+                                              "refused", "nothing"}
 
 
 def test_note_text_never_in_any_trace_entry():

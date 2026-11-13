@@ -7,13 +7,16 @@ one event to the mind's bus.
 
 from __future__ import annotations
 
+import json
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from .audit import write_audit
 from .config import Settings
+from .mind import lines, xp
 from .mind import notes as note_logic
+from .mind.activities import check_activity, process_activity
 from .mind.engine import Clock, Mind
 from .mind.gates import INPUT_GATE, OUTPUT_GATE
 from .mind.repo import PatientRepo
@@ -119,6 +122,7 @@ async def ingest_days(ctx: Ctx, p: Principal, days: list[dict], rid: str) -> dic
             accepted.append(ds)
         if accepted:
             _audit(ctx, p, "day", "ok", None, rid, days=len(accepted), last=accepted[-1])
+            xp.sync(repo, now)
         await ctx.mind.publish("day", p.clinic_id, p.patient_id, days=len(accepted),
                                last_day=accepted[-1] if accepted else "none",
                                rejected=len(rejected))
@@ -232,10 +236,59 @@ async def record_feedback(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
 
 # ---- the note: one free-text field, classified only ---------------------------------------
 
+async def classify_text(ctx: Ctx, p: Principal, repo: PatientRepo, note_id: str, text: str,
+                        rid: str, source: str = "note", activity_id: str | None = None) -> dict:
+    """The one path for free text, notes and check-in words alike. Caller holds
+    the patient lock and a trace chain. Classification only: the code word list
+    and, when configured, the level-1 model through both gates. The text is
+    stored for the patient's record and nowhere else: the audit and the trace
+    get enums only."""
+    now = ctx.clock.now()
+    lex = note_logic.lexicon_check(text)
+    model_cls, model_state = None, "off"
+    if getattr(ctx.mind.local, "configured", False):
+        ids = [t for t in note_logic.reply_templates() if t != "help"]
+        pack = INPUT_GATE.note_pack(1, text, ids)
+        raw = await ctx.mind.local.complete(pack, json_mode=True)
+        res = OUTPUT_GATE.note(raw, ids)
+        if res.ok:
+            model_cls, model_state = res.value, "ok"
+        else:
+            model_state = "refused" if raw is not None else "unavailable"
+            for r in res.refusals:
+                if raw is not None:
+                    ctx.mind.refuse(repo, r)
+        # The trace says what the model saw by name only; the text stays out.
+        ctx.mind.trace(repo, "level1", {"ok": "accepted", "refused": "refused"}
+                       .get(model_state, "no_reply"), {
+            "task": "note", "source": source,
+            "saw": {"fields": [f"{source} words (inside data markers, stays on this server)",
+                               "reply_template ids"]},
+            "returned": None if model_cls is None else
+            {k: model_cls.get(k) for k in ("mood", "topic", "asks_for_help")},
+            "verdict": model_state,
+            "reasons": [r.reason for r in res.refusals] if model_state == "refused" else [],
+            "used": "model_and_word_list" if model_cls else "word_list_only"},
+            notable=model_state == "refused")
+    else:
+        ctx.mind.trace(repo, "level1", "off", {"task": "note", "source": source,
+                                               "used": "word_list_only"})
+    cls = note_logic.merge(lex, model_cls)
+    cls["model"] = model_state
+    rec = {"id": note_id, "at": now.isoformat(), "text": text, "text_sha256": sha256_hex(text),
+           "classification": cls, "source": source}
+    if activity_id:
+        rec["activity_id"] = activity_id
+    repo.put(f"notes/{note_id}.json", rec)
+    # Audit holds enums only, never the text.
+    _audit(ctx, p, "note", "ok", None, rid, note_id=note_id, source=source, crisis=cls["crisis"],
+           mood=cls["mood"], topic=cls["topic"], model=model_state)
+    return cls
+
+
 async def record_note(ctx: Ctx, p: Principal, note_id: str, text: str, rid: str) -> dict:
     repo = repo_for(ctx, p)
     async with ctx.mind.lock(p.clinic_id, p.patient_id):
-        now = ctx.clock.now()
         old = repo.get(f"notes/{note_id}.json")
         if old is not None:
             if old["text_sha256"] != sha256_hex(text):
@@ -245,49 +298,179 @@ async def record_note(ctx: Ctx, p: Principal, note_id: str, text: str, rid: str)
         else:
             # One trace chain for the note: the classification and what the mind did after.
             with ctx.mind.tracer.chain(p.clinic_id, p.patient_id, "note"):
-                lex = note_logic.lexicon_check(text)
-                model_cls, model_state = None, "off"
-                if getattr(ctx.mind.local, "configured", False):
-                    ids = [t for t in note_logic.REPLY_TEMPLATES if t != "help"]
-                    pack = INPUT_GATE.note_pack(1, text, ids)
-                    raw = await ctx.mind.local.complete(pack, json_mode=True)
-                    res = OUTPUT_GATE.note(raw, ids)
-                    if res.ok:
-                        model_cls, model_state = res.value, "ok"
-                    else:
-                        model_state = "refused" if raw is not None else "unavailable"
-                        for r in res.refusals:
-                            if raw is not None:
-                                ctx.mind.refuse(repo, r)
-                    # The trace says what the model saw by name only; the text stays out.
-                    ctx.mind.trace(repo, "level1", {"ok": "accepted", "refused": "refused"}
-                                   .get(model_state, "no_reply"), {
-                        "task": "note", "saw": {"fields": ["note (inside data markers, stays on "
-                                                           "this server)", "reply_template ids"]},
-                        "returned": None if model_cls is None else
-                        {k: model_cls.get(k) for k in ("mood", "topic", "asks_for_help")},
-                        "verdict": model_state,
-                        "reasons": [r.reason for r in res.refusals] if model_state == "refused" else [],
-                        "used": "model_and_word_list" if model_cls else "word_list_only"},
-                        notable=model_state == "refused")
-                else:
-                    ctx.mind.trace(repo, "level1", "off", {"task": "note", "used": "word_list_only"})
-                cls = note_logic.merge(lex, model_cls)
-                cls["model"] = model_state
-                repo.put(f"notes/{note_id}.json", {
-                    "id": note_id, "at": now.isoformat(), "text": text, "text_sha256": sha256_hex(text),
-                    "classification": cls})
-                # Audit holds enums only, never the text.
-                _audit(ctx, p, "note", "ok", None, rid, note_id=note_id, crisis=cls["crisis"],
-                       mood=cls["mood"], topic=cls["topic"], model=model_state)
+                cls = await classify_text(ctx, p, repo, note_id, text, rid)
                 await ctx.mind.publish("note", p.clinic_id, p.patient_id, note_id=note_id)
         open_s = next((s for s in repo.suggestions() if s["status"] == "open"), None)
     out = {"reply": {"template_id": cls["template_id"],
-                     "text": note_logic.REPLY_TEMPLATES[cls["template_id"]]},
+                     "text": note_logic.reply_templates()[cls["template_id"]]},
            "crisis": cls["crisis"],
            "crisis_block": crisis_block(ctx) if cls["crisis"] else None,
            "suggestion": suggestion_out(open_s)}
     return out
+
+
+# ---- activities: focus, breathing, check-in -------------------------------------------------
+
+def _canonical_sha(body: dict) -> str:
+    return sha256_hex(json.dumps(body, sort_keys=True, separators=(",", ":")))
+
+
+def _text_note_id(activity_id: str, slot: str) -> str:
+    return f"ck-{sha256_hex(activity_id)[:24]}-{slot}"
+
+
+def after_activity_line(rec: dict, crisis: bool) -> dict:
+    if crisis:
+        return {"template_id": "help", "text": note_logic.reply_templates()["help"]}
+    t = rec["type"]
+    if rec["ended_by"] == "interrupted" and t != "checkin":
+        return lines.after_activity("interrupted")
+    if t in ("focus", "breathing"):
+        return lines.after_activity(f"{t}_done" if rec["ended_by"] == "finished" else f"{t}_stopped")
+    if rec.get("plan_done") == "yes":
+        return lines.after_activity("plan_done_yes")
+    if rec.get("plan_done") == "no":
+        return lines.after_activity("plan_done_no")
+    return lines.after_activity("checkin_plan" if rec.get("plan") else "checkin_done")
+
+
+def _activity_out(ctx: Ctx, repo: PatientRepo, rec: dict, xp_gained: int, crisis: bool) -> dict:
+    st = xp.load(repo)
+    f = xp.facts(st)
+    return {"id": rec["id"], "type": rec["type"], "xp_gained": xp_gained, "xp_total": f["xp"],
+            "stage": f["stage"], "next_stage_at": f["next_stage_at"], "glow": f["glow"],
+            "wandering": st["wandering"]["state"], "line": after_activity_line(rec, crisis),
+            "crisis": crisis, "crisis_block": crisis_block(ctx) if crisis else None,
+            "reading": (rec.get("analysis") or {}).get("status", "not_applicable")}
+
+
+def activity_reading(ctx: Ctx, p: Principal, activity_id: str) -> dict:
+    """The patient-safe side of the session reading: a status and, when ready,
+    one neutral line. Never the reading itself, never a mood or a face."""
+    from .mind.session_reading import PATIENT_LINES
+    rec = repo_for(ctx, p).get(f"activities/{activity_id}.json")
+    if rec is None:
+        raise ApiError(404, "not_found", "Activity not found.")
+    a = rec.get("analysis") or {"status": "not_applicable"}
+    status = a["status"]
+    return {"status": status,
+            "line": PATIENT_LINES.get(rec["type"]) if status == "ready" else None}
+
+
+async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
+    repo = repo_for(ctx, p)
+    async with ctx.mind.lock(p.clinic_id, p.patient_id):
+        now = ctx.clock.now()
+        sha = _canonical_sha(body)
+        old = repo.get(f"activities/{body['id']}.json")
+        if old is not None:
+            if old["content_sha256"] != sha:
+                _audit(ctx, p, "activity", "refused", "id_reused", rid, activity_id=body["id"])
+                raise ApiError(409, "conflict", "This activity id was used for another record.")
+            return _activity_out(ctx, repo, old, 0, bool(old.get("crisis")))
+        reason = check_activity(body, now)
+        if reason is None and body["type"] == "checkin":
+            items = list(body.get("good_things") or [])
+            if any(x.get("catalog_id") and x["catalog_id"] not in lines.good_thing_ids()
+                   for x in items):
+                reason = "unknown_good_thing"
+            plan = body.get("plan")
+            if plan and plan.get("catalog_id") and plan["catalog_id"] not in lines.plan_ids():
+                reason = "unknown_plan"
+        if reason:
+            repo.put(f"rejected/{now.strftime('%Y%m%dT%H%M%S%f')}-{secrets.token_hex(3)}.json",
+                     {"at": now.isoformat(), "date": body["started_at"][:10], "reason": reason})
+            _audit(ctx, p, "activity", "refused", reason, rid, activity_id=body["id"],
+                   type=body["type"])
+            await ctx.mind.publish("day", p.clinic_id, p.patient_id)  # oddity watcher
+            raise ApiError(422, "implausible_activity", f"The activity was rejected: {reason}.")
+        sug = None
+        if body.get("suggestion_id"):
+            sug = repo.get(f"suggestions/{body['suggestion_id']}.json")
+            if sug is None:
+                _audit(ctx, p, "activity", "refused", "unknown_suggestion", rid,
+                       activity_id=body["id"])
+                raise ApiError(404, "not_found", "Suggestion not found.")
+        with ctx.mind.tracer.chain(p.clinic_id, p.patient_id, "activity"):
+            stored = {k: v for k, v in body.items() if k not in ("good_things", "plan")}
+            crisis = False
+            if body["type"] == "checkin":
+                # Typed words become notes (the same machinery); the record keeps
+                # only references, never the words.
+                refs = []
+                for i, item in enumerate(body.get("good_things") or [], 1):
+                    if item.get("text") is not None:
+                        nid = _text_note_id(body["id"], f"g{i}")
+                        cls = await classify_text(ctx, p, repo, nid, item["text"], rid,
+                                                  source="checkin", activity_id=body["id"])
+                        crisis = crisis or cls["crisis"]
+                        refs.append({"note_id": nid})
+                    else:
+                        refs.append({"catalog_id": item["catalog_id"]})
+                stored["good_things"] = refs
+                plan = body.get("plan")
+                stored["plan"] = None
+                if plan is not None:
+                    if plan.get("text") is not None:
+                        nid = _text_note_id(body["id"], "plan")
+                        cls = await classify_text(ctx, p, repo, nid, plan["text"], rid,
+                                                  source="checkin", activity_id=body["id"])
+                        crisis = crisis or cls["crisis"]
+                        stored["plan"] = {"note_id": nid}
+                    else:
+                        stored["plan"] = {"catalog_id": plan["catalog_id"]}
+            previous = [a for a in repo.activities() if a["started_at"] < body["started_at"]]
+            rec = process_activity(stored, previous)
+            rec.update(received_at=now.isoformat(), example=False, content_sha256=sha,
+                       crisis=crisis, analysis={"status": ctx.mind.session_reading_state(repo, rec)})
+            repo.put(f"activities/{rec['id']}.json", rec)
+            if sug is not None:
+                sug["activity_id"] = rec["id"]
+                sug["played"] = True
+                if sug["status"] in ("open", "expired"):
+                    sug.update(status="done", resolved_at=now.isoformat())
+                repo.put(f"suggestions/{sug['id']}.json", sug)
+            _st, new = xp.sync(repo, now)
+            gained = sum(a["xp"] for a in new if a.get("by") == rec["id"])
+            _audit(ctx, p, "activity", "ok", None, rid, activity_id=rec["id"], type=rec["type"],
+                   ended_by=rec["ended_by"], face_quality=rec["face_quality"], xp_gained=gained,
+                   crisis=crisis)
+            await ctx.mind.publish("activity", p.clinic_id, p.patient_id, activity_id=rec["id"],
+                                   xp_gained=gained)
+        if rec["analysis"]["status"] == "pending":
+            await ctx.mind.schedule_session_reading(repo, rec["id"])
+        return _activity_out(ctx, repo, rec, gained, crisis)
+
+
+def checkin_options() -> dict:
+    cat = lines.checkin_catalog()
+    return {"good_things": [{"id": x["id"], "label": x["label"]} for x in cat["good_things"]],
+            "plans": [{"id": x["id"], "label": x["label"]} for x in cat["plans"]]}
+
+
+async def set_preferences(ctx: Ctx, p: Principal, helps: list[str], rid: str) -> dict:
+    repo = repo_for(ctx, p)
+    async with ctx.mind.lock(p.clinic_id, p.patient_id):
+        repo.put("mind/preferences.json", {"helps": helps,
+                                           "updated_at": ctx.clock.now().isoformat()})
+        _audit(ctx, p, "preferences", "ok", None, rid, helps=helps)
+        await ctx.mind.publish("preferences", p.clinic_id, p.patient_id)
+    return {"helps": helps, "line": lines.preference_ack(helps[0] if helps else None)}
+
+
+async def answer_wandering(ctx: Ctx, p: Principal, wandering_id: str, answer: str,
+                           rid: str) -> dict:
+    repo = repo_for(ctx, p)
+    async with ctx.mind.lock(p.clinic_id, p.patient_id):
+        now = ctx.clock.now()
+        st = xp.load(repo)
+        if not xp.answer(st, wandering_id, answer, now):
+            _audit(ctx, p, "wandering_answer", "refused", "not_waiting", rid)
+            raise ApiError(404, "not_found", "No story is waiting under this id.")
+        repo.put(xp.STATE_KEY, st)
+        _audit(ctx, p, "wandering_answer", "ok", None, rid, wandering_id=wandering_id,
+               answer=answer)
+    return {"id": wandering_id, "answer": answer, "wandering": xp.wandering_out(st)}
 
 
 def crisis_block(ctx: Ctx) -> dict:

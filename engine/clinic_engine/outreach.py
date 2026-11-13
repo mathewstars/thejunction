@@ -69,6 +69,8 @@ class Outreach:
         try:
             if pack.task == "reading":
                 INPUT_GATE.check_reading_outbound(pack.payload)
+            elif pack.task == "session_reading":
+                INPUT_GATE.check_session_outbound(pack.payload)
             else:
                 INPUT_GATE.check_outbound(pack.payload)
             url, headers, body = gemini.build_request(self.settings, pack)

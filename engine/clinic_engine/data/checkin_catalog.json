@@ -1,0 +1,24 @@
+{
+  "about": "What the evening check-in offers to tap. The app shows the labels; the server stores only the ids. Add items freely; never reuse or rename an id.",
+  "good_things": [
+    {"id": "walked", "label": "I went for a walk"},
+    {"id": "outside", "label": "I was outside"},
+    {"id": "good_food", "label": "I ate something good"},
+    {"id": "talked_to_someone", "label": "I talked to someone"},
+    {"id": "music", "label": "I listened to music"},
+    {"id": "rested", "label": "I rested"},
+    {"id": "got_something_done", "label": "I got something done"},
+    {"id": "laughed", "label": "I laughed"},
+    {"id": "kind_moment", "label": "Someone was kind, or I was"}
+  ],
+  "plans": [
+    {"id": "walk", "label": "A walk"},
+    {"id": "coffee_outside", "label": "Coffee outside"},
+    {"id": "call_someone", "label": "Call someone"},
+    {"id": "music", "label": "Listen to a song I like"},
+    {"id": "cook_something", "label": "Cook something simple"},
+    {"id": "daylight", "label": "Sit in the daylight"},
+    {"id": "tidy_one_thing", "label": "Tidy one small thing"},
+    {"id": "rest_early", "label": "Go to bed a bit earlier"}
+  ]
+}

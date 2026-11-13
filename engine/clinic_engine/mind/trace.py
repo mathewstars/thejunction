@@ -169,14 +169,12 @@ class Tracer:
 # ---- facts the watchers decided on (read-only, reuse the watchers' own helpers) ----
 
 def watcher_facts(view) -> dict:
-    from .watchers import deviation_now, last_data_date, recent_scored
+    from .watchers import deviation_need, deviation_now, last_data_date, recent_scored
     th = view.th
     out: dict = {}
     window = recent_scored(view, th.deviation_lookback, th.deviation_lookback + 2)
     sustained, lows = deviation_now(view)
-    need = th.deviation_min_low
-    if view.weak_rounds():
-        need = max(2, need - th.round_weak_lowers_deviation_by)
+    need = deviation_need(view)
     out["deviation"] = {"low_days": len(lows), "of_days": len(window), "needed": need,
                         "low_z": th.low_day_z,
                         "mean_low_z": round(sum(s["movement_z"] for s in lows) / len(lows), 2)
@@ -195,6 +193,18 @@ def watcher_facts(view) -> dict:
     s = view.scored_rounds()
     if s:
         out["rounds"] = {"last_energy": [r["energy_bucket"] for r in s[-3:]]}
+    if view.activities:
+        focus = [a for a in view.of_type("focus")][-th.activity_window:]
+        faces = [a for a in view.activities if a.get("face_quality") == "good"][-th.activity_window:]
+        out["activities"] = {
+            "focus_reaction_z": [(a.get("z") or {}).get("median_reaction_ms") for a in focus],
+            "slower_needed_z": th.slower_reaction_z,
+            "face_activity_z": [(a.get("face_z") or {}).get("facial_activity") for a in faces],
+            "face_smile_z": [(a.get("face_z") or {}).get("smile_rate_per_min") for a in faces],
+            "flat_needed_z": th.face_flat_z,
+            "adds_weight": view.activity_weight(),
+            "last_finished": [a["ended_by"] == "finished" for a in view.activities[-3:]],
+        }
     return out
 
 
@@ -206,6 +216,22 @@ def trigger_detail(repo, kind: str, data: dict) -> dict:
             r = repo.get(f"rounds/{data['round_id']}.json") or {}
             d.update(mode=r.get("mode"), energy_bucket=r.get("energy_bucket"),
                      ended_by=r.get("ended_by"), quality=r.get("quality"))
+        elif kind == "activity" and data.get("activity_id"):
+            a = repo.get(f"activities/{data['activity_id']}.json") or {}
+            d.update(type=a.get("type"), ended_by=a.get("ended_by"), completed=a.get("completed"),
+                     face_quality=a.get("face_quality"), suggested=bool(a.get("suggestion_id")),
+                     z={k: v for k, v in (a.get("z") or {}).items()},
+                     face_z={k: v for k, v in (a.get("face_z") or {}).items()
+                             if k in ("facial_activity", "smile_rate_per_min")},
+                     baseline_sessions=a.get("baseline_sessions"))
+            if a.get("type") == "checkin":
+                d.update(good_things=len(a.get("good_things") or []),
+                         typed_items=sum(1 for g in (a.get("good_things") or []) if "note_id" in g)
+                         + (1 if (a.get("plan") or {}).get("note_id") else 0),
+                         plan_made=a.get("plan") is not None, plan_done=a.get("plan_done"),
+                         asked_for_help=bool(a.get("crisis")))
+        elif kind == "preferences":
+            d["helps"] = repo.preferences()
         elif kind == "note" and data.get("note_id"):
             n = repo.get(f"notes/{data['note_id']}.json") or {}
             c = n.get("classification") or {}
@@ -234,6 +260,70 @@ def load_entries(store: Store, clinic_id: str, patient_id: str, limit: int = _KE
     return out
 
 
+# ---- one row per chain: a headline (at most 6 words) and an outcome enum -----------
+
+KIND_SHORT = {
+    "deviation": "Movement drop", "novelty": "Unusual day", "silence": "No data",
+    "oddity": "Odd values", "ignored": "Suggestions unanswered", "asked_for_help": "Asked for help",
+    "low_notes": "Low mood notes", "weak_rounds": "Weak rounds", "round_mismatch": "Rounds disagree",
+    "fading": "Slowing in rounds", "stopped_early": "Rounds stopped early",
+    "not_played": "Activities not played", "slower_reactions": "Slower reactions",
+    "face_flat": "Less facial movement", "checkins_stopped": "Check-ins stopped",
+    "plans_not_done": "Plans not done",
+}
+ACTION_SHORT = {"breathing": "breathing", "focus_game": "Sparks and snow", "checkin": "check-in",
+                "walk_10min": "a walk", "daylight_10min": "daylight", "call_someone": "a call"}
+TRIGGER_SHORT = {
+    "day": "Daily data", "activity": "Activity", "note": "Note", "feedback": "Answer",
+    "rule": "Rule change", "tick": "Regular check", "scenario": "Demo scenario",
+    "ack": "Acknowledged", "lesson_rejected": "Lesson rejected", "question_answered": "Question answered",
+    "reading": "Movement reading", "reading_requested": "Movement reading", "round": "Round",
+    "preferences": "Preferences set", "queued_message_due": "Queued message",
+}
+OUTCOMES = ("message_sent", "attention_opened", "attention_raised", "suggested",
+            "attention_closed", "refused", "nothing")
+
+
+def chain_row(entries: list[dict], trigger: str) -> tuple[str, str]:
+    """(headline, outcome) for a chain, chosen by code from fixed sets."""
+    found: dict[str, dict] = {}
+    for e in entries:
+        d = e.get("detail") or {}
+        if e["layer"] == "notifier" and e["code"] == "sent":
+            found.setdefault("message_sent", d)
+        elif e["layer"] == "attention" and e["code"] == "opened":
+            found.setdefault("attention_opened", d)
+        elif e["layer"] == "attention" and e["code"] == "raised":
+            found.setdefault("attention_raised", d)
+        elif e["layer"] == "attention" and e["code"] == "closed":
+            found.setdefault("attention_closed", d)
+        elif e["layer"] == "response" and e["code"] == "suggested":
+            found.setdefault("suggested", d)
+        elif e["layer"] in ("level1", "level2") and e["code"] in ("refused", "partly_refused",
+                                                                    "not_sent"):
+            found.setdefault("refused", d)
+    outcome = next((o for o in OUTCOMES if o in found), "nothing")
+    d = found.get(outcome, {})
+    kind = KIND_SHORT.get(d.get("kind"), "Attention")
+    if outcome == "message_sent":
+        head = "Needs-review message sent"
+    elif outcome == "attention_opened":
+        head = "Opened: " + kind
+    elif outcome == "attention_raised":
+        head = "Raised: " + kind
+    elif outcome == "attention_closed":
+        head = "Closed: " + kind
+    elif outcome == "suggested":
+        head = "Suggested " + ACTION_SHORT.get(d.get("action"), "an action")
+    elif outcome == "refused":
+        head = "Model answer refused"
+    else:
+        base = "Learning review" if trigger.startswith("review_") else \
+            TRIGGER_SHORT.get(trigger, "Internal step")
+        head = base + ", no change"
+    return head, outcome
+
+
 def _mentions(e: dict, attention_id: str) -> bool:
     d = e.get("detail") or {}
     return d.get("attention_id") == attention_id
@@ -255,9 +345,10 @@ def chains(entries: list[dict], chain_id: str | None = None, attention_id: str |
         if changed_only and not changed:
             continue
         trig = next((e for e in es if e["layer"] == "trigger"), es[0])
+        headline, outcome = chain_row(es, trig["code"])
         out.append({"chain_id": cid, "at": min(e["at"] for e in es),
                     "last_seq": max(e["seq"] for e in es), "trigger": trig["code"],
-                    "changed": changed,
+                    "changed": changed, "headline": headline, "outcome": outcome,
                     "entries": [{k: e.get(k) for k in ("id", "at", "chain_id", "layer", "code",
                                                        "detail", "notable")} for e in es]})
     out.sort(key=lambda c: (c["at"], c["last_seq"]), reverse=True)

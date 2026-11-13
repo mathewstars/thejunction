@@ -134,7 +134,8 @@ def test_today_always_has_crisis_and_suggestion_on_dip(env):
     assert t["status"] == "within" and t["suggestion"] is None
     env.client.post("/v1/demo/scenario", headers=env.A, json={"name": "dip"})
     t = env.client.get("/v1/today", headers=env.H).json()
-    assert t["status"] == "outside" and t["suggestion"]["action"] == "ar_round"
+    assert t["status"] == "outside" and t["suggestion"]["action"] == "breathing"
+    assert t["lanvi"]["line"]["text"] and t["lanvi"]["xp"] > 0
     assert t["crisis"]["reviewed_by_clinician"] is False
 
 
@@ -155,13 +156,16 @@ def test_mind_rules_lessons_questions(env):
     m = env.client.get("/v1/mind", headers=env.H).json()
     assert m["lessons"] and all(x["text"] and x["evidence_count"] >= 1 for x in m["lessons"])
     r = env.client.post("/v1/mind/rules", headers=env.H, json={
-        "rule": {"type": "no_action", "params": {"action": "ar_round"}}})
+        "rule": {"type": "no_action", "params": {"action": "breathing"}}})
     assert r.status_code == 200
     rid = r.json()["id"]
     env.client.post("/v1/demo/scenario", headers=env.A, json={"name": "dip"})
     s = env.client.get("/v1/today", headers=env.H).json()
-    assert s["suggestion"]["action"] != "ar_round"
-    assert s["round_config"]["config_id"] == "seated_gentle"
+    assert s["suggestion"]["action"] != "breathing"
+    assert s["round_config"]["config_id"]  # deprecated, still sent for older apps
+    old = env.client.post("/v1/mind/rules", headers=env.H, json={
+        "rule": {"type": "no_action", "params": {"action": "ar_round"}}})
+    assert old.status_code == 422  # the cut AR round is no longer an action
     assert env.client.delete(f"/v1/mind/rules/{rid}", headers=env.H).status_code == 200
     bad = env.client.post("/v1/mind/rules", headers=env.H, json={
         "rule": {"type": "no_action", "params": {"action": "anything"}}})
@@ -186,7 +190,7 @@ def test_clinician_list_detail_ack_and_progress(env):
     assert prog["series"] and set(prog["series"][-1]) >= {"date", "z", "movement_z", "example"}
     assert len(prog["weekly"]) == 6 and {"mean_movement_z", "days_with_data", "days_missing"} <= set(prog["weekly"][0])
     assert any(e["kind"] == "deviation" and e["end"] is None for e in prog["episodes"])
-    assert prog["actions"]["ar_round"]["done"] >= 3
+    assert prog["actions"]["breathing"]["done"] >= 3
     assert all(x["provenance"]["model"] for x in d["lessons"])
     r = env.client.post(f"/v1/clinic/attention/{dev['id']}/ack", headers=C)
     assert r.status_code == 200

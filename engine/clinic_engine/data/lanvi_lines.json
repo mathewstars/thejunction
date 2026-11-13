@@ -1,0 +1,91 @@
+{
+  "about": "Everything Lanvi says that comes from the server. Edit the wording here; keep the ids. Short, warm, curious. Never guilt, never a streak, never a mood or a score, never 'you missed'. Every suggestion line must name its own action and no other (a test checks each line against the wording gate).",
+  "reviewed_by_clinician": false,
+  "suggestions": {
+    "breathing": [
+      {"id": "breathing.1", "text": "Want to breathe with me for a minute?"},
+      {"id": "breathing.2", "text": "Shall we take a slow breath together?"},
+      {"id": "breathing.3", "text": "Want to make my tail glow with a few slow breaths?"}
+    ],
+    "focus_game": [
+      {"id": "focus_game.1", "text": "Want to catch a few sparks with me?"},
+      {"id": "focus_game.2", "text": "Shall we play Sparks and snow for a little while?"},
+      {"id": "focus_game.3", "text": "Fancy a quick game of sparks before the snow?"}
+    ],
+    "checkin": [
+      {"id": "checkin.1", "text": "Want to tell me three good things from today?"},
+      {"id": "checkin.2", "text": "Shall we look back at today and find three good things?"}
+    ],
+    "walk_10min": [
+      {"id": "walk_10min.1", "text": "How about a ten-minute walk, at your own pace?"},
+      {"id": "walk_10min.2", "text": "Want to go for a short walk with me?"}
+    ],
+    "daylight_10min": [
+      {"id": "daylight_10min.1", "text": "Shall we find ten minutes of daylight, by a window or outside?"},
+      {"id": "daylight_10min.2", "text": "Want to sit by a window with me and soak up some daylight?"}
+    ],
+    "call_someone": [
+      {"id": "call_someone.1", "text": "Is there someone you would like to call or message today?"},
+      {"id": "call_someone.2", "text": "Who would be nice to hear from today, maybe with a short message?"}
+    ]
+  },
+  "replies": {
+    "help": "Thank you for telling me. You do not have to carry this alone. The help contacts are right here.",
+    "low_1": "Thank you for telling me. Small steps count, and I am here with you.",
+    "low_2": "Thank you for sharing this. Let's go gently, one small thing at a time.",
+    "ok": "Thank you. I am glad you told me.",
+    "good": "That is lovely to hear. My tail is glowing.",
+    "neutral": "Thank you. I keep your words safe."
+  },
+  "after_activity": {
+    "focus_done": "Thanks for playing with me. The sparks liked that.",
+    "focus_stopped": "Thanks for playing. Every spark counts.",
+    "breathing_done": "Nice.",
+    "breathing_stopped": "Thank you for breathing with me.",
+    "checkin_done": "Thank you. I will keep these good things safe.",
+    "checkin_plan": "Sounds nice. I will ask you about it tomorrow.",
+    "plan_done_yes": "You did it. That makes my tail glow.",
+    "plan_done_no": "That is okay. Tomorrow has room for small things too.",
+    "interrupted": "Thanks for coming by. We can play again any time."
+  },
+  "welcome_back": [
+    {"id": "welcome_back.1", "text": "I kept the light on for you."},
+    {"id": "welcome_back.2", "text": "There you are. I saved you a warm spot in the snow."},
+    {"id": "welcome_back.3", "text": "Hello again. The northern lights waited for you."}
+  ],
+  "hello": [
+    {"id": "hello.1", "text": "Hi. The snow is quiet today."},
+    {"id": "hello.2", "text": "Good to see you. My tail is a little brighter now."},
+    {"id": "hello.3", "text": "Hi there. I was watching the sky."}
+  ],
+  "away": [
+    {"id": "away.1", "text": "Lanvi is off wandering across Lapland. Back soon."}
+  ],
+  "back": [
+    {"id": "back.1", "text": "I'm back. I have a little story for you."}
+  ],
+  "preferences_ack": {
+    "moving": "Got it. I'll start with walks.",
+    "music": "Got it. I'll start with breathing and sparks.",
+    "people": "Got it. I'll start with reaching out to someone.",
+    "quiet": "Got it. I'll start with quiet breathing.",
+    "none": "Got it. We'll find out together."
+  },
+  "stories": [
+    {"id": "story.reindeer", "text": "I met a reindeer by a frozen lake. She was counting stars and kept losing her place.",
+     "question": "Should I help her count tomorrow?",
+     "answers": {"a": "Yes, help her", "b": "Let her count alone"}},
+    {"id": "story.cabin", "text": "I found a little cabin with smoke rising from the chimney. Someone had left a candle in the window.",
+     "question": "Was it left for travellers like me?",
+     "answers": {"a": "I think so", "b": "Maybe for someone else"}},
+    {"id": "story.owl", "text": "A snowy owl asked me why my tail glows. I told her it is because of you.",
+     "question": "What colour should I glow next time?",
+     "answers": {"a": "Green", "b": "Violet"}},
+    {"id": "story.river", "text": "The river was frozen, but under the ice I could hear it still moving, slowly.",
+     "question": "Should I listen to it again?",
+     "answers": {"a": "Yes", "b": "Find a new sound"}},
+    {"id": "story.sparks", "text": "I ran so fast across the fell that my tail threw sparks into the sky. They turned green.",
+     "question": "Did you see them from your window?",
+     "answers": {"a": "I think I did", "b": "Next time"}}
+  ]
+}
