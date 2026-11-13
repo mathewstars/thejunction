@@ -2,15 +2,15 @@
 
 Team workspace for the Junction hackathon, November 2026.
 
-Team: Mathew, Peter, Matthew. The same three who built [Gridzilla](https://github.com/mathewstars/Gridzilla) at the Energy Bridge Critical Infrastructure Hackathon in Vienna (23–25 October 2026).
+Team: Mathew, Peter, Matthew.
 
 ## Status
 
 | | |
 |---|---|
-| Challenge / track | Aalto University, "Beyond the Clinic". Tech track: Google DeepMind, Gemini API. AstraZeneca and Valio Aimo are dropped. |
+| Challenge / track | Aalto University, "Beyond the Clinic". Tech track: Google DeepMind, Gemini API. |
 | Idea | draft below, open for changes |
-| Demo | none yet |
+| Demo | https://lanvi.app (the server and the clinician page; the app is in progress) |
 | Pitch | none yet |
 
 Update this table as soon as something is decided, so all three of us read the same thing.
@@ -69,9 +69,9 @@ AR round, feedback   --POST-> remember what was followed
 | 1 | A local open model on hardware we control | Everyday work: words the daily suggestion from the action the code picked |
 | 2 | Gemini API | The review: reads the recent rounds and feedback, writes lessons and at most three questions, and the plain-language summary for the clinician |
 
-Level 1 is served with a standard open-source model server, not through any private gateway of ours. Level 2 gets numbers without a name or any other identity. If a model is not reachable, a fixed-template suggestion is the fallback. If level 1 runs a Gemma model, the same build can also enter "Best Use of Gemma"; not decided.
+Level 1 runs on hardware we control. Level 2 gets only an anonymous pack, with no name or any other identity. If a model is not reachable, a fixed-template suggestion is the fallback. If level 1 runs a Gemma model, the same build can also enter "Best Use of Gemma"; not decided.
 
-**Rule that changes our plan: no code written before the event.** All code outside open-source libraries must be written at the event, or the team is disqualified. A project related to an already existing company is disqualified too. Patterns from earlier projects are reference for how to build, not files to copy. We rewrite here.
+**Rule that changes our plan: no code written before the event.** All code outside open-source libraries must be written at the event, or the team is disqualified. A project related to an already existing company is disqualified too. Everything in this repo is written at the event.
 
 **Open, in this order:**
 
@@ -81,49 +81,6 @@ Level 1 is served with a standard open-source model server, not through any priv
 4. Matthew decides the name.
 
 **Dates:** final submission Sunday 15 Nov 10:00 with the project set to FINAL, a public video of at most 2 minutes, demo link, source link, pitch deck PDF. Peer reviewing 10:30–14:00, all present.
-
-## What we bring with us
-
-Under the Junction rules everything here is reference only: we may reuse the ideas and the structure, not the code.
-
-**The agent-and-gate pattern (from an earlier project of ours).** Written for the Valio Aimo idea; the gate and the grounding check still apply to what the model may say to a patient:
-
-| Pattern | What it does | Where it goes in the Valio Aimo build |
-|---|---|---|
-| Two model tiers | A cheap model triages and looks things up, a strong model decides | Lookup against order decision |
-| Code gate | One function that every action passes: caps, allowed actions, dry run unless armed, "no plan, no order" | Spend limits and approval rules |
-| Code proposal as fallback | The code makes its own safe proposal; the model may only choose inside the limits | Partial availability and substitutions when the model is silent or wrong |
-| Grounding check | A number that is not in the data the model was given is refused | Trust in price and stock claims |
-| Read-only tool registry | One list of tools, served to every model over MCP | The open interface |
-| Human in the loop | Approve or stop from the phone; the human can always stop | Sign-off |
-| Audit and replay | Every decision is logged and can be replayed | Audit trail |
-
-**Gridzilla.** Everything below is in the public Gridzilla repo.
-
-**Gridzilla in one paragraph.** A grid signaling platform for grid-serving storage. A grid operator (DSO) sees a transformer or feeder about to overload and sends a signed, bounded, segment-scoped signal that tells the home batteries in that segment how much the house may import or export for a limited time. The signal always ends in a local policy agent that merges it with the owner's own limits before anything is written to the inverter, so the operator never gets raw control of a device.
-
-**Working pieces to learn from**
-
-| Piece | Where in Gridzilla | What it does |
-|---|---|---|
-| Signal protocol | `protocol/` (PROTOCOL.md, JSON schemas for signal, envelope, ack) | Signed envelopes, sequence numbers, scoped addressing, signed acks and refusals |
-| Platform | `platform/` (Python, FastAPI) | Device registry, signal composer, policy guard, signing, MQTT publish, audit, history |
-| Agents | `agent/` (Node sim fleet, Node-RED flow generator for Victron Cerbo GX) | Verify, scope, merge with owner limits, heartbeat, revert |
-| Advisor | `platform/` | Deterministic rule advisor, or an LLM advisor that only turns bounded knobs |
-| Console and site | `dashboard/`, `site/` (React, Vite) | Operator console and public site |
-| Pitch material | `docs/` (deck, trailer, architecture page, presentation notes) | The structure that worked on stage |
-
-Live: https://gridzilla.victronlab.sk (site at `/`, operator console at `/console`).
-
-**Domain knowledge on the team:** Victron and GoodWe storage systems, ESS control, Node-RED on Venus OS, MQTT, Modbus, heat pumps and EV charging as flexible loads, tariff and spot-price optimisation with an LP planner, trust and security of a remote control channel.
-
-## What worked last time
-
-- Build a real, running thing by the first night, then spend the rest on the story.
-- One live demo on real hardware beats ten slides, but keep a simulated twin so the demo never depends on the weather or the battery state.
-- Backend and UI stay separate, and state persists across redeploys. Never restart the demo fleet right before the pitch.
-- The pitch opens with the problem in thirty seconds and one number people remember.
-- Agree on names early (devices, segments, topics) and do not rename them later.
 
 ## Ground rules for this repo
 
@@ -141,8 +98,4 @@ Live: https://gridzilla.victronlab.sk (site at `/`, operator console at `/consol
 - `ios/` — the iPhone app. The Xcode project goes here.
 - `LICENSE` — MIT, as Junction requires for every submission.
 - `aalto/` — our challenge, Aalto "Beyond the Clinic": brief, judging criteria and what they provide in `CHALLENGE.md`.
-- `valioaimo/` — dropped on Friday night. The Valio Aimo brief, kept for the record.
-- `astrazeneca/` — dropped on Friday night. The AstraZeneca brief and the material they provided, kept for the record.
 - `facemetrics/` — FaceMetrics, a native iOS ARKit facial-tracking research instrument (Swift, SwiftUI, ARKit, SceneKit). Xcode project, not yet compiled on a Mac. See `facemetrics/README.md`.
-
-Suggested once we start building: `docs/` for the pitch, one top-level folder per component.
