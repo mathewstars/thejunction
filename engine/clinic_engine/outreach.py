@@ -59,9 +59,24 @@ class Outreach:
     # ---- level 2 -------------------------------------------------------------
 
     @property
-    def gemini_on(self) -> bool:
+    def standin(self) -> bool:
+        """Level 2 answered by the local model, to exercise the whole level-2 path
+        (consent, anonymous pack, outbound check, output gate) before a Gemini key exists.
+        Nothing leaves the private network in this mode."""
         s = self.settings
-        return s.outreach_mode == "gemini" and bool(s.gemini_api_key and s.gemini_model)
+        return s.outreach_mode == "standin" and bool(s.local_llm_base_url and s.local_llm_model)
+
+    @property
+    def level2_model(self) -> str:
+        if self.standin:
+            return f"stand-in: {self.settings.local_llm_model}"
+        return self.settings.gemini_model if self.gemini_on else "off"
+
+    @property
+    def gemini_on(self) -> bool:
+        """True when level 2 can answer (Gemini, or the local stand-in)."""
+        s = self.settings
+        return self.standin or (s.outreach_mode == "gemini" and bool(s.gemini_api_key and s.gemini_model))
 
     async def gemini_complete(self, pack: Pack) -> str | None:
         if not self.gemini_on or pack.level != 2:
@@ -73,6 +88,13 @@ class Outreach:
                 INPUT_GATE.check_session_outbound(pack.payload)
             else:
                 INPUT_GATE.check_outbound(pack.payload)
+            if self.standin:
+                if pack.images:
+                    return None  # the stand-in reads numbers only
+                from .llm.local import LocalModel
+                return await LocalModel(self.settings, transport=self.transport).complete(
+                    Pack(1, pack.task, pack.messages, pack.payload, pack.ref_map),
+                    json_mode=True, max_tokens=1500)
             url, headers, body = gemini.build_request(self.settings, pack)
             data = await self._post("gemini", url, body, headers, self.settings.gemini_timeout_s)
             return gemini.parse_response(data or {})

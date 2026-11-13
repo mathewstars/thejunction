@@ -67,7 +67,7 @@ class Settings:
     local_llm_timeout_s: float = 8.0
 
     # Level 2: Gemini, reached only through outreach.py
-    outreach_mode: str = "off"  # off | gemini
+    outreach_mode: str = "off"  # off | gemini | standin (the local model answers level 2; nothing leaves)
     session_reader: str = "auto"  # auto (level 2 when it is on) | local (level 1 reads sessions) | off
     gemini_api_key: str = ""
     gemini_model: str = ""  # placeholder: set the model id in the environment

@@ -28,8 +28,8 @@ from .store import Store, make_store
 
 DEMO_LABEL = "Patient A-014"
 # Invented example names, shown only on the clinician page.
-DEMO_DISPLAY_NAME = "Anna K."
-EXTRA_DISPLAY_NAMES = ("Mikko L.", "Sofia R.", "Jari H.", "Elina P.", "Tomas V.")
+DEMO_DISPLAY_NAME = "Anna Korhonen"
+EXTRA_DISPLAY_NAMES = ("Mikko Laine", "Sofia Rantanen", "Jari Heikkinen", "Elina Peltonen", "Tomas Virtanen")
 DIP_DAYS = 5
 
 
