@@ -40,11 +40,11 @@ The app never diagnoses. It says "you have moved less than your usual this week"
 
 ## The AR round
 
-The round is what the app offers. It is not the sensor, so it does not have to measure anything precisely.
+The round is what the app offers. The phone's daily data stays the main sensor; the round adds a small signal about how the person moved.
 
 - Two minutes. Lights appear around the room, the person walks to each one to catch it, the round ends warmly.
 - Three modes: standing in AR, seated in AR, and on the flat screen with no camera. The flat-screen mode is also the fallback if AR does not work in time.
-- The app reports only that a round was played, in which mode, how many lights were caught and whether it was finished.
+- The app logs each light and the path of the phone and sends one record when the round ends. The full interface is in `docs/game-interface.md`.
 - A round can be played any day, not only when the app suggests it.
 - An offered round that is not played is recorded too. Ignoring it is also a signal.
 

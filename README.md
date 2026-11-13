@@ -134,6 +134,7 @@ Live: https://gridzilla.victronlab.sk (site at `/`, operator console at `/consol
 ## Layout
 
 - `docs/app-design.md` — the app screen by screen, the AR round, and how the app talks to the server.
+- `docs/game-interface.md` — what ARKit gives the app, the round record the app sends, what the server makes of it, and where the two model levels come in.
 - `engine/` — the server and the mind (being built, lands with its tests).
 - `aalto/` — our challenge, Aalto "Beyond the Clinic": brief, judging criteria and what they provide in `CHALLENGE.md`.
 - `valioaimo/` — dropped on Friday night. The Valio Aimo brief, kept for the record.
