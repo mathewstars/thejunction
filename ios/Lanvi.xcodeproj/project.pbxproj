@@ -10,6 +10,9 @@
 		20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CA1C956F7514A490E2C77E /* Theme.swift */; };
 		43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856CB611495D91BE8B81E2D4 /* WelcomeView.swift */; };
 		471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4534A11EF57C9E6ACC5030B /* HomeView.swift */; };
+		52849D842800BB2FC9D57F97 /* CheckinParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */; };
+		70C6A7B3EB4DC1265714772A /* CheckinModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C049B0C402500302F08D494 /* CheckinModels.swift */; };
+		85913E78D8BD74C9E1F25A7E /* CheckinView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E77620D747F3E1491FF87DCE /* CheckinView.swift */; };
 		A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */; };
 		B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA73738285D12F12C9ADB24B /* Chunky.swift */; };
 		DDD5D6ED52809D10373598F9 /* SkyScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A53ADD818B703E6EC089EFE /* SkyScene.swift */; };
@@ -19,13 +22,16 @@
 
 /* Begin PBXFileReference section */
 		11CA1C956F7514A490E2C77E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		1C049B0C402500302F08D494 /* CheckinModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinModels.swift; sourceTree = "<group>"; };
 		248059A5DA624F501FEE521B /* Lanvi.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lanvi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviApp.swift; sourceTree = "<group>"; };
 		856CB611495D91BE8B81E2D4 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		9A53ADD818B703E6EC089EFE /* SkyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyScene.swift; sourceTree = "<group>"; };
 		BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviView.swift; sourceTree = "<group>"; };
 		CA73738285D12F12C9ADB24B /* Chunky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chunky.swift; sourceTree = "<group>"; };
+		CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinParts.swift; sourceTree = "<group>"; };
 		E4534A11EF57C9E6ACC5030B /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		E77620D747F3E1491FF87DCE /* CheckinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinView.swift; sourceTree = "<group>"; };
 		EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -84,11 +90,22 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		D1A262F183C53F9B7602400F /* Checkin */ = {
+			isa = PBXGroup;
+			children = (
+				1C049B0C402500302F08D494 /* CheckinModels.swift */,
+				CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */,
+				E77620D747F3E1491FF87DCE /* CheckinView.swift */,
+			);
+			path = Checkin;
+			sourceTree = "<group>";
+		};
 		F0A030A22324AB7E17D462AE /* Screens */ = {
 			isa = PBXGroup;
 			children = (
 				E4534A11EF57C9E6ACC5030B /* HomeView.swift */,
 				856CB611495D91BE8B81E2D4 /* WelcomeView.swift */,
+				D1A262F183C53F9B7602400F /* Checkin */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
@@ -160,6 +177,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				70C6A7B3EB4DC1265714772A /* CheckinModels.swift in Sources */,
+				52849D842800BB2FC9D57F97 /* CheckinParts.swift in Sources */,
+				85913E78D8BD74C9E1F25A7E /* CheckinView.swift in Sources */,
 				B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */,
 				471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */,
 				A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */,
