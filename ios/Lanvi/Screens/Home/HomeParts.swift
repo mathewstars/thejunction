@@ -199,6 +199,7 @@ struct HomeGrowthCard: View {
                                 LinearGradient(colors: [.clear, .white.opacity(0.7), .clear], startPoint: .leading, endPoint: .trailing)
                                     .frame(width: 40)
                                     .offset(x: sweep * w)
+                                    .opacity(sweep > -0.25 && sweep < 1.15 ? 1 : 0)
                                     .blendMode(.plusLighter)
                             }
                             .clipShape(Capsule())

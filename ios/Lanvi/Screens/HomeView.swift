@@ -35,7 +35,9 @@ struct HomeView: View {
             let w = geo.size.width
             let h = geo.size.height
             let compact = h < 700
-            let hill = h * (compact ? 0.53 : 0.565)
+            let extraRow = store.wandering?.state == .back && store.wandering?.story != nil
+                || (store.suggestion != nil && store.suggestion?.text != store.line)
+            let hill = h * (compact ? (extraRow ? 0.47 : 0.545) : (extraRow ? 0.535 : 0.60))
             let fox: CGFloat = away ? (compact ? 120 : 140) : (compact ? 168 : 212)
             let foxY = hill - fox / 2 + 14
             let foxTop = hill + 14 - fox
@@ -54,13 +56,6 @@ struct HomeView: View {
                 .animation(.spring(response: 0.6, dampingFraction: 0.8), value: away)
                 .accessibilityLabel("Lanvi")
 
-                if let pop {
-                    HomeXPPop(amount: pop.xpGained)
-                        .id(pop.id)
-                        .position(x: w / 2 + fox * 0.62, y: foxTop + fox * 0.28)
-                        .allowsHitTesting(false)
-                }
-
                 // What Lanvi says, above the fox.
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
@@ -69,6 +64,13 @@ struct HomeView: View {
                 }
                 .frame(width: w - 40, height: max(foxTop - (compact ? 62 : 70), 60))
                 .padding(.top, compact ? 58 : 64)
+
+                if let pop {
+                    HomeXPPop(amount: pop.xpGained)
+                        .id(pop.id)
+                        .position(x: min(w / 2 + fox * 0.5, w - 86), y: foxTop + fox * 0.42)
+                        .allowsHitTesting(false)
+                }
 
                 // Top: Help (always there) and the glow meter.
                 HStack(spacing: 10) {
@@ -278,6 +280,10 @@ struct HomeView: View {
         if let what = value("-demoPlay"), let kind = ActivityKind(rawValue: what) {
             try? await Task.sleep(for: .milliseconds(900))
             await store.finish(Self.sample(kind), kind: kind)
+        }
+        if let answer = value("-demoAnswer") {
+            try? await Task.sleep(for: .milliseconds(900))
+            _ = await store.answerStory(answer)
         }
         guard demo else { return }
         try? await Task.sleep(for: .seconds(2.0))

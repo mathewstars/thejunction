@@ -12,12 +12,16 @@ struct HomeHelpScreen: View {
 
     var body: some View {
         GeometryReader { geo in
-            let hill = geo.size.height * 0.40
+            let compact = geo.size.height < 700
+            let hill = geo.size.height * (compact ? 0.50 : 0.56)
+            let fox: CGFloat = compact ? 150 : 200
             ZStack(alignment: .top) {
                 SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: hill)
 
-                LanviView(pose: .love, size: 150, bounceTrigger: bounce)
-                    .position(x: geo.size.width / 2, y: hill - 75 + 12)
+                HomeTailGlow(pose: .love, glow: 0.55, foxSize: fox)
+                    .position(x: geo.size.width / 2, y: hill - fox / 2 + 12)
+                LanviView(pose: .love, size: fox, bounceTrigger: bounce)
+                    .position(x: geo.size.width / 2, y: hill - fox / 2 + 12)
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
@@ -94,14 +98,16 @@ struct HomeStoryScreen: View {
 
     var body: some View {
         GeometryReader { geo in
-            let hill = geo.size.height * 0.46
+            let compact = geo.size.height < 700
+            let hill = geo.size.height * (compact ? 0.53 : 0.60)
+            let fox: CGFloat = compact ? 150 : 210
             ZStack(alignment: .top) {
                 SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: hill)
 
-                HomeTailGlow(pose: pose, glow: 0.8, foxSize: 170)
-                    .position(x: geo.size.width / 2, y: hill - 85 + 12)
-                LanviView(pose: pose, size: 170, bounceTrigger: bounce)
-                    .position(x: geo.size.width / 2, y: hill - 85 + 12)
+                HomeTailGlow(pose: pose, glow: 0.8, foxSize: fox)
+                    .position(x: geo.size.width / 2, y: hill - fox / 2 + 12)
+                LanviView(pose: pose, size: fox, bounceTrigger: bounce)
+                    .position(x: geo.size.width / 2, y: hill - fox / 2 + 12)
 
                 VStack(spacing: 0) {
                     Text(thanks ? "Thank you. I'll remember that on my next trip." : story.text)
@@ -118,7 +124,7 @@ struct HomeStoryScreen: View {
                         .transition(.scale(scale: 0.85).combined(with: .opacity))
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 70)
+                .padding(.top, compact ? 62 : 74)
 
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Lanvi's story")

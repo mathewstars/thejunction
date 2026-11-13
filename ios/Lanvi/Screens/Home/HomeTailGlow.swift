@@ -19,10 +19,11 @@ struct HomeTailGlow: View, Animatable {
         set { glow = newValue }
     }
 
-    private static let green = Color(hex: 0x7CF5C4)
-    private static let cyan = Color(hex: 0x9FE6FF)
-    private static let violet = Color(hex: 0xC4A8FF)
-    private static let pink = Color(hex: 0xFFB0E4)
+    // Saturated enough to read as coloured light on white snow too.
+    private static let green = Color(hex: 0x3EE6A8)
+    private static let cyan = Color(hex: 0x5CCBFF)
+    private static let violet = Color(hex: 0x9B7BFF)
+    private static let pink = Color(hex: 0xFF7FD0)
 
     var body: some View {
         TimelineView(.animation) { context in
@@ -38,8 +39,8 @@ struct HomeTailGlow: View, Animatable {
     private func draw(_ ctx: inout GraphicsContext, size: CGSize, t: TimeInterval, now: Date) {
         let g = min(max(glow, 0), 1)
         let tail = tailPoint(in: size)
-        let reach = foxSize * (0.30 + 0.62 * g)          // how far the light spreads
-        let strength = 0.40 + 0.60 * g                     // how bright it is
+        let reach = foxSize * (0.28 + 0.82 * g)          // how far the light spreads
+        let strength = 0.45 + 0.55 * g                     // how bright it is
         let breathe = 1 + 0.06 * sin(t * 2 * .pi / 3.2)
 
         // 1. Wide soft halo: green into cyan into nothing.
@@ -54,7 +55,6 @@ struct HomeTailGlow: View, Animatable {
 
         // 2. Three slow aurora ribbons turning around the tail, added as light.
         var ribbons = ctx
-        ribbons.blendMode = .plusLighter
         ribbons.addFilter(.blur(radius: foxSize * 0.05))
         let ribbonColors = [Self.green, Self.violet, Self.pink]
         for (i, color) in ribbonColors.enumerated() {
@@ -66,7 +66,7 @@ struct HomeTailGlow: View, Animatable {
             layer.rotate(by: .radians(-0.9 + 0.55 * sin(phase)))
             let rect = CGRect(x: -len * 0.15, y: -w / 2 - len * 0.35, width: len, height: w)
             layer.fill(Path(ellipseIn: rect),
-                       with: .radialGradient(Gradient(colors: [color.opacity(0.55 * strength), color.opacity(0)]),
+                       with: .radialGradient(Gradient(colors: [color.opacity(0.6 * strength), color.opacity(0)]),
                                              center: CGPoint(x: rect.midX, y: rect.midY),
                                              startRadius: 0, endRadius: len * 0.5))
         }
