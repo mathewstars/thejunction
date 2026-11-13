@@ -17,38 +17,50 @@ Update this table as soon as something is decided, so all three of us read the s
 
 ## Where we are (Friday 13 Nov, late night)
 
-**Read first:** `aalto/CHALLENGE.md` has the brief, the judging weights and what Aalto provides.
+**Read first:** `aalto/CHALLENGE.md` has the brief, the judging weights and what Aalto provides. `docs/app-design.md` has the app screen by screen and the calls to the server.
 
 **The challenge in three lines.** People with severe depression get brain stimulation (TMS) in daily clinic visits. When the visits end they are at home with no scans and no psychiatrist, and the depression can return. Aalto wants a product that helps them stay well at home, best as a loop: sense how the person is doing, respond with something that helps, learn what works for that person.
 
 **Judging:** usefulness 25%, ease of use 25%, smart sensing 25%, creativity 25%. The prize is not announced yet.
 
-**Draft idea (working name Aloft, not final).** A two-minute daily game on the phone where lights appear in the person's own room and they move to catch them. The game is the sensor: how fast and how far they move, and whether they played at all. A server compares each round with that person's own baseline, offers one small action on a clear change, and learns which action helped. A clinician sees one line per patient.
+**Draft idea (working name Angel, Matthew decides the final one).** One loop, three parts:
 
-**Still open:** the AR game against a wearable as the sensor, and the name.
+1. **Sense.** The phone already knows how the person moves: steps and walking speed from Apple Health, plus heart-rate variability and sleep when a watch is there. The server compares each day with that person's own normal.
+2. **Respond.** On a clear change the app offers one small action. The main one is a two-minute round in AR: lights appear in the person's own room and they move to catch them.
+3. **Learn.** Whether the person did it, and how the next days went, decides what the app offers next time. An offered round that is not played is recorded too.
+
+A clinician sees one line per patient: who is outside their own normal this week.
+
+The person can also write a few words. The server only turns them into a few fixed labels and answers from a fixed set; it is not a chat. If the words suggest the person needs help, the help screen opens at once and the clinic gets a short "needs review" message.
+
+**Checked with the Aalto mentors on Friday night:** they like the AR game idea.
+
+**Decided on Friday night:** the AR round stays, as the response and not as the sensor. iOS only. Face tracking is a stretch goal. Peter has a checkpoint on Saturday mid-afternoon: lights visible and catchable in a real room, otherwise the round moves to the flat screen.
 
 **Who does what**
 
 | Who | Part |
 |---|---|
-| Peter | AR game and the iPhone app |
+| Peter | The device: the iPhone app, AR and Apple Health |
 | Mathew | The "mind" logic and the server |
-| Matthew | Presentation, video and design |
+| Matthew | Presentation, video, app design and game design; picks the name |
 
 **How it fits together**
 
 ```
 iPhone app                    Server (one small service)            Web page
-AR light game        --POST-> store the round                       clinician list
-numbers per round     round   compare with own baseline    --GET--> who is outside
+daily movement data  --POST-> store the day                         clinician list
+from Apple Health     daily   compare with own baseline    --GET--> who is outside
 show today's         <-GET--  pick one action, word it              their own normal
 suggestion            today   review: lessons, questions
-feedback tap         --POST-> remember what was followed
+AR round, feedback   --POST-> remember what was followed
 ```
 
-**In scope for the weekend:** the game producing real numbers, the baseline and deviation on the server, a feedback tap that changes the next suggestion, the clinician page updating when a round arrives.
+**In scope for the weekend:** the daily read from Apple Health, the baseline and deviation on the server, the AR round, a feedback tap that changes the next suggestion, the clinician page with a simple login, one static crisis screen.
 
-**Out of scope:** doctor onboarding, accounts and login, push notifications, settings, Android, a health tracker. One hard-coded demo patient. A seed script creates three weeks of example rounds, labelled as example data.
+**Out of scope:** doctor onboarding, patient accounts, push notifications, settings, Android, a Garmin integration (Garmin users reach us through Apple Health). One hard-coded demo patient. A seed script adds example patients, labelled as example data.
+
+**Where it runs:** the engine on our own server behind an HTTPS proxy, with an S3-compatible object store (RustFS) for the data. Host names, addresses and passwords stay in `.env` on the server.
 
 **Tech track: Google DeepMind, "Best Use of Gemini API".** Two model levels:
 
@@ -63,10 +75,10 @@ Level 1 is served with a standard open-source model server, not through any priv
 
 **Open, in this order:**
 
-1. Agree the round record between the app and the server, field by field.
-2. Ask the Aalto mentors: does movement in a short game say anything about mood, what the app must show when someone is in crisis, which open datasets they point to.
+1. Agree the records between the app and the server, field by field: the day, the round, the feedback.
+2. Ask the Aalto mentors: which movement signals from a phone they trust, what the app must show when someone is in crisis, which open datasets they point to.
 3. Decide where the server and the model run for the demo: a laptop at the venue or a machine at home.
-4. Decide the name and whether the sensor is the AR game or a wearable.
+4. Matthew decides the name.
 
 **Dates:** final submission Sunday 15 Nov 10:00 with the project set to FINAL, a public video of at most 2 minutes, demo link, source link, pitch deck PDF. Peer reviewing 10:30–14:00, all present.
 
@@ -121,6 +133,8 @@ Live: https://gridzilla.victronlab.sk (site at `/`, operator console at `/consol
 
 ## Layout
 
+- `docs/app-design.md` — the app screen by screen, the AR round, and how the app talks to the server.
+- `engine/` — the server and the mind (being built, lands with its tests).
 - `aalto/` — our challenge, Aalto "Beyond the Clinic": brief, judging criteria and what they provide in `CHALLENGE.md`.
 - `valioaimo/` — dropped on Friday night. The Valio Aimo brief, kept for the record.
 - `astrazeneca/` — dropped on Friday night. The AstraZeneca brief and the material they provided, kept for the record.
