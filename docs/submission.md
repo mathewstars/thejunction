@@ -55,9 +55,9 @@ Lanvi stays with the person through good weeks and dips, and steps in early.
 5. It lets go when they're back. Attention only closes after three days in a row near their normal, or once a clinician has looked.
 6. It remembers what worked, so next time it starts with that.
 
-THE BRAIN
+THE MIND
 
-Lanvi isn't a chatbot on a timer. Every new day, activity or note is checked by small watchers that decide whether something needs attention, and once something does, Lanvi holds on to it until things really recover. One good day doesn't make it forget a slow slide.
+Lanvi isn't a chatbot on a timer. Behind the fox is what we call the mind: attention, memory and learning. Every new day, activity or note is checked by small watchers that decide whether something needs attention, and once something does, Lanvi holds on to it until things really recover. One good day doesn't make it forget a slow slide.
 
 It has two kinds of memory: the person's own rules, like "not before 9", which always come first, and the lessons it learns about what helps them. Every lesson is checked against the person's real data, and they can see each one and say "not true".
 
@@ -73,7 +73,20 @@ During the first two, if the person allows it, the front camera notices how much
 
 FOR THE CLINICIAN
 
-One page with a line per patient. The people who have drifted from their normal are on top, with a short plain summary and how their recovery is going.
+One page with a line per patient. The people who have drifted from their normal are on top, with a short plain summary and how their recovery is going. Urgent cases do not wait in a dashboard: the clinician gets an alert the same day, with a case label and a link, and no health data in the message. The clinician can also read, step by step, why the system did what it did.
+
+SAFE BY DESIGN
+
+A model never decides what a patient is offered. Code picks from a fixed list.
+Every model call passes two gates: one decides what the model may see, one checks what it returned. Refusals are logged.
+Lanvi never chats freely with a patient. Its lines come from a fixed set.
+What a person types never leaves the clinic's server.
+Lanvi never diagnoses. It notices a change and nothing more.
+A lesson can only change the order of what is offered. It can never silence an alert.
+
+WHAT IS REAL AND WHAT IS NOT
+
+This is a prototype built in one weekend, not a validated measure. What works live and what we measured will be stated here before the final submission. The demo uses example data, marked as such.
 ```
 
 ## Sections to add when they are true
