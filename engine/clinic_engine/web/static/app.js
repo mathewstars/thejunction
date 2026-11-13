@@ -144,7 +144,7 @@
   function flash(msg) { const f = $("flash"); f.textContent = msg || ""; f.hidden = !msg; }
 
   // ---------------------------------------------------------------- routing
-  const TABS = [["overview", "Overview"], ["timeline", "Timeline"], ["activity", "Activity"], ["mind", "Learned"], ["log", "Log"]];
+  const TABS = [["overview", "Overview"], ["timeline", "Timeline"], ["activity", "Activity"], ["talk", "Conversation"], ["mind", "Learned"], ["log", "Log"]];
   function parseHash() {
     const parts = (location.hash || "").replace(/^#\/?/, "").split("/").filter(Boolean);
     if (parts[0] === "demo") return { view: "demo", pid: null, tab: "overview" };
@@ -367,7 +367,7 @@
       }, label));
     });
     wrap.appendChild(tabs);
-    const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, mind: tabMind, log: tabLog }[S.route.tab](d, today);
+    const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, talk: tabTalk, mind: tabMind, log: tabLog }[S.route.tab](d, today);
     wrap.appendChild(el("div", { id: "tabpanel", role: "tabpanel", "aria-labelledby": "tab-" + S.route.tab }, body));
     return wrap;
   }
@@ -744,6 +744,49 @@
   }
 
   // ---- log
+  // What the patient wrote and what Lanvi answered, in time order, with what the system did.
+  function tabTalk(d) {
+    const wrap = el("div");
+    const ev = [];
+    (d.notes || []).forEach((n) => ev.push({ at: n.at, kind: "note", n }));
+    (d.suggestions || []).forEach((s) => { if (s.created_at && s.attention_kind !== "example") ev.push({ at: s.created_at, kind: "offer", s }); });
+    (d.notify_log || []).forEach((a) => ev.push({ at: a.at, kind: "alert", a }));
+    ev.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+    wrap.appendChild(el("p", { class: "muted small" }, d.share_notes
+      ? "The patient agreed to share the words they write. Lanvi answers only with lines from a fixed set; a model labels the words and does not write to the patient."
+      : "This patient has not shared the words they write, so only the labels are shown. Lanvi answers only with lines from a fixed set."));
+    if (!ev.length) { wrap.appendChild(empty("Nothing written or offered yet.")); return wrap; }
+    const chat = el("div", { class: "chat" });
+    const who = d.display_name || d.label;
+    let day = "";
+    ev.forEach((e) => {
+      const dd = String(e.at).slice(0, 10);
+      if (dd !== day) { day = dd; chat.appendChild(el("div", { class: "chat-day" }, dd)); }
+      if (e.kind === "note") {
+        const c = e.n.classification || {};
+        chat.appendChild(el("div", { class: "msg from-patient" + (c.asks_for_help ? " help" : "") },
+          el("div", { class: "who" }, who + " · " + (e.n.source === "checkin" ? "evening check-in" : "note") + " · " + stamp(e.at)),
+          el("div", { class: "text" }, e.n.text ? e.n.text : el("span", { class: "muted" }, "words not shared")),
+          el("div", { class: "tags" },
+            el("span", { class: "chip" }, "mood: " + words(c.mood).toLowerCase()),
+            el("span", { class: "chip" }, "about: " + words(c.topic).toLowerCase()),
+            c.asks_for_help ? el("span", { class: "chip l-urgent" }, "asks for help") : null)));
+        if (e.n.reply) chat.appendChild(el("div", { class: "msg from-lanvi" },
+          el("div", { class: "who" }, "Lanvi · fixed line"), el("div", { class: "text" }, e.n.reply)));
+        if (c.crisis) chat.appendChild(el("div", { class: "chat-event urgent" }, "Help screen opened on the phone"));
+      } else if (e.kind === "offer") {
+        chat.appendChild(el("div", { class: "msg from-lanvi" },
+          el("div", { class: "who" }, "Lanvi · offer · " + stamp(e.at)), el("div", { class: "text" }, e.s.text)));
+        if (e.s.answer) chat.appendChild(el("div", { class: "msg from-patient" },
+          el("div", { class: "who" }, who + " · answer"), el("div", { class: "text" }, ANSWER[e.s.answer] || words(e.s.answer))));
+      } else {
+        chat.appendChild(el("div", { class: "chat-event urgent" },
+          e.a.outcome === "ok" ? "Needs-review message sent to the clinic · " + stamp(e.at) : "Needs-review message not sent (" + words(e.a.reason).toLowerCase() + ") · " + stamp(e.at)));
+      }
+    });
+    wrap.appendChild(chat);
+    return wrap;
+  }
   function tabLog(d) {
     const wrap = el("div", { class: "stack" });
     const ref = d.refusal_log || [];

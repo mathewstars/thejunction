@@ -269,6 +269,12 @@ def progress(mind, repo: PatientRepo, view: View, rows: list[dict]) -> dict:
             "rounds": rounds, "band": band}
 
 
+def _reply_line(note: dict) -> str | None:
+    """The fixed line Lanvi answered a note with. It is one of our own lines, never model text."""
+    from .lines import reply_templates
+    return reply_templates().get((note.get("classification") or {}).get("template_id"))
+
+
 def clinician_detail(mind, repo: PatientRepo) -> dict:
     line = clinician_line(mind, repo)
     view = mind.build_view(repo)
@@ -310,6 +316,7 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
         "notes": [{"id": n["id"], "at": n["at"], "source": n.get("source", "note"),
                    "classification": {k: n["classification"][k]
                                       for k in ("mood", "topic", "crisis", "asks_for_help", "model")},
+                   "reply": _reply_line(n),
                    **({"text": n["text"]} if share else {})} for n in repo.notes()],
         "refusal_log": refusals,
         "notify_log": notify_log,
