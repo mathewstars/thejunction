@@ -13,7 +13,9 @@ enum FocusArt {
         guard alpha > 0.01 else { return }
         let pulse = 1 + 0.09 * CGFloat(sin(t * 5 + seed))
         let r = 30 * s * pulse
-        ctx.fill(circle(c, r), with: .radialGradient(
+        var light = ctx
+        light.blendMode = .plusLighter
+        light.fill(circle(c, r), with: .radialGradient(
             Gradient(stops: [
                 .init(color: sparkGold.opacity(0.85 * alpha), location: 0),
                 .init(color: sparkWarm.opacity(0.32 * alpha), location: 0.42),
@@ -67,17 +69,19 @@ enum FocusArt {
     private static func burst(_ ctx: GraphicsContext, at c: CGPoint, k: Double, seed: Double) {
         let out = CGFloat(1 - pow(1 - k, 3))
         let fade = 1 - k
-        let flash = 34 * (0.6 + 0.6 * out)
-        ctx.fill(circle(c, flash), with: .radialGradient(
-            Gradient(colors: [sparkCore.opacity(0.9 * fade * fade), sparkGold.opacity(0)]),
+        let flash = 36 * (0.6 + 0.6 * out)
+        var light = ctx
+        light.blendMode = .plusLighter
+        light.fill(circle(c, flash), with: .radialGradient(
+            Gradient(colors: [sparkCore.opacity(fade * fade), sparkGold.opacity(0)]),
             center: c, startRadius: 0, endRadius: flash))
-        ctx.stroke(circle(c, 12 + 34 * out), with: .color(sparkGold.opacity(0.9 * fade)),
-                   lineWidth: 1 + 3 * CGFloat(fade))
+        ctx.stroke(circle(c, 12 + 30 * out), with: .color(sparkGold.opacity(fade)),
+                   lineWidth: 1 + 3.5 * CGFloat(fade))
         for i in 0..<8 {
             let a = seed + Double(i) * .pi / 4
             let d = 10 + 40 * out
             let p = CGPoint(x: c.x + CGFloat(cos(a)) * d, y: c.y + CGFloat(sin(a)) * d)
-            ctx.fill(circle(p, 3.2 * CGFloat(fade) + 0.4), with: .color(sparkCore.opacity(fade)))
+            ctx.fill(circle(p, 3.6 * CGFloat(fade) + 0.4), with: .color(sparkCore.opacity(min(1, fade * 1.5))))
         }
     }
 
@@ -91,21 +95,29 @@ enum FocusArt {
             return CGPoint(x: m * m * a.x + 2 * m * e * control.x + e * e * b.x,
                            y: m * m * a.y + 2 * m * e * control.y + e * e * b.y)
         }
-        for i in stride(from: 6, through: 1, by: -1) {
-            let p = at(k - Double(i) * 0.035)
-            ctx.fill(circle(p, 7 - CGFloat(i) * 0.8), with: .color(sparkGold.opacity(0.5 - Double(i) * 0.07)))
+        // A comet tail: many small overlapping dots that thin out and fade behind the head.
+        let steps = 22
+        for i in stride(from: steps, through: 1, by: -1) {
+            let f = Double(i) / Double(steps)
+            var seg = Path()
+            seg.move(to: at(k - f * 0.3))
+            seg.addLine(to: at(k - (f - 1 / Double(steps)) * 0.3))
+            ctx.stroke(seg, with: .color(sparkGold.opacity(0.95 * (1 - f))),
+                       style: StrokeStyle(lineWidth: 1.5 + 9 * CGFloat(1 - f), lineCap: .round))
         }
         let head = at(k)
-        ctx.fill(circle(head, 18), with: .radialGradient(
-            Gradient(colors: [sparkGold.opacity(0.9), sparkWarm.opacity(0)]),
-            center: head, startRadius: 0, endRadius: 18))
-        ctx.fill(circle(head, 5), with: .color(.white))
+        var light = ctx
+        light.blendMode = .plusLighter
+        light.fill(circle(head, 24), with: .radialGradient(
+            Gradient(colors: [sparkGold, sparkWarm.opacity(0)]),
+            center: head, startRadius: 0, endRadius: 24))
+        ctx.fill(circle(head, 6), with: .color(.white))
     }
 
     /// The snowflake softens, shrinks and becomes a drop that slides away. No colour change, no fuss.
     private static func melt(_ ctx: GraphicsContext, at c: CGPoint, k: Double, angle: Double) {
         let shrink = CGFloat(1 - k * 0.8)
-        snowflake(ctx, at: CGPoint(x: c.x, y: c.y + CGFloat(k) * 6), arm: 15 * shrink,
+        snowflake(ctx, at: CGPoint(x: c.x, y: c.y + CGFloat(k) * 6), arm: 17 * shrink,
                   alpha: max(0, 1 - k * 1.4), angle: angle, squash: 1 - CGFloat(k) * 0.4)
         if k > 0.25 {
             let d = (k - 0.25) / 0.75
@@ -155,8 +167,8 @@ struct FocusSky: View {
                     let p = engine.position(of: d, at: t)
                     let a = engine.opacity(of: d, at: t)
                     switch d.kind {
-                    case .spark: FocusArt.spark(ctx, at: p, alpha: a, time: wall, seed: d.phase)
-                    case .snow: FocusArt.snowflake(ctx, at: p, alpha: a, angle: d.phase + (t - d.born) * 0.6)
+                    case .spark: FocusArt.spark(ctx, at: p, scale: 1.15, alpha: a, time: wall, seed: d.phase)
+                    case .snow: FocusArt.snowflake(ctx, at: p, arm: 17, alpha: a, angle: d.phase + (t - d.born) * 0.6)
                     }
                 }
                 for e in engine.effects {

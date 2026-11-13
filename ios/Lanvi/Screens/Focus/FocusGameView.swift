@@ -98,6 +98,7 @@ struct FocusGameView: View {
                 SpringKeyframe(1.35, duration: 0.15, spring: .snappy)
                 SpringKeyframe(1, duration: 0.5, spring: .bouncy)
             }
+            .blendMode(.plusLighter)
             .allowsHitTesting(false)
     }
 
@@ -121,6 +122,10 @@ struct FocusGameView: View {
                 }
                 .padding(.top, h < 700 ? 14 : 22)
                 Spacer(minLength: 12)
+                Text("About 45 seconds. Stop any time.")
+                    .font(Theme.rounded(15, .semibold))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .padding(.bottom, 14)
                 Button("Start") { start() }
                     .buttonStyle(ChunkyButtonStyle())
                     .padding(.bottom, 12)
@@ -283,6 +288,7 @@ struct FocusGameView: View {
     // MARK: Timing
 
     private func run(_ phase: Phase) async {
+        if demo { print("focus: phase \(phase)") }
         switch phase {
         case .intro:
             guard demo else { return }
