@@ -300,6 +300,57 @@ class ClinicMeOut(BaseModel):
     demo: ClinicDemo
 
 
+TraceLayer = Literal["trigger", "watchers", "attention", "response", "level1", "level2",
+                     "notifier", "learning"]
+
+
+class TraceEntryOut(BaseModel):
+    id: str
+    at: str
+    chain_id: str
+    layer: TraceLayer = Field(description="Step of the loop, in this order: trigger, watchers, "
+                                          "attention, response, level1, level2, notifier, learning.")
+    code: str = Field(description="Short machine code for what happened, e.g. opened, suggested.")
+    detail: dict = Field(description="Codes, ids, enums and numbers only. Never note text.")
+    notable: bool = Field(description="This step changed something: opened or raised attention, "
+                                      "made a suggestion, sent or queued a message, or refused "
+                                      "a model answer.")
+
+
+class TraceChainOut(BaseModel):
+    chain_id: str
+    at: str
+    trigger: str
+    changed: bool
+    entries: list[TraceEntryOut]
+
+
+class TraceLastAction(BaseModel):
+    at: str
+    layer: TraceLayer
+    code: str
+    detail: dict
+    chain_id: str
+
+
+class TraceCurrentItem(BaseModel):
+    attention_id: str
+    kind: str
+    level: str
+    since: str
+    level_rule: Optional[str] = Field(None, description="The rule that set the current level.")
+    level_detail: dict
+    level_chain_id: Optional[str] = None
+    opened_chain_id: Optional[str] = None
+    last_action: Optional[TraceLastAction] = None
+
+
+class TraceOut(BaseModel):
+    status: str
+    current: list[TraceCurrentItem]
+    chains: list[TraceChainOut] = Field(description="Newest first.")
+
+
 # ---- admin / demo ---------------------------------------------------------------------
 
 class ScenarioIn(Strict):

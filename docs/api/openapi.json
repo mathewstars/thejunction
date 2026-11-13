@@ -1377,6 +1377,153 @@
         }
       }
     },
+    "/v1/clinic/patients/{patient_id}/trace": {
+      "get": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "How the mind reasoned: chains of steps per trigger, newest first",
+        "description": "Each chain ties together everything one trigger caused, layer by layer:\ntrigger, watchers, attention, response (code), level 1, level 2, notifier,\nlearning. `current` explains each held attention item: its level, the rule\nthat set it, and what the system last did about it. Codes, ids, enums and\nnumbers only: never note text.",
+        "operationId": "patient_trace_v1_clinic_patients__patient_id__trace_get",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "chain_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Chain Id"
+            }
+          },
+          {
+            "name": "attention_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Attention Id"
+            }
+          },
+          {
+            "name": "changed_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Only chains that changed something.",
+              "default": false,
+              "title": "Changed Only"
+            },
+            "description": "Only chains that changed something."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 30,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraceOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/clinic/attention/{attention_id}/ack": {
       "post": {
         "tags": [
@@ -3111,6 +3258,252 @@
           "product_name"
         ],
         "title": "TodayOut"
+      },
+      "TraceChainOut": {
+        "properties": {
+          "chain_id": {
+            "type": "string",
+            "title": "Chain Id"
+          },
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "trigger": {
+            "type": "string",
+            "title": "Trigger"
+          },
+          "changed": {
+            "type": "boolean",
+            "title": "Changed"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/TraceEntryOut"
+            },
+            "type": "array",
+            "title": "Entries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chain_id",
+          "at",
+          "trigger",
+          "changed",
+          "entries"
+        ],
+        "title": "TraceChainOut"
+      },
+      "TraceCurrentItem": {
+        "properties": {
+          "attention_id": {
+            "type": "string",
+            "title": "Attention Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "level": {
+            "type": "string",
+            "title": "Level"
+          },
+          "since": {
+            "type": "string",
+            "title": "Since"
+          },
+          "level_rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Rule",
+            "description": "The rule that set the current level."
+          },
+          "level_detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Level Detail"
+          },
+          "level_chain_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Chain Id"
+          },
+          "opened_chain_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opened Chain Id"
+          },
+          "last_action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceLastAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "attention_id",
+          "kind",
+          "level",
+          "since",
+          "level_detail"
+        ],
+        "title": "TraceCurrentItem"
+      },
+      "TraceEntryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "chain_id": {
+            "type": "string",
+            "title": "Chain Id"
+          },
+          "layer": {
+            "type": "string",
+            "enum": [
+              "trigger",
+              "watchers",
+              "attention",
+              "response",
+              "level1",
+              "level2",
+              "notifier",
+              "learning"
+            ],
+            "title": "Layer",
+            "description": "Step of the loop, in this order: trigger, watchers, attention, response, level1, level2, notifier, learning."
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Short machine code for what happened, e.g. opened, suggested."
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail",
+            "description": "Codes, ids, enums and numbers only. Never note text."
+          },
+          "notable": {
+            "type": "boolean",
+            "title": "Notable",
+            "description": "This step changed something: opened or raised attention, made a suggestion, sent or queued a message, or refused a model answer."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "at",
+          "chain_id",
+          "layer",
+          "code",
+          "detail",
+          "notable"
+        ],
+        "title": "TraceEntryOut"
+      },
+      "TraceLastAction": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "layer": {
+            "type": "string",
+            "enum": [
+              "trigger",
+              "watchers",
+              "attention",
+              "response",
+              "level1",
+              "level2",
+              "notifier",
+              "learning"
+            ],
+            "title": "Layer"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail"
+          },
+          "chain_id": {
+            "type": "string",
+            "title": "Chain Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "layer",
+          "code",
+          "detail",
+          "chain_id"
+        ],
+        "title": "TraceLastAction"
+      },
+      "TraceOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "current": {
+            "items": {
+              "$ref": "#/components/schemas/TraceCurrentItem"
+            },
+            "type": "array",
+            "title": "Current"
+          },
+          "chains": {
+            "items": {
+              "$ref": "#/components/schemas/TraceChainOut"
+            },
+            "type": "array",
+            "title": "Chains",
+            "description": "Newest first."
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "current",
+          "chains"
+        ],
+        "title": "TraceOut"
       },
       "Tracking": {
         "properties": {

@@ -106,6 +106,8 @@ class UrgentNotifications:
         self.policy = NotifyPolicy(settings.notify_hours, settings.clinic_timezone,
                                    settings.notify_queue_outside_hours)
         self._sent_times: deque[float] = deque()
+        # Set by the mind: records each outcome in the decision trace. Never decides.
+        self.trace_hook = None
 
     def _key(self, clinic_id: str, item_id: str, level: str) -> str:
         return f"clinics/{clinic_id}/notify/{item_id}-{level}.json"
@@ -115,6 +117,11 @@ class UrgentNotifications:
                     action="notify_urgent", outcome=outcome, reason=reason,
                     detail={"attention_id": item_id, "level": level,
                             "mode": self.settings.notify_mode})
+        if self.trace_hook is not None:
+            try:
+                self.trace_hook(clinic_id, patient_id, outcome, reason, item_id, level)
+            except Exception:  # noqa: BLE001 - the trace never breaks a send
+                log.warning("notify trace not recorded")
 
     async def on_level(self, now: datetime, clinic_id: str, patient: dict, item: dict) -> None:
         """Called when an item first reaches a level. Only urgent is sent."""

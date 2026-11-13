@@ -16,6 +16,8 @@ from .catalog import ACTIONS
 from .repo import PatientRepo
 from .round_configs import ROUND_DURATION_S
 from .rounds import pick_round_config
+from .baseline import baseline_for
+from .thresholds import METRICS
 from .watchers import LEVELS, View, compute_status, deviation_now, silent
 
 PATIENT_SUMMARY = {
@@ -112,7 +114,12 @@ def clinician_line(mind, repo: PatientRepo) -> dict:
 def progress(mind, repo: PatientRepo, view: View, rows: list[dict]) -> dict:
     """Derived data a dashboard can chart directly."""
     series = [{"date": s["date"], "z": s["z"], "movement_z": s["movement_z"],
-               "example": s["example"]} for s in view.series]
+               "example": s["example"],
+               "values": {m: view.days.get(s["date"], {}).get(m) for m in METRICS
+                          if view.days.get(s["date"], {}).get(m) is not None}}
+              for s in view.series]
+    base = baseline_for(view.days, view.today, view.th)
+    usual = {m: round(b["median"], 2) for m, b in base.items()}
     weeks = []
     start = view.today - timedelta(days=view.today.weekday()) - timedelta(weeks=5)
     for w in range(6):
@@ -152,6 +159,8 @@ def progress(mind, repo: PatientRepo, view: View, rows: list[dict]) -> dict:
                            "config_id": r["config"]["config_id"], "quality": r["quality"],
                            "energy": r.get("energy"), "energy_bucket": r.get("energy_bucket"),
                            "ended_by": r["ended_by"], "example": bool(r.get("example")),
+                           "completed": bool(r.get("completed")),
+                           "after_suggestion": bool(r.get("suggestion_id")),
                            "reading": ((r.get("analysis") or {}).get("reading") or {}).get("pattern")}
                           for r in view.rounds],
         "played_vs_offered": {
@@ -163,7 +172,8 @@ def progress(mind, repo: PatientRepo, view: View, rows: list[dict]) -> dict:
     band = {"low_z": view.th.low_day_z, "high_z": -view.th.low_day_z,
             "novelty_z": view.th.novelty_z,
             "meaning": "z between low_z and high_z is within the person's own normal"}
-    return {"series": series, "weekly": weeks, "episodes": episodes, "actions": actions,
+    return {"today": view.today.isoformat(), "series": series, "usual": usual,
+            "weekly": weeks, "episodes": episodes, "actions": actions,
             "rounds": rounds, "band": band}
 
 
@@ -175,6 +185,9 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
     share = bool(patient.get("share_notes"))
     lessons = repo.lessons_doc().get("lessons", [])
     refusals = list_audit(mind.store, repo.clinic_id, repo.patient_id, outcome="refused", limit=50)
+    # Notifier sends and suppressions (both outcomes), for the safety log.
+    notify_log = [e for e in list_audit(mind.store, repo.clinic_id, repo.patient_id, limit=400)
+                  if e.get("action") == "notify_urgent"][:50]
     return {
         **line,
         "share_notes": share,
@@ -204,6 +217,9 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
                                       for k in ("mood", "topic", "crisis", "asks_for_help", "model")},
                    **({"text": n["text"]} if share else {})} for n in repo.notes()],
         "refusal_log": refusals,
+        "notify_log": notify_log,
+        "rules": [{k: r.get(k) for k in ("id", "type", "params", "created_at")}
+                  for r in repo.rules()],
         "draft_wording": {"help_block_reviewed_by_clinician": help_block(mind.settings)["reviewed_by_clinician"],
                           "note_lexicon_reviewed_by_clinician": lexicon_reviewed()},
         "progress": progress(mind, repo, view, rows),

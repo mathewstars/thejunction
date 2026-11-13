@@ -3,12 +3,16 @@ keys are built from the token's clinic id, never from the request."""
 
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, Path, Request
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Path, Query, Request
 
 from .. import service
 from ..audit import write_audit
+from ..mind import trace as trace_mod
 from ..mind import views
-from ..models import ClinicMeOut, LoginIn, LoginOut
+from ..mind.watchers import compute_status
+from ..models import ClinicMeOut, LoginIn, LoginOut, TraceOut
 from ..security import Principal, dummy_verify, issue_token, sha256_hex, verify_password
 from ..service import ApiError
 from .deps import clinician_only, ctx_of, demo_clinic_id, errors, open_rate_limit, rid_of
@@ -108,6 +112,29 @@ async def patient_round(request: Request, patient_id: str = Path(pattern=SID),
     if out is None:
         raise ApiError(404, "not_found", "Round not found.")
     return out
+
+
+@router.get("/patients/{patient_id}/trace", response_model=TraceOut,
+            responses=errors(401, 403, 404, 422, 429),
+            summary="How the mind reasoned: chains of steps per trigger, newest first")
+async def patient_trace(request: Request, patient_id: str = Path(pattern=SID),
+                        chain_id: Optional[str] = Query(None, pattern=SID),
+                        attention_id: Optional[str] = Query(None, pattern=SID),
+                        changed_only: bool = Query(False, description="Only chains that changed "
+                                                   "something."),
+                        limit: int = Query(30, ge=1, le=100),
+                        p: Principal = Depends(clinician_only)):
+    """Each chain ties together everything one trigger caused, layer by layer:
+    trigger, watchers, attention, response (code), level 1, level 2, notifier,
+    learning. `current` explains each held attention item: its level, the rule
+    that set it, and what the system last did about it. Codes, ids, enums and
+    numbers only: never note text."""
+    ctx = ctx_of(request)
+    repo = _patient_repo(request, p, patient_id)
+    entries = trace_mod.load_entries(ctx.store, p.clinic_id, patient_id)
+    return {"status": compute_status(ctx.mind.build_view(repo)),
+            "current": trace_mod.current_state(entries, repo.items()),
+            "chains": trace_mod.chains(entries, chain_id, attention_id, changed_only, limit)}
 
 
 @router.post("/attention/{attention_id}/ack", responses=errors(401, 403, 404, 409, 429),

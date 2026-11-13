@@ -35,6 +35,7 @@ def test_page_has_strict_csp_and_security_headers(env, path):
     assert "default-src 'none'" in csp
     assert "script-src 'self'" in csp and "style-src 'self'" in csp
     assert "connect-src 'self'" in csp and "frame-ancestors 'none'" in csp
+    assert "font-src 'self'" in csp
     assert "unsafe-inline" not in csp and "unsafe-eval" not in csp and "http" not in csp
     assert h["x-frame-options"] == "DENY"
     assert h["x-content-type-options"] == "nosniff"
@@ -66,7 +67,19 @@ def test_no_outside_resources():
         urls = re.findall(r"(?:https?:)?//[A-Za-z0-9.-]+\.[A-Za-z]{2,}[^\s\"')]*", text)
         # The only URL allowed is the SVG namespace name (an identifier, never fetched).
         assert all(u == "http://www.w3.org/2000/svg" for u in urls), (name, urls)
-        assert "@import" not in text and "url(" not in text
+        assert "@import" not in text
+        # The only url() allowed: the self-hosted font files, by relative path.
+        for u in re.findall(r"url\(([^)]*)\)", text):
+            assert re.fullmatch(r'"fonts/archivo-latin(-ext)?\.woff2"', u), (name, u)
+
+
+def test_font_is_self_hosted_with_its_licence(env):
+    for f in ("archivo-latin.woff2", "archivo-latin-ext.woff2"):
+        r = env.client.get("/static/fonts/" + f)
+        assert r.status_code == 200 and r.content[:4] == b"wOF2"
+        assert r.headers["content-type"] == "font/woff2"
+    lic = env.client.get("/static/fonts/OFL.txt")
+    assert lic.status_code == 200 and "SIL Open Font License" in lic.text
 
 
 def test_html_has_no_inline_script_style_or_handlers():
@@ -77,13 +90,16 @@ def test_html_has_no_inline_script_style_or_handlers():
         assert tag in HTML
 
 
-def test_css_variables_in_one_root_block_with_light_and_dark():
+def test_css_variables_in_one_root_block_dark_only():
     assert len(re.findall(r":root\s*{", CSS)) == 1
     root = CSS[re.search(r":root\s*{", CSS).start():]
     root_block, rest = root[:root.index("\n}") + 2], CSS.replace(root[:root.index("\n}") + 2], "")
     assert re.search(r"--[a-z-]+:", root_block)
     assert not re.search(r"--[a-z-]+:", rest)  # no variable is defined outside :root
-    assert "light-dark(" in CSS and "color-scheme: light dark" in CSS
+    assert "light-dark(" not in CSS and "color-scheme: dark" in CSS
+    for token in ("#0f0f13", "#17171d", "#26262e", "#f3f0ea", "#9d9daa",
+                  "#f5a623", "#f08a1c", "#e8431e", "#8f1a1a", "#5e0f0f"):
+        assert token in root_block, token
     assert "gradient" not in CSS
     assert ":focus-visible" in CSS
 
@@ -208,3 +224,27 @@ def test_demo_off_admin_only():
                 env.A).status_code == 200
     assert post(env, "/v1/demo/tick", None, env.A).status_code == 200
     assert post(env, "/v1/demo/reset", None, env.A).status_code == 404
+
+
+def test_detail_has_what_the_tabs_need(env):
+    C = env.C()
+    pid = env.demo["patient_id"]
+    d = env.client.get(f"/v1/clinic/patients/{pid}", headers=C).json()
+    pr = d["progress"]
+    assert pr["today"] == "2026-11-13"
+    assert pr["usual"]["steps"] > 0  # the current own-normal median, for the readout
+    day = pr["series"][-1]
+    assert day["values"]["steps"] > 0 and "walking_speed_m_s" in day["values"]
+    r = pr["rounds"]["energy_series"][-1]
+    assert r["completed"] is True and r["after_suggestion"] is False
+    assert d["rules"] == [] and isinstance(d["notify_log"], list)
+
+
+def test_notify_log_lists_sends_and_suppressions():
+    env = Env()  # notify mode is off: an urgent item is recorded as not sent
+    env.client.post("/v1/notes", headers=env.H, json={"id": "note-0001-abcd",
+                                                      "text": "I need help tonight"})
+    pid = env.demo["patient_id"]
+    d = env.client.get(f"/v1/clinic/patients/{pid}", headers=env.C()).json()
+    assert d["notify_log"] and all(e["action"] == "notify_urgent" for e in d["notify_log"])
+    assert d["notify_log"][0]["reason"] == "notify_off"

@@ -37,7 +37,8 @@ from .gates import INPUT_GATE, OUTPUT_GATE, GateError, GateRefusal
 from .repo import PatientRepo
 from .respond import blocked_reason, needs_response, pick_action, rank_actions
 from .thresholds import T, Thresholds
-from .watchers import LEVELS, RESPONDABLE, Op, View, escalate, run_watchers
+from .trace import Tracer, trigger_detail, watcher_facts
+from .watchers import LEVELS, RESPONDABLE, WATCHERS, Op, View, escalate
 
 log = logging.getLogger("clinic_engine.mind")
 
@@ -107,6 +108,10 @@ class Mind:
         self.th = th
         self.bus = Bus()
         self.bus.subscribe("*", self._on_event)
+        # The decision trace: describes each step, never decides (see trace.py).
+        self.tracer = Tracer(store, clock)
+        if notifications is not None:
+            notifications.trace_hook = self._trace_notify
         self._locks: dict[tuple[str, str], asyncio.Lock] = {}
         self._tasks: set[asyncio.Task] = set()
 
@@ -124,7 +129,23 @@ class Mind:
     async def publish(self, kind: str, clinic_id: str, patient_id: str, **data) -> None:
         """Caller must hold self.lock(clinic_id, patient_id)."""
         ev = Event(kind, clinic_id, patient_id, self.clock.now().isoformat(), data)
-        await self.bus.publish(ev)
+        with self.tracer.chain(clinic_id, patient_id, kind):
+            await self.bus.publish(ev)
+
+    def trace(self, repo: PatientRepo, layer: str, code: str, detail: dict | None = None,
+              notable: bool = False) -> None:
+        """Record one step of the current chain. Never raises."""
+        self.tracer.add(repo.clinic_id, repo.patient_id, layer, code, detail, notable)
+
+    def _trace_notify(self, clinic_id: str, patient_id: str, outcome: str, reason: str,
+                      item_id: str, level: str) -> None:
+        code = {"sent": "sent", "outside_hours_queued": "queued"}.get(reason, "suppressed")
+        if reason == "send_failed":
+            code = "failed"
+        self.tracer.add(clinic_id, patient_id, "notifier", code,
+                        {"attention_id": item_id, "level": level, "reason": reason,
+                         "mode": self.settings.notify_mode},
+                        notable=code in ("sent", "queued"), kind="queued_message_due")
 
     def audit(self, repo: PatientRepo, action: str, outcome: str = "ok", reason: str | None = None,
               actor: str = "mind", **detail) -> None:
@@ -177,6 +198,9 @@ class Mind:
         if patient is None:
             return
         now = self.clock.now()
+        ch = self.tracer.current(ev.clinic_id, ev.patient_id)
+        if ch is not None and not ch.has_trigger:
+            ch.add("trigger", ev.kind, trigger_detail(repo, ev.kind, ev.data))
         self.expire_suggestions(repo, now)
         await self.observe(repo, patient, now)
         await self.respond(repo, now)
@@ -202,10 +226,28 @@ class Mind:
 
     async def observe(self, repo: PatientRepo, patient: dict, now: datetime) -> list[dict]:
         view = self.build_view(repo, now)
-        for op in run_watchers(view):
+        fired, quiet, all_ops = [], [], []
+        for w in WATCHERS:  # the same order as run_watchers(); all run before any apply
+            name = w.__name__.removeprefix("watch_")
+            ops = w(view)
+            all_ops.extend(ops)
+            if not ops:
+                quiet.append(name)
+            for op in ops:
+                fired.append({"watcher": name, "op": op.op, "kind": op.kind,
+                              "reason": op.reason, "level": op.level if op.op != "close" else None,
+                              "detail": op.detail})
+        for op in all_ops:
             self._apply(repo, op, now)
+        try:
+            facts = watcher_facts(view)
+        except Exception:  # noqa: BLE001
+            facts = {}
+        self.trace(repo, "watchers", "fired" if fired else "quiet",
+                   {"fired": fired, "quiet": quiet, "facts": facts})
         view = self.build_view(repo, now)
-        levels = escalate(view.items, view)
+        why: dict[str, str] = {}
+        levels = escalate(view.items, view, why)
         for it in view.items:
             if it["state"] != "open":
                 continue
@@ -217,6 +259,10 @@ class Mind:
                 repo.put(f"attention/{it['id']}.json", it)
                 self.audit(repo, "attention_escalate", attention_id=it["id"], kind=it["kind"],
                            from_level=old, level=new)
+                self.trace(repo, "attention", "raised",
+                           {"attention_id": it["id"], "kind": it["kind"], "from_level": old,
+                            "level": new, "rule": why.get(it["id"]),
+                            "facts": it.get("detail") or {}}, notable=True)
         # The first time an item is urgent, ask the notifier (it deduplicates too).
         reached_urgent = [it for it in repo.items() if it["state"] == "open"
                           and it["level"] == "urgent" and not it.get("notified_urgent")]
@@ -228,6 +274,8 @@ class Mind:
             except Exception as exc:  # noqa: BLE001 - a notifier must never break ingest
                 log.warning("notification step failed: %s", type(exc).__name__)
                 self.audit(repo, "notify_urgent", "refused", "notifier_error", attention_id=it["id"])
+                self.trace(repo, "notifier", "failed", {"attention_id": it["id"],
+                                                         "reason": "notifier_error"})
         return repo.items()
 
     def _apply(self, repo: PatientRepo, op: Op, now: datetime) -> None:
@@ -242,6 +290,9 @@ class Mind:
                            {"patient_id": repo.patient_id})
             self.audit(repo, "attention_open", attention_id=item["id"], kind=op.kind,
                        level=op.level, reason_code=op.reason)
+            self.trace(repo, "attention", "opened",
+                       {"attention_id": item["id"], "kind": op.kind, "level": op.level,
+                        "since": op.since, "rule": op.reason, "facts": op.detail}, notable=True)
             return
         item = repo.get(f"attention/{op.item_id}.json")
         if not item or item["state"] != "open":
@@ -252,6 +303,10 @@ class Mind:
                 item["detail"] = op.detail
                 changed = True
             if LEVELS.index(op.level) > LEVELS.index(item["level"]):
+                self.trace(repo, "attention", "raised",
+                           {"attention_id": item["id"], "kind": item["kind"],
+                            "from_level": item["level"], "level": op.level,
+                            "rule": f"{item['kind']}_watcher", "facts": op.detail}, notable=True)
                 item.update(level=op.level, peak_level=op.level, level_changed_at=now_s)
                 item["history"].append({"at": now_s, "event": "level", "level": op.level})
                 changed = True
@@ -269,6 +324,9 @@ class Mind:
         repo.put(f"attention/{item['id']}.json", item)
         self.audit(repo, "attention_close", actor=actor, attention_id=item["id"],
                    kind=item["kind"], reason_code=reason)
+        self.trace(repo, "attention", "closed",
+                   {"attention_id": item["id"], "kind": item["kind"], "level": item["level"],
+                    "rule": reason, "by": "clinician" if actor.startswith("clinician") else "mind"})
 
     # ---- 4: respond ------------------------------------------------------------------------
 
@@ -278,6 +336,11 @@ class Mind:
         items, suggestions = repo.items(), repo.suggestions()
         target = needs_response(items, suggestions, today, RESPONDABLE)
         if target is None:
+            held = [i for i in items if i["state"] == "open"]
+            self.trace(repo, "response", "none", {
+                "because": "already_answered_today" if any(i["kind"] in RESPONDABLE for i in held)
+                else "no_held_item_to_answer" if not held else "held_items_need_a_clinician",
+                "held": [i["kind"] for i in held]})
             return None
         rules = repo.rules()
         blocked = blocked_reason(rules, suggestions, local, now, self.th)
@@ -286,12 +349,19 @@ class Mind:
             if st.get("last_blocked") != blocked:
                 st["last_blocked"] = blocked
                 repo.save_state(st)
+            self.trace(repo, "response", "blocked", {"attention_id": target["id"],
+                                                     "kind": target["kind"], "because": blocked})
             return None
         lessons = repo.lessons_doc().get("lessons", [])
         action = pick_action(rules, lessons, local)
         if action is None:
             self.audit(repo, "suggestion", "refused", "no_action_allowed_by_rules")
+            self.trace(repo, "response", "none", {"attention_id": target["id"],
+                                                  "kind": target["kind"],
+                                                  "because": "no_action_allowed_by_rules"})
             return None
+        explain: dict = {}
+        rank_actions(rules, lessons, local, explain)
         text, wording = await self.word(repo, action)
         considered = [x["id"] for x in lessons if x.get("status") == "active"]
         s = {"id": new_id("sug"), "action": action, "text": text, "wording": wording,
@@ -302,20 +372,35 @@ class Mind:
         repo.put(f"suggestions/{s['id']}.json", s)
         self.audit(repo, "suggestion", suggestion_id=s["id"], action_id=action, wording=wording,
                    attention_id=target["id"])
+        self.trace(repo, "response", "suggested",
+                   {"attention_id": target["id"], "kind": target["kind"], "action": action,
+                    "wording": wording, "suggestion_id": s["id"], "ranking": explain},
+                   notable=True)
         return s
 
     async def word(self, repo: PatientRepo, action: str) -> tuple[str, str]:
         """Level 1 may word the action; the output gate decides; else the template."""
         template = ACTIONS[action].template
         if not getattr(self.local, "configured", False):
+            self.trace(repo, "level1", "off", {"task": "wording", "used": "template"})
             return template, "template"
         pack = INPUT_GATE.wording_pack(action)
         raw = await self.local.complete(pack)
         res = OUTPUT_GATE.wording(raw, action)
+        saw = {"fields": sorted(pack.payload), "action": action}
         if res.ok:
+            self.trace(repo, "level1", "accepted",
+                       {"task": "wording", "saw": saw,
+                        "returned": {"sentence_words": len(res.value.split())},
+                        "verdict": "accepted", "used": "model"})
             return res.value, "model"
         for r in res.refusals:
             self.refuse(repo, r)
+        self.trace(repo, "level1", "no_reply" if raw is None else "refused",
+                   {"task": "wording", "saw": saw,
+                    "returned": None if raw is None else {"sentence_words": len(raw.split())},
+                    "verdict": "refused", "reasons": [r.reason for r in res.refusals],
+                    "used": "template"}, notable=raw is not None)
         return template, "template"
 
     # ---- 5: learn ----------------------------------------------------------------------
@@ -348,6 +433,10 @@ class Mind:
         return rows, series
 
     async def run_review(self, repo: PatientRepo, trigger: str) -> dict:
+        with self.tracer.chain(repo.clinic_id, repo.patient_id, "review_" + trigger):
+            return await self._run_review(repo, trigger)
+
+    async def _run_review(self, repo: PatientRepo, trigger: str) -> dict:
         now = self.clock.now()
         today = repo.local(now).date()
         review_id = new_id("rev")
@@ -359,7 +448,8 @@ class Mind:
 
         # Code first: deterministic candidates, validated like any proposal.
         accepted: list[dict] = []
-        for c in learn.code_candidates(rows, self.th):
+        code_cands = learn.code_candidates(rows, self.th)
+        for c in code_cands:
             v = learn.validate_lesson(c, rows, doc, self.th)
             if v.ok:
                 accepted.append({**c, "source": "code"})
@@ -378,9 +468,24 @@ class Mind:
                                           rounds=repo.rounds())
             raw = await self.local.complete(pack, json_mode=True)
             models["level1"] = "no_reply" if raw is None else "replied"
+            l1 = {"task": "review", "saw": {"fields": sorted(k for k in pack.payload
+                                                            if k != "alias"),
+                                            "evidence_rows": len(rows)}}
+            if raw is None:
+                self.trace(repo, "level1", "no_reply", {**l1, "verdict": "no_reply",
+                                                        "used": "code_only"})
             if raw is not None:
                 res = OUTPUT_GATE.review(raw, pack, rows, doc, questions)
                 refusals.extend(res.refusals)
+                self.trace(repo, "level1", "accepted" if res.ok and not res.refusals
+                           else "partly_refused" if res.ok else "refused",
+                           {**l1, "returned": {
+                               "lessons": len(res.value["lessons"]) if res.ok else None,
+                               "questions": len(res.value["questions"]) if res.ok else None},
+                            "verdict": "accepted" if res.ok else "refused",
+                            "reasons": [r.reason for r in res.refusals],
+                            "used": "model_and_code" if res.ok else "code_only"},
+                           notable=bool(res.refusals))
                 if res.ok:
                     keys = {(a["action"], a["effect"], a["context"], a.get("config_id"))
                             for a in accepted}
@@ -403,6 +508,15 @@ class Mind:
                 raw2 = await self.outreach.gemini_complete(pack2)
                 res2 = OUTPUT_GATE.second_opinion(raw2, pack2)
                 refusals.extend(res2.refusals)
+                self.trace(repo, "level2", "accepted" if res2.ok else "refused", {
+                    "task": "second_opinion", "anonymized": True,
+                    "sent_fields": sorted(k for k in pack2.payload if k != "alias"),
+                    "lessons_sent": len(accepted),
+                    "returned": {"objections": sorted(set(res2.value.values()))
+                                 if res2.ok else None},
+                    "verdict": "accepted" if res2.ok else "refused",
+                    "reasons": [r.reason for r in res2.refusals]},
+                    notable=raw2 is not None and not res2.ok)
                 if res2.ok:
                     models["level2"] = "replied"
                     kept = []
@@ -418,6 +532,8 @@ class Mind:
             except GateError as ge:
                 refusals.append(ge.refusal)
                 models["level2"] = "input_refused"
+                self.trace(repo, "level2", "not_sent", {"task": "second_opinion",
+                                                        "reason": ge.refusal.reason})
 
         applied = learn.apply_lessons(doc, accepted, rows, now, review_id, self.th)
         repo.put("mind/lessons.json", doc)
@@ -453,6 +569,13 @@ class Mind:
         repo.save_state(st)
         self.audit(repo, "review", review_id=review_id, trigger=trigger,
                    added=len(applied.added), refused=len(refusals))
+        self.trace(repo, "learning", "review", {
+            "review_id": review_id, "trigger": trigger, "evidence_rows": len(rows),
+            "proposed_by_code": len(code_cands), "models": models,
+            "accepted": review["accepted"], "added": len(applied.added),
+            "refreshed": len(applied.refreshed), "retired": review["retired"],
+            "refused": [{"by": r.gate, "level": r.level, "reason": r.reason} for r in refusals],
+            "questions_added": len(added_q)})
         return review
 
     # ---- the movement reading (level 2, background) --------------------------------------
@@ -490,6 +613,10 @@ class Mind:
         return min(good[-20:], key=lambda r: abs(r.get("energy") or 0.0))
 
     async def run_reading(self, repo: PatientRepo, round_id: str, take_lock: bool = False) -> dict:
+        with self.tracer.chain(repo.clinic_id, repo.patient_id, "reading_requested"):
+            return await self._run_reading(repo, round_id, take_lock)
+
+    async def _run_reading(self, repo: PatientRepo, round_id: str, take_lock: bool) -> dict:
         rec = repo.get(f"rounds/{round_id}.json")
         if rec is None:
             return {"status": "failed"}
@@ -517,6 +644,25 @@ class Mind:
         except GateError as ge:
             refusals.append(ge.refusal)
             analysis["reason"] = "input_refused"
+        try:
+            reading = analysis.get("reading") or {}
+            self.trace(repo, "level2", "accepted" if analysis["status"] == "ready" else
+                       "not_sent" if analysis.get("reason") == "input_refused" else
+                       "no_reply" if analysis.get("reason") == "no_reply" else "refused", {
+                           "task": "reading", "round_id": round_id, "anonymized": True,
+                           "sent_fields": ["mode", "duration_s", "lights (timing per light)",
+                                           "path (relative, turned)", "usual round"],
+                           "returned": {k: reading.get(k) for k in
+                                        ("pattern", "fade_from_light", "reach", "turning",
+                                         "compared_to_usual", "confidence")} or None,
+                           "confirmed": [e.get("claim") for e in reading.get("evidence", [])],
+                           "dropped": [{"field": d.get("field"), "reason": d.get("reason")}
+                                       for d in analysis.get("dropped", [])],
+                           "verdict": analysis["status"],
+                           "reasons": [r.reason for r in refusals]},
+                       notable=bool(refusals))
+        except Exception:  # noqa: BLE001
+            pass
 
         async def store() -> None:
             cur = repo.get(f"rounds/{round_id}.json")

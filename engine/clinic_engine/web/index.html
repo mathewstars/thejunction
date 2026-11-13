@@ -5,67 +5,45 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark">
 <title>Clinician page</title>
 <link rel="stylesheet" href="/static/app.css">
 <script src="/static/app.js" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="top">
-  <div class="brand">
-    <span id="product-name" class="product">Clinician page</span>
+<header class="topbar">
+  <span id="product-name" class="product">Clinician page</span>
+  <div id="who" class="who" hidden>
     <span id="clinic-name" class="clinic"></span>
+    <button type="button" id="logout" class="pill pill-outline">Sign out</button>
   </div>
-  <nav id="top-nav" class="top-nav" hidden>
-    <a href="#/patients">Patients</a>
-    <button type="button" id="logout" class="link-button">Log out</button>
-  </nav>
 </header>
+<div class="band" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+<div id="top-tabs" class="tabs top-tabs" role="tablist" aria-label="Main sections" hidden>
+  <button type="button" role="tab" id="tab-patients" aria-controls="panel-patients" aria-selected="true" data-route="#/patients">Patients</button>
+  <button type="button" role="tab" id="tab-demo" aria-controls="panel-demo" aria-selected="false" tabindex="-1" data-route="#/demo" hidden>Demo</button>
+</div>
 
 <main id="main" tabindex="-1">
   <p id="flash" class="flash" role="status" aria-live="polite" hidden></p>
 
-  <section id="view-login" class="card narrow" hidden>
-    <h1>Log in</h1>
+  <section id="view-login" class="panel narrow" aria-labelledby="login-title" hidden>
+    <p class="eyebrow">Clinic staff</p>
+    <h1 id="login-title">Sign in</h1>
     <form id="login-form" novalidate>
       <label for="login-user">Username</label>
       <input id="login-user" name="username" autocomplete="username" required maxlength="64">
       <label for="login-pass">Password</label>
       <input id="login-pass" name="password" type="password" autocomplete="current-password" required maxlength="256">
-      <button type="submit" class="primary">Log in</button>
+      <button type="submit" class="pill pill-primary">Sign in</button>
       <p id="login-error" class="error" role="alert" hidden></p>
     </form>
-    <p class="muted">For clinic staff. Every action is logged.</p>
+    <p class="muted small">Every action is logged.</p>
   </section>
 
-  <section id="view-list" hidden>
-    <div class="head-row">
-      <h1>Patients</h1>
-      <button type="button" id="refresh-list" class="secondary">Refresh</button>
-    </div>
-    <p class="muted">Those who need a look come first. Each person is compared only with their own normal.</p>
-    <div id="legend" class="legend" aria-label="Legend"></div>
-    <ol id="patient-list" class="patients"></ol>
-  </section>
-
-  <section id="view-patient" hidden></section>
-
-  <section id="view-round" hidden></section>
-
-  <aside id="demo-panel" class="card demo" hidden aria-labelledby="demo-title">
-    <h2 id="demo-title">Demo</h2>
-    <p class="muted">Demo mode is on. These controls change example data only.</p>
-    <p id="demo-target" class="muted"></p>
-    <div class="button-row">
-      <button type="button" data-demo="scenario-normal" class="secondary">Scenario: normal</button>
-      <button type="button" data-demo="scenario-dip" class="secondary">Scenario: dip</button>
-      <button type="button" data-demo="review" class="secondary">Run review</button>
-      <button type="button" data-demo="analyze" class="secondary" hidden>Run movement reading again</button>
-      <button type="button" data-demo="tick" class="secondary">Tick</button>
-      <button type="button" data-demo="reset" class="secondary">Reset demo patient</button>
-    </div>
-    <p id="demo-result" class="muted" role="status" aria-live="polite"></p>
-  </aside>
+  <section id="panel-patients" role="tabpanel" aria-labelledby="tab-patients" hidden></section>
+  <section id="panel-demo" role="tabpanel" aria-labelledby="tab-demo" hidden></section>
 </main>
 
 <footer class="foot">

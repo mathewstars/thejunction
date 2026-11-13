@@ -119,7 +119,9 @@ async def ingest_days(ctx: Ctx, p: Principal, days: list[dict], rid: str) -> dic
             accepted.append(ds)
         if accepted:
             _audit(ctx, p, "day", "ok", None, rid, days=len(accepted), last=accepted[-1])
-        await ctx.mind.publish("day", p.clinic_id, p.patient_id, days=len(accepted))
+        await ctx.mind.publish("day", p.clinic_id, p.patient_id, days=len(accepted),
+                               last_day=accepted[-1] if accepted else "none",
+                               rejected=len(rejected))
         status = _status(ctx, repo)
     return {"accepted": accepted, "rejected": rejected, "status": status}
 
@@ -241,29 +243,44 @@ async def record_note(ctx: Ctx, p: Principal, note_id: str, text: str, rid: str)
                 raise ApiError(409, "conflict", "This note id was used for another note.")
             cls = old["classification"]
         else:
-            lex = note_logic.lexicon_check(text)
-            model_cls, model_state = None, "off"
-            if getattr(ctx.mind.local, "configured", False):
-                ids = [t for t in note_logic.REPLY_TEMPLATES if t != "help"]
-                pack = INPUT_GATE.note_pack(1, text, ids)
-                raw = await ctx.mind.local.complete(pack, json_mode=True)
-                res = OUTPUT_GATE.note(raw, ids)
-                if res.ok:
-                    model_cls, model_state = res.value, "ok"
+            # One trace chain for the note: the classification and what the mind did after.
+            with ctx.mind.tracer.chain(p.clinic_id, p.patient_id, "note"):
+                lex = note_logic.lexicon_check(text)
+                model_cls, model_state = None, "off"
+                if getattr(ctx.mind.local, "configured", False):
+                    ids = [t for t in note_logic.REPLY_TEMPLATES if t != "help"]
+                    pack = INPUT_GATE.note_pack(1, text, ids)
+                    raw = await ctx.mind.local.complete(pack, json_mode=True)
+                    res = OUTPUT_GATE.note(raw, ids)
+                    if res.ok:
+                        model_cls, model_state = res.value, "ok"
+                    else:
+                        model_state = "refused" if raw is not None else "unavailable"
+                        for r in res.refusals:
+                            if raw is not None:
+                                ctx.mind.refuse(repo, r)
+                    # The trace says what the model saw by name only; the text stays out.
+                    ctx.mind.trace(repo, "level1", {"ok": "accepted", "refused": "refused"}
+                                   .get(model_state, "no_reply"), {
+                        "task": "note", "saw": {"fields": ["note (inside data markers, stays on "
+                                                           "this server)", "reply_template ids"]},
+                        "returned": None if model_cls is None else
+                        {k: model_cls.get(k) for k in ("mood", "topic", "asks_for_help")},
+                        "verdict": model_state,
+                        "reasons": [r.reason for r in res.refusals] if model_state == "refused" else [],
+                        "used": "model_and_word_list" if model_cls else "word_list_only"},
+                        notable=model_state == "refused")
                 else:
-                    model_state = "refused" if raw is not None else "unavailable"
-                    for r in res.refusals:
-                        if raw is not None:
-                            ctx.mind.refuse(repo, r)
-            cls = note_logic.merge(lex, model_cls)
-            cls["model"] = model_state
-            repo.put(f"notes/{note_id}.json", {
-                "id": note_id, "at": now.isoformat(), "text": text, "text_sha256": sha256_hex(text),
-                "classification": cls})
-            # Audit holds enums only, never the text.
-            _audit(ctx, p, "note", "ok", None, rid, note_id=note_id, crisis=cls["crisis"],
-                   mood=cls["mood"], topic=cls["topic"], model=model_state)
-            await ctx.mind.publish("note", p.clinic_id, p.patient_id, note_id=note_id)
+                    ctx.mind.trace(repo, "level1", "off", {"task": "note", "used": "word_list_only"})
+                cls = note_logic.merge(lex, model_cls)
+                cls["model"] = model_state
+                repo.put(f"notes/{note_id}.json", {
+                    "id": note_id, "at": now.isoformat(), "text": text, "text_sha256": sha256_hex(text),
+                    "classification": cls})
+                # Audit holds enums only, never the text.
+                _audit(ctx, p, "note", "ok", None, rid, note_id=note_id, crisis=cls["crisis"],
+                       mood=cls["mood"], topic=cls["topic"], model=model_state)
+                await ctx.mind.publish("note", p.clinic_id, p.patient_id, note_id=note_id)
         open_s = next((s for s in repo.suggestions() if s["status"] == "open"), None)
     out = {"reply": {"template_id": cls["template_id"],
                      "text": note_logic.REPLY_TEMPLATES[cls["template_id"]]},

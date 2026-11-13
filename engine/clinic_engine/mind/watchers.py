@@ -344,7 +344,7 @@ def run_watchers(view: View) -> list[Op]:
 
 # ---- escalation --------------------------------------------------------------
 
-def escalate(items: list[dict], view: View) -> dict[str, str]:
+def escalate(items: list[dict], view: View, why: dict[str, str] | None = None) -> dict[str, str]:
     """Return {item_id: level} for open items, from plain documented rules.
 
     - deviation is "attention"; it becomes "urgent" (needs review) when
@@ -358,6 +358,9 @@ def escalate(items: list[dict], view: View) -> dict[str, str]:
       earlier (see deviation_now); rounds never open a deviation alone.
     - asked_for_help is always "urgent".
     Levels never go down while an item is held.
+
+    `why`, when given, receives {item_id: rule code} naming the rule that set
+    each level (for the decision trace; it never changes the result).
     """
     th = view.th
     open_by_kind = {it["kind"]: it for it in items if it["state"] == "open"}
@@ -365,8 +368,10 @@ def escalate(items: list[dict], view: View) -> dict[str, str]:
     dev = open_by_kind.get("deviation")
     for kind, it in open_by_kind.items():
         level = it.get("level", "watch")
+        rule = "kept_level"
         if kind == "deviation":
             level = level_max(level, "attention")
+            rule = "deviation_is_attention"
             _, lows = deviation_now(view)
             deep = (len(lows) >= th.urgent_deep_min_low
                     and sum(s["movement_z"] for s in lows) / len(lows) <= th.urgent_deep_z)
@@ -374,11 +379,18 @@ def escalate(items: list[dict], view: View) -> dict[str, str]:
             if (deep and "ignored" in open_by_kind) or "silence" in open_by_kind \
                     or held_days >= th.urgent_held_days:
                 level = "urgent"
+                rule = ("deep_drop_and_unanswered" if deep and "ignored" in open_by_kind
+                        else "silence_while_held" if "silence" in open_by_kind
+                        else "held_too_long")
         elif kind in ("ignored", "low_notes", "weak_rounds", "not_played") and dev is not None:
             level = level_max(level, "attention")
+            rule = "raised_while_drop_held"
         elif kind == "asked_for_help":
             level = "urgent"
+            rule = "asked_for_help_is_urgent"
         out[it["id"]] = level
+        if why is not None:
+            why[it["id"]] = rule
     return out
 
 

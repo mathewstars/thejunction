@@ -42,7 +42,8 @@ _DOCS_CSP = (b"default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn
 # The clinician page: own files only. No inline script or style, no outside
 # hosts, API calls only to this origin.
 _PAGE_CSP = (b"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; "
-             b"connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+             b"font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; "
+             b"frame-ancestors 'none'")
 WEB_DIR = Path(__file__).resolve().parent / "web"
 
 
