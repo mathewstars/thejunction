@@ -75,50 +75,6 @@ FOR THE CLINICIAN
 
 One page with a line per patient. The people who have drifted from their normal are on top, with a short plain summary and how their recovery is going.
 ```
-Lanvi is a small fox on your phone that notices when you drift from your own normal after depression treatment, and answers with one small thing that helps.
-```
-
-## Description
-
-Plain text on purpose. The form says it supports markdown, but we keep it without markdown symbols so it reads the same everywhere.
-
-```
-THE PROBLEM
-
-TMS helps many people with severe depression, but it needs daily clinic visits. When the visits end, the risk of relapse stays, and at home there is no scan and no psychiatrist. Nobody notices the first small changes.
-
-WHAT LANVI DOES
-
-Lanvi is a loop that runs at home: sense, respond, learn.
-
-Sense. The phone already records how a person moves. Lanvi reads steps and walking speed from Apple Health and compares each day with that person's own normal, never with a population average. No questionnaire, no extra device.
-
-Respond. On a clear change the app offers one small thing. The main one is a two-minute round in AR: lights appear in the person's own room and they walk to catch them. The round adapts to the person, and it can be played seated.
-
-Learn. The app remembers what was followed by better days and offers that first next time. The person can see what it learned and say "not true".
-
-The person can also write a few words. If they suggest a need for help, the help screen opens at once.
-
-FOR THE CLINICIAN
-
-One page, one line per patient, with those outside their own normal on top. Urgent cases do not wait in a dashboard. The clinician gets an alert the same day, with a case label and a link, and no health data in the message.
-
-THE MIND
-
-Lanvi is not a scheduled job that runs a prompt. It holds attention: a change opens an attention item that stays open, with a level, until the data recovers or a clinician has looked. It has memory: the person's own rules and the lessons it learned. And it learns only inside a fence: a lesson can change the order of what is offered, and nothing else.
-
-SAFE BY DESIGN
-
-A model never decides what a patient is offered. Code picks from a fixed list.
-Every model call passes two gates: one decides what the model may see, one checks what it returned. Refusals are logged.
-The app never chats freely with a patient. Replies come from a fixed set.
-What a person types never leaves the clinic's server.
-The app never diagnoses. It says "you moved less than usual", nothing more.
-
-WHAT IS REAL AND WHAT IS NOT
-
-This is a prototype being built this weekend, not a validated measure. This is a preliminary description; what works live and what we measured will be stated here before the final submission. The demo uses example data, marked as such.
-```
 
 ## Sections to add when they are true
 
