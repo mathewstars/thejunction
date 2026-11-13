@@ -34,9 +34,9 @@ The jury are researchers. So: every claim can be checked, the demo is the real a
 >
 > The clinician sees one line per patient. Urgent cases do not wait in a dashboard: an alert reaches the clinician the same day, with a case label and a link, and no health data in it.
 
-**Safe by design (1:20 to 1:40)**
+**The mind and the models (1:20 to 1:40)**
 
-> A model never decides what a patient is offered. Code picks from a fixed list, the model only words it, and every model answer passes a gate. We tried to make it learn something harmful. Here is the log of what it refused.
+> What Lanvi offers comes from a short list we wrote ourselves, and plain code picks from it. A small model on the clinic's hardware puts it into words. Gemini reads the face numbers from the camera and says what changed, and our code checks every statement before it counts. We tried to make the system learn something harmful. Here is the log of what it refused.
 
 **What we know and do not know (1:40 to 1:52)**
 
@@ -52,7 +52,7 @@ The jury are researchers. So: every claim can be checked, the demo is the real a
 - The refusal log exists on the clinician page and shows real refusals.
 - The bracket in "what we know" is filled only with something we measured ourselves.
 - The alert really arrives on a phone during the demo.
-- Face measurements are in the pitch only if they really reach the server. If they do not, drop that sentence.
+- Face measurements and the Gemini reading are in the pitch only if they really run. If they do not, drop those sentences.
 - The demo data is example data, and we say so out loud.
 
 ## Words to keep and words to avoid
@@ -75,9 +75,9 @@ The jury are researchers. So: every claim can be checked, the demo is the real a
 | How is it different from Soihtu's game? | Their game is the treatment. Lanvi is what the app offers after the phone noticed a change, and it adapts to the person. |
 | Why a camera on someone recovering from depression? | It is opt-in, nothing is saved or sent except a few numbers, and everything works without it. |
 | Where does the data go? | It stays on the clinic's server. One optional step can send an anonymous trace to an outside model, only with consent. |
-| What stops the AI from saying something harmful? | It never writes freely to a patient. Replies come from a fixed set, and code checks every model answer. |
+| What stops the AI from saying something harmful? | It doesn't write freely to a patient. Lanvi's lines come from a fixed set, and code checks what the models return. |
 | How would a clinic start using it? | The clinic gives the patient a pairing code; entering it is the consent to share. The next step is a pilot with one clinic. |
 
 ## Sixty-second version for the table
 
-> After TMS the clinic visits end and people are at home alone, with a real risk that the depression returns. Lanvi is a small fox on the phone that grows as you take care of yourself. Behind it, the phone's own movement data is compared with your own normal. When you drift, Lanvi offers one small thing: a short focus game, a minute of breathing, an evening check-in. [hand over the phone] The system learns what helps you. Your clinician sees one line per patient, and urgent cases reach them the same day. No model ever decides what a patient is offered, and here is the log of what our gates refused. It is a prototype, and the study is what we would like to do next.
+> After TMS the clinic visits end and people are at home alone, with a real risk that the depression returns. Lanvi is a small fox on the phone that grows as you take care of yourself. Behind it, the phone's own movement data is compared with your own normal. When you drift, Lanvi offers one small thing: a short focus game, a minute of breathing, an evening check-in. [hand over the phone] The system learns what helps you. Your clinician sees one line per patient, and urgent cases reach them the same day. What it offers comes from a list we wrote, and here is the log of what our checks refused. It is a prototype, and the study is what we would like to do next.

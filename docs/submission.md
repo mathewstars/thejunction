@@ -73,20 +73,23 @@ During the first two, if the person allows it, the front camera notices how much
 
 FOR THE CLINICIAN
 
-One page with a line per patient. The people who have drifted from their normal are on top, with a short plain summary and how their recovery is going. Urgent cases do not wait in a dashboard: the clinician gets an alert the same day, with a case label and a link, and no health data in the message. The clinician can also read, step by step, why the system did what it did.
+One page with a line per patient. The people who have drifted from their normal are on top, with a short plain summary and how their recovery is going. Urgent cases don't sit in a dashboard until morning: the clinician gets an alert the same day, with a case label and a link and no health data in the message. For each patient the clinician can also read, step by step, why the system did what it did.
 
-SAFE BY DESIGN
+HOW IT USES AI
 
-A model never decides what a patient is offered. Code picks from a fixed list.
-Every model call passes two gates: one decides what the model may see, one checks what it returned. Refusals are logged.
-Lanvi never chats freely with a patient. Its lines come from a fixed set.
-What a person types never leaves the clinic's server.
-Lanvi never diagnoses. It notices a change and nothing more.
-A lesson can only change the order of what is offered. It can never silence an alert.
+Two models work behind Lanvi, and neither of them is in charge. A small model on the clinic's own hardware does the everyday work: it puts Lanvi's suggestion into words and sorts a typed note into a few labels.
+
+Gemini does the harder reading. During the focus game and the breathing minute, ARKit turns the front camera into a handful of numbers about how the face moves. Gemini looks at those numbers across a session, next to the same person's earlier sessions, and says what changed in a fixed vocabulary: steady, slower, less expressive, and where it began. Our code then checks each of those statements against its own calculation and keeps only the ones that hold up.
+
+SAFETY
+
+What Lanvi offers comes from a short list we wrote ourselves, and plain code picks from it. The models describe and suggest, but everything they return is checked before it is used, and whatever fails the check is logged where the clinician can read it. Lanvi's lines are fixed as well, so it can't drift into giving advice.
+
+Typed notes stay on the clinic's server. What goes to Gemini is numbers only, under a random label that changes every time, and only if the patient agreed. If a note sounds like someone needs help, the help screen opens straight away and the clinic hears about it the same day. Lanvi doesn't diagnose. It tells the clinician that something changed.
 
 WHAT IS REAL AND WHAT IS NOT
 
-This is a prototype built in one weekend, not a validated measure. What works live and what we measured will be stated here before the final submission. The demo uses example data, marked as such.
+This is a weekend prototype, not a validated measure. Before the final submission we will say here what works live and what we measured ourselves. The demo runs on example data and says so.
 ```
 
 ## Sections to add when they are true
@@ -105,7 +108,8 @@ Swift, SwiftUI, ARKit face tracking, HealthKit, Python, FastAPI, an S3-compatibl
 
 ## Rules for the wording
 
-- Never "diagnoses" or "detects depression". Always "notices" and "needs review".
+- Say "notices" and "needs review". Do not say "diagnoses" or "detects depression".
+- Write like a person. No lists of absolute promises ("never", "always"); say what the thing does.
 - Say only what works. A reviewer may open the demo and the code.
 - Say that the demo data is example data.
 - No names of existing companies of ours anywhere in the submission.
