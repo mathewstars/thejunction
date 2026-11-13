@@ -42,28 +42,48 @@ struct CheckinView: View {
         let i = steps.firstIndex(of: step) ?? 0
         return CGFloat(i + 1) / CGFloat(steps.count)
     }
-    private var isChipStep: Bool { step == .goodThings || step == .plan }
+
+    /// Where things sit for the current step, in points from the top of the safe area.
+    private struct Frame {
+        var snowY: CGFloat      // the horizon: snow starts here, low on the screen
+        var fox: CGFloat        // Lanvi's size
+        var foxTop: CGFloat     // the sky content must end above this
+        var small: Bool
+    }
+
+    private func frame(height h: CGFloat) -> Frame {
+        let small = h < 700
+        let snowY: CGFloat
+        let fox: CGFloat
+        switch step {
+        case .planQuestion: snowY = h - 182; fox = small ? 150 : 212
+        case .goodThings, .plan: snowY = h - 116; fox = small ? 84 : 108
+        case .goodnight: snowY = h - 116; fox = small ? 160 : 210
+        }
+        return Frame(snowY: snowY, fox: fox, foxTop: snowY + 18 - fox, small: small)
+    }
+
+    private let skyTop: CGFloat = 62
 
     var body: some View {
         GeometryReader { geo in
-            let h = geo.size.height
-            let small = h < 700
-            let snowY = isChipStep ? h * (small ? 0.27 : 0.29) : h * (step == .goodnight ? 0.47 : 0.45)
-            let fox: CGFloat = isChipStep ? (small ? 100 : 124) : (small ? 160 : 196)
+            let f = frame(height: geo.size.height)
 
             ZStack(alignment: .top) {
-                EveningSky(hillTop: snowY + geo.safeAreaInsets.top)
+                CheckinEveningSky(hillTop: f.snowY + geo.safeAreaInsets.top, showMoon: !f.small && (step == .planQuestion || step == .goodnight))
 
-                if step == .goodnight { RisingSparks(baseY: snowY).allowsHitTesting(false) }
+                if step == .goodnight {
+                    RisingLights(originY: f.foxTop + f.fox * 0.45, ceiling: (skyTop + f.foxTop) / 2 + 125, width: geo.size.width)
+                }
 
-                LanviView(pose: pose, size: fox, bounceTrigger: bounce)
-                    .position(x: geo.size.width / 2, y: snowY + 18 - fox / 2)
+                LanviView(pose: pose, size: f.fox, bounceTrigger: bounce)
+                    .position(x: geo.size.width / 2, y: f.snowY + 18 - f.fox / 2)
                     .onTapGesture { react(pose) }
                     .accessibilityHidden(true)
 
                 topBar
 
-                stepContent(snowY: snowY, small: small)
+                stepContent(f)
                     .id(step)
                     .transition(.asymmetric(
                         insertion: .move(edge: forward ? .trailing : .leading).combined(with: .opacity),
@@ -94,8 +114,8 @@ struct CheckinView: View {
 
     private var topBar: some View {
         HStack(spacing: 14) {
-            SkyIconButton(icon: "xmark", label: "Leave the check-in") { onDone(nil) }
-            StepProgress(progress: progress)
+            CheckinCloseButton { onDone(nil) }
+            CheckinProgress(progress: progress)
             if let onHelp {
                 Button(action: onHelp) {
                     HStack(spacing: 6) {
@@ -112,159 +132,167 @@ struct CheckinView: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 6)
+        .padding(.top, 4)
         .opacity(typing == nil ? 1 : 0)
     }
 
     // MARK: Steps
 
     @ViewBuilder
-    private func stepContent(snowY: CGFloat, small: Bool) -> some View {
+    private func stepContent(_ f: Frame) -> some View {
         switch step {
-        case .planQuestion: planQuestion(snowY: snowY, small: small)
-        case .goodThings: goodThingsStep(snowY: snowY, small: small)
-        case .plan: planStep(snowY: snowY, small: small)
-        case .goodnight: goodnight(snowY: snowY, small: small)
+        case .planQuestion: planQuestion(f)
+        case .goodThings: goodThingsStep(f)
+        case .plan: planStep(f)
+        case .goodnight: goodnight(f)
         }
     }
 
-    private func planQuestion(snowY: CGFloat, small: Bool) -> some View {
+    /// Sky content (centred above Lanvi) plus the buttons on the snow.
+    private func skyAndSnow<Sky: View, Buttons: View>(_ f: Frame, @ViewBuilder sky: () -> Sky,
+                                                      @ViewBuilder buttons: () -> Buttons) -> some View {
+        VStack(spacing: 0) {
+            sky()
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 24)
+                .frame(height: max(0, f.foxTop - 6 - skyTop))
+                .padding(.top, skyTop)
+            Spacer(minLength: 0)
+            VStack(spacing: 14) { buttons() }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 14)
+        }
+    }
+
+    private func planQuestion(_ f: Frame) -> some View {
         let label = askAboutPlan?.label ?? ""
-        return VStack(spacing: 0) {
-            Spacer().frame(height: snowY + (small ? 30 : 40))
-            VStack(spacing: small ? 10 : 14) {
+        return skyAndSnow(f) {
+            VStack(spacing: f.small ? 12 : 16) {
                 switch planDone {
                 case .notAsked:
                     Text("Yesterday you planned")
                         .font(Theme.rounded(17, .bold))
-                        .foregroundStyle(Theme.inkSecondary)
+                        .foregroundStyle(CheckinEvening.skyText)
                     PlanTicket(label: label)
                     Text("Did it happen?")
-                        .font(Theme.rounded(small ? 26 : 28, .heavy))
-                        .foregroundStyle(Theme.ink)
+                        .font(Theme.rounded(f.small ? 28 : 32, .heavy))
+                        .foregroundStyle(.white)
                 case .yes:
-                    replyText(title: "Yay, you did it!", body: "\(label) sounds like a kind thing to do for yourself.")
+                    replyText(title: "Yay, you did it!", body: "\(label). That was a kind thing to do for yourself.", f)
                 case .no:
-                    replyText(title: "That's okay.", body: "Some days go another way. You're here now, and that counts.")
+                    replyText(title: "That's okay.", body: "Some days go another way. You're here now, and that counts.", f)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 24)
-            Spacer(minLength: 12)
-            VStack(spacing: 14) {
-                if planDone == .notAsked {
-                    Button("Yes, it did") { answerPlan(.yes) }
-                        .buttonStyle(ChunkyButtonStyle())
-                    Button("Not this time") { answerPlan(.no) }
-                        .buttonStyle(ChunkyQuietButtonStyle())
-                } else {
-                    Button("Continue") { go(to: .goodThings) }
-                        .buttonStyle(ChunkyButtonStyle())
-                        .transition(.scale(scale: 0.9).combined(with: .opacity))
-                }
+        } buttons: {
+            if planDone == .notAsked {
+                Button("Yes, it did") { answerPlan(.yes) }
+                    .buttonStyle(ChunkyButtonStyle())
+                Button("Not this time") { answerPlan(.no) }
+                    .buttonStyle(CheckinQuietButtonStyle())
+            } else {
+                Button("Continue") { go(to: .goodThings) }
+                    .buttonStyle(ChunkyButtonStyle())
+                    .transition(.scale(scale: 0.9).combined(with: .opacity))
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 14)
         }
     }
 
-    private func replyText(title: String, body: String) -> some View {
+    private func replyText(title: String, body: String, _ f: Frame) -> some View {
         VStack(spacing: 10) {
             Text(title)
-                .font(Theme.rounded(30, .heavy))
-                .foregroundStyle(Theme.ink)
+                .font(Theme.rounded(f.small ? 30 : 34, .heavy))
+                .foregroundStyle(.white)
             Text(body)
                 .font(Theme.rounded(18, .semibold))
-                .foregroundStyle(Theme.inkSecondary)
+                .foregroundStyle(CheckinEvening.skyText)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .transition(.scale(scale: 0.92).combined(with: .opacity))
     }
 
-    private func goodThingsStep(snowY: CGFloat, small: Bool) -> some View {
+    private func goodThingsStep(_ f: Frame) -> some View {
         let full = goodThings.count >= 3
         let subtitle: String = switch goodThings.count {
         case 0: "Small things count. Tap up to three."
         case 1: "Nice. That's one."
         case 2: "Lovely. One more, if you like."
-        default: "Three little sparks for today."
+        default: "Three little lights for today."
         }
-        return chipStep(
-            snowY: snowY, small: small,
-            title: "Three good things today",
-            subtitle: subtitle,
-            counter: AnyView(SparkCounter(count: goodThings.count)),
-            chips: AnyView(FlowLayout(spacing: 10, lineSpacing: 12) {
-                ForEach(options.goodThings) { option in
-                    let on = goodThings.contains(.catalog(option.id))
-                    Button { toggleGood(.catalog(option.id)) } label: { chipLabel(option.label, selected: on) }
-                        .buttonStyle(CheckinChipStyle(selected: on, dimmed: full && !on))
-                }
-                ForEach(goodThings.compactMap(\.typedText), id: \.self) { text in
-                    Button { toggleGood(.text(text)) } label: { chipLabel(text, selected: true, typed: true) }
-                        .buttonStyle(CheckinChipStyle(selected: true))
-                }
-                Button { full ? fullNudge() : openTyping(.goodThing) } label: { somethingElseLabel }
-                    .buttonStyle(CheckinChipStyle(selected: false, dimmed: full))
-            }),
-            button: goodThings.isEmpty
-                ? AnyView(Button("Skip for tonight") { go(to: .plan) }.buttonStyle(ChunkyQuietButtonStyle()))
-                : AnyView(Button("Continue") { go(to: .plan) }.buttonStyle(ChunkyButtonStyle())))
+        return chipStep(f, title: "Three good things today", subtitle: subtitle, showTray: true) {
+            // "Write my own" leads, so it is visible even on the smallest phone.
+            Button { full ? fullNudge() : openTyping(.goodThing) } label: { writeOwnLabel }
+                .buttonStyle(CheckinAddChipStyle(dimmed: full))
+            ForEach(goodThings.compactMap(\.typedText), id: \.self) { text in
+                Button { toggleGood(.text(text)) } label: { chipLabel(text, selected: true, typed: true) }
+                    .buttonStyle(CheckinChipStyle(selected: true))
+            }
+            ForEach(options.goodThings) { option in
+                let on = goodThings.contains(.catalog(option.id))
+                Button { toggleGood(.catalog(option.id)) } label: { chipLabel(option.label, selected: on) }
+                    .buttonStyle(CheckinChipStyle(selected: on, dimmed: full && !on))
+            }
+        } button: {
+            if goodThings.isEmpty {
+                Button("Skip for tonight") { go(to: .plan) }.buttonStyle(CheckinQuietButtonStyle())
+            } else {
+                Button("Continue") { go(to: .plan) }.buttonStyle(ChunkyButtonStyle())
+            }
+        }
     }
 
-    private func planStep(snowY: CGFloat, small: Bool) -> some View {
-        let subtitle = plan == nil ? "Something nice and easy. I'll ask you tomorrow." : "Good one. I'll ask you how it went."
-        return chipStep(
-            snowY: snowY, small: small,
-            title: "One small thing for tomorrow",
-            subtitle: subtitle,
-            counter: nil,
-            chips: AnyView(FlowLayout(spacing: 10, lineSpacing: 12) {
-                ForEach(options.plans) { option in
-                    let on = plan == .catalog(option.id)
-                    Button { togglePlan(.catalog(option.id)) } label: { chipLabel(option.label, selected: on) }
-                        .buttonStyle(CheckinChipStyle(selected: on))
-                }
-                if let text = plan?.typedText {
-                    Button { togglePlan(.text(text)) } label: { chipLabel(text, selected: true, typed: true) }
-                        .buttonStyle(CheckinChipStyle(selected: true))
-                }
-                Button { openTyping(.plan) } label: { somethingElseLabel }
-                    .buttonStyle(CheckinChipStyle(selected: false))
-            }),
-            button: plan == nil
-                ? AnyView(Button("Skip for tonight") { go(to: .goodnight) }.buttonStyle(ChunkyQuietButtonStyle()))
-                : AnyView(Button("Continue") { go(to: .goodnight) }.buttonStyle(ChunkyButtonStyle())))
+    private func planStep(_ f: Frame) -> some View {
+        let subtitle = plan == nil ? "Something nice and easy. I'll ask you tomorrow." : "Good one. I'll ask how it went."
+        return chipStep(f, title: "One small thing for tomorrow", subtitle: subtitle, showTray: false) {
+            Button { openTyping(.plan) } label: { writeOwnLabel }
+                .buttonStyle(CheckinAddChipStyle())
+            if let text = plan?.typedText {
+                Button { togglePlan(.text(text)) } label: { chipLabel(text, selected: true, typed: true) }
+                    .buttonStyle(CheckinChipStyle(selected: true))
+            }
+            ForEach(options.plans) { option in
+                let on = plan == .catalog(option.id)
+                Button { togglePlan(.catalog(option.id)) } label: { chipLabel(option.label, selected: on) }
+                    .buttonStyle(CheckinChipStyle(selected: on))
+            }
+        } button: {
+            if plan == nil {
+                Button("Skip for tonight") { go(to: .goodnight) }.buttonStyle(CheckinQuietButtonStyle())
+            } else {
+                Button("Continue") { go(to: .goodnight) }.buttonStyle(ChunkyButtonStyle())
+            }
+        }
     }
 
-    private func chipStep(snowY: CGFloat, small: Bool, title: String, subtitle: String,
-                          counter: AnyView?, chips: AnyView, button: AnyView) -> some View {
+    private func chipStep<Chips: View, Bottom: View>(_ f: Frame, title: String, subtitle: String, showTray: Bool,
+                                                     @ViewBuilder chips: () -> Chips,
+                                                     @ViewBuilder button: () -> Bottom) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Spacer().frame(height: snowY + (small ? 26 : 34))
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
-                    .font(Theme.rounded(small ? 24 : 27, .heavy))
-                    .foregroundStyle(Theme.ink)
+                    .font(Theme.rounded(f.small ? 25 : 28, .heavy))
+                    .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .center) {
                     Text(subtitle)
                         .font(Theme.rounded(16, .semibold))
-                        .foregroundStyle(Theme.inkSecondary)
+                        .foregroundStyle(CheckinEvening.skyText)
+                        .lineLimit(2)
                         .contentTransition(.opacity)
                         .animation(.easeOut(duration: 0.2), value: subtitle)
                     Spacer(minLength: 8)
-                    counter
+                    if showTray { CheckinSparkTray(count: goodThings.count) }
                 }
             }
             .padding(.horizontal, 24)
+            .padding(.top, skyTop + 2)
 
             ScrollView(.vertical, showsIndicators: false) {
-                chips
+                CheckinFlowLayout(spacing: 10, lineSpacing: 12) { chips() }
                     .padding(.horizontal, 24)
-                    .padding(.top, small ? 14 : 18)
-                    .padding(.bottom, 26)
+                    .padding(.top, f.small ? 14 : 20)
+                    .padding(.bottom, 22)
             }
             .scrollBounceBehavior(.basedOnSize)
             .mask {
@@ -274,43 +302,41 @@ struct CheckinView: View {
                     LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: 22)
                 }
             }
+            .frame(height: max(0, f.foxTop - 2 - (skyTop + 2) - (f.small ? 66 : 70)))
 
-            button
+            Spacer(minLength: 0)
+
+            button()
                 .padding(.horizontal, 24)
-                .padding(.top, 6)
                 .padding(.bottom, 14)
                 .animation(.spring(response: 0.3, dampingFraction: 0.75), value: goodThings.isEmpty)
                 .animation(.spring(response: 0.3, dampingFraction: 0.75), value: plan == nil)
         }
     }
 
-    private func goodnight(snowY: CGFloat, small: Bool) -> some View {
-        let shared = !goodThings.isEmpty
-        let body = shared
-            ? "Thanks for telling me about your day. I'll keep those sparks safe."
-            : "Thanks for stopping by tonight. Showing up is what counts."
-        return VStack(spacing: 0) {
-            Spacer().frame(height: snowY + (small ? 26 : 38))
-            VStack(spacing: small ? 10 : 12) {
+    private func goodnight(_ f: Frame) -> some View {
+        let body = goodThings.isEmpty
+            ? "Thanks for stopping by tonight. Showing up is what counts."
+            : "Thanks for telling me about your day. I'll keep those lights safe."
+        return skyAndSnow(f) {
+            VStack(spacing: f.small ? 10 : 14) {
                 Text("Goodnight")
-                    .font(Theme.rounded(small ? 34 : 38, .black))
-                    .foregroundStyle(Theme.brand)
+                    .font(Theme.rounded(f.small ? 40 : 46, .black))
+                    .foregroundStyle(.white)
+                    .shadow(color: Theme.aurora.opacity(0.6), radius: 14)
                 Text(body)
-                    .font(Theme.rounded(small ? 17 : 18, .semibold))
-                    .foregroundStyle(Theme.inkSecondary)
+                    .font(Theme.rounded(f.small ? 17 : 18, .semibold))
+                    .foregroundStyle(CheckinEvening.skyText)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 if let plan {
                     TomorrowPill(label: label(for: plan))
-                        .padding(.top, 4)
+                        .padding(.top, 6)
                 }
             }
-            .padding(.horizontal, 28)
-            Spacer(minLength: 12)
+        } buttons: {
             Button("Done", action: finish)
                 .buttonStyle(ChunkyButtonStyle())
-                .padding(.horizontal, 24)
-                .padding(.bottom, 14)
         }
     }
 
@@ -329,13 +355,12 @@ struct CheckinView: View {
         }
     }
 
-    private var somethingElseLabel: some View {
+    private var writeOwnLabel: some View {
         HStack(spacing: 7) {
             Image(systemName: "plus")
                 .font(.system(size: 13, weight: .black))
-            Text("Something else")
+            Text("Write my own")
         }
-        .foregroundStyle(Theme.brand)
     }
 
     private func label(for item: CheckinItem) -> String {
@@ -353,25 +378,25 @@ struct CheckinView: View {
     }
 
     private func toggleGood(_ item: CheckinItem) {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            if let i = goodThings.firstIndex(of: item) {
-                goodThings.remove(at: i)
-                pose = .curious
-            } else if goodThings.count < 3 {
-                goodThings.append(item)
-            } else {
-                fullNudge()
-                return
-            }
+        if goodThings.contains(item) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { goodThings.removeAll { $0 == item } }
+            calm()
+        } else if goodThings.count < 3 {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { goodThings.append(item) }
+            react(goodThings.count == 3 ? .cheer : .love)
+        } else {
+            fullNudge()
         }
-        if goodThings.contains(item) { react(goodThings.count == 3 ? .cheer : .love) }
     }
 
     private func togglePlan(_ item: CheckinItem) {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            plan = plan == item ? nil : item
-        }
-        if plan != nil { react(.cheer) } else { withAnimation { pose = .curious } }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { plan = plan == item ? nil : item }
+        if plan != nil { react(.cheer) } else { calm() }
+    }
+
+    /// Back to the curious idle pose, no jump.
+    private func calm() {
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) { pose = .curious }
     }
 
     private func fullNudge() {
@@ -410,7 +435,7 @@ struct CheckinView: View {
         switch next {
         case .planQuestion: react(.curious)
         case .goodThings: react(goodThings.isEmpty ? .curious : .love)
-        case .plan: react(plan == nil ? .peek : .cheer)
+        case .plan: react(plan == nil ? .curious : .cheer)
         case .goodnight: react(.love)
         }
     }
@@ -442,11 +467,12 @@ struct CheckinView: View {
 
 // MARK: - Pieces
 
-/// Yesterday's plan, shown as a little raised card.
+/// Yesterday's plan, shown as a raised white card on the night sky.
 private struct PlanTicket: View {
     var label: String
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
         HStack(spacing: 12) {
             ZStack {
                 Circle().fill(Theme.tint)
@@ -463,14 +489,14 @@ private struct PlanTicket: View {
         }
         .padding(.vertical, 12)
         .padding(.leading, 12)
-        .padding(.trailing, 20)
-        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(.white))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Theme.line, lineWidth: 2))
-        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.line).offset(y: 4))
+        .padding(.trailing, 22)
+        .background(shape.fill(.white))
+        .background(shape.fill(CheckinEvening.chipEdge).offset(y: 5))
+        .shadow(color: Theme.glow.opacity(0.35), radius: 16)
     }
 }
 
-/// Tomorrow's plan on the goodnight step.
+/// Tomorrow's plan on the goodnight step: a small raised pill.
 private struct TomorrowPill: View {
     var label: String
 
@@ -484,8 +510,8 @@ private struct TomorrowPill: View {
         .lineLimit(2)
         .padding(.vertical, 10)
         .padding(.horizontal, 16)
-        .background(Capsule().fill(Theme.tint))
-        .overlay(Capsule().stroke(Theme.line, lineWidth: 2))
+        .background(Capsule().fill(.white))
+        .background(Capsule().fill(CheckinEvening.chipEdge).offset(y: 4))
     }
 }
 
@@ -503,7 +529,7 @@ private struct TypingCard: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            EveningTheme.top.opacity(0.55)
+            CheckinEvening.top.opacity(0.6)
                 .ignoresSafeArea()
                 .onTapGesture(perform: onCancel)
 
@@ -511,7 +537,7 @@ private struct TypingCard: View {
                 Text(prompt)
                     .font(Theme.rounded(22, .heavy))
                     .foregroundStyle(Theme.ink)
-                    .padding(.trailing, 70)
+                    .padding(.trailing, 76)
                 TextField(placeholder, text: $draft, axis: .vertical)
                     .font(Theme.rounded(18, .semibold))
                     .foregroundStyle(Theme.ink)
@@ -541,7 +567,7 @@ private struct TypingCard: View {
                     }
                 HStack(spacing: 12) {
                     Button("Cancel", action: onCancel)
-                        .buttonStyle(ChunkyQuietButtonStyle())
+                        .buttonStyle(CheckinQuietButtonStyle())
                     Button("Add", action: onAdd)
                         .buttonStyle(ChunkyButtonStyle(fill: canAdd ? Theme.brand : Theme.glow,
                                                        edge: canAdd ? Theme.brandEdge : Theme.brand.opacity(0.45)))
@@ -550,44 +576,54 @@ private struct TypingCard: View {
             }
             .padding(20)
             .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(.white))
-            .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(Theme.line).offset(y: 6))
+            .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(CheckinEvening.chipEdge).offset(y: 6))
             .overlay(alignment: .topTrailing) {
                 LanviView(pose: .curious, size: 84)
-                    .offset(x: -8, y: -50)
+                    .offset(x: -6, y: -52)
                     .allowsHitTesting(false)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 70)
+            .padding(.top, 74)
         }
     }
 }
 
-/// A few soft sparks drifting up from Lanvi on the goodnight step.
-private struct RisingSparks: View {
-    var baseY: CGFloat
-    private let seeds: [(x: CGFloat, delay: Double, size: CGFloat)] = [
-        (-0.30, 0.0, 11), (0.22, 0.9, 9), (-0.12, 1.7, 13), (0.34, 2.4, 8), (0.05, 3.1, 10), (-0.38, 3.8, 8),
+/// Soft motes of light drifting up from Lanvi into the night on the goodnight step: fox fires.
+private struct RisingLights: View {
+    var originY: CGFloat
+    var ceiling: CGFloat   // motes fade out before they reach the words above
+    var width: CGFloat
+
+    private struct Seed { var x: CGFloat; var phase: Double; var size: CGFloat; var period: Double; var sway: CGFloat }
+    private let seeds: [Seed] = [
+        Seed(x: -0.30, phase: 0.00, size: 16, period: 5.2, sway: 10),
+        Seed(x: 0.27, phase: 0.35, size: 12, period: 6.0, sway: 8),
+        Seed(x: -0.21, phase: 0.62, size: 19, period: 5.6, sway: 12),
+        Seed(x: 0.36, phase: 0.15, size: 10, period: 4.8, sway: 7),
+        Seed(x: -0.40, phase: 0.80, size: 11, period: 6.4, sway: 8),
+        Seed(x: 0.20, phase: 0.48, size: 9, period: 4.4, sway: 7),
+        Seed(x: 0.42, phase: 0.70, size: 14, period: 5.9, sway: 10),
+        Seed(x: -0.34, phase: 0.25, size: 8, period: 5.0, sway: 6),
     ]
 
     var body: some View {
-        GeometryReader { geo in
-            TimelineView(.animation) { context in
-                let t = context.date.timeIntervalSinceReferenceDate
-                ZStack {
-                    ForEach(seeds.indices, id: \.self) { i in
-                        let s = seeds[i]
-                        let p = ((t + s.delay) / 4.4).truncatingRemainder(dividingBy: 1)
-                        Image(systemName: "sparkle")
-                            .font(.system(size: s.size, weight: .black))
-                            .foregroundStyle(i.isMultiple(of: 2) ? Theme.aurora : Theme.auroraViolet)
-                            .shadow(color: Theme.glow, radius: 6)
-                            .opacity(sin(p * .pi))
-                            .position(x: geo.size.width * (0.5 + s.x) + 10 * sin(t + Double(i)),
-                                      y: baseY - 40 - CGFloat(p) * baseY * 0.55)
-                    }
+        TimelineView(.animation) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            ZStack(alignment: .topLeading) {
+                ForEach(seeds.indices, id: \.self) { i in
+                    let s = seeds[i]
+                    let p = (t / s.period + s.phase).truncatingRemainder(dividingBy: 1)
+                    let rise = CGFloat(p) * max(60, originY - ceiling)
+                    CheckinMote(size: s.size, color: i.isMultiple(of: 3) ? Theme.auroraViolet : Theme.aurora)
+                        .opacity(sin(p * .pi) * 0.95)
+                        .scaleEffect(0.7 + 0.5 * sin(p * .pi))
+                        .position(x: width * (0.5 + s.x) + s.sway * CGFloat(sin(t * 0.9 + Double(i))),
+                                  y: originY - rise)
                 }
             }
+            .frame(width: width, height: originY + 40, alignment: .topLeading)
         }
+        .allowsHitTesting(false)
     }
 }
 
@@ -616,6 +652,7 @@ extension CheckinView {
             goodThings.append(.text("Made pancakes with my sister")); react(.cheer)
         case "goods-typing":
             toggleGood(.catalog("outside"))
+            try? await Task.sleep(for: .milliseconds(500))
             openTyping(.goodThing)
             try? await Task.sleep(for: .milliseconds(400))
             draft = "Made pancakes with my sister"
