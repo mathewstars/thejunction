@@ -180,6 +180,17 @@ tr.is-no_data td:first-child { box-shadow: inset 4px 0 0 var(--muted); }
 .kv span b { font-weight: 600; color: var(--muted); margin-right: 4px; }
 @media (max-width: 560px) { .tl-head { grid-template-columns: minmax(0, 1fr) auto; } .tl-head .when { grid-column: 1 / -1; } }
 
+/* timeline table */
+.tl-table td { vertical-align: top; }
+.tl-table tr.changed td:first-child { box-shadow: inset 4px 0 0 var(--amber); }
+.tl-table tr.detail td { background: var(--bg); padding: 0; cursor: default; }
+.tl-table tr.detail:hover td { background: var(--bg); }
+.cellstack { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.nowrap { white-space: nowrap; }
+.linklike { font: inherit; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer; font-variant-numeric: tabular-nums; }
+.bar .push { margin-left: auto; }
+.pager { margin-bottom: 0; }
+
 /* misc */
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
 .demo-actions { display: flex; flex-wrap: wrap; gap: 8px; }

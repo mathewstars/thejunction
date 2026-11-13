@@ -74,7 +74,7 @@
     ignored: "Offers unanswered", asked_for_help: "Asked for help", low_notes: "Low notes",
     weak_rounds: "Weak sessions", round_mismatch: "Signals disagree", fading: "Slowing down",
     stopped_early: "Stops early", not_played: "Offers not played", slow_reactions: "Slower reactions",
-    flat_face: "Less facial movement", checkins_stopped: "Check-ins stopped", plans_not_done: "Plans not done",
+    flat_face: "Less facial movement", face_flat: "Less facial movement", slower_reactions: "Slower reactions", checkins_stopped: "Check-ins stopped", plans_not_done: "Plans not done",
   };
   const ACTION = {
     ar_round: "Light round", ar_round_seated: "Seated light round", walk_10min: "Short walk",
@@ -126,7 +126,7 @@
   const S = {
     token: null, me: null, list: null, detail: null, trace: null,
     route: { view: "patients", pid: null, tab: "overview" },
-    metric: "movement", open: {}, changedOnly: true, demoMsg: "", busy: false, timer: null,
+    metric: "movement", open: {}, changedOnly: true, page: 0, demoMsg: "", busy: false, timer: null,
   };
   try { S.token = sessionStorage.getItem("clinic_session") || null; } catch (e) { S.token = null; }
 
@@ -161,7 +161,7 @@
     S.route = parseHash();
     if (!S.token) return showLogin();
     const samePatient = prev.view === "patient" && S.route.view === "patient" && prev.pid === S.route.pid;
-    if (S.route.view === "patient" && !samePatient) { S.detail = null; S.trace = null; }
+    if (S.route.view === "patient" && !samePatient) { S.detail = null; S.trace = null; S.page = 0; }
     render();
     await load(false);
   }
@@ -177,7 +177,9 @@
       } else if (r.view === "patient") {
         const base = "/v1/clinic/patients/" + encodeURIComponent(r.pid);
         if (force || !S.detail) S.detail = await api("GET", base);
-        if (r.tab === "timeline" && (force || !S.trace)) S.trace = await api("GET", base + "/trace");
+        if (r.tab === "timeline" && (force || !S.trace)) {
+          try { S.trace = await api("GET", base + "/trace?limit=200"); } catch (e) { S.trace = await api("GET", base + "/trace"); }
+        }
       }
       flash("");
     } catch (e) {
@@ -225,6 +227,10 @@
       document.title = (S.me.product_name || "Clinician page") + " · clinic";
       $("clinic-name").textContent = S.me.clinic_name || "";
       $("nav-demo").hidden = !(S.me.demo && S.me.demo.enabled);
+      try { sessionStorage.setItem("clinic_demo", S.me.demo && S.me.demo.enabled ? "1" : "0"); } catch (e) { /* storage may be blocked */ }
+    } else {
+      let was = null; try { was = sessionStorage.getItem("clinic_demo"); } catch (e) { was = null; }
+      $("nav-demo").hidden = was !== "1";
     }
     const r = S.route;
     $("nav-patients").toggleAttribute("aria-current", false);
@@ -251,6 +257,7 @@
 
   // ---------------------------------------------------------------- patients
   function reasonShort(p) {
+    if (p.status === "within") return "–";
     if (p.reason_short) return p.reason_short;
     const items = (p.attention || []).slice().sort((a, b) => (LEVEL_ORDER[a.level] ?? 9) - (LEVEL_ORDER[b.level] ?? 9));
     if (!items.length) return p.status === "no_baseline" ? "Not enough history" : "–";
@@ -567,31 +574,54 @@
       el("td", null, words(e.code)),
       el("td", null, pairs.length ? el("div", { class: "kv" }, pairs.map(([k, v]) => el("span", null, el("b", null, k), String(v)))) : null));
   }
+  const TL_COLS = [["watchers", "Watchers"], ["attention", "Attention"], ["response", "Response"], ["level1", "Model 1"], ["level2", "Model 2"], ["notifier", "Alert"], ["learning", "Learning"]];
+  const PAGE = 15;
+  function layerCell(c, layer) {
+    const es = (c.entries || []).filter((e) => e.layer === layer);
+    if (!es.length) return el("span", { class: "muted" }, "–");
+    const out = [];
+    es.forEach((e) => {
+      const d = e.detail || {};
+      if (layer === "watchers") out.push(e.code === "fired" ? el("span", { class: "chip l-attention" }, "fired") : el("span", { class: "muted" }, words(e.code).toLowerCase()));
+      else if (layer === "attention") out.push(el("span", { class: "chip l-" + (d.level || "watch") }, icon(e.code === "raised" ? "up" : LEVEL_ICON[d.level] || "ring"), kind(d.kind) + " " + e.code));
+      else if (layer === "response") out.push(e.code === "suggested" ? el("span", { class: "chip good" }, icon("diamond"), action(d.action)) : el("span", { class: "muted" }, words(d.reason || e.code).toLowerCase()));
+      else if (layer === "level1" || layer === "level2") out.push(/refus/.test(e.code) ? el("span", { class: "chip bad" }, "refused" + (d.reason ? ": " + words(d.reason).toLowerCase() : "")) : el("span", { class: e.code === "off" ? "muted" : null }, words(e.code).toLowerCase()));
+      else if (layer === "notifier") out.push(e.code === "sent" ? el("span", { class: "chip l-urgent" }, icon("dot"), "sent") : el("span", null, words(e.code).toLowerCase()));
+      else if (layer === "learning") out.push(el("span", null, d.accepted && d.accepted.length ? d.accepted.length + " lesson" + (d.accepted.length > 1 ? "s" : "") : words(e.code).toLowerCase()));
+    });
+    return el("div", { class: "cellstack" }, out);
+  }
   function tabTimeline() {
     const wrap = el("div");
     const t = S.trace;
-    wrap.appendChild(el("div", { class: "bar" },
-      el("button", { type: "button", class: "btn btn-small", "aria-pressed": S.changedOnly ? "true" : "false", "data-key": "changed-only",
-        on: { click: () => { S.changedOnly = !S.changedOnly; render(); } } }, "Changes only"),
-      el("span", { class: "muted small" }, "What the system saw and did, newest first. Open a row for each step.")));
     if (!t) { wrap.appendChild(empty("Loading…")); return wrap; }
     const chains = (t.chains || []).filter((c) => !S.changedOnly || c.changed);
+    const pages = Math.max(1, Math.ceil(chains.length / PAGE));
+    if (S.page >= pages) S.page = pages - 1;
+    const from = S.page * PAGE, shown = chains.slice(from, from + PAGE);
+    const pager = (key) => el("div", { class: "bar pager" },
+      el("button", { type: "button", class: "btn btn-small", disabled: S.page === 0, "data-key": key + "-prev", on: { click: () => { S.page -= 1; render(); } } }, "← Newer"),
+      el("span", { class: "muted small num" }, chains.length ? (from + 1) + "–" + (from + shown.length) + " of " + chains.length : "0"),
+      el("button", { type: "button", class: "btn btn-small", disabled: S.page >= pages - 1, "data-key": key + "-next", on: { click: () => { S.page += 1; render(); } } }, "Older →"));
+    wrap.appendChild(el("div", { class: "bar" },
+      el("button", { type: "button", class: "btn btn-small", "aria-pressed": S.changedOnly ? "true" : "false", "data-key": "changed-only",
+        on: { click: () => { S.changedOnly = !S.changedOnly; S.page = 0; render(); } } }, "Changes only"),
+      el("span", { class: "muted small" }, "One row per trigger, one column per step of the system. Select a row for the numbers behind it."),
+      el("div", { class: "push" }, pager("top"))));
     if (!chains.length) { wrap.appendChild(empty(S.changedOnly ? "No changes recorded. Turn off “Changes only” to see every check." : "Nothing recorded yet.")); return wrap; }
-    const list = el("div", { class: "tl" });
-    chains.forEach((c) => {
+    const rows = [];
+    shown.forEach((c) => {
       const key = "chain-" + c.chain_id;
       const open = !!S.open[key];
-      const chips = chainSummary(c);
-      const item = el("div", { class: "tl-item" + (c.changed ? " changed" : "") },
-        el("button", { type: "button", class: "tl-head", "aria-expanded": open ? "true" : "false", "aria-controls": key, "data-key": key,
-          on: { click: () => { S.open[key] = !open; render(); } } },
-          el("span", { class: "when" }, stamp(c.at)),
-          el("span", { class: "what" }, c.headline || TRIGGER[c.trigger] || words(c.trigger), chips.length ? chips : el("span", { class: "muted small" }, "no change")),
-          el("span", { class: "chev", "aria-hidden": "true" }, open ? "▲" : "▼")));
-      if (open) item.appendChild(el("div", { class: "tl-body", id: key }, el("div", { class: "scroll" }, el("table", null, el("tbody", null, (c.entries || []).map(entryRow))))));
-      list.appendChild(item);
+      rows.push(el("tr", { class: (c.changed ? "changed" : "") + (open ? " open" : ""), on: { click: () => { S.open[key] = !open; render(); } } },
+        el("td", { class: "num nowrap" }, el("button", { type: "button", class: "linklike", "aria-expanded": open ? "true" : "false", "data-key": key }, stamp(c.at))),
+        el("td", null, c.headline || TRIGGER[c.trigger] || words(c.trigger)),
+        TL_COLS.map(([layer]) => el("td", null, layerCell(c, layer)))));
+      if (open) rows.push(el("tr", { class: "detail" }, el("td", { colspan: 2 + TL_COLS.length },
+        el("div", { class: "tl-body" }, el("table", null, el("tbody", null, (c.entries || []).map(entryRow)))))));
     });
-    wrap.appendChild(list);
+    wrap.appendChild(el("section", { class: "panel" }, table(["When", "Trigger"].concat(TL_COLS.map((x) => x[1])), rows, "pick tl-table")));
+    if (pages > 1) wrap.appendChild(pager("bottom"));
     return wrap;
   }
 
@@ -606,18 +636,40 @@
       used.map((a) => el("tr", null, el("td", null, action(a)), el("td", { class: "r num" }, acts[a].offered), el("td", { class: "r num" }, acts[a].done),
         el("td", { class: "r num" }, acts[a].not_today), el("td", { class: "r num" }, (acts[a].no_answer || 0) + (acts[a].open || 0)),
         el("td", null, outcomeWord(acts[a].mean_outcome_change))))) : empty("Nothing offered yet.")));
-    const groups = d.activities && (d.activities.types || d.activities);
-    if (groups && typeof groups === "object") {
-      Object.keys(groups).forEach((type) => {
-        const g = groups[type];
-        const sessions = Array.isArray(g) ? g : g && Array.isArray(g.sessions) ? g.sessions : null;
-        if (!sessions || !sessions.length) return;
-        const cols = Object.keys(sessions[0]).filter((k) => !/id$|^example$|^face$|^started_at$|^date$/.test(k) && typeof sessions[0][k] !== "object").slice(0, 6);
-        wrap.appendChild(panel(action(type) || words(type), sessions.length, table(["Date"].concat(cols.map(words)),
-          sessions.slice(-14).reverse().map((s) => el("tr", null, el("td", { class: "num" }, dayShort(s.date || s.started_at)),
-            cols.map((k) => el("td", { class: "num" }, s[k] === true ? "yes" : s[k] === false ? "no" : s[k] === null ? "–" : typeof s[k] === "number" && !Number.isInteger(s[k]) ? s[k].toFixed(2) : String(s[k]))))))));
-      });
+    const A = d.activities || {};
+    const zCell = (z) => el("td", { class: "num" }, z === null || z === undefined ? "–" : zWord(z) + " (" + signed(z) + ")");
+    const faceCell = (f) => {
+      if (!f) return el("td", { class: "muted" }, "no camera");
+      if (f.quality && f.quality !== "good") return el("td", { class: "muted" }, "poor tracking");
+      const z = f.z || {};
+      const off = [["facial_activity", "movement"], ["smile_intensity", "smile"], ["blink_rate_per_min", "blinking"], ["look_down_share", "looking down"]]
+        .filter(([k]) => typeof z[k] === "number" && Math.abs(z[k]) >= 1.5).map(([k, w]) => w + " " + signed(z[k]));
+      return el("td", null, off.length ? off.join(" · ") : "as usual");
+    };
+    const readCell = (r) => el("td", null, !r || r.status === "off" || r.status === "not_applicable" ? el("span", { class: "muted" }, "–") : words(r.status));
+    const yes = (b) => (b ? "yes" : "no");
+    const recent = (g) => ((g && g.sessions) || []).slice(-14).reverse();
+    const c7 = (A.counts && A.counts.last_7_days) || {};
+    if (A.focus || A.breathing || A.checkin) {
+      const tile = (key, label) => factTile(c7[key] ? c7[key].finished + "/" + c7[key].played : "–", label + " finished, 7 d");
+      wrap.appendChild(panel("Lanvi", d.lanvi ? words(d.lanvi.stage) + " · " + num(d.lanvi.xp) + " XP" : null,
+        el("div", { class: "facts" }, tile("focus", "focus games"), tile("breathing", "breathing"), tile("checkin", "check-ins"))));
     }
+    if (recent(A.focus).length) wrap.appendChild(panel("Focus game", A.focus.sessions.length, table(["Date", "Finished", { t: "Reaction", r: 1 }, "Against own normal", { t: "Errors", r: 1 }, "Face", "Model reading"],
+      recent(A.focus).map((x) => el("tr", null, el("td", { class: "num" }, dayShort(x.date)), el("td", null, yes(x.completed)),
+        el("td", { class: "r num" }, x.values && x.values.median_reaction_ms != null ? num(x.values.median_reaction_ms) + " ms" : "–"),
+        el("td", { class: "num" }, !x.z || x.z.median_reaction_ms == null ? "–" : (x.z.median_reaction_ms >= 1.5 ? "slower than usual" : x.z.median_reaction_ms <= -1.5 ? "faster than usual" : "usual") + " (" + signed(x.z.median_reaction_ms) + ")"),
+        el("td", { class: "r num" }, x.values && x.values.error_rate != null ? Math.round(x.values.error_rate * 100) + " %" : "–"),
+        faceCell(x.face), readCell(x.reading))))));
+    if (recent(A.breathing).length) wrap.appendChild(panel("Breathing", A.breathing.sessions.length, table(["Date", "Finished", { t: "Time", r: 1 }, "Face", "Model reading"],
+      recent(A.breathing).map((x) => el("tr", null, el("td", { class: "num" }, dayShort(x.date)), el("td", null, yes(x.completed)),
+        el("td", { class: "r num" }, x.values && x.values.time_played_s != null ? num(x.values.time_played_s) + " s" : "–"), faceCell(x.face), readCell(x.reading))))));
+    if (recent(A.checkin).length) wrap.appendChild(panel("Evening check-in", A.checkin.sessions.length, table(["Date", { t: "Good things", r: 1 }, "Plan for next day", "Plan done", "Asked for help"],
+      recent(A.checkin).map((x) => el("tr", null, el("td", { class: "num" }, dayShort(x.date)),
+        el("td", { class: "r num" }, x.values ? x.values.good_things : "–"),
+        el("td", null, x.plan ? x.plan.label || (x.plan.catalog_id ? words(x.plan.catalog_id) : "own words") : "–"),
+        el("td", null, x.plan_done === "yes" ? "yes" : x.plan_done === "no" ? "no" : "–"),
+        el("td", null, x.asked_for_help ? el("span", { class: "chip l-urgent" }, icon("dot"), "Yes") : "No"))))));
     const offers = (d.suggestions || []).slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 14);
     wrap.appendChild(panel("Offers and answers", offers.length || "", offers.length ? table(["Date", "Offer", "Because of", "Answer", "Felt"],
       offers.map((o) => el("tr", null, el("td", { class: "num" }, dayShort(o.date)), el("td", null, action(o.action)), el("td", null, kind(o.attention_kind)),
