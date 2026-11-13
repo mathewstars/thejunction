@@ -41,9 +41,9 @@ The person can also write a few words. The server only turns them into a few fix
 
 | Who | Part |
 |---|---|
-| Peter | The device: the iPhone app, AR and Apple Health |
-| Mathew | The "mind" logic and the server |
-| Matthew | Presentation, video, app design and game design; picks the name |
+| Peter | Coding the app: AR, the round, Apple Health, the calls to the server |
+| Matthew | Design, naming and presentation; builds the iOS app on his Mac and puts it on TestFlight |
+| Mathew | The server and the "mind" logic |
 
 **How it fits together**
 
