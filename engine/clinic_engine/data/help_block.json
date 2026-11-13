@@ -1,0 +1,6 @@
+{
+  "_readme": "DRAFT wording. No clinician has reviewed this text yet. Edit the text here; the emergency number and the clinic contact come from config (EMERGENCY_NUMBER, CLINIC_CONTACT_LABEL, CLINIC_CONTACT_PHONE). {product}, {emergency_number} and {clinic} are filled in by code.",
+  "reviewed_by_clinician": false,
+  "text": "{product} is not an emergency service. In an emergency, call {emergency_number}. Otherwise, contact {clinic}.",
+  "clinic_fallback": "your clinic"
+}

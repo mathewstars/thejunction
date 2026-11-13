@@ -1,0 +1,3136 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Angel clinic engine",
+    "description": "The server behind the app: senses each day against the person's own normal, holds attention when something changes, responds with one small action, and learns which action helped. It never diagnoses.\n\nAuth: `Authorization: Bearer <token>`. Device tokens come from `POST /v1/devices/pair`; clinician session tokens from `POST /v1/clinic/login`; admin tokens from the seed script.\n\nErrors always look like `{\"error\": {\"code\", \"message\", \"request_id\"}}`.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Liveness (no auth)",
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices/pair": {
+      "post": {
+        "tags": [
+          "device"
+        ],
+        "summary": "Exchange a one-time pairing code for a device token",
+        "description": "No auth. The code is one-time and expires. The returned token is shown\nonce: keep it in the Keychain.",
+        "operationId": "pair_v1_devices_pair_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/daily": {
+      "post": {
+        "tags": [
+          "device"
+        ],
+        "summary": "Upload one day or a batch of history",
+        "description": "Upsert by date. Values that cannot be true (negative, absurd, future\ndates, conflicting duplicates in one batch) are rejected per day, logged,\nand never used for the baseline.",
+        "operationId": "daily_v1_daily_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DailyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/rounds": {
+      "post": {
+        "tags": [
+          "device"
+        ],
+        "summary": "Send one AR round record (schema 2)",
+        "description": "Idempotent by `id`. Implausible values reject the round (422). Weak\ntracking, a small play area or an interrupted round are kept but marked\nlow quality. The movement reading (level 2) runs in the background.",
+        "operationId": "rounds_v1_rounds_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoundIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoundOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/rounds/{round_id}/analysis": {
+      "get": {
+        "tags": [
+          "device"
+        ],
+        "summary": "Status of the movement reading",
+        "description": "Returns a plain line from a fixed set when the reading is ready.\nNever the reading itself.",
+        "operationId": "round_analysis_v1_rounds__round_id__analysis_get",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "round_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$",
+              "title": "Round Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/today": {
+      "get": {
+        "tags": [
+          "device"
+        ],
+        "summary": "Status, today's suggestion, round config and the crisis block",
+        "description": "`crisis` is always present. `status` is one of no_baseline, within,\noutside, no_data; missing data is shown as no_data, never as within.",
+        "operationId": "today_v1_today_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/feedback": {
+      "post": {
+        "tags": [
+          "device"
+        ],
+        "summary": "Answer a suggestion",
+        "description": "Idempotent by `id`. Answers are enums only.",
+        "operationId": "feedback_v1_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/notes": {
+      "post": {
+        "tags": [
+          "device"
+        ],
+        "summary": "A few words from the patient (the only free-text field)",
+        "description": "The text is untrusted data. It is classified into enums (code lexicon\nplus the local model through the gates), never followed as an\ninstruction, never logged, and never sent outside the server. The reply\nis a fixed template. When `crisis` is true the help block is included.",
+        "operationId": "notes_v1_notes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/mind": {
+      "get": {
+        "tags": [
+          "device",
+          "mind"
+        ],
+        "summary": "Rules, active lessons and open questions",
+        "operationId": "mind_v1_mind_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/mind/rules": {
+      "post": {
+        "tags": [
+          "device",
+          "mind"
+        ],
+        "summary": "Add a rule from the fixed catalog",
+        "description": "Rule templates: quiet_hours {from, to}, seated_only {weekdays},\nmax_suggestions_per_day {n}, no_action {action}. Rules always beat lessons.",
+        "operationId": "add_rule_v1_mind_rules_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleWrap"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/mind/rules/{rule_id}": {
+      "delete": {
+        "tags": [
+          "device",
+          "mind"
+        ],
+        "summary": "Remove a rule",
+        "operationId": "delete_rule_v1_mind_rules__rule_id__delete",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Rule Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mind/lessons/{lesson_id}/reject": {
+      "post": {
+        "tags": [
+          "device",
+          "mind"
+        ],
+        "summary": "Say a lesson is not true",
+        "description": "A rejected lesson does not come back from the same evidence.",
+        "operationId": "reject_lesson_v1_mind_lessons__lesson_id__reject_post",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "lesson_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Lesson Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mind/questions/{question_id}/answer": {
+      "post": {
+        "tags": [
+          "device",
+          "mind"
+        ],
+        "summary": "Answer a question",
+        "operationId": "answer_question_v1_mind_questions__question_id__answer_post",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Question Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clinic/login": {
+      "post": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "Clinician login, returns a short-lived session token",
+        "operationId": "login_v1_clinic_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clinic/patients": {
+      "get": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "One line per patient in your clinic",
+        "description": "Status, held attention items (kind, level, since), last data day and a\nshort plain summary. Built from data and thresholds only.",
+        "operationId": "patients_v1_clinic_patients_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/clinic/patients/{patient_id}": {
+      "get": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "Timeline, attention, suggestions, lessons with provenance, refusals, progress",
+        "operationId": "patient_detail_v1_clinic_patients__patient_id__get",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clinic/patients/{patient_id}/rounds/{round_id}": {
+      "get": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "One round: features, path for the trail, checked reading and dropped claims",
+        "operationId": "patient_round_v1_clinic_patients__patient_id__rounds__round_id__get",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "round_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$",
+              "title": "Round Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clinic/attention/{attention_id}/ack": {
+      "post": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "Acknowledge an attention item",
+        "description": "Closes the held item. The same evidence does not reopen it; fresh\nevidence does. The status still follows the data.",
+        "operationId": "ack_v1_clinic_attention__attention_id__ack_post",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "attention_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Attention Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/demo/reset": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Regenerate the demo patient's 28 normal days, rounds and history",
+        "description": "Keeps the clinic, the patient and the paired device.",
+        "operationId": "demo_reset_v1_demo_reset_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/demo/scenario": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Switch the recent days to a dip, or back to normal",
+        "operationId": "demo_scenario_v1_demo_scenario_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/demo/tick": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Run the periodic tick now (silence, expiry, queued notices)",
+        "operationId": "demo_tick_v1_demo_tick_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/review/run": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Run the learning review for one patient now",
+        "operationId": "review_run_v1_review_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/demo/analyze": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Run the movement reading again for one round",
+        "operationId": "demo_analyze_v1_demo_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnalysisOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "off",
+              "not_allowed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line",
+            "description": "Plain line for the patient, from a fixed set."
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "AnalysisOut"
+      },
+      "AnalyzeIn": {
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+            "title": "Patient Id"
+          },
+          "round_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "title": "Round Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "patient_id",
+          "round_id"
+        ],
+        "title": "AnalyzeIn"
+      },
+      "AnswerIn": {
+        "properties": {
+          "answer": {
+            "type": "string",
+            "enum": [
+              "yes",
+              "no",
+              "not_sure"
+            ],
+            "title": "Answer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "answer"
+        ],
+        "title": "AnswerIn"
+      },
+      "CrisisBlock": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "contacts": {
+            "items": {
+              "$ref": "#/components/schemas/CrisisContact"
+            },
+            "type": "array",
+            "title": "Contacts"
+          },
+          "reviewed_by_clinician": {
+            "type": "boolean",
+            "title": "Reviewed By Clinician",
+            "description": "False while the wording is a draft; show it as draft wording."
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "contacts",
+          "reviewed_by_clinician"
+        ],
+        "title": "CrisisBlock"
+      },
+      "CrisisContact": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "phone"
+        ],
+        "title": "CrisisContact"
+      },
+      "DailyIn": {
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/DayIn"
+            },
+            "type": "array",
+            "maxItems": 400,
+            "minItems": 1,
+            "title": "Days",
+            "description": "One day, or a batch of history. Upsert by date."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "days"
+        ],
+        "title": "DailyIn",
+        "examples": [
+          {
+            "days": [
+              {
+                "date": "2026-11-13",
+                "hrv_ms": 42.0,
+                "sleep_h": 7.1,
+                "steps": 6400,
+                "walking_speed_m_s": 1.24
+              }
+            ]
+          }
+        ]
+      },
+      "DailyOut": {
+        "properties": {
+          "accepted": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Accepted"
+          },
+          "rejected": {
+            "items": {
+              "$ref": "#/components/schemas/Rejected"
+            },
+            "type": "array",
+            "title": "Rejected"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accepted",
+          "rejected",
+          "status"
+        ],
+        "title": "DailyOut"
+      },
+      "DayIn": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "steps": {
+            "type": "integer",
+            "title": "Steps",
+            "description": "Step count for the day."
+          },
+          "walking_speed_m_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Walking Speed M S",
+            "description": "Average walking speed, m/s."
+          },
+          "hrv_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hrv Ms",
+            "description": "Heart-rate variability (SDNN), ms. Watch only."
+          },
+          "sleep_h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep H",
+            "description": "Hours asleep. Watch only."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "steps"
+        ],
+        "title": "DayIn"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "examples": [
+              "not_found"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "examples": [
+              "Not found."
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id",
+            "examples": [
+              "9f2c4e1a0b7d"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "request_id"
+        ],
+        "title": "ErrorBody"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse"
+      },
+      "FeedbackIn": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "title": "Id"
+          },
+          "suggestion_id": {
+            "type": "string",
+            "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+            "title": "Suggestion Id"
+          },
+          "answer": {
+            "type": "string",
+            "enum": [
+              "did_it",
+              "not_today",
+              "something_else"
+            ],
+            "title": "Answer"
+          },
+          "felt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "rough",
+                  "ok",
+                  "good"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Felt"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "suggestion_id",
+          "answer"
+        ],
+        "title": "FeedbackIn"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LightLog": {
+        "properties": {
+          "i": {
+            "type": "integer",
+            "maximum": 99.0,
+            "minimum": 0.0,
+            "title": "I"
+          },
+          "spawn_t": {
+            "type": "number",
+            "title": "Spawn T"
+          },
+          "dist_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dist M"
+          },
+          "height_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height M"
+          },
+          "first_move_t": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Move T"
+          },
+          "end_t": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End T"
+          },
+          "caught": {
+            "type": "boolean",
+            "title": "Caught"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "i",
+          "spawn_t",
+          "dist_m",
+          "height_m",
+          "first_move_t",
+          "end_t",
+          "caught"
+        ],
+        "title": "LightLog"
+      },
+      "LoginIn": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginIn"
+      },
+      "LoginOut": {
+        "properties": {
+          "session_token": {
+            "type": "string",
+            "title": "Session Token"
+          },
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_token",
+          "expires_at"
+        ],
+        "title": "LoginOut"
+      },
+      "MaxPerDay": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "max_suggestions_per_day",
+            "title": "Type"
+          },
+          "params": {
+            "$ref": "#/components/schemas/MaxPerDayParams"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "params"
+        ],
+        "title": "MaxPerDay"
+      },
+      "MaxPerDayParams": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "N"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "n"
+        ],
+        "title": "MaxPerDayParams"
+      },
+      "NoAction": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "no_action",
+            "title": "Type"
+          },
+          "params": {
+            "$ref": "#/components/schemas/NoActionParams"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "params"
+        ],
+        "title": "NoAction"
+      },
+      "NoActionParams": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "ar_round",
+              "ar_round_seated",
+              "walk_10min",
+              "daylight_10min",
+              "call_someone",
+              "breathing_2min"
+            ],
+            "title": "Action"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "NoActionParams"
+      },
+      "NoteIn": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 280,
+            "minLength": 1,
+            "title": "Text",
+            "description": "The ONLY free-text field in the API. Untrusted data: classified, never followed, never sent outside the server."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "NoteIn"
+      },
+      "NoteOut": {
+        "properties": {
+          "reply": {
+            "$ref": "#/components/schemas/NoteReplyOut"
+          },
+          "crisis": {
+            "type": "boolean",
+            "title": "Crisis"
+          },
+          "crisis_block": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CrisisBlock"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present when crisis is true."
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "reply",
+          "crisis",
+          "suggestion"
+        ],
+        "title": "NoteOut"
+      },
+      "NoteReplyOut": {
+        "properties": {
+          "template_id": {
+            "type": "string",
+            "title": "Template Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "template_id",
+          "text"
+        ],
+        "title": "NoteReplyOut"
+      },
+      "PairIn": {
+        "properties": {
+          "pairing_code": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 12,
+            "title": "Pairing Code",
+            "description": "One-time code from the clinic, e.g. ABCD-EFGH-JKLM."
+          },
+          "device_label": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9 ._-]{1,40}$",
+            "title": "Device Label",
+            "description": "Short label for the device. Not a person's name.",
+            "examples": [
+              "iPhone 15"
+            ]
+          },
+          "platform": {
+            "type": "string",
+            "const": "ios",
+            "title": "Platform"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "pairing_code",
+          "device_label",
+          "platform"
+        ],
+        "title": "PairIn",
+        "examples": [
+          {
+            "device_label": "iPhone 15",
+            "pairing_code": "ABCD-EFGH-JKLM",
+            "platform": "ios"
+          }
+        ]
+      },
+      "PairOut": {
+        "properties": {
+          "device_token": {
+            "type": "string",
+            "title": "Device Token",
+            "description": "Bearer token. Shown once; store it in the Keychain."
+          },
+          "patient_id": {
+            "type": "string",
+            "title": "Patient Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_token",
+          "patient_id"
+        ],
+        "title": "PairOut"
+      },
+      "Path": {
+        "properties": {
+          "hz": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Hz"
+          },
+          "points": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array",
+              "maxItems": 3,
+              "minItems": 3
+            },
+            "type": "array",
+            "maxItems": 240,
+            "title": "Points"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "hz",
+          "points"
+        ],
+        "title": "Path"
+      },
+      "QuietHours": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "quiet_hours",
+            "title": "Type"
+          },
+          "params": {
+            "$ref": "#/components/schemas/QuietHoursParams"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "params"
+        ],
+        "title": "QuietHours"
+      },
+      "QuietHoursParams": {
+        "properties": {
+          "from": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "From"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "To"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "QuietHoursParams"
+      },
+      "Rejected": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "reason"
+        ],
+        "title": "Rejected"
+      },
+      "ReviewIn": {
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+            "title": "Patient Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "patient_id"
+        ],
+        "title": "ReviewIn"
+      },
+      "RoundConfigRef": {
+        "properties": {
+          "config_id": {
+            "type": "string",
+            "enum": [
+              "seated_gentle",
+              "near_gentle",
+              "standard",
+              "wide",
+              "wide_high"
+            ],
+            "title": "Config Id"
+          },
+          "layout_seed": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Layout Seed"
+          },
+          "lights_total": {
+            "type": "integer",
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Lights Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "config_id",
+          "layout_seed",
+          "lights_total"
+        ],
+        "title": "RoundConfigRef"
+      },
+      "RoundIn": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "title": "Id",
+            "description": "Client-generated id. Re-sending the same id is an upsert."
+          },
+          "schema": {
+            "type": "integer",
+            "const": 2,
+            "title": "Schema"
+          },
+          "suggestion_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion Id"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "duration_s": {
+            "type": "number",
+            "title": "Duration S"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "standing",
+              "seated",
+              "screen"
+            ],
+            "title": "Mode"
+          },
+          "completed": {
+            "type": "boolean",
+            "title": "Completed"
+          },
+          "ended_by": {
+            "type": "string",
+            "enum": [
+              "finished",
+              "user_stopped",
+              "interrupted"
+            ],
+            "title": "Ended By"
+          },
+          "config": {
+            "$ref": "#/components/schemas/RoundConfigRef"
+          },
+          "tracking": {
+            "$ref": "#/components/schemas/Tracking"
+          },
+          "lights": {
+            "items": {
+              "$ref": "#/components/schemas/LightLog"
+            },
+            "type": "array",
+            "maxItems": 60,
+            "title": "Lights"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Path"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "schema",
+          "started_at",
+          "duration_s",
+          "mode",
+          "completed",
+          "ended_by",
+          "config",
+          "tracking",
+          "lights"
+        ],
+        "title": "RoundIn",
+        "examples": [
+          {
+            "completed": true,
+            "config": {
+              "config_id": "standard",
+              "layout_seed": 1234,
+              "lights_total": 12
+            },
+            "duration_s": 118.4,
+            "ended_by": "finished",
+            "id": "5b1c0c9e-8d0a-4c57-9a55-3f0f6d1f2a10",
+            "lights": [
+              {
+                "caught": true,
+                "dist_m": 1.8,
+                "end_t": 6.4,
+                "first_move_t": 2.9,
+                "height_m": 1.2,
+                "i": 0,
+                "spawn_t": 2.1
+              }
+            ],
+            "mode": "standing",
+            "path": {
+              "hz": 2,
+              "points": [
+                [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                [
+                  0.1,
+                  -0.2,
+                  0.0
+                ]
+              ]
+            },
+            "schema": 2,
+            "started_at": "2026-11-14T09:12:03Z",
+            "tracking": {
+              "lidar": false,
+              "light": "ok",
+              "limited_reasons": [
+                "excessive_motion"
+              ],
+              "normal_ratio": 0.93,
+              "play_area_m2": 9.5
+            }
+          }
+        ]
+      },
+      "RoundOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "quality": {
+            "type": "string",
+            "enum": [
+              "good",
+              "low"
+            ],
+            "title": "Quality"
+          },
+          "energy_bucket": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "usual",
+                  "high"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy Bucket"
+          },
+          "analysis": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "off",
+              "not_allowed"
+            ],
+            "title": "Analysis"
+          },
+          "after_round": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "After Round",
+            "description": "{template_id, text}: one line to show after the round."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "quality",
+          "energy_bucket",
+          "analysis",
+          "after_round"
+        ],
+        "title": "RoundOut"
+      },
+      "RuleWrap": {
+        "properties": {
+          "rule": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/QuietHours"
+              },
+              {
+                "$ref": "#/components/schemas/SeatedOnly"
+              },
+              {
+                "$ref": "#/components/schemas/MaxPerDay"
+              },
+              {
+                "$ref": "#/components/schemas/NoAction"
+              }
+            ],
+            "title": "Rule",
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "max_suggestions_per_day": "#/components/schemas/MaxPerDay",
+                "no_action": "#/components/schemas/NoAction",
+                "quiet_hours": "#/components/schemas/QuietHours",
+                "seated_only": "#/components/schemas/SeatedOnly"
+              }
+            }
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rule"
+        ],
+        "title": "RuleWrap",
+        "examples": [
+          {
+            "rule": {
+              "params": {
+                "from": "21:00",
+                "to": "08:00"
+              },
+              "type": "quiet_hours"
+            }
+          }
+        ]
+      },
+      "ScenarioIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "dip"
+            ],
+            "title": "Name"
+          },
+          "patient_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ScenarioIn"
+      },
+      "SeatedOnly": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "seated_only",
+            "title": "Type"
+          },
+          "params": {
+            "$ref": "#/components/schemas/SeatedOnlyParams"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "params"
+        ],
+        "title": "SeatedOnly"
+      },
+      "SeatedOnlyParams": {
+        "properties": {
+          "weekdays": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "mon",
+                "tue",
+                "wed",
+                "thu",
+                "fri",
+                "sat",
+                "sun"
+              ]
+            },
+            "type": "array",
+            "maxItems": 7,
+            "minItems": 1,
+            "title": "Weekdays"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "weekdays"
+        ],
+        "title": "SeatedOnlyParams"
+      },
+      "SuggestionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "action",
+          "text",
+          "created_at"
+        ],
+        "title": "SuggestionOut"
+      },
+      "TodayOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "no_baseline",
+              "within",
+              "outside",
+              "no_data"
+            ],
+            "title": "Status"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "round_config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Round Config"
+          },
+          "attention": {
+            "type": "string",
+            "title": "Attention",
+            "description": "Short patient-safe summary."
+          },
+          "crisis": {
+            "$ref": "#/components/schemas/CrisisBlock",
+            "description": "Always present."
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "suggestion",
+          "round_config",
+          "attention",
+          "crisis",
+          "product_name"
+        ],
+        "title": "TodayOut"
+      },
+      "Tracking": {
+        "properties": {
+          "normal_ratio": {
+            "type": "number",
+            "title": "Normal Ratio"
+          },
+          "limited_reasons": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "excessive_motion",
+                "insufficient_features",
+                "initializing",
+                "relocalizing",
+                "other"
+              ]
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Limited Reasons"
+          },
+          "play_area_m2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Play Area M2"
+          },
+          "light": {
+            "type": "string",
+            "enum": [
+              "dim",
+              "ok",
+              "bright"
+            ],
+            "title": "Light"
+          },
+          "lidar": {
+            "type": "boolean",
+            "title": "Lidar"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "normal_ratio",
+          "light",
+          "lidar"
+        ],
+        "title": "Tracking"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "description": "Opaque bearer token (device, clinician session, or admin).",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "device",
+      "description": "Calls the iPhone app makes (device token)."
+    },
+    {
+      "name": "mind",
+      "description": "The patient's view of the mind: rules, lessons, questions."
+    },
+    {
+      "name": "clinician",
+      "description": "Clinician page (clinician session token)."
+    },
+    {
+      "name": "admin",
+      "description": "Demo and maintenance (admin token)."
+    },
+    {
+      "name": "health",
+      "description": "Liveness."
+    }
+  ]
+}

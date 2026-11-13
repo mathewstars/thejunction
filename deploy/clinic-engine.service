@@ -1,0 +1,23 @@
+# Example systemd unit. Placeholders: adjust user, paths and the env file.
+[Unit]
+Description=Clinic engine (FastAPI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=clinic-engine
+Group=clinic-engine
+WorkingDirectory=/opt/clinic-engine/engine
+EnvironmentFile=/etc/clinic-engine/clinic-engine.env
+ExecStart=/opt/clinic-engine/engine/.venv/bin/uvicorn clinic_engine.app:app_from_env --factory --host 127.0.0.1 --port 8080 --proxy-headers --forwarded-allow-ips=127.0.0.1 --no-server-header
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/clinic-engine
+
+[Install]
+WantedBy=multi-user.target

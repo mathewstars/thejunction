@@ -1,0 +1,100 @@
+"""Every threshold the mind uses, in one place.
+
+The values are frozen. Nothing the mind learns (lessons) and nothing a model
+says can change them; only a code change can. A test checks this.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Thresholds:
+    # Baseline: robust median and MAD over the person's own trailing days.
+    baseline_window_days: int = 28
+    baseline_exclude_recent: int = 5  # the newest days do not shape "normal"
+    baseline_min_days: int = 14
+    mad_to_sigma: float = 1.4826
+
+    # Deviation watcher: a sustained drop below own normal.
+    low_day_z: float = -1.5  # a day is "clearly below" at or under this
+    deviation_lookback: int = 5
+    deviation_min_low: int = 3  # at least 3 of the last 5 days with data
+    recovery_days: int = 3  # this many days in a row back near normal closes it
+    recovered_z: float = -1.0
+
+    # Novelty watcher: one day far from normal, either way.
+    novelty_z: float = 3.0
+    novelty_close_days: int = 3
+
+    # Silence watcher: no daily data.
+    silence_days: int = 3
+
+    # Ignored watcher: suggestions left without an answer in a row.
+    ignored_in_a_row: int = 3
+
+    # Oddity watcher: rejected records keep a "watch" item open this long.
+    oddity_hold_days: int = 7
+
+    # Escalation to "urgent" (means: a clinician should review this today).
+    urgent_deep_z: float = -2.5  # mean movement z of the recent low days
+    urgent_deep_min_low: int = 4  # with at least this many low days of the last 5
+    urgent_held_days: int = 10  # a deviation held this long needs review
+
+    # Rounds (docs/game-interface.md, section 4).
+    round_min_normal_ratio: float = 0.7  # below: low quality, never in a baseline
+    round_min_play_area_m2: float = 2.0
+    round_baseline_min: int = 5  # good rounds in the same mode
+    round_baseline_max: int = 20
+    round_energy_low: float = -1.0
+    round_energy_high: float = 1.0
+    round_fade_z: float = -1.5
+    round_stopped_early_of_3: int = 2
+    round_not_played_in_a_row: int = 3
+    # Two weak rounds in a row let the deviation watcher open one low day earlier.
+    round_weak_lowers_deviation_by: int = 1
+
+    # Responder.
+    suggestion_cooldown_hours: float = 6.0
+    suggestion_ttl_hours: float = 20.0
+    max_suggestions_per_day: int = 2
+
+    # Learning.
+    outcome_days: int = 2  # days after a suggestion that measure its outcome
+    outcome_improved: float = 0.5  # change in movement z that counts as better
+    outcome_worse: float = -0.5
+    min_evidence: int = 3
+    support_fraction: float = 0.6
+    max_active_lessons: int = 15
+    lesson_ttl_days: int = 30
+    max_open_questions: int = 3
+
+
+# Per-metric floor for the spread, so a very regular person does not get
+# huge z-scores from tiny changes. In the metric's own unit.
+MIN_SCALE = {
+    "steps": 400.0,
+    "walking_speed_m_s": 0.03,
+    "hrv_ms": 3.0,
+    "sleep_h": 0.3,
+}
+
+# Plausibility limits. Values outside are rejected by the oddity watcher.
+PLAUSIBLE = {
+    "steps": (0, 80_000),
+    "walking_speed_m_s": (0.1, 3.0),
+    "hrv_ms": (5.0, 250.0),
+    "sleep_h": (0.0, 18.0),
+}
+
+# Floors for round feature spreads (same idea as MIN_SCALE).
+ROUND_MIN_SCALE = {
+    "caught_share": 0.05, "median_reaction_s": 0.2, "median_speed_m_s": 0.05,
+    "coverage": 0.05, "still_share": 0.05, "vertical_range_m": 0.05, "fade": 0.05,
+}
+
+METRICS = ("steps", "walking_speed_m_s", "hrv_ms", "sleep_h")
+MOVEMENT_METRICS = ("steps", "walking_speed_m_s")
+
+T = Thresholds()

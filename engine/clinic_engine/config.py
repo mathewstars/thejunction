@@ -1,0 +1,134 @@
+"""Settings, read from environment variables.
+
+Nothing secret has a default here. Copy `.env.example` to `.env`, fill it in,
+and load it into the environment (systemd EnvironmentFile, or `set -a; . ./.env`).
+"""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+
+
+def _env(name: str, default: str = "") -> str:
+    return os.environ.get(name, default).strip()
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = _env(name)
+    return int(raw) if raw else default
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = _env(name)
+    return float(raw) if raw else default
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = _env(name).lower()
+    if not raw:
+        return default
+    return raw in ("1", "true", "yes", "on")
+
+
+
+
+@dataclass
+class Settings:
+    product_name: str = "Angel"
+
+    # Storage: memory | dir | s3
+    store: str = "dir"
+    store_dir: str = "./data"
+    s3_endpoint_url: str = ""
+    s3_bucket: str = ""
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_region: str = "us-east-1"
+
+    # HTTP layer
+    cors_origins: list[str] = field(default_factory=list)
+    max_body_bytes: int = 256 * 1024
+    rate_per_minute: int = 120
+    rate_burst: int = 60
+    session_ttl_minutes: int = 120
+    pairing_ttl_hours: int = 24
+
+    # The mind
+    default_timezone: str = "Europe/Helsinki"
+    tick_seconds: int = 300
+    review_inline: bool = False  # run background work (review, reading) inline (tests)
+    reading_images: bool = True  # send two small trail pictures with the movement reading
+
+    # Level 1: local model on the private network (OpenAI-compatible)
+    local_llm_base_url: str = ""
+    local_llm_model: str = ""
+    local_llm_api_key: str = ""
+    local_llm_timeout_s: float = 8.0
+
+    # Level 2: Gemini, reached only through outreach.py
+    outreach_mode: str = "off"  # off | gemini
+    gemini_api_key: str = ""
+    gemini_model: str = ""  # placeholder: set the model id in the environment
+    gemini_timeout_s: float = 15.0
+
+    # Help (crisis) block, always shown by GET /v1/today. Wording: data/help_block.json
+    emergency_number: str = "112"
+    clinic_contact_label: str = ""  # e.g. "the clinic's nurse line"
+    clinic_contact_phone: str = ""
+
+    # Urgent notifier (outbound, through outreach.py)
+    notify_mode: str = "off"  # off | telegram
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+    clinician_page_url: str = ""
+    notify_hours: str = "08-18"  # clinic local hours when a message may be sent
+    notify_queue_outside_hours: bool = True  # queue to next window, else drop
+    notify_max_per_hour: int = 10
+    clinic_timezone: str = "Europe/Helsinki"
+
+    demo_enabled: bool = True
+
+    @classmethod
+    def from_env(cls) -> "Settings":
+        origins = [o.strip() for o in _env("CORS_ORIGINS").split(",") if o.strip()]
+        return cls(
+            product_name=_env("PRODUCT_NAME", "Angel"),
+            store=_env("STORE", "dir").lower(),
+            store_dir=_env("STORE_DIR", "./data"),
+            s3_endpoint_url=_env("S3_ENDPOINT_URL"),
+            s3_bucket=_env("S3_BUCKET"),
+            s3_access_key=_env("S3_ACCESS_KEY"),
+            s3_secret_key=_env("S3_SECRET_KEY"),
+            s3_region=_env("S3_REGION", "us-east-1"),
+            cors_origins=origins,
+            max_body_bytes=_env_int("MAX_BODY_BYTES", 256 * 1024),
+            rate_per_minute=_env_int("RATE_PER_MINUTE", 120),
+            rate_burst=_env_int("RATE_BURST", 60),
+            session_ttl_minutes=_env_int("SESSION_TTL_MINUTES", 120),
+            pairing_ttl_hours=_env_int("PAIRING_TTL_HOURS", 24),
+            default_timezone=_env("DEFAULT_TIMEZONE", "Europe/Helsinki"),
+            tick_seconds=_env_int("TICK_SECONDS", 300),
+            review_inline=_env_bool("REVIEW_INLINE", False),
+            reading_images=_env_bool("READING_IMAGES", True),
+            local_llm_base_url=_env("LOCAL_LLM_BASE_URL"),
+            local_llm_model=_env("LOCAL_LLM_MODEL"),
+            local_llm_api_key=_env("LOCAL_LLM_API_KEY"),
+            local_llm_timeout_s=_env_float("LOCAL_LLM_TIMEOUT_S", 8.0),
+            outreach_mode=_env("OUTREACH_MODE", "off").lower(),
+            gemini_api_key=_env("GEMINI_API_KEY"),
+            gemini_model=_env("GEMINI_MODEL"),
+            gemini_timeout_s=_env_float("GEMINI_TIMEOUT_S", 15.0),
+            emergency_number=_env("EMERGENCY_NUMBER", "112"),
+            clinic_contact_label=_env("CLINIC_CONTACT_LABEL"),
+            clinic_contact_phone=_env("CLINIC_CONTACT_PHONE"),
+            notify_mode=_env("NOTIFY_MODE", "off").lower(),
+            telegram_bot_token=_env("TELEGRAM_BOT_TOKEN"),
+            telegram_chat_id=_env("TELEGRAM_CHAT_ID"),
+            clinician_page_url=_env("CLINICIAN_PAGE_URL"),
+            notify_hours=_env("NOTIFY_HOURS", "08-18"),
+            notify_queue_outside_hours=_env_bool("NOTIFY_QUEUE_OUTSIDE_HOURS", True),
+            notify_max_per_hour=_env_int("NOTIFY_MAX_PER_HOUR", 10),
+            clinic_timezone=_env("CLINIC_TIMEZONE", "Europe/Helsinki"),
+            demo_enabled=_env_bool("DEMO_ENABLED", True),
+        )

@@ -1,0 +1,93 @@
+{
+  "_readme": "DRAFT starting list, not reviewed by a clinician. Conservative and incomplete on purpose; extend it. Word lists for the patient note check. Clinicians may edit this file. Write phrases in lower case; accents are ignored when matching (e.g. 'zit' matches 'žiť'). A phrase matches at the start of a word, so 'itsemurha' also matches 'itsemurhaa'. 'help' lists help-seeking and self-harm language: any match shows the help block. 'low' lists words of a low day: they only shape the reply and the mood.",
+  "reviewed_by_clinician": false,
+  "help": {
+    "en": [
+      "need help",
+      "help me",
+      "kill myself",
+      "killing myself",
+      "suicid",
+      "end my life",
+      "end it all",
+      "want to die",
+      "wanna die",
+      "hurt myself",
+      "harm myself",
+      "self harm",
+      "self-harm",
+      "no reason to live",
+      "can't go on",
+      "cant go on",
+      "better off dead",
+      "not safe",
+      "unsafe"
+    ],
+    "fi": [
+      "tarvitsen apua",
+      "auttakaa",
+      "haluan kuolla",
+      "itsemurh",
+      "tappaa itseni",
+      "tapan itseni",
+      "satuttaa itseani",
+      "vahingoittaa itseani",
+      "en jaksa elaa",
+      "ei ole syyta elaa",
+      "en ole turvassa"
+    ],
+    "sk": [
+      "potrebujem pomoc",
+      "pomozte mi",
+      "pomoz mi",
+      "chcem zomriet",
+      "samovrazd",
+      "zabijem sa",
+      "zabit sa",
+      "ublizit si",
+      "ublizim si",
+      "nechcem zit",
+      "nema zmysel zit",
+      "nie som v bezpeci"
+    ]
+  },
+  "low": {
+    "en": [
+      "sad",
+      "tired",
+      "exhausted",
+      "lonely",
+      "alone",
+      "hopeless",
+      "empty",
+      "can't sleep",
+      "cant sleep",
+      "bad day",
+      "awful",
+      "terrible",
+      "worthless",
+      "no energy"
+    ],
+    "fi": [
+      "surullinen",
+      "vasynyt",
+      "yksinainen",
+      "en jaksa",
+      "ahdistaa",
+      "toivoton",
+      "huono paiva",
+      "en saa unta"
+    ],
+    "sk": [
+      "smutn",
+      "unaven",
+      "osamel",
+      "nevladzem",
+      "beznadej",
+      "zly den",
+      "je mi zle",
+      "nemozem spat",
+      "nemam energiu"
+    ]
+  }
+}
