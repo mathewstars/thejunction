@@ -654,7 +654,15 @@
         .filter(([k]) => typeof z[k] === "number" && Math.abs(z[k]) >= 1.5).map(([k, w]) => w + " " + signed(z[k]));
       return el("td", null, off.length ? off.join(" · ") : "as usual");
     };
-    const readCell = (r) => el("td", null, !r || r.status === "off" || r.status === "not_applicable" ? el("span", { class: "muted" }, "–") : words(r.status));
+    const readCell = (r) => {
+      if (!r || r.status === "off" || r.status === "not_applicable") return el("td", { class: "muted" }, "–");
+      const rd = r.reading;
+      if (!rd) return el("td", null, words(r.status));
+      const said = [rd.reactions, rd.expression, rd.eyes].filter((v) => v && !/^(steady|as_usual|unclear)$/.test(v)).map((v) => words(v).toLowerCase());
+      const dropped = (r.dropped || []).length;
+      return el("td", null, said.length ? said.join(" · ") : "as usual",
+        el("span", { class: "sub" }, (r.read_by === "level1" ? "local model" : "outside model") + ", checked by code" + (dropped ? " · " + dropped + " claim" + (dropped > 1 ? "s" : "") + " dropped" : "")));
+    };
     const yes = (b) => (b ? "yes" : "no");
     const recent = (g) => ((g && g.sessions) || []).slice(-14).reverse();
     const c7 = (A.counts && A.counts.last_7_days) || {};
