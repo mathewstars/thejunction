@@ -46,60 +46,6 @@ TMS helps many people with severe depression, but it needs daily clinic visits. 
 
 WHAT LANVI DOES
 
-Lanvi is a small Arctic fox on the phone that grows as the person takes care of themselves. Behind it runs a loop: sense, respond, learn.
-
-Sense. The phone already records how a person moves. Lanvi reads steps and walking speed from Apple Health. If the person allows the camera, two short activities also give a few numbers about how the face moves; no photo or video is saved or sent. Each day is compared with that person's own normal, never with a population average. No questionnaire, no extra device.
-
-Respond. On a clear change Lanvi offers one small thing: a 45-second focus game, one minute of breathing together, or an evening check-in with three good things. There is no score and no streak, and a bad day never costs anything.
-
-Learn. The system remembers what was followed by better days and offers that first next time. The person can see what it learned and say "not true".
-
-The person can also write a few words. If they suggest a need for help, the help screen opens at once.
-
-FOR THE CLINICIAN, which is newer here.
-
-**Deadline:** Sunday 15 Nov, 10:00. Before then the draft must be set to final with "Submit Final". The form closes by itself.
-
-## State of the form
-
-| Field | Limit | Value now |
-|---|---|---|
-| Project name | 30 characters | Lanvi |
-| Punchline | 200 characters | See below (155 characters) |
-| Description | 5,000 characters | See below (about 2,600 characters) |
-| Challenge | one | Aalto University, Beyond the Clinic |
-| Tech challenge | any number | Google DeepMind, Best Use of Gemini API |
-| Project demo | link | https://lanvi.app |
-| Source code | link | https://github.com/mathewstars/thejunction |
-| Video | public link, at most 2:00 | missing |
-| Other link | link | empty |
-| Presentation | PDF or slides, at most 20 MB | missing |
-
-Still to do before Sunday 10:00:
-
-- The video. At most 2:00, and they are strict about it. Aim for 1:50. It must be public, for example on YouTube.
-- The pitch deck as a PDF.
-- The description: replace the last section with what really works and what we measured.
-- The team is still named "coderama" on the platform's Team page. That is the name of an existing company; rename it.
-- Check the Gemini tech challenge is still true: it stays only if Gemini really runs in the demo.
-
-## Punchline
-
-```
-Lanvi is a small fox on your phone that notices when you drift from your own normal after depression treatment, and answers with one small thing that helps.
-```
-
-## Description
-
-Plain text on purpose. The form says it supports markdown, but we keep it without markdown symbols so it reads the same everywhere.
-
-```
-THE PROBLEM
-
-TMS helps many people with severe depression, but it needs daily clinic visits. When the visits end, the risk of relapse stays, and at home there is no scan and no psychiatrist. Nobody notices the first small changes.
-
-WHAT LANVI DOES
-
 Lanvi is a loop that runs at home: sense, respond, learn.
 
 Sense. The phone already records how a person moves. Lanvi reads steps and walking speed from Apple Health and compares each day with that person's own normal, never with a population average. No questionnaire, no extra device.
