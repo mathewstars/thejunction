@@ -2,7 +2,7 @@
 
 The text and links of our submission on the Junction platform, so they can be edited here. Matthew owns the wording.
 
-The platform does not read this file. After a change here, the same change has to be made in the form: Junction platform, "Your Submissions", open "Lanvi", edit, "Save Draft". The saved draft was last brought in line with this file on Friday 13 Nov, late night.
+The platform does not read this file. After a change here, the same change has to be made in the form: Junction platform, "Your Submissions", open "Lanvi", edit, "Save Draft". The saved draft was last brought in line with this file on Friday 13 Nov, late night, except for the sentence about urgent cases under FOR THE CLINICIAN, which is newer here.
 
 **Deadline:** Sunday 15 Nov, 10:00. Before then the draft must be set to final with "Submit Final". The form closes by itself.
 
@@ -58,7 +58,7 @@ The person can also write a few words. If they suggest a need for help, the help
 
 FOR THE CLINICIAN
 
-One page, one line per patient, with those outside their own normal on top. When someone needs a look the same day, the clinic gets a short message with no patient data in it.
+One page, one line per patient, with those outside their own normal on top. Urgent cases do not wait in a dashboard. The clinician gets an alert the same day, with a case label and a link, and no health data in the message.
 
 THE MIND
 
