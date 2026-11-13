@@ -617,3 +617,26 @@ def test_simulated_study_gives_enough_days_and_finds_the_built_in_relation(env):
     consistent = [k for k, r in rows.items() if r["agreement"] == "consistent"]
     assert len(consistent) >= 5 and out["overall"]["independent_lines"] >= 2
     assert seed_research.level(0) == 0.45
+
+
+def test_earlier_weeks_for_the_demo_patient_leave_the_mind_as_it_was(env):
+    """Adding simulated earlier weeks gives the appraisal enough days and changes
+    neither the patient's status nor what is held."""
+    from clinic_engine import seed_research
+    d = env.demo
+    env.client.post("/v1/demo/scenario", json={"name": "dip"}, headers=env.A)
+    C = env.C()
+    before = env.client.get(f"/v1/clinic/patients/{d['patient_id']}", headers=C).json()
+    n = seed_research.extend_demo_history(env.store, d["clinic_id"], d["patient_id"],
+                                          "Europe/Helsinki", env.clock.now())
+    assert n == 56
+    assert seed_research.extend_demo_history(env.store, d["clinic_id"], d["patient_id"],
+                                             "Europe/Helsinki", env.clock.now()) == 56
+    after = env.client.get(f"/v1/clinic/patients/{d['patient_id']}", headers=C).json()
+    assert after["status"] == before["status"] and after["level"] == before["level"]
+    assert [(i["kind"], i["state"], i["level"]) for i in after["attention_items"]] == \
+           [(i["kind"], i["state"], i["level"]) for i in before["attention_items"]]
+    out = env.run(env.mind.run_appraisal(env.mind.repo(d["clinic_id"], d["patient_id"]), "test"))
+    rows = {r["key"]: r for r in out["rows"]}
+    assert out["design"]["days"] >= 80 and rows["face.facial_activity"]["n"] >= 30
+    assert len([r for r in out["rows"] if r["agreement"] == "consistent"]) >= 5
