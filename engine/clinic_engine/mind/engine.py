@@ -34,7 +34,7 @@ from . import learn
 from .baseline import baseline_for, daily_series, has_baseline, series_against
 from . import lines, xp
 from .catalog import QUESTIONS, plain_name
-from .gates import INPUT_GATE, OUTPUT_GATE, GateError, GateRefusal
+from .gates import INPUT_GATE, OUTPUT_GATE, GateError, GateRefusal, Pack
 from .repo import PatientRepo
 from .respond import blocked_reason, needs_response, pick_action, rank_actions
 from .thresholds import T, Thresholds
@@ -638,13 +638,20 @@ class Mind:
         if state != "pending":
             return {"status": state}
         now = self.clock.now()
-        analysis: dict = {"status": "failed", "read_by": "level2", "checked_by": "code",
+        reader = self._session_reader()
+        level_name = "level1" if reader == "local" else "level2"
+        analysis: dict = {"status": "failed", "read_by": level_name, "checked_by": "code",
                           "at": now.isoformat()}
         refusals: list[GateRefusal] = []
         try:
             pack = INPUT_GATE.reading_pack(rec, self.usual_round(repo, rec),
                                            images=self.settings.reading_images)
-            raw = await self.outreach.gemini_complete(pack)
+            if reader == "local":
+                INPUT_GATE.check_session_outbound(pack.payload)  # same check as for the outside model
+                raw = await self.local.complete(Pack(1, pack.task, pack.messages, pack.payload),
+                                                json_mode=True, max_tokens=1500)
+            else:
+                raw = await self.outreach.gemini_complete(pack)
             if raw is None:
                 analysis["reason"] = "no_reply"
             else:
@@ -660,7 +667,7 @@ class Mind:
             analysis["reason"] = "input_refused"
         try:
             reading = analysis.get("reading") or {}
-            self.trace(repo, "level2", "accepted" if analysis["status"] == "ready" else
+            self.trace(repo, level_name, "accepted" if analysis["status"] == "ready" else
                        "not_sent" if analysis.get("reason") == "input_refused" else
                        "no_reply" if analysis.get("reason") == "no_reply" else "refused", {
                            "task": "reading", "round_id": round_id, "anonymized": True,
@@ -705,11 +712,25 @@ class Mind:
         from .session_reading import applies
         if not applies(rec):
             return "not_applicable"
-        if self.outreach is None or not self.outreach.gemini_on:
+        reader = self._session_reader()
+        if reader is None:
             return "off"
-        if not (repo.patient() or {}).get("allow_outside_processing"):
+        # Consent is about data leaving the clinic. The local model does not leave it.
+        if reader == "gemini" and not (repo.patient() or {}).get("allow_outside_processing"):
             return "not_allowed"
         return "pending"
+
+    def _session_reader(self) -> str | None:
+        """Which model reads a session: "gemini" (level 2), "local" (level 1) or None.
+        The pack is the same anonymous one in both cases and code checks every claim."""
+        mode = getattr(self.settings, "session_reader", "auto")
+        if mode == "off":
+            return None
+        if mode in ("auto", "gemini") and self.outreach is not None and self.outreach.gemini_on:
+            return "gemini"
+        if mode == "local" and getattr(self.local, "configured", False):
+            return "local"
+        return None
 
     async def schedule_session_reading(self, repo: PatientRepo, activity_id: str) -> None:
         if self.settings.review_inline:
@@ -742,14 +763,21 @@ class Mind:
             return {"status": state}
         now = self.clock.now()
         earlier = earlier_sessions(rec, repo.activities())
-        analysis: dict = {"status": "failed", "read_by": "level2", "checked_by": "code",
+        reader = self._session_reader()
+        level_name = "level1" if reader == "local" else "level2"
+        analysis: dict = {"status": "failed", "read_by": level_name, "checked_by": "code",
                           "at": now.isoformat()}
         refusals: list[GateRefusal] = []
         sent: list[str] = []
         try:
             pack = INPUT_GATE.session_pack(rec, earlier)
             sent = sorted(pack.payload["session"])
-            raw = await self.outreach.gemini_complete(pack)
+            if reader == "local":
+                INPUT_GATE.check_session_outbound(pack.payload)  # same check as for the outside model
+                raw = await self.local.complete(Pack(1, pack.task, pack.messages, pack.payload),
+                                                json_mode=True, max_tokens=1500)
+            else:
+                raw = await self.outreach.gemini_complete(pack)
             if raw is None:
                 analysis["reason"] = "no_reply"
             else:
@@ -765,7 +793,7 @@ class Mind:
             analysis["reason"] = "input_refused"
         try:
             reading = analysis.get("reading") or {}
-            self.trace(repo, "level2", "accepted" if analysis["status"] == "ready" else
+            self.trace(repo, level_name, "accepted" if analysis["status"] == "ready" else
                        "not_sent" if analysis.get("reason") == "input_refused" else
                        "no_reply" if analysis.get("reason") == "no_reply" else "refused", {
                            "task": "session_reading", "activity_id": activity_id,

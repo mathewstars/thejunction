@@ -32,11 +32,11 @@ class LocalModel:
     def configured(self) -> bool:
         return bool(self.base_url and self.model)
 
-    async def complete(self, pack: Pack, json_mode: bool = False) -> str | None:
+    async def complete(self, pack: Pack, json_mode: bool = False, max_tokens: int = 400) -> str | None:
         if not self.configured or pack.level != 1:
             return None
         body = {"model": self.model, "messages": pack.messages, "temperature": 0,
-                "max_tokens": 400}
+                "max_tokens": max_tokens}
         if json_mode:
             body["response_format"] = {"type": "json_object"}
         headers = {"Authorization": f"Bearer {self.key}"} if self.key else {}
