@@ -58,10 +58,13 @@ struct GlowRing: View {
         .scaleEffect(0.72 + 0.36 * breath)
         .opacity(0.35 + 0.65 * breath)
         // Fade the bottom so the ring sinks softly into the snow instead of cutting across it.
+        // The mask gets room around the ring so the soft blur is never cut into a square.
+        .padding(80)
         .mask(LinearGradient(stops: [.init(color: .black, location: 0),
-                                     .init(color: .black, location: 0.62),
-                                     .init(color: .clear, location: 0.86)],
+                                     .init(color: .black, location: 0.66),
+                                     .init(color: .clear, location: 0.84)],
                              startPoint: .top, endPoint: .bottom))
+        .padding(-80)
         .allowsHitTesting(false)
     }
 }
