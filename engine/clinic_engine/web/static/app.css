@@ -152,8 +152,8 @@ tr.is-no_data td:first-child { box-shadow: inset 4px 0 0 var(--muted); }
 .chart .pt-high { fill: var(--sun); }
 .chart .miss { stroke: var(--muted); stroke-width: 2; }
 .chart .hit { fill: transparent; cursor: pointer; }
-.chart .hit:hover, .chart .hit:focus { fill: var(--panel-2); outline: none; }
-.chart .cursor { stroke: var(--sun); stroke-width: 1; }
+.chart .hit:hover, .chart .hit:focus { fill: transparent; outline: none; }
+.chart .cursor { stroke: var(--sun); stroke-width: 1.5; pointer-events: none; }
 .chart .ep { rx: 3; }
 .chart .ep.l-urgent { fill: var(--ember-deep); }
 .chart .ep.l-attention { fill: var(--amber); }
