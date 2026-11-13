@@ -65,6 +65,8 @@ class Settings:
     local_llm_model: str = ""
     local_llm_api_key: str = ""
     local_llm_timeout_s: float = 8.0
+    # The association appraisal lets the model think: it gets a longer timeout.
+    local_llm_appraisal_timeout_s: float = 180.0
 
     # Level 2: Gemini, reached only through outreach.py
     outreach_mode: str = "off"  # off | gemini | standin (the local model answers level 2; nothing leaves)
@@ -89,6 +91,9 @@ class Settings:
     clinic_timezone: str = "Europe/Helsinki"
 
     demo_enabled: bool = True
+
+    # The association appraisal (clinician-only research output), once a day per patient.
+    associations_enabled: bool = True
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -116,6 +121,7 @@ class Settings:
             local_llm_model=_env("LOCAL_LLM_MODEL"),
             local_llm_api_key=_env("LOCAL_LLM_API_KEY"),
             local_llm_timeout_s=_env_float("LOCAL_LLM_TIMEOUT_S", 8.0),
+            local_llm_appraisal_timeout_s=_env_float("LOCAL_LLM_APPRAISAL_TIMEOUT_S", 180.0),
             outreach_mode=_env("OUTREACH_MODE", "off").lower(),
             session_reader=_env("SESSION_READER", "auto").lower(),
             gemini_api_key=_env("GEMINI_API_KEY"),
@@ -133,4 +139,5 @@ class Settings:
             notify_max_per_hour=_env_int("NOTIFY_MAX_PER_HOUR", 10),
             clinic_timezone=_env("CLINIC_TIMEZONE", "Europe/Helsinki"),
             demo_enabled=_env_bool("DEMO_ENABLED", True),
+            associations_enabled=_env_bool("ASSOCIATIONS_ENABLED", True),
         )

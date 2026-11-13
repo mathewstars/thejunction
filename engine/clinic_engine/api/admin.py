@@ -57,7 +57,7 @@ async def demo_reset(request: Request, p: Principal = Depends(demo_actor)):
         seed.wipe_patient(ctx.store, c, pid)
         seed.fill_patient(ctx.store, c, pid, ctx.clock.now(), seed=14)
     await ctx.mind.idle()
-    await seed.settle(ctx.mind, c, pid)
+    await seed.settle(ctx.mind, c, pid, appraise=True)
     _audit(request, p, "demo_reset", patient_id=pid)
     return {"ok": True, "patient_id": pid}
 
@@ -75,6 +75,8 @@ async def demo_scenario(body: ScenarioIn, request: Request, p: Principal = Depen
         seed.write_rounds(ctx.store, c, pid, today, repo.tz(), seed=14, dip=body.name == "dip")
         seed.write_activities(ctx.store, c, pid, today, repo.tz(), seed=14,
                               dip=body.name == "dip")
+        if repo.docs("ratings"):  # example ratings follow the scenario
+            seed.write_ratings(ctx.store, c, pid, today, seed=14, dip=body.name == "dip")
         await ctx.mind.publish("scenario", c, pid, name=body.name)
     _audit(request, p, "demo_scenario", patient_id=pid, name=body.name)
     from ..mind.watchers import compute_status

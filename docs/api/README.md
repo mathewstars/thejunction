@@ -205,6 +205,24 @@ The engine serves a plain web page for clinicians at `/` (files in `engine/clini
 | `POST /v1/clinic/attention/{id}/ack` | The Acknowledge button |
 | `/v1/demo/...`, `/v1/review/run` | The demo panel, only for the demo clinic while demo mode is on |
 
+## Reference ratings and the association appraisal (clinician only)
+
+Research output for the clinician: for one person over time, did the measures the app takes (face summary, focus game, check-ins, daily data) move together with that person's symptom state, in the direction the literature expects (`engine/clinic_engine/data/association_hypotheses.json`)? It is a within-person description, not validated and not a diagnosis. It never reaches the patient, never changes a suggestion, never opens, raises or closes attention and never feeds lessons.
+
+| Call | Who | What |
+|---|---|---|
+| `POST /v1/clinic/patients/{id}/ratings` | clinician of the clinic | `{"date":"2026-11-13","scale":"phq9","score":9}`. Scales `phq9` (0 to 27), `phq2` (0 to 6), `clinician_global` (1 to 7). One per day and scale (a second one replaces it). Out of range or a future date: 422 `implausible_rating` |
+| `GET /v1/clinic/patients/{id}/ratings` | clinician | `{"ratings":[{id,date,scale,score,created_at,example}]}`, oldest first |
+| `DELETE /v1/clinic/patients/{id}/ratings/{rating_id}` | clinician | `{"id":...,"deleted":true}` |
+| `GET /v1/clinic/patients/{id}/associations` | clinician | The latest appraisal (`status: none` until it has run) |
+| `POST /v1/clinic/patients/{id}/associations/run` | clinician of the clinic, or admin | Computes it now and returns it. It also runs by itself once a day per patient after the tick, in the background |
+
+How it works: code builds one row per day (measures averaged per day, face values only from sessions with good tracking) and a reference: a rating scale with at least 4 ratings (each rating stands for the days within 3 days of it), otherwise the proxy `movement_z` (then steps and walking speed are the reference and are not tested). Per measure code computes `n` paired days, Spearman `rho` oriented so that positive means "moves as expected when symptoms are worse", a bootstrap 95% interval, a permutation p-value adjusted with Benjamini-Hochberg (`p_adj`), `lead_days` (-3 to 3, negative = the measure moves first), `contrast` (Cliff's delta, days with attention held against other days) and `quality`. Below 8 paired days a row is `insufficient`. Code then appraises the table itself. When the local model is configured it gets the prompt file and a JSON object of numbers and codes only (no ids, dates, names or text), and code checks its answer: a wrong `agreement`, a `strength` above what the interval supports, a `confidence` above the cap (`high` needs a rating reference, three independent lines and 20 paired days; a proxy allows at most `medium`), a wrong `independent_lines` or `strongest` are replaced by code's value and listed in `corrections`; `*_source` / `overall.sources` say per field `model`, `code` or `code_corrected`. An unusable answer gives the code-only appraisal (`appraised_by: "code"`).
+
+Response fields: `status`, `appraised_by`, `checked_by`, `generated_at`, `design` {type, days, sessions, first_day, last_day, rows_tested, min_n}, `reference` {key, label, kind, worse_is, ratings}, `rows` [{key, label, group, expected, support, why, status, n, rho, ci_low, ci_high, p_adj, lead_days, contrast, quality, agreement, strength, agreement_source, strength_source, caveats [{code, text, by}]}], `overall` {pattern, confidence, independent_lines, strongest, leads_reference, main_alternative, main_alternative_text, next_step, sources}, `data_notes` [{code, text}], `corrections` [{where, key, field, model, code, reason}], `hypotheses_reviewed_by_clinician`, `disclaimer`, `inputs` {reference, n_days, n_sessions, generated_at, model}.
+
+The face summary (`face` on focus and breathing activities) also accepts, all optional and numbers only: `smile_time_share`, `eye_smile_share`, `smile_response_share`, `smile_response_latency_s`, `brow_down_share`, `inner_brow_up_share`, `blink_duration_ms`, `head_pitch_deg`, `head_movement`, `smile_asymmetry`. Each is compared with the person's own normal like the others.
+
 ## Errors
 
 Every error has the same shape, and the same `request_id` is in the `X-Request-Id` header:

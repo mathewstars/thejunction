@@ -35,7 +35,7 @@ class FakeLocal:
         self.replies = replies
         self.packs = []
 
-    async def complete(self, pack, json_mode=False):
+    async def complete(self, pack, json_mode=False, max_tokens=400):
         self.packs.append(pack)
         r = self.replies.get(pack.task)
         return r(pack) if callable(r) else r
@@ -127,7 +127,7 @@ class Env:
 class _OffLocal:
     configured = False
 
-    async def complete(self, pack, json_mode=False):
+    async def complete(self, pack, json_mode=False, max_tokens=400):
         return None
 
 

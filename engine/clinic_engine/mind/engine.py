@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from typing import Awaitable, Callable
 
-from ..audit import list_audit, write_audit
+from ..audit import audit_prefix, write_audit
 from ..config import Settings
 from ..security import new_id
 from ..store import Store
@@ -42,6 +42,14 @@ from .trace import Tracer, trigger_detail, watcher_facts
 from .watchers import LEVELS, RESPONDABLE, WATCHERS, Op, View, escalate
 
 log = logging.getLogger("clinic_engine.mind")
+
+# Audit actions of the clinician-only association appraisal and its ratings.
+RESEARCH_ACTIONS = {"association_appraisal", "association_run", "rating_add", "rating_delete"}
+
+
+def is_research_event(ev: dict) -> bool:
+    return ev.get("action") in RESEARCH_ACTIONS or \
+        (ev.get("action") == "gate_refusal" and (ev.get("detail") or {}).get("task") == "association")
 
 
 # ---- clock ------------------------------------------------------------------------
@@ -116,6 +124,7 @@ class Mind:
             notifications.trace_hook = self._trace_notify
         self._locks: dict[tuple[str, str], asyncio.Lock] = {}
         self._tasks: set[asyncio.Task] = set()
+        self._appraising: set[tuple[str, str]] = set()
 
     # ---- plumbing --------------------------------------------------------------------
 
@@ -220,6 +229,8 @@ class Mind:
             last = repo.state().get("last_review_at")
             if not last or now - datetime.fromisoformat(last) > timedelta(hours=24):
                 await self.schedule_review(repo, "tick")
+            if self.appraisal_due(repo, now):
+                await self.schedule_appraisal(repo)
 
     def expire_suggestions(self, repo: PatientRepo, now: datetime) -> None:
         today = repo.local(now).date().isoformat()
@@ -447,6 +458,25 @@ class Mind:
             activities=repo.activities())
         return rows, series
 
+    def _review_refusals(self, repo: PatientRepo, limit: int) -> list[dict]:
+        """The same as list_audit(outcome="refused", limit) over the same window of
+        the newest audit events, but as if the association appraisal and the
+        ratings had never written any: they must not change what the review sees."""
+        out, scanned = [], 0
+        for k in reversed(self.store.list(audit_prefix(repo.clinic_id, repo.patient_id))):
+            ev = self.store.get(k)
+            if not ev:
+                scanned += 1
+            elif is_research_event(ev):
+                continue
+            else:
+                scanned += 1
+                if ev.get("outcome") == "refused":
+                    out.append(ev)
+            if len(out) >= limit or scanned >= limit * 4:
+                break
+        return out
+
     async def run_review(self, repo: PatientRepo, trigger: str) -> dict:
         with self.tracer.chain(repo.clinic_id, repo.patient_id, "review_" + trigger):
             return await self._run_review(repo, trigger)
@@ -475,10 +505,11 @@ class Mind:
 
         # Level 1 proposes through the gates.
         if getattr(self.local, "configured", False) and rows:
+            # Refusals of the association appraisal never reach the review: that
+            # clinician-only research output must not feed lessons.
+            refused = self._review_refusals(repo, 20)
             recent = [{"reason": e.get("reason"), "task": e.get("detail", {}).get("task")}
-                      for e in list_audit(self.store, repo.clinic_id, repo.patient_id,
-                                          outcome="refused", limit=20)
-                      if e.get("action") == "gate_refusal"]
+                      for e in refused if e.get("action") == "gate_refusal"]
             pack = INPUT_GATE.review_pack(1, rows, series, today, recent, doc.get("lessons", []),
                                           rounds=repo.rounds(), activities=repo.activities())
             raw = await self.local.complete(pack, json_mode=True)
@@ -831,6 +862,120 @@ class Mind:
         else:
             await store()
         return analysis
+
+    # ---- the association appraisal (clinician-only research output) ---------------------
+    #
+    # Reads the patient's data, writes ONLY research/associations.json, the trace,
+    # the audit log and the refusal log. Never attention, suggestions, lessons,
+    # questions or mind state; never any patient-facing text. Nothing in the
+    # mind reads what it stores.
+
+    ASSOC_KEY = "research/associations.json"
+
+    def appraisal_due(self, repo: PatientRepo, now: datetime) -> bool:
+        if not getattr(self.settings, "associations_enabled", True):
+            return False
+        if (repo.clinic_id, repo.patient_id) in self._appraising:
+            return False
+        cur = repo.get(self.ASSOC_KEY)
+        if not cur or not cur.get("generated_at"):
+            return True
+        return repo.local(datetime.fromisoformat(cur["generated_at"])).date() < \
+            repo.local(now).date()
+
+    async def schedule_appraisal(self, repo: PatientRepo) -> None:
+        """At most once a day per patient, after the tick; in the background."""
+        if self.settings.review_inline:
+            await self.run_appraisal(repo, "daily")
+            return
+        key = (repo.clinic_id, repo.patient_id)
+        self._appraising.add(key)
+
+        async def bg() -> None:
+            try:
+                await self.run_appraisal(repo, "daily")
+            except Exception:  # noqa: BLE001
+                log.exception("association appraisal failed")
+            finally:
+                self._appraising.discard(key)
+
+        task = asyncio.get_running_loop().create_task(bg())
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    async def run_appraisal(self, repo: PatientRepo, trigger: str = "on_demand") -> dict:
+        """Compute, appraise (code, then the level-1 model if configured, held to
+        code's rules), store and return. Always returns a usable appraisal."""
+        with self.tracer.chain(repo.clinic_id, repo.patient_id, "appraisal", fresh=True):
+            return await self._run_appraisal(repo, trigger)
+
+    async def _run_appraisal(self, repo: PatientRepo, trigger: str) -> dict:
+        from . import associations as assoc
+        now = self.clock.now()
+        th = self.th
+        today = repo.local(now).date()
+        days = repo.days()
+        ds = assoc.build_dataset(
+            days, daily_series(days, th, since=today - timedelta(days=th.assoc_window_days + 7)),
+            repo.activities(), repo.docs("ratings"), repo.items(), repo.tz(), today, th)
+        rows = assoc.compute_rows(ds, th)
+        ref_kind = ds["reference"]["kind"]
+        code_rows, code_ov = assoc.code_appraisal(rows, ref_kind, ds["notes"], th)
+        tested = [r for r in code_rows if r["status"] == "tested"]
+        self.trace(repo, "trigger", "appraisal",
+                   {"by": trigger, "reference": ds["reference"]["key"], "kind": ref_kind,
+                    "days": ds["n_days"], "sessions": ds["n_sessions"],
+                    "rows_tested": len(tested)})
+        out_rows, overall, corrections = code_rows, code_ov, []
+        appraised_by, model_name = "code", "code"
+        refusals: list[GateRefusal] = []
+        l1 = {"task": "association", "rows": len(tested)}
+        if not getattr(self.local, "configured", False):
+            self.trace(repo, "level1", "off", {**l1, "used": "code"})
+        elif not tested:
+            self.trace(repo, "level1", "not_needed", {**l1, "used": "code"})
+        else:
+            try:
+                pack = INPUT_GATE.association_pack(assoc.build_payload(ds, code_rows))
+                l1["saw"] = {"fields": sorted(pack.payload),
+                             "row_fields": list(assoc.PACK_ROW_FIELDS)}
+                raw = await self.local.complete(pack, json_mode=True,
+                                                max_tokens=th.assoc_max_tokens)
+                res = OUTPUT_GATE.association(raw, pack)
+                refusals.extend(res.refusals)
+                if res.ok:
+                    out_rows, overall, corrections = assoc.merge(res.value, code_rows, code_ov,
+                                                                 ref_kind, th)
+                    appraised_by = "model"
+                    model_name = getattr(self.local, "model", None) or "level1"
+                    refusals.extend(GateRefusal("output", 1, "association",
+                                                f"corrected:{c['field']}:{c['reason']}"[:80])
+                                    for c in corrections)
+                code = "no_reply" if raw is None else \
+                    ("accepted" if res.ok and not refusals else
+                     "partly_refused" if res.ok else "refused")
+                self.trace(repo, "level1", code, {
+                    **l1, "verdict": "used" if res.ok else "refused",
+                    "returned": None if not res.ok else {
+                        "pattern": res.value["overall"]["pattern"],
+                        "confidence": res.value["overall"]["confidence"]},
+                    "corrected": [{"field": c["field"], "key": c["key"], "reason": c["reason"]}
+                                  for c in corrections],
+                    "reasons": [r.reason for r in refusals],
+                    "used": "model_checked_by_code" if res.ok else "code"},
+                    notable=bool(refusals) and raw is not None)
+            except GateError as ge:
+                refusals.append(ge.refusal)
+                self.trace(repo, "level1", "not_sent", {**l1, "reason": ge.refusal.reason,
+                                                        "used": "code"})
+        result = assoc.assemble(ds, out_rows, overall, corrections, appraised_by, model_name, now)
+        repo.put(self.ASSOC_KEY, result)
+        for r in refusals:
+            self.refuse(repo, r)
+        self.audit(repo, "association_appraisal", trigger=trigger, appraised_by=appraised_by,
+                   reference=ds["reference"]["key"], rows_tested=len(tested),
+                   corrections=len(corrections), pattern=overall["pattern"])
+        return result
 
     # ---- tick ----------------------------------------------------------------------------
 

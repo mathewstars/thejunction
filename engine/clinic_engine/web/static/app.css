@@ -213,3 +213,12 @@ details.more > summary { cursor: pointer; color: var(--muted); font-weight: 600;
 .chat-event.urgent { color: var(--ember); border-color: var(--ember); }
 .quote { margin-top: 8px; padding: 8px 12px; border-left: 3px solid var(--ember); background: var(--panel-2); border-radius: 0 8px 8px 0; }
 .quote .text { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+.rhocell { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.rho { width: 120px; height: 16px; flex: none; }
+.rho .axis { stroke: var(--muted); stroke-width: 1; }
+.rho .ci { stroke: var(--ink); stroke-width: 2; }
+.rho .pt { fill: var(--muted); }
+.rho .pt.consistent { fill: var(--amber); }
+.rho .pt.opposite { fill: var(--ember); }
+table.assoc td { vertical-align: top; }
+ul.plain { margin: 0; padding-left: 18px; }

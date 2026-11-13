@@ -163,6 +163,36 @@ class FaceSummary(Strict):
     look_down_share: Optional[float] = Field(None, ge=0, le=1,
                                              description="Share of time looking down, 0 to 1.")
     head_tilt_deg: Optional[float] = Field(None, ge=-90, le=90)
+    # Optional, newer fields. Numbers only; each is compared with the person's own normal.
+    smile_time_share: Optional[float] = Field(None, ge=0, le=1,
+                                              description="Share of the time smiling, 0 to 1.")
+    eye_smile_share: Optional[float] = Field(None, ge=0, le=1,
+                                             description="Share of smiles with a cheek raise "
+                                                         "(reaching the eyes), 0 to 1.")
+    smile_response_share: Optional[float] = Field(None, ge=0, le=1,
+                                                  description="Share of marked pleasant moments "
+                                                              "in the activity followed by a "
+                                                              "smile shortly after, 0 to 1.")
+    smile_response_latency_s: Optional[float] = Field(None, ge=0, le=30,
+                                                      description="Median delay from a marked "
+                                                                  "pleasant moment to the smile, "
+                                                                  "seconds.")
+    brow_down_share: Optional[float] = Field(None, ge=0, le=1,
+                                             description="Share of the time with brows drawn "
+                                                         "down, 0 to 1.")
+    inner_brow_up_share: Optional[float] = Field(None, ge=0, le=1,
+                                                 description="Share of the time with inner "
+                                                             "brows raised, 0 to 1.")
+    blink_duration_ms: Optional[float] = Field(None, ge=0, le=2000,
+                                               description="Median blink length, ms.")
+    head_pitch_deg: Optional[float] = Field(None, ge=-90, le=90,
+                                            description="Average head angle, degrees; looking "
+                                                        "down is higher.")
+    head_movement: Optional[float] = Field(None, ge=0, le=1,
+                                           description="How much the head moved, 0 to 1.")
+    smile_asymmetry: Optional[float] = Field(None, ge=0, le=1,
+                                             description="Left-right difference of smiles, "
+                                                         "0 (even) to 1.")
     tracking_quality: float = Field(ge=0, le=1, description="0 to 1. Below 0.6 the summary is "
                                     "kept but never used for the person's own normal.")
 
@@ -571,3 +601,144 @@ class AnalyzeIn(Strict):
         if (self.round_id is None) == (self.activity_id is None):
             raise ValueError("give either round_id or activity_id")
         return self
+
+
+# ---- clinician: reference ratings and the association appraisal ----------------------
+
+_Date = date
+
+
+class RatingIn(Strict):
+    date: _Date = Field(description="The day the rating describes (clinic local).")
+    scale: Literal["phq9", "phq2", "clinician_global"]
+    score: int = Field(description="Total score. Range per scale: phq9 0 to 27, phq2 0 to 6, "
+                                   "clinician_global 1 to 7.")
+
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [
+        {"date": "2026-11-13", "scale": "phq9", "score": 9}]})
+
+
+class RatingOut(BaseModel):
+    id: str
+    date: str
+    scale: Literal["phq9", "phq2", "clinician_global"]
+    score: int
+    created_at: str
+    example: bool = Field(description="True for seeded example ratings.")
+
+
+class RatingsOut(BaseModel):
+    ratings: list[RatingOut] = Field(description="Oldest first.")
+
+
+Source = Optional[Literal["model", "code", "code_corrected"]]
+
+
+class AssocCaveatOut(BaseModel):
+    code: str
+    text: str = Field(description="Plain text for the code, from a fixed set.")
+    by: Literal["model", "code"]
+
+
+class AssocRowOut(BaseModel):
+    key: str = Field(examples=["face.smile_time_share"])
+    label: str
+    group: Literal["face", "activity", "daily"]
+    expected: Literal["lower", "higher", "mixed"] = Field(
+        description="Direction the research literature leads us to expect when symptoms are worse.")
+    support: Literal["stronger", "moderate", "weaker", "mixed"]
+    why: str
+    status: Literal["tested", "insufficient", "no_variation", "is_reference"] = Field(
+        description="insufficient: fewer paired days than design.min_n, no statistics. "
+                    "is_reference: this measure is the proxy reference itself.")
+    n: int = Field(description="Paired days.")
+    rho: Optional[float] = Field(None, description="Spearman rho, oriented: positive = moves in "
+                                 "the expected direction when symptoms are worse. For 'mixed' "
+                                 "positive = higher when the reference is worse.")
+    ci_low: Optional[float] = None
+    ci_high: Optional[float] = None
+    p_adj: Optional[float] = Field(None, description="Permutation p, Benjamini-Hochberg adjusted.")
+    lead_days: Optional[int] = Field(None, description="Lag -3..3 with the largest oriented "
+                                     "association; negative = the measure moves first.")
+    contrast: Optional[float] = Field(None, description="Cliff's delta, days with attention held "
+                                      "against other days, oriented like rho.")
+    quality: Optional[float] = Field(None, description="Share of sessions (or days) usable.")
+    agreement: Optional[Literal["consistent", "opposite", "inconclusive",
+                                "related_no_prediction"]] = None
+    strength: Optional[Literal["negligible", "weak", "moderate", "strong"]] = None
+    agreement_source: Source = Field(None, description="model, code (no model), or "
+                                     "code_corrected (the model's value was replaced).")
+    strength_source: Source = None
+    caveats: list[AssocCaveatOut]
+
+
+class AssocOverallOut(BaseModel):
+    pattern: Literal["consistent_with_worse_state", "partly_consistent", "no_clear_relation",
+                     "opposite_to_expectation", "insufficient_data"]
+    confidence: Literal["low", "medium", "high"]
+    independent_lines: int
+    strongest: list[str]
+    leads_reference: bool
+    main_alternative: str
+    main_alternative_text: str
+    next_step: Literal["collect_more_sessions", "add_reference_rating", "review_tracking_quality",
+                       "discuss_with_patient", "none"]
+    sources: dict[str, Literal["model", "code", "code_corrected"]] = Field(
+        description="Per field: model, code, or code_corrected.")
+
+
+class AssocDesignOut(BaseModel):
+    type: Literal["within_person_time_series"]
+    days: int
+    sessions: int
+    first_day: str
+    last_day: str
+    rows_tested: int
+    min_n: int
+
+
+class AssocReferenceOut(BaseModel):
+    key: str = Field(examples=["phq9", "movement_z"])
+    label: str
+    kind: Literal["rating", "proxy"]
+    worse_is: Literal["higher", "lower"]
+    ratings: Optional[int] = Field(None, description="Ratings of that scale, when a rating.")
+
+
+class AssocNoteOut(BaseModel):
+    code: str
+    text: str
+
+
+class AssocCorrectionOut(BaseModel):
+    where: Literal["row", "overall"]
+    key: Optional[str]
+    field: str
+    model: Optional[Union[str, int, bool, list[str]]] = Field(
+        description="The model's value when it was a known code; null otherwise.")
+    code: Optional[Union[str, int, bool, list[str]]]
+    reason: str
+
+
+class AssocInputsOut(BaseModel):
+    reference: str
+    n_days: int
+    n_sessions: int
+    generated_at: str
+    model: str = Field(description="The model's name, or 'code'.")
+
+
+class AssociationsOut(BaseModel):
+    status: Literal["ready", "none"] = Field(description="none: not computed yet.")
+    appraised_by: Optional[Literal["model", "code"]] = None
+    checked_by: Optional[Literal["code"]] = None
+    generated_at: Optional[str] = None
+    design: Optional[AssocDesignOut] = None
+    reference: Optional[AssocReferenceOut] = None
+    rows: list[AssocRowOut] = Field(default_factory=list)
+    overall: Optional[AssocOverallOut] = None
+    data_notes: list[AssocNoteOut] = Field(default_factory=list)
+    corrections: list[AssocCorrectionOut] = Field(default_factory=list)
+    hypotheses_reviewed_by_clinician: bool = False
+    disclaimer: str
+    inputs: Optional[AssocInputsOut] = None

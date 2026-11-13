@@ -338,9 +338,8 @@ def _face_out(a: dict) -> dict | None:
     face = a.get("face")
     if not face:
         return None
-    return {**{k: face.get(k) for k in ("smile_rate_per_min", "smile_intensity", "facial_activity",
-                                         "blink_rate_per_min", "look_down_share", "head_tilt_deg",
-                                         "tracking_quality")},
+    from .activities import FACE_FIELDS
+    return {**{k: face.get(k) for k in (*FACE_FIELDS, "tracking_quality")},
             "quality": a.get("face_quality"),
             "z": {k: v for k, v in (a.get("face_z") or {}).items()} or None}
 

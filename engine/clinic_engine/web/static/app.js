@@ -144,7 +144,7 @@
   function flash(msg) { const f = $("flash"); f.textContent = msg || ""; f.hidden = !msg; }
 
   // ---------------------------------------------------------------- routing
-  const TABS = [["overview", "Overview"], ["timeline", "Timeline"], ["activity", "Activity"], ["talk", "Conversation"], ["mind", "Learned"], ["log", "Log"]];
+  const TABS = [["overview", "Overview"], ["timeline", "Timeline"], ["activity", "Activity"], ["talk", "Conversation"], ["research", "Research"], ["mind", "Learned"], ["log", "Log"]];
   function parseHash() {
     const parts = (location.hash || "").replace(/^#\/?/, "").split("/").filter(Boolean);
     if (parts[0] === "demo") return { view: "demo", pid: null, tab: "overview" };
@@ -161,7 +161,7 @@
     S.route = parseHash();
     if (!S.token) return showLogin();
     const samePatient = prev.view === "patient" && S.route.view === "patient" && prev.pid === S.route.pid;
-    if (S.route.view === "patient" && !samePatient) { S.detail = null; S.trace = null; S.page = 0; }
+    if (S.route.view === "patient" && !samePatient) { S.detail = null; S.trace = null; S.assoc = null; S.page = 0; }
     render();
     await load(false);
   }
@@ -180,6 +180,7 @@
         if (r.tab === "timeline" && (force || !S.trace)) {
           try { S.trace = await api("GET", base + "/trace?limit=100"); } catch (e) { S.trace = await api("GET", base + "/trace"); }
         }
+        if (r.tab === "research" && (force || !S.assoc)) S.assoc = await api("GET", base + "/associations");
       }
       flash("");
     } catch (e) {
@@ -367,7 +368,7 @@
       }, label));
     });
     wrap.appendChild(tabs);
-    const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, talk: tabTalk, mind: tabMind, log: tabLog }[S.route.tab](d, today);
+    const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, talk: tabTalk, research: tabResearch, mind: tabMind, log: tabLog }[S.route.tab](d, today);
     wrap.appendChild(el("div", { id: "tabpanel", role: "tabpanel", "aria-labelledby": "tab-" + S.route.tab }, body));
     return wrap;
   }
@@ -804,6 +805,79 @@
       }
     });
     wrap.appendChild(chat);
+    return wrap;
+  }
+  // ---- research: how this person's measures moved with the reference
+  const R_PATTERN = { consistent_with_worse_state: "Moves as expected when the state is worse", partly_consistent: "Partly as expected",
+    no_clear_relation: "No clear relation", opposite_to_expectation: "Opposite to what was expected", insufficient_data: "Not enough data" };
+  const R_NEXT = { collect_more_sessions: "Collect more sessions", add_reference_rating: "Add a reference rating", review_tracking_quality: "Review tracking quality",
+    discuss_with_patient: "Discuss with the patient", none: "None" };
+  const R_STATUS = { insufficient: "too few days", no_variation: "did not vary", is_reference: "is the reference" };
+  const SRC = { model: "model", code: "code", code_corrected: "model, corrected by code" };
+  function f2(v) { return v === null || v === undefined ? "–" : (v > 0 ? "+" : "") + Number(v).toFixed(2); }
+  function rhoBar(r) {
+    // Interval and point on a fixed -1..+1 scale; right of the middle = as expected.
+    const W = 120, H = 16, x = (v) => (W / 2) + Math.max(-1, Math.min(1, v)) * (W / 2 - 2);
+    const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "rho", role: "img", "aria-label": "rho " + f2(r.rho) + ", interval " + f2(r.ci_low) + " to " + f2(r.ci_high) });
+    s.appendChild(svg("line", { class: "axis", x1: W / 2, y1: 1, x2: W / 2, y2: H - 1 }));
+    if (r.ci_low !== null && r.ci_high !== null) s.appendChild(svg("line", { class: "ci", x1: x(r.ci_low), y1: H / 2, x2: x(r.ci_high), y2: H / 2 }));
+    s.appendChild(svg("circle", { class: "pt " + (r.agreement || ""), cx: x(r.rho), cy: H / 2, r: 3.5 }));
+    return s;
+  }
+  function tabResearch(d) {
+    const wrap = el("div", { class: "stack" });
+    const a = S.assoc;
+    const run = el("button", { type: "button", class: "btn btn-small", "data-key": "assoc-run", on: { click: async () => {
+      S.demoMsg = ""; flash("Running the appraisal…");
+      try { S.assoc = await api("POST", "/v1/clinic/patients/" + encodeURIComponent(d.patient_id) + "/associations/run"); flash(""); } catch (e) { flash(e.message); }
+      render();
+    } } }, "Run now");
+    if (!a) { wrap.appendChild(empty("Loading…")); return wrap; }
+    wrap.appendChild(el("div", { class: "bar" },
+      el("span", { class: "muted small" }, a.disclaimer || ""), el("div", { class: "push" }, run)));
+    if (a.status !== "ready") { wrap.appendChild(empty("Not computed yet. Select “Run now”.")); return wrap; }
+    const o = a.overall || {}, ref = a.reference || {}, des = a.design || {}, src = o.sources || {};
+    wrap.appendChild(panel("Overall", null,
+      el("div", { class: "facts" },
+        factTile(R_PATTERN[o.pattern] || words(o.pattern), "pattern · " + (SRC[src.pattern] || "")),
+        factTile(words(o.confidence), "confidence · " + (SRC[src.confidence] || "")),
+        factTile(String(o.independent_lines), "independent kinds of measure agree"),
+        factTile(o.leads_reference ? "Yes" : "No", "measures move before the reference"),
+        factTile(R_NEXT[o.next_step] || words(o.next_step), "next step · " + (SRC[src.next_step] || ""))),
+      el("p", { class: "small" }, "Most plausible other explanation: ", o.main_alternative_text || words(o.main_alternative)),
+      el("p", { class: "muted small" },
+        "Reference: " + (ref.label || ref.key) + (ref.kind === "proxy" ? " (a proxy, not a clinical rating)" : " (" + (ref.ratings || 0) + " ratings)") +
+        " · " + des.days + " days, " + des.sessions + " sessions, " + des.rows_tested + " measures tested" +
+        " · appraised by " + (a.appraised_by === "model" ? "the local model (" + ((a.inputs || {}).model || "") + ")" : "code only") + ", checked by code" +
+        " · " + stamp(a.generated_at) + (a.hypotheses_reviewed_by_clinician ? "" : " · hypothesis list not yet reviewed by a clinician"))));
+    const strongest = new Set(o.strongest || []);
+    const GROUP = { face: "Face", activity: "Activities", daily: "Daily data" };
+    ["face", "activity", "daily"].forEach((g) => {
+      const rows = (a.rows || []).filter((r) => r.group === g);
+      if (!rows.length) return;
+      wrap.appendChild(panel(GROUP[g], rows.length, table(
+        ["Measure", "Expected when worse", { t: "Days", r: 1 }, "Opposite ← rho → as expected", { t: "p adj.", r: 1 }, { t: "Lead", r: 1 }, "Judgement", "Caveats"],
+        rows.map((r) => {
+          const tested = r.status === "tested";
+          return el("tr", { class: strongest.has(r.key) ? "changed" : "" },
+            el("td", null, r.label, el("span", { class: "sub" }, r.why)),
+            el("td", null, r.expected, el("span", { class: "sub" }, r.support + " support")),
+            el("td", { class: "r num" }, r.n),
+            el("td", null, tested ? el("div", { class: "rhocell" }, rhoBar(r), el("span", { class: "num small" }, f2(r.rho) + " [" + f2(r.ci_low) + ", " + f2(r.ci_high) + "]")) : el("span", { class: "muted" }, R_STATUS[r.status] || words(r.status))),
+            el("td", { class: "r num" }, tested && r.p_adj !== null ? Number(r.p_adj).toFixed(3) : "–"),
+            el("td", { class: "r num" }, tested && r.lead_days !== null && r.lead_days !== undefined ? (r.lead_days > 0 ? "+" : "") + r.lead_days + " d" : "–"),
+            el("td", null, tested ? [el("span", { class: "chip " + (r.agreement === "consistent" ? "good" : r.agreement === "opposite" ? "bad" : "") }, words(r.agreement).toLowerCase() + (r.strength ? ", " + r.strength : "")),
+              el("span", { class: "sub" }, SRC[r.agreement_source] || "")] : "–"),
+            el("td", { class: "small" }, (r.caveats || []).map((c) => el("div", null, c.text, el("span", { class: "muted" }, " · " + c.by)))));
+        }), "assoc")));
+    });
+    const cor = a.corrections || [];
+    wrap.appendChild(panel("What code corrected in the model's answer", cor.length || "", cor.length ? table(["Where", "Field", "Model said", "Code set", "Why"],
+      cor.map((c) => el("tr", null, el("td", null, c.where === "row" ? c.key : "overall"), el("td", null, words(c.field)),
+        el("td", null, c.model === null || c.model === undefined ? "–" : String(c.model)), el("td", null, c.code === null || c.code === undefined ? "–" : String(c.code)),
+        el("td", null, words(c.reason).toLowerCase())))) : empty(a.appraised_by === "model" ? "Nothing: the model's judgements matched the numbers." : "No model took part in this appraisal.")));
+    const notes = a.data_notes || [];
+    if (notes.length) wrap.appendChild(panel("Notes on the data", notes.length, el("ul", { class: "plain" }, notes.map((n) => el("li", null, n.text)))));
     return wrap;
   }
   function tabLog(d) {

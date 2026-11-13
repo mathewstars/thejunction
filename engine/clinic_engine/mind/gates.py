@@ -334,6 +334,54 @@ class InputGate:
                 raise GateError(GateRefusal("input", 2, "session_reading", "unrounded_number"))
         walk(payload)
 
+    # ---- association appraisal (level 1 only) ----------------------------------------
+
+    _ASSOC_KEYS = {"design", "reference", "rows", "data_notes", "caveat_codes", "type", "days",
+                   "sessions", "key", "kind", "worse_is", "group", "expected", "support", "n",
+                   "rho", "ci_low", "ci_high", "p_adj", "lead_days", "contrast", "quality"}
+
+    def association_pack(self, payload: dict) -> Pack:
+        """The system message is data/association_prompt.txt, the user message the
+        JSON object it describes. Numbers and fixed codes only: no ids, no dates,
+        no names, no text. Level 1 only: it never leaves the private network."""
+        from .associations import prompt_text
+        self.check_association_outbound(payload)
+        msgs = [{"role": "system", "content": prompt_text()},
+                {"role": "user", "content": json.dumps(payload, sort_keys=True)}]
+        return Pack(1, "association", msgs, payload)
+
+    def check_association_outbound(self, payload: Any) -> None:
+        """Allowlist: known keys, strings from the fixed code sets only, numbers
+        rounded to 2 decimals."""
+        from .associations import allowed_pack_strings
+        allowed = allowed_pack_strings()
+
+        def refuse(reason: str):
+            raise GateError(GateRefusal("input", 1, "association", reason))
+
+        def walk(x: Any) -> None:
+            if isinstance(x, dict):
+                for k, v in x.items():
+                    if k not in self._ASSOC_KEYS:
+                        refuse(f"field_not_allowed:{k}")
+                    walk(v)
+            elif isinstance(x, list):
+                for v in x:
+                    walk(v)
+            elif isinstance(x, bool) or x is None or isinstance(x, int):
+                return
+            elif isinstance(x, str):
+                if x not in allowed:
+                    refuse("string_not_allowed")
+            elif isinstance(x, float):
+                if abs(x * 100 - round(x * 100)) > 1e-6:
+                    refuse("unrounded_number")
+            else:
+                refuse("type_not_allowed")
+        if set(payload) != {"design", "reference", "rows", "data_notes", "caveat_codes"}:
+            refuse("top_level_keys")
+        walk(payload)
+
     # ---- level-2 check -------------------------------------------------------------
 
     _ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -447,6 +495,30 @@ class SessionReply(_Strict):
     from_session: int | None = Field(ge=-20, le=-1)
     confidence: Literal["low", "medium", "high"]
     evidence: list[SessionEvidence] = Field(max_length=8)
+
+
+class AssocRowReply(_Strict):
+    key: str = Field(max_length=64)
+    agreement: Literal["consistent", "opposite", "inconclusive", "related_no_prediction"]
+    strength: Literal["negligible", "weak", "moderate", "strong"]
+    caveats: list[str] = Field(max_length=20)
+
+
+class AssocOverallReply(_Strict):
+    pattern: Literal["consistent_with_worse_state", "partly_consistent", "no_clear_relation",
+                     "opposite_to_expectation", "insufficient_data"]
+    confidence: Literal["low", "medium", "high"]
+    independent_lines: int = Field(ge=0, le=20)
+    strongest: list[str] = Field(max_length=3)
+    leads_reference: bool
+    main_alternative: str
+    next_step: Literal["collect_more_sessions", "add_reference_rating", "review_tracking_quality",
+                       "discuss_with_patient", "none"]
+
+
+class AssocReply(_Strict):
+    rows: list[AssocRowReply] = Field(max_length=60)
+    overall: AssocOverallReply
 
 
 class QuestionProposal(_Strict):
@@ -650,6 +722,56 @@ class OutputGate:
         refusals = [GateRefusal("output", 2, "session_reading",
                                 f"claim_dropped:{d['field']}:{d['reason']}") for d in dropped]
         return GateResult(True, {"reading": kept, "dropped": dropped}, refusals)
+
+    # ---- association appraisal (level 1) ---------------------------------------------
+
+    def association(self, raw: str | None, pack: Pack) -> GateResult:
+        """Strict shape and enums as association_prompt.txt defines them; every
+        row sent comes back once with its key unchanged, no extra rows. Caveat
+        codes outside the supplied list are dropped (and refused one by one);
+        a main_alternative outside it is blanked for code to fill. The content
+        is then checked by associations.merge()."""
+        def refuse(reason: str) -> GateResult:
+            return GateResult(False, refusals=[GateRefusal("output", 1, "association", reason)])
+
+        if raw is None:
+            return refuse("no_reply")
+        # A reasoning model may think before answering; that part is never used.
+        raw = re.sub(r"^\s*<think>.*?</think>\s*", "", raw, flags=re.S)
+        obj = _parse_json_object(raw)
+        if obj is None:
+            return refuse("not_json_object")
+        try:
+            reply = AssocReply.model_validate(obj)
+        except ValidationError as exc:
+            first = exc.errors()[0]
+            return refuse("schema:" + first["type"] + ":" +
+                          ".".join(str(x) for x in first["loc"])[:40])
+        sent = [r["key"] for r in pack.payload["rows"]]
+        got = [r.key for r in reply.rows]
+        if len(set(got)) != len(got):
+            return refuse("duplicate_row")
+        if set(got) - set(sent):
+            return refuse("unknown_row")
+        if set(sent) - set(got):
+            return refuse("missing_row")
+        allowed = set(pack.payload["caveat_codes"])
+        refusals: list[GateRefusal] = []
+        rows = []
+        for r in reply.rows:
+            d = r.model_dump()
+            bad = [c for c in d["caveats"] if c not in allowed]
+            if bad:
+                refusals.append(GateRefusal("output", 1, "association", "unknown_caveat_code"))
+            d["caveats"] = [c for c in d["caveats"] if c in allowed]
+            rows.append(d)
+        ov = reply.overall.model_dump()
+        if ov["main_alternative"] not in allowed:
+            refusals.append(GateRefusal("output", 1, "association", "unknown_caveat_code"))
+            ov["main_alternative"] = None
+        ov["strongest"] = [k for k in ov["strongest"] if k in sent] + \
+            ["?" for k in ov["strongest"] if k not in sent]
+        return GateResult(True, {"rows": rows, "overall": ov}, refusals)
 
     # ---- choosing one of Lanvi's lines (level 1) ----------------------------------
 
