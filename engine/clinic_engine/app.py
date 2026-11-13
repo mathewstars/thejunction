@@ -248,4 +248,8 @@ def create_app(settings: Optional[Settings] = None, store: Optional[Store] = Non
 
 def app_from_env() -> FastAPI:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    # The HTTP client logs full request URLs at INFO. Some outside APIs carry a secret in the URL
+    # (Telegram puts the bot token in the path), so keep that logger quiet.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
     return create_app()
