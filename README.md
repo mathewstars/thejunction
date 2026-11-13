@@ -8,49 +8,65 @@ Team: Mathew, Peter, Matthew. The same three who built [Gridzilla](https://githu
 
 | | |
 |---|---|
-| Challenge / track | Valio Aimo, "Trusted Trade Agents". AstraZeneca is dropped. |
+| Challenge / track | Aalto University, "Beyond the Clinic". Tech track: Google DeepMind, Gemini API. AstraZeneca and Valio Aimo are dropped. |
 | Idea | draft below, open for changes |
 | Demo | none yet |
 | Pitch | none yet |
 
 Update this table as soon as something is decided, so all three of us read the same thing.
 
-## Where we are (Friday 13 Nov, night)
+## Where we are (Friday 13 Nov, late night)
 
-**Read first:** `valioaimo/CHALLENGE.md` has the brief, the judging weights and what Valio Aimo provides.
+**Read first:** `aalto/CHALLENGE.md` has the brief, the judging weights and what Aalto provides.
 
-**The challenge in three lines.** Valio Aimo is a food-service wholesaler. They want the interface and the rules through which an external purchasing agent can look up products, prices and availability, place an order, and get human approval where it is needed. Everything runs against their mock APIs with synthetic data.
+**The challenge in three lines.** People with severe depression get brain stimulation (TMS) in daily clinic visits. When the visits end they are at home with no scans and no psychiatrist, and the depression can return. Aalto wants a product that helps them stay well at home, best as a loop: sense how the person is doing, respond with something that helps, learn what works for that person.
 
-**Judging:** working end-to-end demo 30%, solving the buyer's need 20%, autonomy and controls 20%, robustness to exceptions 15%, openness and path to production 15%.
+**Judging:** usefulness 25%, ease of use 25%, smart sensing 25%, creativity 25%. The prize is not announced yet.
 
-**Why we switched from AstraZeneca.** We have built this shape before: an agent that proposes and a code gate that decides. The mock APIs and data are already published, so there is no data risk. The first prize is 4,000 € against 1,000 €.
+**Draft idea (working name Aloft, not final).** A two-minute daily game on the phone where lights appear in the person's own room and they move to catch them. The game is the sensor: how fast and how far they move, and whether they played at all. A server compares each round with that person's own baseline, offers one small action on a clear change, and learns which action helped. A clinician sees one line per patient.
 
-**Draft idea.** A purchasing agent on a leash:
+**Still open:** the AR game against a wearable as the sensor, and the name.
 
-1. A read-only tool layer over the Valio Aimo mock APIs (search, price, availability, delivery time, labels), served over an open standard so any agent can use it.
-2. The agent proposes an order. It never places one by itself.
-3. A code gate decides, not the model: spend limit, allowed categories, allergen rules, substitutions only inside the buyer's stated preferences, dry run unless armed. Inside the limits the order goes through. Outside them it goes to a human.
-4. Human approval in one tap, with the reason and the alternatives ("good, better, best" when the exact product is short).
-5. A grounding check: every price and quantity in an answer must come from an API result of this session, or the answer is refused.
-6. An audit trail a human can read: what was asked, what was found, what the gate allowed or stopped, who approved.
+**Who does what**
 
-**Rule that changes our plan: no code written before the event.** All code outside open-source libraries must be written at the event, or the team is disqualified. So the Gridzilla pieces listed below, and patterns from other earlier projects, are reference for how to build, not files to copy. We rewrite here.
+| Who | Part |
+|---|---|
+| Peter | AR game and the iPhone app |
+| Mathew | The "mind" logic and the server |
+| Matthew | Presentation, video and design |
 
-**Tech challenges we can enter with the same project** (they stack on the main challenge):
+**How it fits together**
 
-| Tech challenge | Role in our build | Prize |
+```
+iPhone app                    Server (one small service)            Web page
+AR light game        --POST-> store the round                       clinician list
+numbers per round     round   compare with own baseline    --GET--> who is outside
+show today's         <-GET--  pick one action, word it              their own normal
+suggestion            today   review: lessons, questions
+feedback tap         --POST-> remember what was followed
+```
+
+**In scope for the weekend:** the game producing real numbers, the baseline and deviation on the server, a feedback tap that changes the next suggestion, the clinician page updating when a round arrives.
+
+**Out of scope:** doctor onboarding, accounts and login, push notifications, settings, Android, a health tracker. One hard-coded demo patient. A seed script creates three weeks of example rounds, labelled as example data.
+
+**Tech track: Google DeepMind, "Best Use of Gemini API".** Two model levels:
+
+| Level | Model | Job |
 |---|---|---|
-| Google DeepMind, Gemma | Cheap first tier: triage and product lookup | 1,000 € each to three teams |
-| Google DeepMind, Gemini API | Second tier: the order decision and its explanation | 4,000 € + cloud credits, 2,000 €, 1,000 € |
-| Aiven | Postgres for the audit trail and the event log | 1,000 €, 750 €, 500 € |
-| NVIDIA Nemotron (in place of Gemma) | First tier with tool use | An RTX 5080 for each of two teams |
+| 1 | A local open model on hardware we control | Everyday work: words the daily suggestion from the action the code picked |
+| 2 | Gemini API | The review: reads the recent rounds and feedback, writes lessons and at most three questions, and the plain-language summary for the clinician |
+
+Level 1 is served with a standard open-source model server, not through any private gateway of ours. Level 2 gets numbers without a name or any other identity. If a model is not reachable, a fixed-template suggestion is the fallback. If level 1 runs a Gemma model, the same build can also enter "Best Use of Gemma"; not decided.
+
+**Rule that changes our plan: no code written before the event.** All code outside open-source libraries must be written at the event, or the team is disqualified. A project related to an already existing company is disqualified too. Patterns from earlier projects are reference for how to build, not files to copy. We rewrite here.
 
 **Open, in this order:**
 
-1. Open the resource portal, read the API documentation and run one lookup against the mock API.
-2. Ask the Valio Aimo mentors: which approval rules a real kitchen buyer has, what a substitution may change, and which open standard they would accept.
-3. Decide the two models and which tech challenges we enter. Ask the info desk if there is a limit.
-4. Agree names early: tools, order states, gate rules, approval reasons.
+1. Agree the round record between the app and the server, field by field.
+2. Ask the Aalto mentors: does movement in a short game say anything about mood, what the app must show when someone is in crisis, which open datasets they point to.
+3. Decide where the server and the model run for the demo: a laptop at the venue or a machine at home.
+4. Decide the name and whether the sensor is the AR game or a wearable.
 
 **Dates:** final submission Sunday 15 Nov 10:00 with the project set to FINAL, a public video of at most 2 minutes, demo link, source link, pitch deck PDF. Peer reviewing 10:30–14:00, all present.
 
@@ -58,7 +74,7 @@ Update this table as soon as something is decided, so all three of us read the s
 
 Under the Junction rules everything here is reference only: we may reuse the ideas and the structure, not the code.
 
-**The agent-and-gate pattern (from an earlier project of ours).** This is the closest thing we have to the Valio Aimo task:
+**The agent-and-gate pattern (from an earlier project of ours).** Written for the Valio Aimo idea; the gate and the grounding check still apply to what the model may say to a patient:
 
 | Pattern | What it does | Where it goes in the Valio Aimo build |
 |---|---|---|
@@ -105,7 +121,8 @@ Live: https://gridzilla.victronlab.sk (site at `/`, operator console at `/consol
 
 ## Layout
 
-- `valioaimo/` — our challenge, Valio Aimo "Trusted Trade Agents": brief, judging criteria and what they provide in `CHALLENGE.md`.
+- `aalto/` — our challenge, Aalto "Beyond the Clinic": brief, judging criteria and what they provide in `CHALLENGE.md`.
+- `valioaimo/` — dropped on Friday night. The Valio Aimo brief, kept for the record.
 - `astrazeneca/` — dropped on Friday night. The AstraZeneca brief and the material they provided, kept for the record.
 
 Suggested once we start building: `docs/` for the pitch, one top-level folder per component.
