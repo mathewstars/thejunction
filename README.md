@@ -93,6 +93,7 @@ Level 1 runs on hardware we control. Level 2 gets only an anonymous pack, with n
 - `docs/app-design.md` — the app screen by screen, the AR round, and how the app talks to the server.
 - `docs/game-interface.md` — what ARKit gives the app, the round record the app sends, what the server makes of it, and where the two model levels come in.
 - `engine/` — the server and the mind, with its tests. It runs on the demo server at https://lanvi.app.
+- `docs/submission.md` — the text and links of our Junction submission, to edit here; Matthew owns the wording.
 - `docs/app-api.md` — how the app and the server talk, call by call, with real examples. Written for Peter to review.
 - `docs/api/` — the API: `openapi.json` and a short guide for the app.
 - `ios/` — the iPhone app. The Xcode project goes here.
