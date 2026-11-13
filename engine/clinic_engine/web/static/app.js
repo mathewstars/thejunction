@@ -990,7 +990,7 @@
             el("td", null, r.expected, el("span", { class: "sub" }, r.support + " support")),
             el("td", { class: "r num" }, r.n),
             el("td", null, tested ? el("div", { class: "rhocell" }, rhoBar(r), el("span", { class: "num small" }, f2(r.rho) + " [" + f2(r.ci_low) + ", " + f2(r.ci_high) + "]")) : el("span", { class: "muted" }, R_STATUS[r.status] || words(r.status))),
-            el("td", { class: "r num" }, tested && r.p_adj !== null ? Number(r.p_adj).toFixed(3) : "–"),
+            el("td", { class: "r num" }, tested && r.p_adj !== null ? (r.p_adj < 0.001 ? "< 0.001" : Number(r.p_adj).toFixed(3)) : "–"),
             el("td", { class: "r num" }, tested && r.lead_days !== null && r.lead_days !== undefined ? (r.lead_days > 0 ? "+" : "") + r.lead_days + " d" : "–"),
             el("td", null, tested ? [el("span", { class: "chip " + (r.agreement === "consistent" ? "good" : r.agreement === "opposite" ? "bad" : "") }, words(r.agreement).toLowerCase() + (r.strength ? ", " + r.strength : "")),
               el("span", { class: "sub" }, SRC[r.agreement_source] || "")] : "–"),
