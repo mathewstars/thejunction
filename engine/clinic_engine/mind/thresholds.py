@@ -102,6 +102,34 @@ class Thresholds:
     lesson_ttl_days: int = 30
     max_open_questions: int = 3
 
+    # The association appraisal (mind/associations.py). Clinician-only research
+    # output: none of these values touches attention, suggestions or lessons.
+    assoc_window_days: int = 90  # days looked at, ending today
+    assoc_min_n: int = 8  # paired days below which a row is "insufficient" (no rho)
+    assoc_min_ratings: int = 4  # ratings of one scale before it is the reference
+    assoc_rating_carry_days: int = 3  # a rating stands for the days this close to it
+    assoc_max_lag: int = 3  # lead_days is looked for in -3..+3
+    assoc_bootstrap: int = 1000  # bootstrap resamples for the 95% interval
+    assoc_permutations: int = 1000  # permutations for the p-value
+    assoc_seed: int = 20261113  # fixed, so results are reproducible
+    assoc_p_adj_max: float = 0.10  # above this a row cannot be "consistent"
+    assoc_weak_n: int = 12  # below this many paired days, at most "weak"
+    assoc_high_n: int = 20  # "high" confidence needs this many paired days ...
+    assoc_high_lines: int = 3  # ... this many independent lines, and a rating reference
+    assoc_medium_lines: int = 2  # code's own "medium" needs this many lines
+    assoc_strength_weak: float = 0.2
+    assoc_strength_moderate: float = 0.4
+    assoc_strength_strong: float = 0.6  # above this
+    assoc_min_contrast_days: int = 2  # held and other days each, for Cliff's delta
+    assoc_min_tested_rows: int = 3  # fewer tested rows: "insufficient_data"
+    assoc_few_sessions: int = 10  # activity sessions in the period, below: few_sessions
+    assoc_short_period_days: int = 21  # days with data, below: short_period
+    assoc_poor_tracking_share: float = 0.3  # share of face sessions with low tracking
+    assoc_row_quality_min: float = 0.7  # a row's usable share below this: poor_tracking
+    assoc_many_tests: int = 5  # more tested rows than this: many_tests
+    assoc_time_of_day_hours: int = 6  # sessions spread over this many hours: time_of_day
+    assoc_max_tokens: int = 6000  # the model may think before answering
+
 
 # Per-metric floor for the spread, so a very regular person does not get
 # huge z-scores from tiny changes. In the metric's own unit.
@@ -132,6 +160,10 @@ ACTIVITY_MIN_SCALE = {
     "time_played_s": 5.0, "good_things": 0.5,
     "smile_rate_per_min": 0.5, "smile_intensity": 0.05, "facial_activity": 0.05,
     "blink_rate_per_min": 2.0, "look_down_share": 0.05, "head_tilt_deg": 2.0,
+    "smile_time_share": 0.03, "eye_smile_share": 0.05, "smile_response_share": 0.1,
+    "smile_response_latency_s": 0.3, "brow_down_share": 0.03, "inner_brow_up_share": 0.03,
+    "blink_duration_ms": 15.0, "head_pitch_deg": 2.0, "head_movement": 0.05,
+    "smile_asymmetry": 0.03,
 }
 
 METRICS = ("steps", "walking_speed_m_s", "hrv_ms", "sleep_h")

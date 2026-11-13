@@ -12,10 +12,14 @@ from ..audit import write_audit
 from ..mind import trace as trace_mod
 from ..mind import views
 from ..mind.watchers import compute_status
-from ..models import ClinicMeOut, LoginIn, LoginOut, TraceOut
-from ..security import Principal, dummy_verify, issue_token, sha256_hex, verify_password
+from ..mind import associations as assoc
+from ..models import (AssociationsOut, ClinicMeOut, LoginIn, LoginOut, RatingIn, RatingOut,
+                      RatingsOut, TraceOut)
+from ..security import (Principal, dummy_verify, issue_token, new_id, sha256_hex,
+                        verify_password)
 from ..service import ApiError
-from .deps import clinician_only, ctx_of, demo_clinic_id, errors, open_rate_limit, rid_of
+from .deps import (clinician_only, clinician_or_admin, ctx_of, demo_clinic_id, errors,
+                   open_rate_limit, rid_of)
 
 router = APIRouter(prefix="/v1/clinic", tags=["clinician"])
 
@@ -114,6 +118,26 @@ async def patient_round(request: Request, patient_id: str = Path(pattern=SID),
     return out
 
 
+@router.get("/patients/{patient_id}/exchanges", responses=errors(401, 403, 404, 422, 429),
+            summary="Raw model exchanges: what was sent to a model and what it answered")
+async def patient_exchanges(request: Request, patient_id: str = Path(pattern=SID),
+                            task: Optional[str] = Query(None, pattern=r"^[a-z_]{1,30}$"),
+                            chain_id: Optional[str] = Query(None, pattern=SID),
+                            limit: int = Query(50, ge=1, le=200),
+                            p: Principal = Depends(clinician_only)):
+    """Newest first. Each item holds the messages sent, the raw reply (null when the
+    model did not answer), the model name, the time it took and the trace chain it
+    belongs to. What code did with the reply is in the trace. A note's prompt
+    contains the patient's words; that message is hidden unless the patient shares
+    their notes."""
+    from ..mind import exchanges as ex
+    ctx = ctx_of(request)
+    repo = _patient_repo(request, p, patient_id)
+    share = bool((repo.patient() or {}).get("share_notes"))
+    return {"share_notes": share,
+            "exchanges": ex.view(ctx.store, p.clinic_id, patient_id, share, limit, task, chain_id)}
+
+
 @router.get("/patients/{patient_id}/trace", response_model=TraceOut,
             responses=errors(401, 403, 404, 422, 429),
             summary="How the mind reasoned: chains of steps per trigger, newest first")
@@ -144,3 +168,124 @@ async def ack(request: Request, attention_id: str = Path(pattern=SID),
     """Closes the held item. The same evidence does not reopen it; fresh
     evidence does. The status still follows the data."""
     return await service.ack_attention(ctx_of(request), p, attention_id, rid_of(request))
+
+
+# ---- reference ratings (clinician only) ------------------------------------------------
+#
+# A clinician's rating (PHQ-9, PHQ-2 or a global rating) is a reference for the
+# association appraisal only. The mind never reads it: it changes nothing that
+# is offered to the patient and never opens, raises or closes attention.
+
+def _rating_out(r: dict) -> dict:
+    return {k: r[k] for k in ("id", "date", "scale", "score", "created_at")} | \
+        {"example": bool(r.get("example"))}
+
+
+def _audit_research(request: Request, p: Principal, patient_id: str, action: str,
+                    outcome: str = "ok", reason: str | None = None, **detail) -> None:
+    ctx = ctx_of(request)
+    write_audit(ctx.store, ctx.clock.now(), clinic_id=p.clinic_id, patient_id=patient_id,
+                actor=p.actor, action=action, outcome=outcome, reason=reason, detail=detail,
+                request_id=rid_of(request))
+
+
+@router.post("/patients/{patient_id}/ratings", response_model=RatingOut,
+             responses=errors(401, 403, 404, 422, 429),
+             summary="Record a reference rating (PHQ-9, PHQ-2 or clinician global)")
+async def add_rating(body: RatingIn, request: Request, patient_id: str = Path(pattern=SID),
+                     p: Principal = Depends(clinician_only)):
+    """Range-checked against the hypotheses file. One rating per day and scale:
+    recording the same day and scale again replaces it. Used only as the
+    reference of the association appraisal."""
+    ctx = ctx_of(request)
+    repo = _patient_repo(request, p, patient_id)
+    lo, hi = assoc.hypotheses()["reference_scales"][body.scale]["range"]
+    today = repo.local(ctx.clock.now()).date()
+    reason = None
+    if not lo <= body.score <= hi:
+        reason = "score_out_of_range"
+    elif body.date > today:
+        reason = "future_date"
+    elif body.date < today - timedelta(days=400):
+        reason = "too_old"
+    if reason:
+        _audit_research(request, p, patient_id, "rating_add", "refused", reason,
+                        scale=body.scale)
+        raise ApiError(422, "implausible_rating", f"The rating was rejected: {reason}.")
+    now = ctx.clock.now().isoformat()
+    for old in repo.docs("ratings"):
+        if old["date"] == body.date.isoformat() and old["scale"] == body.scale:
+            repo.delete(f"ratings/{old['id']}.json")
+    rec = {"id": new_id("rat"), "date": body.date.isoformat(), "scale": body.scale,
+           "score": body.score, "created_at": now, "by": p.actor, "example": False}
+    repo.put(f"ratings/{rec['id']}.json", rec)
+    _audit_research(request, p, patient_id, "rating_add", rating_id=rec["id"], scale=body.scale)
+    return _rating_out(rec)
+
+
+@router.get("/patients/{patient_id}/ratings", response_model=RatingsOut,
+            responses=errors(401, 403, 404, 429), summary="List the reference ratings")
+async def list_ratings(request: Request, patient_id: str = Path(pattern=SID),
+                       p: Principal = Depends(clinician_only)):
+    repo = _patient_repo(request, p, patient_id)
+    rs = sorted(repo.docs("ratings"), key=lambda r: (r["date"], r["scale"], r["created_at"]))
+    return {"ratings": [_rating_out(r) for r in rs]}
+
+
+@router.delete("/patients/{patient_id}/ratings/{rating_id}",
+               responses=errors(401, 403, 404, 429), summary="Delete one reference rating")
+async def delete_rating(request: Request, patient_id: str = Path(pattern=SID),
+                        rating_id: str = Path(pattern=SID),
+                        p: Principal = Depends(clinician_only)):
+    repo = _patient_repo(request, p, patient_id)
+    if repo.get(f"ratings/{rating_id}.json") is None:
+        raise ApiError(404, "not_found", "Rating not found.")
+    repo.delete(f"ratings/{rating_id}.json")
+    _audit_research(request, p, patient_id, "rating_delete", rating_id=rating_id)
+    return {"id": rating_id, "deleted": True}
+
+
+# ---- the association appraisal (clinician-only research output) ----------------------
+
+def _assoc_out(doc: dict | None) -> dict:
+    if not doc:
+        return {"status": "none", "rows": [], "data_notes": [], "corrections": [],
+                "disclaimer": assoc.DISCLAIMER}
+    return {**doc, "disclaimer": assoc.DISCLAIMER}
+
+
+@router.get("/patients/{patient_id}/associations", response_model=AssociationsOut,
+            responses=errors(401, 403, 404, 429),
+            summary="The latest association appraisal: how the measures moved with the reference")
+async def associations(request: Request, patient_id: str = Path(pattern=SID),
+                       p: Principal = Depends(clinician_only)):
+    """A within-person description of how this person's measurements moved
+    together over time. Not validated, not a diagnosis; never shown to the
+    patient. Statistics by code; a level-1 model may add caveats and the
+    overall judgement, and code corrects whatever it got wrong (per field,
+    `*_source` and `sources` say so). `status: none` until it has run."""
+    ctx = ctx_of(request)
+    repo = _patient_repo(request, p, patient_id)
+    return _assoc_out(repo.get(ctx.mind.ASSOC_KEY))
+
+
+@router.post("/patients/{patient_id}/associations/run", response_model=AssociationsOut,
+             responses=errors(401, 403, 404, 429),
+             summary="Compute the association appraisal now")
+async def associations_run(request: Request, patient_id: str = Path(pattern=SID),
+                           p: Principal = Depends(clinician_or_admin)):
+    """A clinician of the patient's clinic, or the admin token. Waits for the
+    model when one is configured; without it, the code-only appraisal."""
+    ctx = ctx_of(request)
+    if p.scope == "admin":
+        idx = ctx.store.get(f"patients/{patient_id}.json")
+        if not idx:
+            raise ApiError(404, "not_found", "Patient not found.")
+        repo = ctx.mind.repo(idx["clinic_id"], patient_id)
+    else:
+        repo = _patient_repo(request, p, patient_id)
+    out = await ctx.mind.run_appraisal(repo, "on_demand")
+    write_audit(ctx.store, ctx.clock.now(), clinic_id=repo.clinic_id, patient_id=patient_id,
+                actor=p.actor, action="association_run", detail={"appraised_by": out["appraised_by"]},
+                request_id=rid_of(request))
+    return _assoc_out(out)

@@ -233,8 +233,30 @@ GOOD_THINGS = ["walked", "good_food", "talked_to_someone", "music", "rested", "l
                "outside", "got_something_done"]
 
 
-def _face(rng: random.Random, flat: float = 1.0) -> dict:
-    return {"smile_rate_per_min": round(max(0.0, rng.gauss(2.6, 0.25) * flat * flat), 2),
+def _clamp01(x: float) -> float:
+    return max(0.0, min(1.0, x))
+
+
+def _face_more(rx: random.Random, flat: float) -> dict:
+    """The newer face fields. Drawn from their own generator, so the older
+    fields (and everything the mind decided on them) stay exactly as before.
+    In the dip (flat < 1) smiling and head movement drop, brows, blinks and
+    head angle go the other way."""
+    return {"smile_time_share": round(_clamp01(rx.gauss(0.16, 0.02) * flat * flat), 2),
+            "eye_smile_share": round(_clamp01(rx.gauss(0.55, 0.05) * flat), 2),
+            "smile_response_share": round(_clamp01(rx.gauss(0.7, 0.08) * flat), 2),
+            "smile_response_latency_s": round(max(0.2, rx.gauss(1.1, 0.15) / flat), 2),
+            "brow_down_share": round(_clamp01(rx.gauss(0.08, 0.015) / flat), 2),
+            "inner_brow_up_share": round(_clamp01(rx.gauss(0.05, 0.01) / flat), 2),
+            "blink_duration_ms": round(rx.gauss(150, 12) / math.sqrt(flat), 0),
+            "head_pitch_deg": round(rx.gauss(4.0, 1.5) + (1 - flat) * 16, 1),
+            "head_movement": round(_clamp01(rx.gauss(0.42, 0.04) * flat), 2),
+            "smile_asymmetry": round(_clamp01(rx.gauss(0.12, 0.02)), 2)}
+
+
+def _face(rng: random.Random, flat: float = 1.0, rx: random.Random | None = None) -> dict:
+    more = _face_more(rx, flat) if rx is not None else {}
+    return {**more, "smile_rate_per_min": round(max(0.0, rng.gauss(2.6, 0.25) * flat * flat), 2),
             "smile_intensity": round(max(0.0, min(1.0, rng.gauss(0.36, 0.03) * flat)), 2),
             "facial_activity": round(max(0.0, min(1.0, rng.gauss(0.52, 0.03) * flat)), 2),
             "blink_rate_per_min": round(rng.gauss(16.0, 1.2), 1),
@@ -244,7 +266,7 @@ def _face(rng: random.Random, flat: float = 1.0) -> dict:
 
 
 def make_activity(rng: random.Random, aid: str, started: datetime, typ: str, how: str,
-                  dip: bool, prev_plan: bool) -> dict:
+                  dip: bool, prev_plan: bool, rx: random.Random | None = None) -> dict:
     rec = {"id": aid, "type": typ, "started_at": started.isoformat(), "suggestion_id": None}
     if typ == "focus":
         slow = 1.35 if dip else 1.0
@@ -252,14 +274,14 @@ def make_activity(rng: random.Random, aid: str, started: datetime, typ: str, how
         rts = [int(max(200, rng.gauss(520, 55) * slow)) for _ in range(n)]
         rec.update(duration_s=45.0 if how == "finished" else round(rng.uniform(18, 28), 1),
                    correct_taps=n - 1, wrong_taps=1, misses=rng.randint(1, 3) + (2 if dip else 0),
-                   reaction_ms=rts[: n], face=_face(rng, 0.5 if dip else 1.0))
+                   reaction_ms=rts[: n], face=_face(rng, 0.5 if dip else 1.0, rx))
     elif typ == "breathing":
         if dip and rng.random() < 0.7:
             how = "user_stopped"
         played = 60.0 if how == "finished" else round(rng.uniform(20, 35), 1)
         rec.update(duration_s=played, time_played_s=played,
                    breaths_completed=6 if how == "finished" else int(played // 10),
-                   face=_face(rng, 0.5 if dip else 1.0))
+                   face=_face(rng, 0.5 if dip else 1.0, rx))
     else:
         k = 1 if dip else rng.choice([2, 3, 3])
         rec.update(duration_s=round(rng.uniform(40, 80), 1),
@@ -279,6 +301,7 @@ def write_activities(store: Store, clinic_id: str, patient_id: str, today, tz: Z
     keyed by record id and never removed)."""
     from .mind.activities import process_activity
     rng = random.Random(seed + 31)
+    rx = random.Random(seed + 37)  # the newer face fields only
     base = f"clinics/{clinic_id}/patients/{patient_id}/activities/"
     for key in store.list(base):
         if (store.get(key) or {}).get("example"):
@@ -292,7 +315,7 @@ def write_activities(store: Store, clinic_id: str, patient_id: str, today, tz: Z
         if started.astimezone(timezone.utc) > now:
             continue
         a = make_activity(rng, f"example-act-{n:03d}", started.astimezone(timezone.utc), typ, how,
-                          dip and off > -DIP_ACTIVITY_DAYS, had_plan)
+                          dip and off > -DIP_ACTIVITY_DAYS, had_plan, rx)
         if typ == "checkin":
             had_plan = True
         rec = process_activity(a, previous)
@@ -301,6 +324,34 @@ def write_activities(store: Store, clinic_id: str, patient_id: str, today, tz: Z
                                            else "off"})
         store.put(base + f"{rec['id']}.json", rec)
         previous.append(rec)
+
+
+# Weekly example ratings (day offset). The last two move in the dip.
+RATING_OFFSETS = (-27, -20, -13, -6, -1)
+
+
+def write_ratings(store: Store, clinic_id: str, patient_id: str, today, seed: int,
+                  dip: bool = False) -> None:
+    """Example PHQ-9 ratings, weekly, marked example. Worse (higher) in the dip.
+    A clinician's own ratings are never touched. Read only by the association
+    appraisal; the mind never sees them."""
+    rng = random.Random(seed + 53)
+    base = f"clinics/{clinic_id}/patients/{patient_id}/ratings/"
+    for key in store.list(base):
+        if (store.get(key) or {}).get("example"):
+            store.delete(key)
+    for n, off in enumerate(RATING_OFFSETS):
+        score = 5 + rng.choice([-1, 0, 0, 1])
+        if dip and off == RATING_OFFSETS[-2]:
+            score = 9
+        if dip and off == RATING_OFFSETS[-1]:
+            score = 15
+        d = today + timedelta(days=off)
+        rid = f"rat_{n:024x}"
+        store.put(base + f"{rid}.json", {
+            "id": rid, "date": d.isoformat(), "scale": "phq9", "score": score,
+            "created_at": datetime.combine(d, time(12, 0), tzinfo=timezone.utc).isoformat(),
+            "by": "example", "example": True})
 
 
 def settle_lanvi(store: Store, clinic_id: str, patient_id: str, now: datetime) -> None:
@@ -327,7 +378,7 @@ def settle_lanvi(store: Store, clinic_id: str, patient_id: str, now: datetime) -
 def wipe_patient(store: Store, clinic_id: str, patient_id: str) -> None:
     base = f"clinics/{clinic_id}/patients/{patient_id}/"
     for folder in ("days", "rounds", "activities", "lanvi", "suggestions", "feedback", "notes",
-                   "attention", "mind", "rejected"):
+                   "attention", "mind", "rejected", "ratings", "research", "exchanges"):
         store.delete_prefix(base + folder + "/")
     for key in store.list(f"clinics/{clinic_id}/attention_index/"):
         if (store.get(key) or {}).get("patient_id") == patient_id:
@@ -349,6 +400,8 @@ def fill_patient(store: Store, clinic_id: str, patient_id: str, now: datetime, s
     write_history(store, clinic_id, patient_id, today, seed, shaped=shaped)
     if scenario == "dip":
         apply_scenario(store, clinic_id, patient_id, today, "dip", seed)
+    if history:
+        write_ratings(store, clinic_id, patient_id, today, seed, dip=scenario == "dip")
     if rounds:
         write_rounds(store, clinic_id, patient_id, today, tz, seed, dip=scenario == "dip")
     if activities:
@@ -358,13 +411,18 @@ def fill_patient(store: Store, clinic_id: str, patient_id: str, now: datetime, s
             settle_lanvi(store, clinic_id, patient_id, now)
 
 
-async def settle(app_mind, clinic_id: str, patient_id: str, review: bool = True) -> None:
-    """Let the mind look at the new data once (and run a review)."""
+async def settle(app_mind, clinic_id: str, patient_id: str, review: bool = True,
+                 appraise: bool = False) -> None:
+    """Let the mind look at the new data once (and run a review). `appraise`
+    also computes the association appraisal (clinician-only; changes nothing
+    the mind does)."""
     repo = app_mind.repo(clinic_id, patient_id)
     async with app_mind.lock(clinic_id, patient_id):
         if review:
             await app_mind.run_review(repo, "seed")
         await app_mind.publish("scenario", clinic_id, patient_id)
+    if appraise:
+        await app_mind.run_appraisal(repo, "seed")
 
 
 def create_demo(store: Store, settings: Settings, now: datetime, extra: int = 0,
@@ -423,13 +481,13 @@ def main() -> None:
                 raise SystemExit("No demo in this store yet.")
             wipe_patient(store, st["clinic_id"], st["patient_id"])
             fill_patient(store, st["clinic_id"], st["patient_id"], now, seed=14)
-            await settle(mind, st["clinic_id"], st["patient_id"])
+            await settle(mind, st["clinic_id"], st["patient_id"], appraise=True)
             print("Demo patient data regenerated.")
             out = st
         else:
             out = create_demo(store, settings, now, extra=args.extra)
             for pid in [out["patient_id"], *out["extra_patient_ids"]]:
-                await settle(mind, out["clinic_id"], pid)
+                await settle(mind, out["clinic_id"], pid, appraise=True)
             await settle(mind, out["mock_clinic_id"], out["mock_patient_id"], review=False)
             print(f"Product:          {settings.product_name}")
             print(f"Clinic id:        {out['clinic_id']}")

@@ -1834,6 +1834,139 @@
         }
       }
     },
+    "/v1/clinic/patients/{patient_id}/exchanges": {
+      "get": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "Raw model exchanges: what was sent to a model and what it answered",
+        "description": "Newest first. Each item holds the messages sent, the raw reply (null when the\nmodel did not answer), the model name, the time it took and the trace chain it\nbelongs to. What code did with the reply is in the trace. A note's prompt\ncontains the patient's words; that message is hidden unless the patient shares\ntheir notes.",
+        "operationId": "patient_exchanges_v1_clinic_patients__patient_id__exchanges_get",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "task",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z_]{1,30}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Task"
+            }
+          },
+          {
+            "name": "chain_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Chain Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/clinic/patients/{patient_id}/trace": {
       "get": {
         "tags": [
@@ -2047,6 +2180,465 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clinic/patients/{patient_id}/ratings": {
+      "post": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "Record a reference rating (PHQ-9, PHQ-2 or clinician global)",
+        "description": "Range-checked against the hypotheses file. One rating per day and scale:\nrecording the same day and scale again replaces it. Used only as the\nreference of the association appraisal.",
+        "operationId": "add_rating_v1_clinic_patients__patient_id__ratings_post",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatingIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "List the reference ratings",
+        "operationId": "list_ratings_v1_clinic_patients__patient_id__ratings_get",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingsOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clinic/patients/{patient_id}/ratings/{rating_id}": {
+      "delete": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "Delete one reference rating",
+        "operationId": "delete_rating_v1_clinic_patients__patient_id__ratings__rating_id__delete",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "rating_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Rating Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clinic/patients/{patient_id}/associations": {
+      "get": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "The latest association appraisal: how the measures moved with the reference",
+        "description": "A within-person description of how this person's measurements moved\ntogether over time. Not validated, not a diagnosis; never shown to the\npatient. Statistics by code; a level-1 model may add caveats and the\noverall judgement, and code corrects whatever it got wrong (per field,\n`*_source` and `sources` say so). `status: none` until it has run.",
+        "operationId": "associations_v1_clinic_patients__patient_id__associations_get",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssociationsOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clinic/patients/{patient_id}/associations/run": {
+      "post": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "Compute the association appraisal now",
+        "description": "A clinician of the patient's clinic, or the admin token. Waits for the\nmodel when one is configured; without it, the code-only appraisal.",
+        "operationId": "associations_run_v1_clinic_patients__patient_id__associations_run_post",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssociationsOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2681,6 +3273,714 @@
         ],
         "title": "AnswerIn"
       },
+      "AssocCaveatOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Plain text for the code, from a fixed set."
+          },
+          "by": {
+            "type": "string",
+            "enum": [
+              "model",
+              "code"
+            ],
+            "title": "By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "text",
+          "by"
+        ],
+        "title": "AssocCaveatOut"
+      },
+      "AssocCorrectionOut": {
+        "properties": {
+          "where": {
+            "type": "string",
+            "enum": [
+              "row",
+              "overall"
+            ],
+            "title": "Where"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "description": "The model's value when it was a known code; null otherwise."
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "where",
+          "key",
+          "field",
+          "model",
+          "code",
+          "reason"
+        ],
+        "title": "AssocCorrectionOut"
+      },
+      "AssocDesignOut": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "within_person_time_series",
+            "title": "Type"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "sessions": {
+            "type": "integer",
+            "title": "Sessions"
+          },
+          "first_day": {
+            "type": "string",
+            "title": "First Day"
+          },
+          "last_day": {
+            "type": "string",
+            "title": "Last Day"
+          },
+          "rows_tested": {
+            "type": "integer",
+            "title": "Rows Tested"
+          },
+          "min_n": {
+            "type": "integer",
+            "title": "Min N"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "days",
+          "sessions",
+          "first_day",
+          "last_day",
+          "rows_tested",
+          "min_n"
+        ],
+        "title": "AssocDesignOut"
+      },
+      "AssocInputsOut": {
+        "properties": {
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          },
+          "n_days": {
+            "type": "integer",
+            "title": "N Days"
+          },
+          "n_sessions": {
+            "type": "integer",
+            "title": "N Sessions"
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "The model's name, or 'code'."
+          }
+        },
+        "type": "object",
+        "required": [
+          "reference",
+          "n_days",
+          "n_sessions",
+          "generated_at",
+          "model"
+        ],
+        "title": "AssocInputsOut"
+      },
+      "AssocNoteOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "text"
+        ],
+        "title": "AssocNoteOut"
+      },
+      "AssocOverallOut": {
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "enum": [
+              "consistent_with_worse_state",
+              "partly_consistent",
+              "no_clear_relation",
+              "opposite_to_expectation",
+              "insufficient_data"
+            ],
+            "title": "Pattern"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Confidence"
+          },
+          "independent_lines": {
+            "type": "integer",
+            "title": "Independent Lines"
+          },
+          "strongest": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Strongest"
+          },
+          "leads_reference": {
+            "type": "boolean",
+            "title": "Leads Reference"
+          },
+          "main_alternative": {
+            "type": "string",
+            "title": "Main Alternative"
+          },
+          "main_alternative_text": {
+            "type": "string",
+            "title": "Main Alternative Text"
+          },
+          "next_step": {
+            "type": "string",
+            "enum": [
+              "collect_more_sessions",
+              "add_reference_rating",
+              "review_tracking_quality",
+              "discuss_with_patient",
+              "none"
+            ],
+            "title": "Next Step"
+          },
+          "sources": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "model",
+                "code",
+                "code_corrected"
+              ]
+            },
+            "type": "object",
+            "title": "Sources",
+            "description": "Per field: model, code, or code_corrected."
+          }
+        },
+        "type": "object",
+        "required": [
+          "pattern",
+          "confidence",
+          "independent_lines",
+          "strongest",
+          "leads_reference",
+          "main_alternative",
+          "main_alternative_text",
+          "next_step",
+          "sources"
+        ],
+        "title": "AssocOverallOut"
+      },
+      "AssocReferenceOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "examples": [
+              "phq9",
+              "movement_z"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "rating",
+              "proxy"
+            ],
+            "title": "Kind"
+          },
+          "worse_is": {
+            "type": "string",
+            "enum": [
+              "higher",
+              "lower"
+            ],
+            "title": "Worse Is"
+          },
+          "ratings": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ratings",
+            "description": "Ratings of that scale, when a rating."
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "kind",
+          "worse_is"
+        ],
+        "title": "AssocReferenceOut"
+      },
+      "AssocRowOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "examples": [
+              "face.smile_time_share"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "face",
+              "activity",
+              "daily"
+            ],
+            "title": "Group"
+          },
+          "expected": {
+            "type": "string",
+            "enum": [
+              "lower",
+              "higher",
+              "mixed"
+            ],
+            "title": "Expected",
+            "description": "Direction the research literature leads us to expect when symptoms are worse."
+          },
+          "support": {
+            "type": "string",
+            "enum": [
+              "stronger",
+              "moderate",
+              "weaker",
+              "mixed"
+            ],
+            "title": "Support"
+          },
+          "why": {
+            "type": "string",
+            "title": "Why"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "tested",
+              "insufficient",
+              "no_variation",
+              "is_reference"
+            ],
+            "title": "Status",
+            "description": "insufficient: fewer paired days than design.min_n, no statistics. is_reference: this measure is the proxy reference itself."
+          },
+          "n": {
+            "type": "integer",
+            "title": "N",
+            "description": "Paired days."
+          },
+          "rho": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rho",
+            "description": "Spearman rho, oriented: positive = moves in the expected direction when symptoms are worse. For 'mixed' positive = higher when the reference is worse."
+          },
+          "ci_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci Low"
+          },
+          "ci_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci High"
+          },
+          "p_adj": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Adj",
+            "description": "Permutation p, Benjamini-Hochberg adjusted."
+          },
+          "lead_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Days",
+            "description": "Lag -3..3 with the largest oriented association; negative = the measure moves first."
+          },
+          "contrast": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contrast",
+            "description": "Cliff's delta, days with attention held against other days, oriented like rho."
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality",
+            "description": "Share of sessions (or days) usable."
+          },
+          "agreement": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "consistent",
+                  "opposite",
+                  "inconclusive",
+                  "related_no_prediction"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement"
+          },
+          "strength": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "negligible",
+                  "weak",
+                  "moderate",
+                  "strong"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strength"
+          },
+          "agreement_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "model",
+                  "code",
+                  "code_corrected"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement Source",
+            "description": "model, code (no model), or code_corrected (the model's value was replaced)."
+          },
+          "strength_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "model",
+                  "code",
+                  "code_corrected"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strength Source"
+          },
+          "caveats": {
+            "items": {
+              "$ref": "#/components/schemas/AssocCaveatOut"
+            },
+            "type": "array",
+            "title": "Caveats"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "group",
+          "expected",
+          "support",
+          "why",
+          "status",
+          "n",
+          "caveats"
+        ],
+        "title": "AssocRowOut"
+      },
+      "AssociationsOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "none"
+            ],
+            "title": "Status",
+            "description": "none: not computed yet."
+          },
+          "appraised_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "model",
+                  "code"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appraised By"
+          },
+          "checked_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "code"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked By"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "design": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssocDesignOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssocReferenceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AssocRowOut"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "overall": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssocOverallOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_notes": {
+            "items": {
+              "$ref": "#/components/schemas/AssocNoteOut"
+            },
+            "type": "array",
+            "title": "Data Notes"
+          },
+          "corrections": {
+            "items": {
+              "$ref": "#/components/schemas/AssocCorrectionOut"
+            },
+            "type": "array",
+            "title": "Corrections"
+          },
+          "hypotheses_reviewed_by_clinician": {
+            "type": "boolean",
+            "title": "Hypotheses Reviewed By Clinician",
+            "default": false
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer"
+          },
+          "inputs": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssocInputsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "disclaimer"
+        ],
+        "title": "AssociationsOut"
+      },
       "BreathingActivityIn": {
         "properties": {
           "id": {
@@ -3283,6 +4583,146 @@
               }
             ],
             "title": "Head Tilt Deg"
+          },
+          "smile_time_share": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smile Time Share",
+            "description": "Share of the time smiling, 0 to 1."
+          },
+          "eye_smile_share": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eye Smile Share",
+            "description": "Share of smiles with a cheek raise (reaching the eyes), 0 to 1."
+          },
+          "smile_response_share": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smile Response Share",
+            "description": "Share of marked pleasant moments in the activity followed by a smile shortly after, 0 to 1."
+          },
+          "smile_response_latency_s": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 30.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smile Response Latency S",
+            "description": "Median delay from a marked pleasant moment to the smile, seconds."
+          },
+          "brow_down_share": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brow Down Share",
+            "description": "Share of the time with brows drawn down, 0 to 1."
+          },
+          "inner_brow_up_share": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inner Brow Up Share",
+            "description": "Share of the time with inner brows raised, 0 to 1."
+          },
+          "blink_duration_ms": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 2000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blink Duration Ms",
+            "description": "Median blink length, ms."
+          },
+          "head_pitch_deg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Pitch Deg",
+            "description": "Average head angle, degrees; looking down is higher."
+          },
+          "head_movement": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Movement",
+            "description": "How much the head moved, 0 to 1."
+          },
+          "smile_asymmetry": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smile Asymmetry",
+            "description": "Left-right difference of smiles, 0 (even) to 1."
           },
           "tracking_quality": {
             "type": "number",
@@ -4019,6 +5459,106 @@
           "to"
         ],
         "title": "QuietHoursParams"
+      },
+      "RatingIn": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date",
+            "description": "The day the rating describes (clinic local)."
+          },
+          "scale": {
+            "type": "string",
+            "enum": [
+              "phq9",
+              "phq2",
+              "clinician_global"
+            ],
+            "title": "Scale"
+          },
+          "score": {
+            "type": "integer",
+            "title": "Score",
+            "description": "Total score. Range per scale: phq9 0 to 27, phq2 0 to 6, clinician_global 1 to 7."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "scale",
+          "score"
+        ],
+        "title": "RatingIn",
+        "examples": [
+          {
+            "date": "2026-11-13",
+            "scale": "phq9",
+            "score": 9
+          }
+        ]
+      },
+      "RatingOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "scale": {
+            "type": "string",
+            "enum": [
+              "phq9",
+              "phq2",
+              "clinician_global"
+            ],
+            "title": "Scale"
+          },
+          "score": {
+            "type": "integer",
+            "title": "Score"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "example": {
+            "type": "boolean",
+            "title": "Example",
+            "description": "True for seeded example ratings."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "date",
+          "scale",
+          "score",
+          "created_at",
+          "example"
+        ],
+        "title": "RatingOut"
+      },
+      "RatingsOut": {
+        "properties": {
+          "ratings": {
+            "items": {
+              "$ref": "#/components/schemas/RatingOut"
+            },
+            "type": "array",
+            "title": "Ratings",
+            "description": "Oldest first."
+          }
+        },
+        "type": "object",
+        "required": [
+          "ratings"
+        ],
+        "title": "RatingsOut"
       },
       "Rejected": {
         "properties": {

@@ -109,10 +109,11 @@ class Tracer:
         return None
 
     @contextlib.contextmanager
-    def chain(self, clinic_id: str, patient_id: str, kind: str):
-        """Join the chain already running for this patient, or start one."""
+    def chain(self, clinic_id: str, patient_id: str, kind: str, fresh: bool = False):
+        """Join the chain already running for this patient, or start one.
+        `fresh` always starts a chain of its own (the association appraisal)."""
         cur = self.current(clinic_id, patient_id)
-        if cur is not None:
+        if cur is not None and not fresh:
             yield cur
             return
         ch = Chain(self, clinic_id, patient_id, kind)
@@ -279,6 +280,7 @@ TRIGGER_SHORT = {
     "ack": "Acknowledged", "lesson_rejected": "Lesson rejected", "question_answered": "Question answered",
     "reading": "Movement reading", "reading_requested": "Movement reading", "round": "Round",
     "preferences": "Preferences set", "queued_message_due": "Queued message",
+    "appraisal": "Association appraisal",
 }
 OUTCOMES = ("message_sent", "attention_opened", "attention_raised", "suggested",
             "attention_closed", "refused", "nothing")

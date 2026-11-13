@@ -75,6 +75,7 @@ admin_only = require("admin")
 
 
 _admin_or_clinician = require("admin", "clinician")
+clinician_or_admin = _admin_or_clinician
 
 
 def demo_clinic_id(ctx: Ctx) -> Optional[str]:

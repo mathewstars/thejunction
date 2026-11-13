@@ -20,7 +20,13 @@ from statistics import median
 from .thresholds import ACTIVITY_MIN_SCALE, T, Thresholds
 
 FACE_FIELDS = ("smile_rate_per_min", "smile_intensity", "facial_activity", "blink_rate_per_min",
-               "look_down_share", "head_tilt_deg")
+               "look_down_share", "head_tilt_deg",
+               # Optional, newer fields (all numbers). Compared with own normal the
+               # same way; the watchers still look only at facial_activity and
+               # smile_rate_per_min.
+               "smile_time_share", "eye_smile_share", "smile_response_share",
+               "smile_response_latency_s", "brow_down_share", "inner_brow_up_share",
+               "blink_duration_ms", "head_pitch_deg", "head_movement", "smile_asymmetry")
 # Features compared with own normal, per type. Completion is a yes/no per
 # session; watchers look at it over several sessions instead of a z.
 Z_FEATURES = {

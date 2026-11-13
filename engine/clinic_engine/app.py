@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from .mind.exchanges import Recorder
 from .audit import write_audit
 from .config import Settings
 from .llm.local import LocalModel
@@ -156,6 +157,12 @@ def create_app(settings: Optional[Settings] = None, store: Optional[Store] = Non
     local_model = local_model or LocalModel(settings)
     notifier = notifier or make_notifier(settings, outreach)
     notifications = UrgentNotifications(store, settings, notifier)
+    recorder = Recorder(store, clock)
+    for client in (local_model, outreach):
+        try:
+            client.recorder = recorder
+        except Exception:  # noqa: BLE001 - a test double may not take attributes
+            pass
     mind = Mind(store, settings, clock, local_model, outreach, notifications)
     ctx = Ctx(store=store, settings=settings, clock=clock, mind=mind)
 

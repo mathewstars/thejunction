@@ -144,10 +144,11 @@
   function flash(msg) { const f = $("flash"); f.textContent = msg || ""; f.hidden = !msg; }
 
   // ---------------------------------------------------------------- routing
-  const TABS = [["overview", "Overview"], ["timeline", "Timeline"], ["activity", "Activity"], ["talk", "Conversation"], ["mind", "Learned"], ["log", "Log"]];
+  const TABS = [["overview", "Overview"], ["timeline", "Timeline"], ["activity", "Activity"], ["talk", "Conversation"], ["research", "Research"], ["mind", "Learned"], ["log", "Log"]];
   function parseHash() {
     const parts = (location.hash || "").replace(/^#\/?/, "").split("/").filter(Boolean);
     if (parts[0] === "demo") return { view: "demo", pid: null, tab: "overview" };
+    if (parts[0] === "blueprint") return { view: "blueprint", pid: null, tab: "overview" };
     if ((parts[0] === "p" || parts[0] === "patient") && parts[1]) {
       const tab = TABS.some((t) => t[0] === parts[2]) ? parts[2] : "overview";
       return { view: "patient", pid: decodeURIComponent(parts[1]), tab };
@@ -161,7 +162,7 @@
     S.route = parseHash();
     if (!S.token) return showLogin();
     const samePatient = prev.view === "patient" && S.route.view === "patient" && prev.pid === S.route.pid;
-    if (S.route.view === "patient" && !samePatient) { S.detail = null; S.trace = null; S.page = 0; }
+    if (S.route.view === "patient" && !samePatient) { S.detail = null; S.trace = null; S.assoc = null; S.exch = null; S.page = 0; }
     render();
     await load(false);
   }
@@ -180,6 +181,10 @@
         if (r.tab === "timeline" && (force || !S.trace)) {
           try { S.trace = await api("GET", base + "/trace?limit=100"); } catch (e) { S.trace = await api("GET", base + "/trace"); }
         }
+        if ((r.tab === "timeline" || r.tab === "mind") && (force || !S.exch)) {
+          try { S.exch = (await api("GET", base + "/exchanges?limit=200")).exchanges || []; } catch (e) { S.exch = []; }
+        }
+        if (r.tab === "research" && (force || !S.assoc)) S.assoc = await api("GET", base + "/associations");
       }
       flash("");
     } catch (e) {
@@ -198,6 +203,7 @@
     const e = $("login-error"); e.textContent = msg || ""; e.hidden = !msg;
   }
   function signOut(msg) {
+    clear($("subnav"));
     S.token = null; S.me = null; S.list = null; S.detail = null; S.trace = null;
     try { sessionStorage.removeItem("clinic_session"); } catch (e) { /* storage may be blocked */ }
     showLogin(msg);
@@ -235,11 +241,14 @@
     const r = S.route;
     $("nav-patients").toggleAttribute("aria-current", false);
     $("nav-demo").toggleAttribute("aria-current", false);
-    (r.view === "demo" ? $("nav-demo") : $("nav-patients")).setAttribute("aria-current", "page");
+    $("nav-blueprint").toggleAttribute("aria-current", false);
+    (r.view === "demo" ? $("nav-demo") : r.view === "blueprint" ? $("nav-blueprint") : $("nav-patients")).setAttribute("aria-current", "page");
     const focusKey = document.activeElement && document.activeElement.getAttribute ? document.activeElement.getAttribute("data-key") : null;
     clear(view);
+    if (r.view !== "patient" || !S.detail) clear($("subnav"));
     if (r.view === "patients") view.appendChild(viewPatients());
     else if (r.view === "demo") view.appendChild(viewDemo());
+    else if (r.view === "blueprint") view.appendChild(viewBlueprint());
     else view.appendChild(viewPatient());
     if (focusKey) { const again = view.querySelector('[data-key="' + focusKey + '"]'); if (again) again.focus({ preventScroll: true }); }
   }
@@ -340,7 +349,6 @@
   function viewPatient() {
     const wrap = el("div");
     const d = S.detail;
-    wrap.appendChild(el("a", { class: "back", href: "#/patients" }, "← Patients"));
     if (!d) { wrap.appendChild(empty("Loading…")); return wrap; }
     const today = (d.progress && d.progress.today) || todayStr();
     wrap.appendChild(el("div", { class: "head" },
@@ -366,8 +374,8 @@
         },
       }, label));
     });
-    wrap.appendChild(tabs);
-    const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, talk: tabTalk, mind: tabMind, log: tabLog }[S.route.tab](d, today);
+    $("subnav").replaceChildren(tabs);  // the patient's sections live in the top bar
+    const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, talk: tabTalk, research: tabResearch, mind: tabMind, log: tabLog }[S.route.tab](d, today);
     wrap.appendChild(el("div", { id: "tabpanel", role: "tabpanel", "aria-labelledby": "tab-" + S.route.tab }, body));
     return wrap;
   }
@@ -602,6 +610,10 @@
   const TL_COLS = [["watchers", "Watchers"], ["attention", "Attention"], ["response", "Response"], ["level1", "Model 1"], ["level2", "Model 2"], ["notifier", "Alert"], ["learning", "Learning"]];
   const PAGE = 15;
   const PATIENTS_PAGE = 10;
+  // Why the system made no offer at a check.
+  const NO_OFFER = { quiet_hours: "patient's quiet hours", one_open_already: "an offer is still open", daily_cap: "enough offers today",
+    cooldown: "too soon after the last offer", already_answered_today: "already answered today", no_held_item_to_answer: "nothing to answer",
+    held_items_need_a_clinician: "left for the clinician" };
   function layerCell(c, layer) {
     const es = (c.entries || []).filter((e) => e.layer === layer);
     if (!es.length) return el("span", { class: "muted" }, "–");
@@ -610,7 +622,12 @@
       const d = e.detail || {};
       if (layer === "watchers") out.push(e.code === "fired" ? el("span", { class: "chip l-attention" }, "fired") : el("span", { class: "muted" }, words(e.code).toLowerCase()));
       else if (layer === "attention") out.push(el("span", { class: "chip l-" + (d.level || "watch") }, icon(e.code === "raised" ? "up" : LEVEL_ICON[d.level] || "ring"), kind(d.kind) + " " + e.code));
-      else if (layer === "response") out.push(e.code === "suggested" ? el("span", { class: "chip good" }, icon("diamond"), action(d.action)) : el("span", { class: "muted" }, words(d.reason || e.code).toLowerCase()));
+      else if (layer === "response") {
+        if (e.code === "suggested") out.push(el("span", { class: "chip good" }, icon("diamond"), action(d.action)));
+        else if (e.code === "blocked") out.push(el("span", null, "no offer: " + (NO_OFFER[d.because] || words(d.because).toLowerCase())));
+        else if (e.code === "none") out.push(el("span", { class: "muted" }, NO_OFFER[d.because] || words(d.because || d.reason || e.code).toLowerCase()));
+        else out.push(el("span", { class: "muted" }, words(d.reason || e.code).toLowerCase()));
+      }
       else if (layer === "level1" || layer === "level2") {
         const task = d.task ? words(d.task).toLowerCase() + ": " : "";
         const why = Array.isArray(d.reasons) && d.reasons.length ? d.reasons : d.reason ? [d.reason] : [];
@@ -623,6 +640,26 @@
       else if (layer === "learning") out.push(el("span", null, d.accepted && d.accepted.length ? d.accepted.length + " lesson" + (d.accepted.length > 1 ? "s" : "") : words(e.code).toLowerCase()));
     });
     return el("div", { class: "cellstack" }, out);
+  }
+  // The raw exchange with a model: what was sent and what came back, word for word.
+  const TASK = { note: "Label the patient's words", wording: "Choose the wording of an offer", review: "Learning: propose lessons", second_opinion: "Second opinion on proposed lessons",
+    session_reading: "Read one session", association: "Appraise the research table", reading: "Read one round" };
+  function pretty(text) {
+    if (text === null || text === undefined) return "(no reply)";
+    try { return JSON.stringify(JSON.parse(text), null, 2); } catch (e) { return String(text); }
+  }
+  function exchangeBox(x) {
+    const key = "ex-" + x.id, open = !!S.open[key];
+    const head = el("button", { type: "button", class: "linklike", "aria-expanded": open ? "true" : "false", "data-key": key,
+      on: { click: (ev) => { ev.stopPropagation(); S.open[key] = !open; render(); } } },
+      (open ? "▾ " : "▸ ") + "Model " + x.level + " · " + (TASK[x.task] || words(x.task)) + " · " + x.model + " · " + (x.ms / 1000).toFixed(1) + " s" + (x.reply === null ? " · no reply" : ""));
+    const box = el("div", { class: "exch", on: { click: (ev) => ev.stopPropagation() } }, head);
+    if (open) {
+      (x.messages || []).forEach((m) => box.appendChild(el("div", null,
+        el("div", { class: "exch-h" }, m.role === "system" ? "Sent: instructions" : "Sent: data"), el("pre", { class: "raw" }, m.role === "user" ? pretty(m.content) : m.content))));
+      box.appendChild(el("div", null, el("div", { class: "exch-h" }, "Model answered"), el("pre", { class: "raw" }, pretty(x.reply))));
+    }
+    return box;
   }
   function tabTimeline() {
     const wrap = el("div");
@@ -651,7 +688,8 @@
         el("td", null, c.headline || TRIGGER[c.trigger] || words(c.trigger)),
         TL_COLS.map(([layer]) => el("td", null, layerCell(c, layer)))));
       if (open) rows.push(el("tr", { class: "detail" }, el("td", { colspan: 2 + TL_COLS.length },
-        el("div", { class: "tl-body" }, el("table", null, el("tbody", null, (c.entries || []).map(entryRow)))))));
+        el("div", { class: "tl-body" }, el("table", null, el("tbody", null, (c.entries || []).map(entryRow))),
+          (S.exch || []).filter((x) => x.chain_id === c.chain_id).slice().reverse().map(exchangeBox)))));
     });
     wrap.appendChild(el("section", { class: "panel" }, table(["When", "Trigger"].concat(TL_COLS.map((x) => x[1])), rows, "pick tl-table")));
     if (pages > 1) wrap.appendChild(pager("bottom"));
@@ -728,6 +766,10 @@
   // ---- learned
   function tabMind(d) {
     const wrap = el("div", { class: "stack" });
+    const runs = (S.exch || []).filter((x) => x.task === "review" || x.task === "second_opinion");
+    wrap.appendChild(panel("How it learns", runs.length || "",
+      el("p", { class: "muted small" }, "After new answers, code gathers the evidence (what was offered, what the person did, how the next days went). Model 1 proposes lessons and questions from it. Model 2 may object. Code keeps only proposals that the evidence supports, and a lesson can only change the order of offers. Open a run to read exactly what each model was sent and what it answered."),
+      runs.length ? el("div", null, runs.slice(0, 12).map((x) => el("div", null, el("span", { class: "muted small num" }, stamp(x.at) + " "), exchangeBox(x)))) : empty("No learning run recorded yet.")));
     const lessons = d.lessons || [];
     wrap.appendChild(panel("Lessons", lessons.length || "", lessons.length ? table(["Lesson", "When", { t: "Evidence", r: 1 }, "Found by", "State"],
       lessons.map((l) => el("tr", null,
@@ -795,6 +837,174 @@
       }
     });
     wrap.appendChild(chat);
+    return wrap;
+  }
+  // ---- blueprint: how the learning loop works
+  function viewBlueprint() {
+    const wrap = el("div", { class: "stack" });
+    wrap.appendChild(el("div", { class: "head" }, el("h1", null, "How the system learns")));
+    wrap.appendChild(el("p", { class: "lead" }, "The system learns which small things suit one person. A model proposes, code decides. Nothing a model writes reaches the patient, and a lesson can only change the order of offers that we wrote ourselves."));
+    const W = 960, H = 318, BW = 262, BH = 88;
+    const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "bp", role: "img",
+      "aria-label": "The learning loop: the phone sends answers, code gathers evidence, model 1 proposes lessons, code checks them, model 2 may object, accepted lessons go to memory and change the order of the next offers." });
+    const box = (x, y, n, title, l1, l2, cls) => {
+      s.appendChild(svg("rect", { x, y, width: BW, height: BH, rx: 10, class: "bp-box " + cls }));
+      s.appendChild(svg("text", { x: x + 14, y: y + 26, class: "bp-t" }, n + "  " + title));
+      s.appendChild(svg("text", { x: x + 14, y: y + 48, class: "bp-s" }, l1));
+      s.appendChild(svg("text", { x: x + 14, y: y + 66, class: "bp-s" }, l2));
+    };
+    const arrow = (x1, y1, x2, y2, label, lx, ly, anchor) => {
+      s.appendChild(svg("line", { x1, y1, x2, y2, class: "bp-line" }));
+      const ang = Math.atan2(y2 - y1, x2 - x1), hx = (da, len) => (x2 - len * Math.cos(ang + da)).toFixed(1) + "," + (y2 - len * Math.sin(ang + da)).toFixed(1);
+      s.appendChild(svg("polygon", { points: x2 + "," + y2 + " " + hx(0.4, 10) + " " + hx(-0.4, 10), class: "bp-head" }));
+      if (label) s.appendChild(svg("text", { x: lx, y: ly, class: "bp-l", "text-anchor": anchor || "middle" }, label));
+    };
+    const X = [10, 349, 688], Y = [14, 216];
+    box(X[0], Y[0], "1", "The person", "offers answered, sessions played,", "a few words written", "code");
+    box(X[1], Y[0], "2", "Evidence · code", "what was offered, what was done,", "how the next days went", "code");
+    box(X[2], Y[0], "3", "Model 1 proposes", "lessons and up to 3 questions,", "only from lists it is given", "model");
+    box(X[2], Y[1], "4", "Check · code", "every proposal must point at evidence", "that supports it, or it is dropped", "code");
+    box(X[1], Y[1], "5", "Model 2 may object", "weak evidence, contradicts recent days,", "too broad", "model");
+    box(X[0], Y[1], "6", "Memory", "accepted lessons, open questions,", "the person's own rules", "code");
+    arrow(X[0] + BW, Y[0] + BH / 2, X[1], Y[0] + BH / 2, "numbers", (X[0] + BW + X[1]) / 2, Y[0] + BH / 2 - 8);
+    arrow(X[1] + BW, Y[0] + BH / 2, X[2], Y[0] + BH / 2, "anonymous", (X[1] + BW + X[2]) / 2, Y[0] + BH / 2 - 8);
+    arrow(X[2] + BW / 2, Y[0] + BH, X[2] + BW / 2, Y[1], "raw reply", X[2] + BW / 2 + 10, (Y[0] + BH + Y[1]) / 2 + 4, "start");
+    arrow(X[2], Y[1] + BH / 2, X[1] + BW, Y[1] + BH / 2, "kept", (X[1] + BW + X[2]) / 2, Y[1] + BH / 2 - 8);
+    arrow(X[1], Y[1] + BH / 2, X[0] + BW, Y[1] + BH / 2, "not objected", (X[0] + BW + X[1]) / 2, Y[1] + BH / 2 - 8);
+    arrow(X[0] + BW / 2, Y[1], X[0] + BW / 2, Y[0] + BH, "changes only the order of the next offers", X[0] + BW / 2 + 10, (Y[0] + BH + Y[1]) / 2 + 4, "start");
+    wrap.appendChild(el("section", { class: "panel" }, el("figure", { class: "bp-fig" }, s,
+      el("figcaption", { class: "muted small" }, "Amber boxes are models, the others are plain code. The loop runs after new answers arrive and once a day."))));
+    const step = (n, t, body) => el("div", { class: "row" }, el("div", { class: "top" }, el("span", { class: "chip" }, n), el("span", { class: "t" }, t)), el("div", { class: "d" }, body));
+    wrap.appendChild(panel("Step by step", null, el("div", { class: "rows" },
+      step("1", "The person answers", "Each offer ends as did it, not today or no answer. Sessions and daily steps arrive from the phone. Typed words are turned into labels on this server and are never part of learning as text."),
+      step("2", "Code gathers the evidence", "One row per offer: the action, the situation (weekday, time of day, what was held), the answer, and whether the following days were better or worse against the person's own normal. Each row gets a short reference that means nothing outside this one request."),
+      step("3", "Model 1 proposes", "The local model receives those rows and lists of allowed actions, situations and reason codes. It returns lessons of the form “prefer or avoid this action in this situation, because of these rows”, and at most three questions it would like answered."),
+      step("4", "Code checks every proposal", "A lesson is kept only if its rows exist, there are enough of them, and they really point the way the lesson claims. A question already asked is dropped. Anything outside the lists is dropped. Every drop is written to the refusal log with its reason."),
+      step("5", "Model 2 gives a second opinion", "A second model sees the kept lessons with their evidence, with no identity, and can only object with one of three codes. An objection removes the lesson. It cannot add one."),
+      step("6", "Memory and the next offer", "Accepted lessons go into the person's memory. When the next offer is due, code picks from our fixed list of actions; lessons move suited actions up and unsuited ones down. The person's own rules, such as quiet hours, always win."))));
+    wrap.appendChild(el("div", { class: "grid" },
+      panel("A lesson can", null, el("ul", { class: "plain" }, el("li", null, "move an action up or down in the order of offers"), el("li", null, "apply only in the situation it was learned in"), el("li", null, "be withdrawn when later evidence points the other way"))),
+      panel("A lesson cannot", null, el("ul", { class: "plain" }, el("li", null, "add an action that is not on our list"), el("li", null, "write or change any text the person sees"), el("li", null, "open, raise or close attention, or send an alert"), el("li", null, "override the person's own rules")))));
+    wrap.appendChild(panel("See it on real runs", null, el("p", { class: "small" }, "Open a patient, then Learned. “How it learns” lists each run with exactly what each model was sent and what it answered. The Timeline shows the same exchange inside the trigger that caused it, next to what code kept and dropped.")));
+    return wrap;
+  }
+
+  // ---- research: how this person's measures moved with the reference
+  const R_PATTERN = { consistent_with_worse_state: "Moves as expected when the state is worse", partly_consistent: "Partly as expected",
+    no_clear_relation: "No clear relation", opposite_to_expectation: "Opposite to what was expected", insufficient_data: "Not enough data" };
+  const R_NEXT = { collect_more_sessions: "Collect more sessions", add_reference_rating: "Add a reference rating", review_tracking_quality: "Review tracking quality",
+    discuss_with_patient: "Discuss with the patient", none: "None" };
+  const R_STATUS = { insufficient: "too few days", no_variation: "did not vary", is_reference: "is the reference" };
+  const SRC = { model: "model", code: "code", code_corrected: "model, corrected by code" };
+  function f2(v) { return v === null || v === undefined ? "–" : (v > 0 ? "+" : "") + Number(v).toFixed(2); }
+  function rhoBar(r) {
+    // Interval and point on a fixed -1..+1 scale; right of the middle = as expected.
+    const W = 120, H = 16, x = (v) => (W / 2) + Math.max(-1, Math.min(1, v)) * (W / 2 - 2);
+    const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "rho", role: "img", "aria-label": "rho " + f2(r.rho) + ", interval " + f2(r.ci_low) + " to " + f2(r.ci_high) });
+    s.appendChild(svg("line", { class: "axis", x1: W / 2, y1: 1, x2: W / 2, y2: H - 1 }));
+    if (r.ci_low !== null && r.ci_high !== null) s.appendChild(svg("line", { class: "ci", x1: x(r.ci_low), y1: H / 2, x2: x(r.ci_high), y2: H / 2 }));
+    s.appendChild(svg("circle", { class: "pt " + (r.agreement || ""), cx: x(r.rho), cy: H / 2, r: 3.5 }));
+    return s;
+  }
+  // Every session the phone sent, one row each: the raw sample behind the statistics.
+  const SAMPLE_COLS = [["smile_time_share", "Smiling", 100, "%"], ["eye_smile_share", "Reach eyes", 100, "%"], ["smile_response_share", "Smiled at moment", 100, "%"],
+    ["facial_activity", "Face movement", 1, ""], ["blink_rate_per_min", "Blinks/min", 1, ""], ["look_down_share", "Looking down", 100, "%"], ["head_movement", "Head movement", 1, ""]];
+  function sampleCell(v, z, mult, unit) {
+    if (v === null || v === undefined) return el("td", { class: "r num muted" }, "–");
+    const shown = mult === 100 ? Math.round(v * 100) + unit : (Math.abs(v) >= 10 ? Math.round(v) : Number(v).toFixed(2));
+    const off = z !== null && z !== undefined && Math.abs(z) >= 2;
+    return el("td", { class: "r num" + (off ? " off" : "") }, shown, off ? el("span", { class: "sub" }, (z > 0 ? "▲ " : "▼ ") + Math.abs(z).toFixed(1)) : null);
+  }
+  function samplesPanel(d) {
+    const A = d.activities || {};
+    const all = [];
+    ["focus", "breathing"].forEach((t) => ((A[t] || {}).sessions || []).forEach((x) => all.push(Object.assign({ type: t }, x))));
+    all.sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)));
+    if (!all.length) return panel("Samples collected", "", empty("No sessions yet."));
+    const heads = ["When", "Activity", { t: "Reaction ms", r: 1 }, { t: "Errors", r: 1 }].concat(SAMPLE_COLS.map((c) => ({ t: c[1], r: 1 })), ["Tracking", "Model reading"]);
+    const rows = all.slice(0, 40).map((x) => {
+      const f = x.face || {}, fz = f.z || {}, v = x.values || {}, z = x.z || {}, rd = (x.reading || {}).reading;
+      const said = rd ? [rd.reactions, rd.expression, rd.eyes].filter((w) => w && !/^(steady|as_usual|unclear)$/.test(w)).map((w) => words(w).toLowerCase()).join(" · ") || "as usual" : "–";
+      return el("tr", null,
+        el("td", { class: "num nowrap" }, stamp(x.started_at)),
+        el("td", null, x.type === "focus" ? "Focus game" : "Breathing", x.completed ? null : el("span", { class: "sub" }, "stopped early")),
+        sampleCell(v.median_reaction_ms, z.median_reaction_ms, 1, ""),
+        sampleCell(v.error_rate, z.error_rate, 100, "%"),
+        SAMPLE_COLS.map((c) => sampleCell(f[c[0]], fz[c[0]], c[2], c[3])),
+        el("td", null, x.face ? words(f.quality || "") : el("span", { class: "muted" }, "no camera")),
+        el("td", { class: "small" }, said));
+    });
+    return panel("Samples collected", all.length, el("p", { class: "muted small" }, "One row per session from the phone. ▲ ▼ mark a value at least 2 spreads from this person's own usual."),
+      el("div", { class: "scroll-x" }, table(heads, rows, "samples")));
+  }
+  function caveatCell(r) {
+    const cs = r.caveats || [];
+    if (!cs.length) return el("td", { class: "muted" }, "–");
+    const key = "cav-" + r.key, open = !!S.open[key];
+    return el("td", { class: "cav" },
+      el("button", { type: "button", class: "btn btn-small", "aria-expanded": open ? "true" : "false", "data-key": key,
+        on: { click: () => { Object.keys(S.open).forEach((k) => { if (k.indexOf("cav-") === 0 && k !== key) delete S.open[k]; }); S.open[key] = !open; render(); } } },
+        cs.length + (cs.length === 1 ? " caveat" : " caveats")),
+      open ? el("div", { class: "pop", role: "dialog", "aria-label": "Caveats for " + r.label },
+        el("div", { class: "pop-h" }, r.label),
+        el("ul", { class: "plain" }, cs.map((c) => el("li", null, c.text, el("span", { class: "muted" }, c.by === "model" ? " (named by the model)" : " (added by code)")))),
+        el("button", { type: "button", class: "linklike small", on: { click: () => { delete S.open[key]; render(); } } }, "Close")) : null);
+  }
+  function tabResearch(d) {
+    const wrap = el("div", { class: "stack" });
+    const a = S.assoc;
+    const run = el("button", { type: "button", class: "btn btn-small", "data-key": "assoc-run", on: { click: async () => {
+      S.demoMsg = ""; flash("Running the appraisal…");
+      try { S.assoc = await api("POST", "/v1/clinic/patients/" + encodeURIComponent(d.patient_id) + "/associations/run"); flash(""); } catch (e) { flash(e.message); }
+      render();
+    } }, title: "Compute the statistics again from the data held now and ask the model for a new judgement. Takes about 15 seconds." }, "Recalculate");
+    if (!a) { wrap.appendChild(empty("Loading…")); return wrap; }
+    wrap.appendChild(el("div", { class: "bar" },
+      el("span", { class: "muted small" }, a.disclaimer || ""), el("div", { class: "push" }, run)));
+    if (a.status !== "ready") { wrap.appendChild(empty("Not computed yet. Select “Recalculate”.")); return wrap; }
+    const o = a.overall || {}, ref = a.reference || {}, des = a.design || {}, src = o.sources || {};
+    wrap.appendChild(panel("Overall", null,
+      el("div", { class: "facts" },
+        factTile(R_PATTERN[o.pattern] || words(o.pattern), "pattern · " + (SRC[src.pattern] || "")),
+        factTile(words(o.confidence), "confidence · " + (SRC[src.confidence] || "")),
+        factTile(String(o.independent_lines), "independent kinds of measure agree"),
+        factTile(o.leads_reference ? "Yes" : "No", "measures move before the reference"),
+        factTile(R_NEXT[o.next_step] || words(o.next_step), "next step · " + (SRC[src.next_step] || ""))),
+      el("p", { class: "small" }, "Most plausible other explanation: ", o.main_alternative_text || words(o.main_alternative)),
+      el("p", { class: "muted small" },
+        "Reference: " + (ref.label || ref.key) + (ref.kind === "proxy" ? " (a proxy, not a clinical rating)" : " (" + (ref.ratings || 0) + " ratings)") +
+        " · " + des.days + " days, " + des.sessions + " sessions, " + des.rows_tested + " measures tested" +
+        " · appraised by " + (a.appraised_by === "model" ? "the local model (" + ((a.inputs || {}).model || "") + ")" : "code only") + ", checked by code" +
+        " · " + stamp(a.generated_at) + (a.hypotheses_reviewed_by_clinician ? "" : " · hypothesis list not yet reviewed by a clinician"))));
+    const strongest = new Set(o.strongest || []);
+    const GROUP = { face: "Face", activity: "Activities", daily: "Daily data" };
+    ["face", "activity", "daily"].forEach((g) => {
+      const rows = (a.rows || []).filter((r) => r.group === g);
+      if (!rows.length) return;
+      wrap.appendChild(panel(GROUP[g], rows.length, table(
+        ["Measure", "Expected when worse", { t: "Days", r: 1 }, "Opposite ← rho → as expected", { t: "p adj.", r: 1 }, { t: "Lead", r: 1 }, "Judgement", "Caveats"],
+        rows.map((r) => {
+          const tested = r.status === "tested";
+          return el("tr", { class: strongest.has(r.key) ? "changed" : "" },
+            el("td", null, r.label, el("span", { class: "sub" }, r.why)),
+            el("td", null, r.expected, el("span", { class: "sub" }, r.support + " support")),
+            el("td", { class: "r num" }, r.n),
+            el("td", null, tested ? el("div", { class: "rhocell" }, rhoBar(r), el("span", { class: "num small" }, f2(r.rho) + " [" + f2(r.ci_low) + ", " + f2(r.ci_high) + "]")) : el("span", { class: "muted" }, R_STATUS[r.status] || words(r.status))),
+            el("td", { class: "r num" }, tested && r.p_adj !== null ? Number(r.p_adj).toFixed(3) : "–"),
+            el("td", { class: "r num" }, tested && r.lead_days !== null && r.lead_days !== undefined ? (r.lead_days > 0 ? "+" : "") + r.lead_days + " d" : "–"),
+            el("td", null, tested ? [el("span", { class: "chip " + (r.agreement === "consistent" ? "good" : r.agreement === "opposite" ? "bad" : "") }, words(r.agreement).toLowerCase() + (r.strength ? ", " + r.strength : "")),
+              el("span", { class: "sub" }, SRC[r.agreement_source] || "")] : "–"),
+            caveatCell(r));
+        }), "assoc")));
+    });
+    wrap.appendChild(samplesPanel(d));
+    const cor = a.corrections || [];
+    wrap.appendChild(panel("What code corrected in the model's answer", cor.length || "", cor.length ? table(["Where", "Field", "Model said", "Code set", "Why"],
+      cor.map((c) => el("tr", null, el("td", null, c.where === "row" ? c.key : "overall"), el("td", null, words(c.field)),
+        el("td", null, c.model === null || c.model === undefined ? "–" : String(c.model)), el("td", null, c.code === null || c.code === undefined ? "–" : String(c.code)),
+        el("td", null, words(c.reason).toLowerCase())))) : empty(a.appraised_by === "model" ? "Nothing: the model's judgements matched the numbers." : "No model took part in this appraisal.")));
+    const notes = a.data_notes || [];
+    if (notes.length) wrap.appendChild(panel("Notes on the data", notes.length, el("ul", { class: "plain" }, notes.map((n) => el("li", null, n.text)))));
     return wrap;
   }
   function tabLog(d) {
