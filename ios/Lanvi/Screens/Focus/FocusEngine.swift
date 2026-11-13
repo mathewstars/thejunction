@@ -41,7 +41,7 @@ struct FocusEffect {
 /// which must not cause SwiftUI view updates. The screen reads the counts when the round ends.
 final class FocusEngine {
     static let roundLength: TimeInterval = 45
-    static let flightTime: TimeInterval = 0.7
+    static let flightTime: TimeInterval = 0.5
     static let maxReactions = 200
 
     /// Taps this close to a spark count as catching it. Generous, so nobody feels clumsy.
@@ -58,6 +58,8 @@ final class FocusEngine {
     private(set) var correctTaps = 0
     private(set) var wrongTaps = 0
     private(set) var misses = 0
+    /// Snowflakes that drifted all the way down untouched (only used for Lanvi's little comments).
+    private(set) var snowPassed = 0
     private(set) var reactionMs: [Int] = []
     /// Round time when the round ended; the drops still in the sky fade away.
     private(set) var endedAt: TimeInterval?
@@ -91,6 +93,8 @@ final class FocusEngine {
                     // A missed spark just fades into the snow. Nothing is lost; the sky slows a little.
                     misses += 1
                     ease = min(1.35, ease + 0.08)
+                } else {
+                    snowPassed += 1
                 }
                 return true
             }
