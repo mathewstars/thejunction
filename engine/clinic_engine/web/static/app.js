@@ -542,7 +542,8 @@
       el("div", { class: "row" },
         el("div", { class: "top" }, levelChip(i.level), el("span", { class: "t" }, kind(i.kind)), el("span", { class: "muted small num" }, held(i.since, today))),
         ackButton(i),
-        detailText(i.detail) ? el("div", { class: "d" }, detailText(i.detail)) : null))) : empty("Nothing held."));
+        detailText(i.detail) ? el("div", { class: "d" }, detailText(i.detail)) : null,
+        i.kind === "asked_for_help" ? helpQuote(d) : null))) : empty("Nothing held."));
 
     const sug = (d.suggestions || []).slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
     const offer = panel("Last offer", null, sug ? el("div", { class: "row" },
@@ -745,6 +746,15 @@
 
   // ---- log
   // What the patient wrote and what Lanvi answered, in time order, with what the system did.
+  // The note that asked for help, shown where the clinician first looks.
+  function helpQuote(d) {
+    const n = (d.notes || []).filter((x) => (x.classification || {}).asks_for_help).sort((a, b) => String(b.at).localeCompare(String(a.at)))[0];
+    if (!n) return null;
+    return el("div", { class: "quote" },
+      el("div", { class: "text" }, n.text ? "“" + n.text + "”" : el("span", { class: "muted" }, "The words are not shared by this patient.")),
+      el("div", { class: "muted small" }, "Written " + stamp(n.at) + " · ",
+        el("a", { href: "#/p/" + encodeURIComponent(d.patient_id) + "/talk" }, "Open the conversation")));
+  }
   function tabTalk(d) {
     const wrap = el("div");
     const ev = [];
