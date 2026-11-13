@@ -141,5 +141,6 @@ Live: https://gridzilla.victronlab.sk (site at `/`, operator console at `/consol
 - `aalto/` — our challenge, Aalto "Beyond the Clinic": brief, judging criteria and what they provide in `CHALLENGE.md`.
 - `valioaimo/` — dropped on Friday night. The Valio Aimo brief, kept for the record.
 - `astrazeneca/` — dropped on Friday night. The AstraZeneca brief and the material they provided, kept for the record.
+- `facemetrics/` — FaceMetrics, a native iOS ARKit facial-tracking research instrument (Swift, SwiftUI, ARKit, SceneKit). Xcode project, not yet compiled on a Mac. See `facemetrics/README.md`.
 
 Suggested once we start building: `docs/` for the pitch, one top-level folder per component.

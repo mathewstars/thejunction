@@ -16,3 +16,9 @@ dist/
 # Event material with personal contacts, phone numbers or the venue Wi-Fi password: keep local
 Junction_2026_Participant_Guidebook.pdf
 astrazeneca/Junction Platform.pdf
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+*.xcscmblueprint
