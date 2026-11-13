@@ -72,3 +72,24 @@ def open_rate_limit(request: Request, what: str) -> None:
 device_only = require("device")
 clinician_only = require("clinician")
 admin_only = require("admin")
+
+
+_admin_or_clinician = require("admin", "clinician")
+
+
+def demo_clinic_id(ctx: Ctx) -> Optional[str]:
+    """The seeded demo clinic, only while demo mode is on."""
+    if not ctx.settings.demo_enabled:
+        return None
+    st = ctx.store.get("demo/state.json") or {}
+    return st.get("clinic_id")
+
+
+async def demo_actor(request: Request,
+                     p: Principal = Depends(_admin_or_clinician)) -> Principal:
+    """Admin always. A clinician only while DEMO_ENABLED is true, and only a
+    clinician of the seeded demo clinic. Everyone else: 403."""
+    if p.scope == "clinician" and p.clinic_id != demo_clinic_id(ctx_of(request)):
+        _refuse(request, p, "demo_not_allowed_for_clinician", 403, "forbidden",
+                "This token may not call this endpoint.")
+    return p

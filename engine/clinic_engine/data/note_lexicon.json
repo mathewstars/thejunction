@@ -1,7 +1,7 @@
 {
-  "_readme": "DRAFT starting list, not reviewed by a clinician. Conservative and incomplete on purpose; extend it. Word lists for the patient note check. Clinicians may edit this file. Write phrases in lower case; accents are ignored when matching (e.g. 'zit' matches 'žiť'). A phrase matches at the start of a word, so 'itsemurha' also matches 'itsemurhaa'. 'help' lists help-seeking and self-harm language: any match shows the help block. 'low' lists words of a low day: they only shape the reply and the mood.",
+  "_readme": "DRAFT starting list, not reviewed by a clinician. Conservative and incomplete on purpose; extend it. Word lists for the patient note check. Clinicians may edit this file. Write phrases in lower case; accents are ignored when matching (e.g. 'zit' matches 'žiť'). A phrase matches at the start of a word, so 'itsemurha' also matches 'itsemurhaa'. Two groups: 'help_seeking' lists help-seeking and self-harm language, and any match ALWAYS opens the help screen (crisis). 'low_mood' lists words of a low day: they never open the help screen on their own; they set the mood to low, shape the reply, and count as evidence for the clinician's attention items.",
   "reviewed_by_clinician": false,
-  "help": {
+  "help_seeking": {
     "en": [
       "need help",
       "help me",
@@ -51,7 +51,7 @@
       "nie som v bezpeci"
     ]
   },
-  "low": {
+  "low_mood": {
     "en": [
       "sad",
       "tired",

@@ -160,8 +160,11 @@ def progress(mind, repo: PatientRepo, view: View, rows: list[dict]) -> dict:
             "played_unprompted": sum(1 for r in view.rounds if not r.get("suggestion_id")),
         },
     }
+    band = {"low_z": view.th.low_day_z, "high_z": -view.th.low_day_z,
+            "novelty_z": view.th.novelty_z,
+            "meaning": "z between low_z and high_z is within the person's own normal"}
     return {"series": series, "weekly": weeks, "episodes": episodes, "actions": actions,
-            "rounds": rounds}
+            "rounds": rounds, "band": band}
 
 
 def clinician_detail(mind, repo: PatientRepo) -> dict:
@@ -207,11 +210,17 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
     }
 
 
-def clinician_round(repo: PatientRepo, round_id: str) -> dict | None:
+def clinician_round(repo: PatientRepo, round_id: str, mind=None) -> dict | None:
     r = repo.get(f"rounds/{round_id}.json")
     if r is None:
         return None
-    return {k: r.get(k) for k in ("id", "started_at", "duration_s", "mode", "completed",
-                                  "ended_by", "config", "tracking", "lights", "path", "quality",
-                                  "quality_reasons", "features", "turning", "z", "energy",
-                                  "energy_bucket", "analysis", "example", "suggestion_id")}
+    out = {k: r.get(k) for k in ("id", "started_at", "duration_s", "mode", "completed",
+                                 "ended_by", "config", "tracking", "lights", "path", "quality",
+                                 "quality_reasons", "features", "turning", "z", "energy",
+                                 "energy_bucket", "analysis", "example", "suggestion_id")}
+    # The usual round of the same mode (the one the movement reading compares
+    # with), so the page can draw the two trails side by side.
+    usual = mind.usual_round(repo, r) if mind is not None else None
+    out["usual_round"] = None if usual is None else {
+        k: usual.get(k) for k in ("id", "started_at", "mode", "path", "energy_bucket", "example")}
+    return out

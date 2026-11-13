@@ -1,0 +1,201 @@
+/* Clinician page. All colours, sizes and fonts are variables in this one
+   :root block, so the page can be restyled here. light-dark() picks the
+   first value in light mode and the second in dark mode. */
+:root {
+  color-scheme: light dark;
+
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --size: 16px;
+  --size-small: 0.875rem;
+  --radius: 6px;
+  --gap: 1rem;
+  --max-width: 72rem;
+
+  --bg: light-dark(#f6f6f4, #15171a);
+  --surface: light-dark(#ffffff, #1e2125);
+  --text: light-dark(#1b1d20, #e9eaec);
+  --muted: light-dark(#5a5f66, #a3a8b0);
+  --line: light-dark(#d9dbde, #353a41);
+  --accent: light-dark(#1f5fa8, #7fb2ec);
+  --accent-text: light-dark(#ffffff, #0d1117);
+  --focus: light-dark(#b85c00, #ffb35c);
+  --error: light-dark(#a3231b, #ff8f86);
+
+  /* Status: each also has its own shape and word, never colour alone. */
+  --status-outside: light-dark(#b3401a, #ff9a6e);
+  --status-no-data: light-dark(#6b6f76, #9aa0a8);
+  --status-no-baseline: light-dark(#6a5aa8, #b4a6ee);
+  --status-within: light-dark(#2f7a4a, #79d29a);
+
+  --level-urgent: light-dark(#a3231b, #ff8f86);
+  --level-attention: light-dark(#a35a00, #ffbf66);
+  --level-watch: light-dark(#5a5f66, #a3a8b0);
+
+  /* Charts */
+  --chart-band: light-dark(#e3efe6, #22342a);
+  --chart-line: light-dark(#1f5fa8, #7fb2ec);
+  --chart-low: light-dark(#b3401a, #ff9a6e);
+  --chart-axis: light-dark(#9aa0a8, #5a6068);
+  --chart-bar: light-dark(#7d9cc0, #4f6f94);
+  --trail-this: light-dark(#1f5fa8, #7fb2ec);
+  --trail-usual: light-dark(#6b6f76, #9aa0a8);
+
+  --example-bg: light-dark(#fff4cc, #3b3215);
+  --example-text: light-dark(#5c4600, #f3dc8c);
+  --draft-bg: light-dark(#fde8e6, #3a1e1c);
+  --draft-text: light-dark(#7a1d16, #ffb8b1);
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html { font-size: var(--size); }
+body {
+  margin: 0;
+  font-family: var(--font);
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+}
+
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible,
+main:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+h1 { font-size: 1.5rem; margin: 0 0 0.5rem; }
+h2 { font-size: 1.2rem; margin: 1.5rem 0 0.5rem; }
+h3 { font-size: 1rem; margin: 1rem 0 0.25rem; }
+
+.skip { position: absolute; left: -999px; top: 0; }
+.skip:focus { left: 0.5rem; top: 0.5rem; background: var(--surface); padding: 0.5rem; z-index: 2; }
+
+.top {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--gap); padding: 0.75rem 1rem; background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.75rem; }
+.product { font-weight: 700; font-size: 1.15rem; }
+.clinic { color: var(--muted); font-size: var(--size-small); }
+.top-nav { display: flex; gap: 1rem; align-items: center; }
+
+main { max-width: var(--max-width); margin: 0 auto; padding: 1rem; }
+.foot { max-width: var(--max-width); margin: 0 auto; padding: 0 1rem 2rem; color: var(--muted);
+        font-size: var(--size-small); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+        padding: 1rem; margin-bottom: var(--gap); }
+.narrow { max-width: 24rem; margin: 2rem auto; }
+.muted { color: var(--muted); }
+.small { font-size: var(--size-small); }
+.error { color: var(--error); font-weight: 600; }
+.flash { padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius);
+         background: var(--surface); }
+.mono { font-family: var(--font-mono); font-size: var(--size-small); overflow-wrap: anywhere; }
+
+label { display: block; font-weight: 600; margin: 0.75rem 0 0.25rem; }
+input { width: 100%; padding: 0.5rem; font: inherit; color: var(--text); background: var(--bg);
+        border: 1px solid var(--line); border-radius: var(--radius); }
+
+button { font: inherit; cursor: pointer; border-radius: var(--radius); padding: 0.45rem 0.9rem;
+         border: 1px solid var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-text); margin-top: 1rem; }
+button.secondary { background: transparent; color: var(--accent); }
+button.link-button { background: none; border: none; color: var(--accent); padding: 0;
+                     text-decoration: underline; }
+button:disabled { opacity: 0.6; cursor: wait; }
+.button-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.head-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+            gap: 0.5rem; }
+
+/* Tags: example data, draft wording, levels */
+.tag { display: inline-block; font-size: 0.75rem; line-height: 1.2; padding: 0.1rem 0.4rem;
+       border-radius: var(--radius); border: 1px solid var(--line); vertical-align: middle;
+       white-space: nowrap; }
+.tag.example { background: var(--example-bg); color: var(--example-text); border-style: dashed; }
+.tag.draft { background: var(--draft-bg); color: var(--draft-text); }
+.tag.level-urgent { color: var(--level-urgent); border: 2px solid var(--level-urgent); font-weight: 700; }
+.tag.level-attention { color: var(--level-attention); border: 1px solid var(--level-attention); font-weight: 600; }
+.tag.level-watch { color: var(--level-watch); border: 1px dotted var(--level-watch); }
+.tag.rejected { text-decoration: line-through; }
+
+/* Status: icon shape + word */
+.status { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600; white-space: nowrap; }
+.status svg { width: 1rem; height: 1rem; flex: none; }
+.status-outside { color: var(--status-outside); }
+.status-no_data { color: var(--status-no-data); font-style: italic; }
+.status-no_baseline { color: var(--status-no-baseline); }
+.status-within { color: var(--status-within); font-weight: 400; }
+.status svg .shape { fill: currentColor; stroke: currentColor; }
+.status svg .shape.hollow { fill: none; stroke-width: 2; }
+.status svg .shape.dashed { stroke-dasharray: 3 2; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0.5rem 0 1rem; font-size: var(--size-small); }
+
+/* Patient list */
+.patients { list-style: none; margin: 0; padding: 0; }
+.patients li { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+               margin-bottom: 0.5rem; }
+.patients li.is-no_data { border-style: dashed; }
+.patients li.is-outside { border-left: 6px solid var(--status-outside); }
+.patients a.row { display: grid; grid-template-columns: 9rem 1fr 14rem 8rem; gap: 0.75rem;
+                  padding: 0.75rem; color: inherit; text-decoration: none; align-items: start; }
+.patients a.row:hover .label { text-decoration: underline; }
+.patients .label { font-weight: 700; }
+.patients .att { display: flex; flex-direction: column; gap: 0.2rem; font-size: var(--size-small); }
+.patients .last { font-size: var(--size-small); color: var(--muted); }
+
+@media (max-width: 760px) {
+  .patients a.row { grid-template-columns: 1fr; gap: 0.35rem; }
+}
+
+/* Detail */
+.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0.5rem 1rem;
+         margin: 0.5rem 0; }
+.facts div { font-size: var(--size-small); }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; font-weight: 600; }
+
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: var(--size-small); }
+th, td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+
+.items { list-style: none; padding: 0; margin: 0; }
+.items > li { border: 1px solid var(--line); border-radius: var(--radius); padding: 0.6rem 0.75rem;
+              margin-bottom: 0.5rem; background: var(--surface); }
+.items > li.closed { opacity: 0.75; border-style: dotted; }
+.item-head { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: space-between; }
+
+/* Charts */
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: var(--gap); }
+figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+         padding: 0.5rem; }
+figcaption { font-size: var(--size-small); font-weight: 600; margin-bottom: 0.25rem; }
+svg.chart { width: 100%; height: auto; display: block; }
+svg.chart .band { fill: var(--chart-band); }
+svg.chart .axis { stroke: var(--chart-axis); stroke-width: 1; }
+svg.chart .zero { stroke: var(--chart-axis); stroke-width: 1; stroke-dasharray: 4 3; }
+svg.chart .line { fill: none; stroke: var(--chart-line); stroke-width: 2; }
+svg.chart .dot { fill: var(--chart-line); }
+svg.chart .dot-low { fill: var(--chart-low); }
+svg.chart .bar { fill: var(--chart-bar); }
+svg.chart .bar-low { fill: var(--chart-low); }
+svg.chart text { fill: var(--muted); font-family: var(--font); font-size: 11px; }
+svg.chart .grid { stroke: var(--line); stroke-width: 1; }
+svg.chart .trail-this { fill: none; stroke: var(--trail-this); stroke-width: 2; stroke-linejoin: round; }
+svg.chart .trail-usual { fill: none; stroke: var(--trail-usual); stroke-width: 2; stroke-dasharray: 5 3;
+                         stroke-linejoin: round; }
+svg.chart .start { fill: var(--surface); stroke: var(--text); stroke-width: 2; }
+svg.chart .end { fill: var(--text); }
+.trails { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--gap); }
+
+.demo { border-style: dashed; margin-top: 2rem; }
+
+@media print {
+  .demo, .top-nav, button { display: none !important; }
+}

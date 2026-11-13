@@ -8,10 +8,10 @@ from fastapi import APIRouter, Depends, Path, Request
 from .. import service
 from ..audit import write_audit
 from ..mind import views
-from ..models import LoginIn, LoginOut
+from ..models import ClinicMeOut, LoginIn, LoginOut
 from ..security import Principal, dummy_verify, issue_token, sha256_hex, verify_password
 from ..service import ApiError
-from .deps import clinician_only, ctx_of, errors, open_rate_limit, rid_of
+from .deps import clinician_only, ctx_of, demo_clinic_id, errors, open_rate_limit, rid_of
 
 router = APIRouter(prefix="/v1/clinic", tags=["clinician"])
 
@@ -46,6 +46,21 @@ async def login(body: LoginIn, request: Request):
     return {"session_token": token, "expires_at": (now + ttl).isoformat()}
 
 
+@router.get("/me", response_model=ClinicMeOut, responses=errors(401, 403, 429),
+            summary="What the clinician page needs to start: product name, clinic, demo mode")
+async def me(request: Request, p: Principal = Depends(clinician_only)):
+    """`demo.enabled` is true only while DEMO_ENABLED is on AND this clinician
+    belongs to the seeded demo clinic; only then may the page show the demo
+    panel (the demo endpoints check the same rule)."""
+    ctx = ctx_of(request)
+    clinic = ctx.store.get(f"clinics/{p.clinic_id}/clinic.json") or {}
+    demo_on = demo_clinic_id(ctx) == p.clinic_id
+    st = (ctx.store.get("demo/state.json") or {}) if demo_on else {}
+    return {"product_name": ctx.settings.product_name,
+            "clinic_name": clinic.get("name", ""),
+            "demo": {"enabled": demo_on, "patient_id": st.get("patient_id")}}
+
+
 def _patient_repo(request: Request, p: Principal, patient_id: str):
     ctx = ctx_of(request)
     repo = ctx.mind.repo(p.clinic_id, patient_id)
@@ -70,7 +85,8 @@ async def patients(request: Request, p: Principal = Depends(clinician_only)):
             pid = key.split("/")[3]
             lines.append(views.clinician_line(ctx.mind, ctx.mind.repo(p.clinic_id, pid)))
     order = {"urgent": 0, "attention": 1, "watch": 2, None: 3}
-    lines.sort(key=lambda x: (order[x["level"]], x["label"]))
+    status_order = {"outside": 0, "no_data": 1, "no_baseline": 2, "within": 3}
+    lines.sort(key=lambda x: (order[x["level"]], status_order.get(x["status"], 4), x["label"]))
     return {"patients": lines}
 
 
@@ -87,7 +103,8 @@ async def patient_detail(request: Request, patient_id: str = Path(pattern=SID),
 async def patient_round(request: Request, patient_id: str = Path(pattern=SID),
                         round_id: str = Path(pattern=CID),
                         p: Principal = Depends(clinician_only)):
-    out = views.clinician_round(_patient_repo(request, p, patient_id), round_id)
+    ctx = ctx_of(request)
+    out = views.clinician_round(_patient_repo(request, p, patient_id), round_id, ctx.mind)
     if out is None:
         raise ApiError(404, "not_found", "Round not found.")
     return out

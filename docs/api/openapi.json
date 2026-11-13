@@ -1083,6 +1083,63 @@
         }
       }
     },
+    "/v1/clinic/me": {
+      "get": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "What the clinician page needs to start: product name, clinic, demo mode",
+        "description": "`demo.enabled` is true only while DEMO_ENABLED is on AND this clinician\nbelongs to the seeded demo clinic; only then may the page show the demo\npanel (the demo endpoints check the same rule).",
+        "operationId": "me_v1_clinic_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicMeOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/v1/clinic/patients": {
       "get": {
         "tags": [
@@ -1862,6 +1919,54 @@
           "answer"
         ],
         "title": "AnswerIn"
+      },
+      "ClinicDemo": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "description": "Demo panel allowed for this clinician."
+          },
+          "patient_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Id",
+            "description": "The demo patient, when enabled."
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "ClinicDemo"
+      },
+      "ClinicMeOut": {
+        "properties": {
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "clinic_name": {
+            "type": "string",
+            "title": "Clinic Name"
+          },
+          "demo": {
+            "$ref": "#/components/schemas/ClinicDemo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_name",
+          "clinic_name",
+          "demo"
+        ],
+        "title": "ClinicMeOut"
       },
       "CrisisBlock": {
         "properties": {

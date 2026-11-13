@@ -26,3 +26,6 @@ DerivedData/
 # Clinic engine: local DirStore data and test caches
 /engine/data/
 .pytest_cache/
+
+# iCloud conflict copies ("name 2.ext")
+* 2.*

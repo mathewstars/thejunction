@@ -6,12 +6,14 @@ import json
 import logging
 import secrets
 import time
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .audit import write_audit
@@ -37,6 +39,15 @@ SECURITY_HEADERS = [
 _DOCS_CSP = (b"default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
              b"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: "
              b"https://fastapi.tiangolo.com")
+# The clinician page: own files only. No inline script or style, no outside
+# hosts, API calls only to this origin.
+_PAGE_CSP = (b"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; "
+             b"connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+WEB_DIR = Path(__file__).resolve().parent / "web"
+
+
+def _is_page(path: str) -> bool:
+    return path == "/" or path.startswith("/static/")
 
 
 def _json_bytes(status: int, code: str, message: str, rid: str) -> bytes:
@@ -92,6 +103,7 @@ class Guard:
 
         status_holder = {"status": 0}
         is_docs = scope["path"] in ("/docs", "/redoc", "/openapi.json")
+        is_page = _is_page(scope["path"])
 
         async def send_wrapped(message):
             if message["type"] == "http.response.start":
@@ -100,6 +112,8 @@ class Guard:
                 for k, v in SECURITY_HEADERS:
                     if k == b"content-security-policy" and is_docs:
                         v = _DOCS_CSP
+                    elif k == b"content-security-policy" and is_page:
+                        v = _PAGE_CSP
                     hdrs.append((k, v))
                 hdrs.append((b"x-request-id", rid.encode()))
                 message = {**message, "headers": hdrs}
@@ -216,6 +230,13 @@ def create_app(settings: Optional[Settings] = None, store: Optional[Store] = Non
     app.include_router(device.router)
     app.include_router(clinic.router)
     app.include_router(admin.router)
+
+    # The clinician web page: static files, no build step. The API stays under /v1.
+    @app.get("/", include_in_schema=False)
+    async def clinician_page():
+        return FileResponse(WEB_DIR / "index.html", media_type="text/html; charset=utf-8")
+
+    app.mount("/static", StaticFiles(directory=WEB_DIR / "static"), name="static")
 
     if settings.cors_origins:
         app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins,

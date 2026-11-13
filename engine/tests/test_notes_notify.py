@@ -31,20 +31,65 @@ def test_lexicon_three_languages_and_accents():
     assert not lexicon_check("Nice walk by the sea today").help
 
 
-def test_merge_fail_safe():
-    lex_help = lexicon_check("I want to die")
-    # Model says all fine: lexicon still wins.
-    assert merge(lex_help, {"mood": "good", "asks_for_help": False, "topic": "other",
-                            "reply_template": "good"})["crisis"]
-    # Model down: lexicon alone.
-    assert merge(lex_help, None)["crisis"]
-    # Lexicon quiet but model says help: crisis.
-    assert merge(lexicon_check("hmm"), {"mood": "low", "asks_for_help": True, "topic": "other",
-                                        "reply_template": "low_1"})["crisis"]
-    # Lexicon low + model refused: over-trigger on purpose.
-    assert merge(lexicon_check("so tired and alone"), None)["crisis"]
-    # Nothing flagged: no crisis.
-    assert not merge(lexicon_check("had tea"), None)["crisis"]
+def _m(mood="ok", help_=False, topic="other", template="ok"):
+    return {"mood": mood, "asks_for_help": help_, "topic": topic, "reply_template": template}
+
+
+def test_lexicon_groups_are_named_and_separate():
+    data = json.loads(__import__("clinic_engine.mind.notes", fromlist=["x"])
+                      .LEXICON_PATH.read_text("utf-8"))
+    assert set(data["help_seeking"]) == {"en", "fi", "sk"}
+    assert set(data["low_mood"]) == {"en", "fi", "sk"}
+    assert "help" not in data and "low" not in data
+    hit = lexicon_check("so tired")
+    assert hit.low and not hit.help
+
+
+def test_merge_help_seeking_hit_with_model_disagreeing():
+    out = merge(lexicon_check("I want to die"), _m("good", False, "other", "good"))
+    assert out["crisis"] and out["asks_for_help"] and out["template_id"] == "help"
+
+
+def test_merge_help_seeking_hit_with_model_down_or_refused():
+    out = merge(lexicon_check("I want to die"), None)
+    assert out["crisis"] and out["asks_for_help"]
+
+
+def test_merge_help_seeking_hit_with_model_unclear():
+    out = merge(lexicon_check("please help me"), _m("unclear", False, "unclear", "neutral"))
+    assert out["crisis"]
+
+
+def test_merge_model_asks_for_help_without_lexicon_hit():
+    out = merge(lexicon_check("hmm"), _m("low", True, "other", "low_1"))
+    assert out["crisis"] and out["asks_for_help"] and not out["lexicon_help"]
+
+
+def test_merge_low_mood_words_with_model_down_is_not_crisis():
+    out = merge(lexicon_check("so tired and alone"), None)
+    assert out["crisis"] is False and out["asks_for_help"] is False
+    assert out["mood"] == "low"  # still evidence for the clinician's attention items
+    assert out["template_id"] in ("low_1", "low_2")
+
+
+def test_merge_low_mood_words_with_model_unclear_is_not_crisis():
+    out = merge(lexicon_check("tired"), _m("unclear", False, "unclear", "neutral"))
+    assert out["crisis"] is False and out["mood"] == "low"
+
+
+def test_merge_low_mood_words_with_model_saying_low_is_not_crisis():
+    out = merge(lexicon_check("bad day"), _m("low", False, "energy", "low_2"))
+    assert out["crisis"] is False and out["template_id"] == "low_2"
+
+
+def test_merge_no_hit_and_model_down_is_not_crisis():
+    out = merge(lexicon_check("had tea"), None)
+    assert out["crisis"] is False and out["mood"] == "unclear"
+
+
+def test_merge_no_hit_and_model_unclear_is_not_crisis():
+    out = merge(lexicon_check("had tea"), _m("unclear", False, "unclear", "neutral"))
+    assert out["crisis"] is False
 
 
 # ---- API ----------------------------------------------------------------------------------
@@ -66,10 +111,42 @@ def test_help_note_crisis_when_model_down():
     assert note(env, "potrebujem pomoc").json()["crisis"] is True
 
 
+def test_help_note_crisis_when_model_refused():
+    env = Env(local=FakeLocal(note="Everything is fine, no help needed."))
+    r = note(env, "I need help").json()
+    assert r["crisis"] is True and r["crisis_block"] is not None
+    assert any(i["kind"] == "asked_for_help" for i in env.repo().items())
+
+
+def test_model_asks_for_help_opens_help_screen():
+    env = Env(local=FakeLocal(note=model_says("low", True, "other", "low_1")))
+    r = note(env, "a strange quiet evening").json()
+    assert r["crisis"] is True and r["reply"]["template_id"] == "help"
+
+
+def test_low_mood_note_model_down_is_not_crisis_and_opens_no_urgent_item():
+    env = Env(local=FakeLocal(note=None))
+    r = note(env, "tired").json()
+    assert r["crisis"] is False and r["crisis_block"] is None
+    assert not any(i["kind"] == "asked_for_help" for i in env.repo().items())
+
+
+def test_low_mood_notes_still_open_an_attention_item():
+    env = Env(local=FakeLocal(note=None))
+    assert note(env, "so tired", "note-low-0001").json()["crisis"] is False
+    env.clock.advance(hours=3)
+    assert note(env, "lonely today", "note-low-0002").json()["crisis"] is False
+    items = [i for i in env.repo().items() if i["kind"] == "low_notes" and i["state"] == "open"]
+    assert items and items[0]["level"] in ("watch", "attention")
+    assert not any(i["kind"] == "asked_for_help" for i in env.repo().items())
+
+
 def test_model_prose_is_refused_and_logged():
     env = Env(local=FakeLocal(note="The user seems sad. I suggest therapy."))
     r = note(env, "a bit tired today").json()
-    assert r["crisis"] is True  # lexicon flagged low + model refused -> fail safe
+    # Low-mood words + refused model: not the help screen, but mood is low.
+    assert r["crisis"] is False and r["crisis_block"] is None
+    assert env.repo().notes()[0]["classification"]["mood"] == "low"
     refusals = [e for e in env.audit(outcome="refused") if e["action"] == "gate_refusal"]
     assert any(e["detail"]["task"] == "note" for e in refusals)
 

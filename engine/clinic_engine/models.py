@@ -289,6 +289,17 @@ class LoginOut(BaseModel):
     expires_at: str
 
 
+class ClinicDemo(BaseModel):
+    enabled: bool = Field(description="Demo panel allowed for this clinician.")
+    patient_id: Optional[str] = Field(None, description="The demo patient, when enabled.")
+
+
+class ClinicMeOut(BaseModel):
+    product_name: str
+    clinic_name: str
+    demo: ClinicDemo
+
+
 # ---- admin / demo ---------------------------------------------------------------------
 
 class ScenarioIn(Strict):

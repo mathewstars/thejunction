@@ -37,7 +37,8 @@ def test_scopes_are_enforced(env):
     C = env.C()
     assert env.client.get("/v1/clinic/patients", headers=env.H).status_code == 403
     assert env.client.get("/v1/today", headers=C).status_code == 403
-    assert env.client.post("/v1/demo/tick", headers=C).status_code == 403
+    # The demo clinician may use the demo endpoints while demo mode is on
+    # (see test_web.py for the full matrix); a device never may.
     assert env.client.post("/v1/demo/tick", headers=env.H).status_code == 403
     assert env.client.get("/v1/clinic/patients", headers=env.A).status_code == 403
     assert any(e["reason"] == "wrong_scope:device" for e in env.audit(outcome="refused"))

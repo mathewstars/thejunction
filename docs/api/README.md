@@ -15,7 +15,7 @@ export STORE=dir STORE_DIR=./data             # local folder store (git-ignored)
 .venv/bin/python -m pytest -q                  # tests, fully offline
 ```
 
-Interactive docs while it runs: `http://127.0.0.1:8080/docs`.
+Interactive docs while it runs: `http://127.0.0.1:8080/docs`. The clinician web page is at `http://127.0.0.1:8080/` (see "The clinician page" below).
 
 ## The demo server
 
@@ -34,6 +34,7 @@ Authorization: Bearer <token>
 | device | `POST /v1/devices/pair`, once per phone | the device and mind calls below, for its own patient only |
 | clinician | `POST /v1/clinic/login`, short-lived | `/v1/clinic/...`, for its own clinic only |
 | admin | printed once by the seed script | `/v1/demo/...`, `/v1/review/run` |
+| clinician of the seeded demo clinic | `POST /v1/clinic/login` | also `/v1/demo/...` and `/v1/review/run`, for patients of that clinic only, and only while `DEMO_ENABLED` is true. With demo mode off these stay admin-only. |
 
 Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Keep the device token in the Keychain. No device call takes a patient id: the token decides whose data it is.
 
@@ -120,9 +121,28 @@ How the note is treated:
 
 - It is untrusted data. It is never an instruction, never placed into a system prompt, never copied into lessons, summaries, notifications or logs, and it never leaves the server (the level-2 input gate refuses any pack that would carry it).
 - It is only classified: a word-list check in code (English, Finnish, Slovak; a draft list in `engine/clinic_engine/data/note_lexicon.json`, not yet reviewed by a clinician) plus, when available, the local model through the gates. The model may only return a fixed JSON of enums: `mood`, `asks_for_help`, `topic`, and one reply template id from a list.
-- Fail-safe: if either says the person asks for help, or the model answer is refused or unclear on a note the word list flags, `crisis` is true. Over-triggering is accepted; missing is not.
+- The word list has two groups: `help_seeking` (help-seeking and self-harm language) and `low_mood` (words of a low day).
+- When `crisis` is true: only help-seeking or self-harm language opens the help screen.
+  - A `help_seeking` hit always gives `crisis: true`, whatever the model says, and also when the model is down or its answer is refused.
+  - A model answer with `asks_for_help: true` also gives `crisis: true`.
+  - `low_mood` words alone, or an unclear or refused model answer on a note with no help-seeking hit, give `crisis: false`. Such a note still sets the mood to `low` and counts as evidence: several low notes open or raise an attention item (`low_notes`) for the clinician.
 - The reply is a vetted template picked by code, never generated text. This is deliberately not a chat.
 - The clinician sees that a note exists, its time and its classification. The text itself only when the patient record allows it (`share_notes`, default off).
+
+## The clinician page
+
+The engine serves a plain web page for clinicians at `/` (files in `engine/clinic_engine/web/`, no build step, no outside resources, its own strict Content-Security-Policy). It uses only these calls:
+
+| Call | What the page uses it for |
+|---|---|
+| `GET /healthz` | Product name on the login screen |
+| `POST /v1/clinic/login` | Session token, kept in memory and `sessionStorage` only |
+| `GET /v1/clinic/me` | Product name, clinic name, and whether the demo panel may be shown (`demo.enabled`) |
+| `GET /v1/clinic/patients` | One line per patient, those needing a look first |
+| `GET /v1/clinic/patients/{id}` | Detail; `progress.band` gives the own-normal band for the charts |
+| `GET /v1/clinic/patients/{id}/rounds/{round_id}` | Round detail; `usual_round` (or null) gives a usual round of the same mode for the second trail |
+| `POST /v1/clinic/attention/{id}/ack` | The Acknowledge button |
+| `/v1/demo/...`, `/v1/review/run` | The demo panel, only for the demo clinic while demo mode is on |
 
 ## Errors
 
