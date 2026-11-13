@@ -900,7 +900,7 @@
             el("td", { class: "r num" }, tested && r.lead_days !== null && r.lead_days !== undefined ? (r.lead_days > 0 ? "+" : "") + r.lead_days + " d" : "–"),
             el("td", null, tested ? [el("span", { class: "chip " + (r.agreement === "consistent" ? "good" : r.agreement === "opposite" ? "bad" : "") }, words(r.agreement).toLowerCase() + (r.strength ? ", " + r.strength : "")),
               el("span", { class: "sub" }, SRC[r.agreement_source] || "")] : "–"),
-            el("td", { class: "small" }, (r.caveats || []).map((c) => el("div", null, c.text, el("span", { class: "muted" }, " · " + c.by)))));
+            el("td", { class: "small muted", title: (r.caveats || []).map((c) => c.text).join(" ") }, (r.caveats || []).map((c) => words(c.code).toLowerCase()).join(", ") || "–"));
         }), "assoc")));
     });
     wrap.appendChild(samplesPanel(d));
