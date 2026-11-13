@@ -199,6 +199,7 @@
     const e = $("login-error"); e.textContent = msg || ""; e.hidden = !msg;
   }
   function signOut(msg) {
+    clear($("subnav"));
     S.token = null; S.me = null; S.list = null; S.detail = null; S.trace = null;
     try { sessionStorage.removeItem("clinic_session"); } catch (e) { /* storage may be blocked */ }
     showLogin(msg);
@@ -239,6 +240,7 @@
     (r.view === "demo" ? $("nav-demo") : $("nav-patients")).setAttribute("aria-current", "page");
     const focusKey = document.activeElement && document.activeElement.getAttribute ? document.activeElement.getAttribute("data-key") : null;
     clear(view);
+    if (r.view !== "patient" || !S.detail) clear($("subnav"));
     if (r.view === "patients") view.appendChild(viewPatients());
     else if (r.view === "demo") view.appendChild(viewDemo());
     else view.appendChild(viewPatient());
@@ -341,7 +343,6 @@
   function viewPatient() {
     const wrap = el("div");
     const d = S.detail;
-    wrap.appendChild(el("a", { class: "back", href: "#/patients" }, "← Patients"));
     if (!d) { wrap.appendChild(empty("Loading…")); return wrap; }
     const today = (d.progress && d.progress.today) || todayStr();
     wrap.appendChild(el("div", { class: "head" },
@@ -367,7 +368,7 @@
         },
       }, label));
     });
-    wrap.appendChild(tabs);
+    $("subnav").replaceChildren(tabs);  // the patient's sections live in the top bar
     const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, talk: tabTalk, research: tabResearch, mind: tabMind, log: tabLog }[S.route.tab](d, today);
     wrap.appendChild(el("div", { id: "tabpanel", role: "tabpanel", "aria-labelledby": "tab-" + S.route.tab }, body));
     return wrap;
@@ -824,6 +825,37 @@
     s.appendChild(svg("circle", { class: "pt " + (r.agreement || ""), cx: x(r.rho), cy: H / 2, r: 3.5 }));
     return s;
   }
+  // Every session the phone sent, one row each: the raw sample behind the statistics.
+  const SAMPLE_COLS = [["smile_time_share", "Smiling", 100, "%"], ["eye_smile_share", "Reach eyes", 100, "%"], ["smile_response_share", "Smiled at moment", 100, "%"],
+    ["facial_activity", "Face movement", 1, ""], ["blink_rate_per_min", "Blinks/min", 1, ""], ["look_down_share", "Looking down", 100, "%"], ["head_movement", "Head movement", 1, ""]];
+  function sampleCell(v, z, mult, unit) {
+    if (v === null || v === undefined) return el("td", { class: "r num muted" }, "–");
+    const shown = mult === 100 ? Math.round(v * 100) + unit : (Math.abs(v) >= 10 ? Math.round(v) : Number(v).toFixed(2));
+    const off = z !== null && z !== undefined && Math.abs(z) >= 2;
+    return el("td", { class: "r num" + (off ? " off" : "") }, shown, off ? el("span", { class: "sub" }, (z > 0 ? "▲ " : "▼ ") + Math.abs(z).toFixed(1)) : null);
+  }
+  function samplesPanel(d) {
+    const A = d.activities || {};
+    const all = [];
+    ["focus", "breathing"].forEach((t) => ((A[t] || {}).sessions || []).forEach((x) => all.push(Object.assign({ type: t }, x))));
+    all.sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)));
+    if (!all.length) return panel("Samples collected", "", empty("No sessions yet."));
+    const heads = ["When", "Activity", { t: "Reaction ms", r: 1 }, { t: "Errors", r: 1 }].concat(SAMPLE_COLS.map((c) => ({ t: c[1], r: 1 })), ["Tracking", "Model reading"]);
+    const rows = all.slice(0, 40).map((x) => {
+      const f = x.face || {}, fz = f.z || {}, v = x.values || {}, z = x.z || {}, rd = (x.reading || {}).reading;
+      const said = rd ? [rd.reactions, rd.expression, rd.eyes].filter((w) => w && !/^(steady|as_usual|unclear)$/.test(w)).map((w) => words(w).toLowerCase()).join(" · ") || "as usual" : "–";
+      return el("tr", null,
+        el("td", { class: "num nowrap" }, stamp(x.started_at)),
+        el("td", null, x.type === "focus" ? "Focus game" : "Breathing", x.completed ? null : el("span", { class: "sub" }, "stopped early")),
+        sampleCell(v.median_reaction_ms, z.median_reaction_ms, 1, ""),
+        sampleCell(v.error_rate, z.error_rate, 100, "%"),
+        SAMPLE_COLS.map((c) => sampleCell(f[c[0]], fz[c[0]], c[2], c[3])),
+        el("td", null, x.face ? words(f.quality || "") : el("span", { class: "muted" }, "no camera")),
+        el("td", { class: "small" }, said));
+    });
+    return panel("Samples collected", all.length, el("p", { class: "muted small" }, "One row per session from the phone. ▲ ▼ mark a value at least 2 spreads from this person's own usual."),
+      el("div", { class: "scroll-x" }, table(heads, rows, "samples")));
+  }
   function tabResearch(d) {
     const wrap = el("div", { class: "stack" });
     const a = S.assoc;
@@ -871,6 +903,7 @@
             el("td", { class: "small" }, (r.caveats || []).map((c) => el("div", null, c.text, el("span", { class: "muted" }, " · " + c.by)))));
         }), "assoc")));
     });
+    wrap.appendChild(samplesPanel(d));
     const cor = a.corrections || [];
     wrap.appendChild(panel("What code corrected in the model's answer", cor.length || "", cor.length ? table(["Where", "Field", "Model said", "Code set", "Why"],
       cor.map((c) => el("tr", null, el("td", null, c.where === "row" ? c.key : "overall"), el("td", null, words(c.field)),
