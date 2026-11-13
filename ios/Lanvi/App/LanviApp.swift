@@ -4,7 +4,10 @@ import SwiftUI
 struct LanviApp: App {
     var body: some Scene {
         WindowGroup {
-            RootView()
+            switch UserDefaults.standard.string(forKey: "screen") {
+            case let s where s?.hasPrefix("checkin") == true: CheckinView.preview(s)
+            default: RootView()
+            }
         }
     }
 }
