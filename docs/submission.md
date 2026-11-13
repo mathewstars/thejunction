@@ -25,7 +25,7 @@ Still to do before Sunday 10:00:
 
 - The video. At most 2:00, and they are strict about it. Aim for 1:50. It must be public, for example on YouTube.
 - The pitch deck as a PDF.
-- The description: replace the last section with what really works and what we measured.
+- The description below is the one version. Before the final submission, check every sentence in it is true of the demo (Gemini reading, camera numbers, the alert) and fill in what we measured.
 - The team is still named "coderama" on the platform's Team page. That is the name of an existing company; rename it.
 - Check the Gemini tech challenge is still true: it stays only if Gemini really runs in the demo.
 
@@ -90,16 +90,6 @@ Typed notes stay on the clinic's server. What goes to Gemini is numbers only, un
 WHAT IS REAL AND WHAT IS NOT
 
 This is a weekend prototype, not a validated measure. Before the final submission we will say here what works live and what we measured ourselves. The demo runs on example data and says so.
-```
-
-## Sections to add when they are true
-
-Add these to the description only when the thing runs in the demo.
-
-```
-HOW WE USE GEMINI
-
-[To be rewritten for the Lanvi activities once Gemini has a real job in the demo. Until then leave this section out, and take the Gemini tech challenge off the form if it does not run.] Everyday wording runs on a local open model.
 
 BUILT WITH
 
