@@ -99,7 +99,7 @@ Field notes:
 
 Times are seconds with one decimal, distances are metres. In `screen` mode `dist_m` and `height_m` are null and the path is left out.
 
-Privacy: the path is relative to the start point and carries no map of the room. It stays on the clinic's server and never goes to an outside model.
+Privacy: the path is relative to the start point and carries no map of the room. It leaves the clinic's server only for the movement reading in section 6, only when that is switched on, and only after it has been made anonymous.
 
 ## 4. What the server does with a round
 
@@ -146,22 +146,84 @@ Rules for picking: start from the person's usual config; step down one after a l
 
 ## 6. Where the two model levels come in
 
-Models never see raw numbers, the path or anything the person typed. They see a small pack of labels built by the input gate, and what they return passes the output gate before it is used.
+Every model call passes two code gates. The input gate builds what the model may see. The output gate checks what comes back before anything is used. Nothing the person typed ever goes to a model outside the clinic.
 
 | | Level 1: local model | Level 2: Gemini (optional, off by default) |
 |---|---|---|
-| **Sees** | Labels for this person's recent rounds and days: energy bucket, rounded z-scores, mode, config, finished or not, what was offered and answered | The same kind of pack, made anonymous: a fresh alias, relative day numbers, coarser rounding. No ids, dates or raw values. |
-| **May do** | Pick or word the one line shown after the round. Propose a lesson or a question in a fixed shape, for example "prefers `near_gentle` in the evening". | Give a second opinion on a proposed lesson: agree, or object with a reason from a fixed list. |
-| **May not do** | Choose the action, choose the config, change a threshold, close attention | The same, and it never receives anything it could use to recognise a person |
-| **Checked by** | Output gate: fixed shape, known action and config names, evidence recomputed by code, no clinical words | Output gate: fixed shape only |
+| **Job** | Words the one line shown after the round. Proposes lessons and questions in a fixed shape. | **Reads the movement of a round** (below). Gives a second opinion on proposed lessons. |
+| **Sees** | Labels for this person's recent rounds and days: energy bucket, rounded z-scores, mode, config, finished or not, what was offered and answered | The anonymous movement trace of one round, and optionally a usual round next to it. Never ids, dates, the clinic, the device or any text. |
+| **May not do** | Choose the action, choose the config, change a threshold, close attention | The same |
+| **Checked by** | Output gate: fixed shape, known action and config names, evidence recomputed by code, no clinical words | Output gate: fixed shape, and every claim compared with what code computed from the same round |
 
-Code is the judge at the end. A lesson is accepted only if code can recompute its evidence from the stored rounds, and, when level 2 is on, level 2 did not object. Every refusal at either gate is logged and shown to the next review.
+Code is the judge at the end. Every refusal at either gate is logged and shown to the next review.
 
-Example of a lesson that can come out of rounds: "On evenings the person finishes `near_gentle` rounds and stops `standard` rounds early." Effect: the server offers `near_gentle` in the evening. The person sees it under "What works for you" and can say "not true".
+### The movement reading (level 2)
+
+This is the real job for Gemini: read how the person moved through a round, the way a physiotherapist would look at a recording, and say it in a fixed vocabulary.
+
+**What goes out, after the input gate:**
+
+- The path, turned by a random angle and with a fresh random alias, so two requests cannot be linked and the layout of the room cannot be read from it.
+- The per-light log: when each light appeared, how far and how high it was, when the person first moved and when it was caught.
+- The same for one usual round of the same person, when a comparison is wanted.
+- Optionally the two paths drawn as two small trail pictures, so the model can also look at the shape.
+- Times only as seconds from the start of the round. No date, no time of day.
+
+**What must come back, as one JSON object and nothing else:**
+
+```json
+{
+  "pattern": "slowing",
+  "fade_from_light": 7,
+  "reach": "avoids_high",
+  "turning": "mostly_right",
+  "compared_to_usual": "smaller_and_slower",
+  "confidence": "medium",
+  "evidence": [
+    {"claim": "slowing", "lights": [7, 8, 9, 10, 11]},
+    {"claim": "avoids_high", "lights": [3, 6, 9]}
+  ]
+}
+```
+
+| Field | Allowed values |
+|---|---|
+| `pattern` | `steady`, `slowing`, `stop_start`, `hesitant_start`, `rushed`, `minimal_movement`, `unclear` |
+| `fade_from_light` | The index of the light where the person started to slow, or null |
+| `reach` | `full`, `avoids_high`, `avoids_low`, `avoids_far`, `unclear` |
+| `turning` | `both`, `mostly_left`, `mostly_right`, `little`, `unclear` |
+| `compared_to_usual` | `similar`, `smaller`, `slower`, `smaller_and_slower`, `larger`, `faster`, `unclear` |
+| `confidence` | `low`, `medium`, `high` |
+| `evidence[].claim` | One of the values used above, with the lights that show it |
+
+**What the output gate does with it:**
+
+1. Anything that is not exactly this shape is refused.
+2. Every claim is checked against code. "Slowing from light 7" must agree with the travel speeds the server computed; "avoids high" must agree with the catch rate of the high lights. A claim that code cannot confirm is dropped and logged.
+3. What survives is stored with the round as a movement reading, marked "read by a model, checked by code".
+
+**What it is used for:**
+
+- The clinician sees the reading next to the trail of the round.
+- The patient sees one plain line, picked from a fixed set by the pattern. Never the reading itself.
+- It joins the evidence for attention and for lessons, for example: "slows down in the second half of evening rounds".
+
+**If level 2 is off or does not answer:** the round is processed by code alone, exactly as in section 4. Nothing waits for the model.
+
+**Consent:** the movement reading runs only for a patient whose record allows outside processing. The switch for the whole server is `OUTREACH_MODE`.
+
+### API for the reading
+
+| Call | Who | What |
+|---|---|---|
+| `POST /v1/rounds` | App | Returns at once with `analysis: "pending"`, `"off"` or `"not_allowed"`. The reading runs in the background. |
+| `GET /v1/rounds/{id}/analysis` | App | `status` (`pending`, `ready`, `off`, `failed`) and, when ready, the plain line for the patient. |
+| `GET /v1/clinic/patients/{patient_id}/rounds/{id}` | Clinician | The round, its features, the path for drawing the trail, and the full checked reading with what was dropped. |
+| `POST /v1/demo/analyze` | Demo | Runs the reading again for a round, so it can be shown live. |
 
 ## 7. What the clinician sees from rounds
 
-Per patient: rounds played against rounds offered, the energy bucket per round over time, and the path of a chosen round drawn as a simple trail. Two trails side by side (a usual round and a recent one) show the change without a number.
+Per patient: rounds played against rounds offered, the energy bucket per round over time, and the path of a chosen round drawn as a simple trail. Two trails side by side (a usual round and a recent one) show the change without a number. Next to them, the checked movement reading from level 2, when it is on.
 
 ## 8. Open points
 
@@ -169,4 +231,5 @@ Per patient: rounds played against rounds offered, the energy bucket per round o
 2. **Peter:** how `first_move_t` is detected in practice. If it is hard, send null and the server uses time to catch.
 3. **Matthew:** the config table in section 5, the catch distance and how long a light lives.
 4. **Aalto mentors:** which of the round features they would trust: reaction time, speed, coverage or fade.
+6. **All:** the movement reading sends an anonymous movement trace to Gemini. For the demo that is example data and our own. With real patients it needs their consent and an agreement with the provider; say so in the pitch.
 5. **Mathew:** the server needs five good rounds per mode for a baseline; for the demo the seed script supplies them, marked as example data.
