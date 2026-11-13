@@ -17,6 +17,10 @@ export STORE=dir STORE_DIR=./data             # local folder store (git-ignored)
 
 Interactive docs while it runs: `http://127.0.0.1:8080/docs`.
 
+## The demo server
+
+The engine also runs on a demo server: `https://angel.victronlab.sk`. Interactive docs: `https://angel.victronlab.sk/docs`. Every call under `/v1` needs a bearer token; ask Mathew for the pairing code and the clinician login, they are not in this repo. All data on it is example data.
+
 ## Auth
 
 Every call except `/healthz`, `/v1/devices/pair` and `/v1/clinic/login` needs

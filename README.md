@@ -135,7 +135,8 @@ Live: https://gridzilla.victronlab.sk (site at `/`, operator console at `/consol
 
 - `docs/app-design.md` — the app screen by screen, the AR round, and how the app talks to the server.
 - `docs/game-interface.md` — what ARKit gives the app, the round record the app sends, what the server makes of it, and where the two model levels come in.
-- `engine/` — the server and the mind (being built, lands with its tests).
+- `engine/` — the server and the mind, with its tests. It runs on the demo server at https://angel.victronlab.sk.
+- `docs/api/` — the API: `openapi.json` and a short guide for the app.
 - `ios/` — the iPhone app. The Xcode project goes here.
 - `LICENSE` — MIT, as Junction requires for every submission.
 - `aalto/` — our challenge, Aalto "Beyond the Clinic": brief, judging criteria and what they provide in `CHALLENGE.md`.
