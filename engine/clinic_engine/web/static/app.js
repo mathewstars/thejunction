@@ -602,6 +602,10 @@
   const TL_COLS = [["watchers", "Watchers"], ["attention", "Attention"], ["response", "Response"], ["level1", "Model 1"], ["level2", "Model 2"], ["notifier", "Alert"], ["learning", "Learning"]];
   const PAGE = 15;
   const PATIENTS_PAGE = 10;
+  // Why the system made no offer at a check.
+  const NO_OFFER = { quiet_hours: "patient's quiet hours", one_open_already: "an offer is still open", daily_cap: "enough offers today",
+    cooldown: "too soon after the last offer", already_answered_today: "already answered today", no_held_item_to_answer: "nothing to answer",
+    held_items_need_a_clinician: "left for the clinician" };
   function layerCell(c, layer) {
     const es = (c.entries || []).filter((e) => e.layer === layer);
     if (!es.length) return el("span", { class: "muted" }, "–");
@@ -610,7 +614,12 @@
       const d = e.detail || {};
       if (layer === "watchers") out.push(e.code === "fired" ? el("span", { class: "chip l-attention" }, "fired") : el("span", { class: "muted" }, words(e.code).toLowerCase()));
       else if (layer === "attention") out.push(el("span", { class: "chip l-" + (d.level || "watch") }, icon(e.code === "raised" ? "up" : LEVEL_ICON[d.level] || "ring"), kind(d.kind) + " " + e.code));
-      else if (layer === "response") out.push(e.code === "suggested" ? el("span", { class: "chip good" }, icon("diamond"), action(d.action)) : el("span", { class: "muted" }, words(d.reason || e.code).toLowerCase()));
+      else if (layer === "response") {
+        if (e.code === "suggested") out.push(el("span", { class: "chip good" }, icon("diamond"), action(d.action)));
+        else if (e.code === "blocked") out.push(el("span", null, "no offer: " + (NO_OFFER[d.because] || words(d.because).toLowerCase())));
+        else if (e.code === "none") out.push(el("span", { class: "muted" }, NO_OFFER[d.because] || words(d.because || d.reason || e.code).toLowerCase()));
+        else out.push(el("span", { class: "muted" }, words(d.reason || e.code).toLowerCase()));
+      }
       else if (layer === "level1" || layer === "level2") {
         const task = d.task ? words(d.task).toLowerCase() + ": " : "";
         const why = Array.isArray(d.reasons) && d.reasons.length ? d.reasons : d.reason ? [d.reason] : [];
