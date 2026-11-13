@@ -937,6 +937,9 @@
     return panel("Samples collected", all.length, el("p", { class: "muted small" }, "One row per session from the phone. ▲ ▼ mark a value at least 2 spreads from this person's own usual."),
       el("div", { class: "scroll-x" }, table(heads, rows, "samples")));
   }
+  function closePops() { const ks = Object.keys(S.open).filter((k) => k.indexOf("cav-") === 0 && S.open[k]); ks.forEach((k) => delete S.open[k]); if (ks.length) render(); }
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closePops(); });
+  document.addEventListener("click", (ev) => { if (!(ev.target.closest && ev.target.closest("td.cav"))) closePops(); });
   function caveatCell(r) {
     const cs = r.caveats || [];
     if (!cs.length) return el("td", { class: "muted" }, "–");
@@ -947,8 +950,9 @@
         cs.length + (cs.length === 1 ? " caveat" : " caveats")),
       open ? el("div", { class: "pop", role: "dialog", "aria-label": "Caveats for " + r.label },
         el("div", { class: "pop-h" }, r.label),
-        el("ul", { class: "plain" }, cs.map((c) => el("li", null, c.text, el("span", { class: "muted" }, c.by === "model" ? " (named by the model)" : " (added by code)")))),
-        el("button", { type: "button", class: "linklike small", on: { click: () => { delete S.open[key]; render(); } } }, "Close")) : null);
+        el("button", { type: "button", class: "pop-x", "aria-label": "Close", on: { click: () => { delete S.open[key]; render(); } } }, "×"),
+        el("ul", { class: "plain" }, cs.map((c) => el("li", null, c.text, c.by === "code" ? el("span", { class: "muted" }, " (added by code)") : null))),
+        el("div", { class: "muted small" }, cs.every((c) => c.by === "model") ? "All named by the model." : cs.every((c) => c.by === "code") ? "All added by code." : "Named by the model unless marked.")) : null);
   }
   function tabResearch(d) {
     const wrap = el("div", { class: "stack" });
