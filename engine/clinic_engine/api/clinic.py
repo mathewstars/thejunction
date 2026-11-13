@@ -118,6 +118,26 @@ async def patient_round(request: Request, patient_id: str = Path(pattern=SID),
     return out
 
 
+@router.get("/patients/{patient_id}/exchanges", responses=errors(401, 403, 404, 422, 429),
+            summary="Raw model exchanges: what was sent to a model and what it answered")
+async def patient_exchanges(request: Request, patient_id: str = Path(pattern=SID),
+                            task: Optional[str] = Query(None, pattern=r"^[a-z_]{1,30}$"),
+                            chain_id: Optional[str] = Query(None, pattern=SID),
+                            limit: int = Query(50, ge=1, le=200),
+                            p: Principal = Depends(clinician_only)):
+    """Newest first. Each item holds the messages sent, the raw reply (null when the
+    model did not answer), the model name, the time it took and the trace chain it
+    belongs to. What code did with the reply is in the trace. A note's prompt
+    contains the patient's words; that message is hidden unless the patient shares
+    their notes."""
+    from ..mind import exchanges as ex
+    ctx = ctx_of(request)
+    repo = _patient_repo(request, p, patient_id)
+    share = bool((repo.patient() or {}).get("share_notes"))
+    return {"share_notes": share,
+            "exchanges": ex.view(ctx.store, p.clinic_id, patient_id, share, limit, task, chain_id)}
+
+
 @router.get("/patients/{patient_id}/trace", response_model=TraceOut,
             responses=errors(401, 403, 404, 422, 429),
             summary="How the mind reasoned: chains of steps per trigger, newest first")

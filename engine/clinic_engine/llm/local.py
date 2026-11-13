@@ -9,6 +9,7 @@ falls back to code.
 from __future__ import annotations
 
 import logging
+import time
 
 import httpx
 
@@ -29,6 +30,7 @@ class LocalModel:
         self.long_timeout = max(settings.local_llm_timeout_s,
                                 getattr(settings, "local_llm_appraisal_timeout_s", 0.0))
         self.transport = transport
+        self.recorder = None  # set by the app: keeps the raw exchange for the clinician
 
     @property
     def configured(self) -> bool:
@@ -42,6 +44,15 @@ class LocalModel:
         if json_mode:
             body["response_format"] = {"type": "json_object"}
         headers = {"Authorization": f"Bearer {self.key}"} if self.key else {}
+        out, t0 = None, time.monotonic()
+        try:
+            out = await self._send(pack, body, headers)
+            return out
+        finally:
+            if self.recorder is not None:
+                self.recorder(pack, out, (time.monotonic() - t0) * 1000, self.model, 1)
+
+    async def _send(self, pack: Pack, body: dict, headers: dict) -> str | None:
         try:
             # The association appraisal may think for a while before answering.
             timeout = self.long_timeout if pack.task == "association" else self.timeout

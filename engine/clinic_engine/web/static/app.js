@@ -161,7 +161,7 @@
     S.route = parseHash();
     if (!S.token) return showLogin();
     const samePatient = prev.view === "patient" && S.route.view === "patient" && prev.pid === S.route.pid;
-    if (S.route.view === "patient" && !samePatient) { S.detail = null; S.trace = null; S.assoc = null; S.page = 0; }
+    if (S.route.view === "patient" && !samePatient) { S.detail = null; S.trace = null; S.assoc = null; S.exch = null; S.page = 0; }
     render();
     await load(false);
   }
@@ -179,6 +179,9 @@
         if (force || !S.detail) S.detail = await api("GET", base);
         if (r.tab === "timeline" && (force || !S.trace)) {
           try { S.trace = await api("GET", base + "/trace?limit=100"); } catch (e) { S.trace = await api("GET", base + "/trace"); }
+        }
+        if ((r.tab === "timeline" || r.tab === "mind") && (force || !S.exch)) {
+          try { S.exch = (await api("GET", base + "/exchanges?limit=200")).exchanges || []; } catch (e) { S.exch = []; }
         }
         if (r.tab === "research" && (force || !S.assoc)) S.assoc = await api("GET", base + "/associations");
       }
@@ -635,6 +638,26 @@
     });
     return el("div", { class: "cellstack" }, out);
   }
+  // The raw exchange with a model: what was sent and what came back, word for word.
+  const TASK = { note: "Label the patient's words", wording: "Choose the wording of an offer", review: "Learning: propose lessons", second_opinion: "Second opinion on proposed lessons",
+    session_reading: "Read one session", association: "Appraise the research table", reading: "Read one round" };
+  function pretty(text) {
+    if (text === null || text === undefined) return "(no reply)";
+    try { return JSON.stringify(JSON.parse(text), null, 2); } catch (e) { return String(text); }
+  }
+  function exchangeBox(x) {
+    const key = "ex-" + x.id, open = !!S.open[key];
+    const head = el("button", { type: "button", class: "linklike", "aria-expanded": open ? "true" : "false", "data-key": key,
+      on: { click: (ev) => { ev.stopPropagation(); S.open[key] = !open; render(); } } },
+      (open ? "▾ " : "▸ ") + "Model " + x.level + " · " + (TASK[x.task] || words(x.task)) + " · " + x.model + " · " + (x.ms / 1000).toFixed(1) + " s" + (x.reply === null ? " · no reply" : ""));
+    const box = el("div", { class: "exch", on: { click: (ev) => ev.stopPropagation() } }, head);
+    if (open) {
+      (x.messages || []).forEach((m) => box.appendChild(el("div", null,
+        el("div", { class: "exch-h" }, m.role === "system" ? "Sent: instructions" : "Sent: data"), el("pre", { class: "raw" }, m.role === "user" ? pretty(m.content) : m.content))));
+      box.appendChild(el("div", null, el("div", { class: "exch-h" }, "Model answered"), el("pre", { class: "raw" }, pretty(x.reply))));
+    }
+    return box;
+  }
   function tabTimeline() {
     const wrap = el("div");
     const t = S.trace;
@@ -662,7 +685,8 @@
         el("td", null, c.headline || TRIGGER[c.trigger] || words(c.trigger)),
         TL_COLS.map(([layer]) => el("td", null, layerCell(c, layer)))));
       if (open) rows.push(el("tr", { class: "detail" }, el("td", { colspan: 2 + TL_COLS.length },
-        el("div", { class: "tl-body" }, el("table", null, el("tbody", null, (c.entries || []).map(entryRow)))))));
+        el("div", { class: "tl-body" }, el("table", null, el("tbody", null, (c.entries || []).map(entryRow))),
+          (S.exch || []).filter((x) => x.chain_id === c.chain_id).slice().reverse().map(exchangeBox)))));
     });
     wrap.appendChild(el("section", { class: "panel" }, table(["When", "Trigger"].concat(TL_COLS.map((x) => x[1])), rows, "pick tl-table")));
     if (pages > 1) wrap.appendChild(pager("bottom"));
@@ -739,6 +763,10 @@
   // ---- learned
   function tabMind(d) {
     const wrap = el("div", { class: "stack" });
+    const runs = (S.exch || []).filter((x) => x.task === "review" || x.task === "second_opinion");
+    wrap.appendChild(panel("How it learns", runs.length || "",
+      el("p", { class: "muted small" }, "After new answers, code gathers the evidence (what was offered, what the person did, how the next days went). Model 1 proposes lessons and questions from it. Model 2 may object. Code keeps only proposals that the evidence supports, and a lesson can only change the order of offers. Open a run to read exactly what each model was sent and what it answered."),
+      runs.length ? el("div", null, runs.slice(0, 12).map((x) => el("div", null, el("span", { class: "muted small num" }, stamp(x.at) + " "), exchangeBox(x)))) : empty("No learning run recorded yet.")));
     const lessons = d.lessons || [];
     wrap.appendChild(panel("Lessons", lessons.length || "", lessons.length ? table(["Lesson", "When", { t: "Evidence", r: 1 }, "Found by", "State"],
       lessons.map((l) => el("tr", null,

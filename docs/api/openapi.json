@@ -1834,6 +1834,139 @@
         }
       }
     },
+    "/v1/clinic/patients/{patient_id}/exchanges": {
+      "get": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "Raw model exchanges: what was sent to a model and what it answered",
+        "description": "Newest first. Each item holds the messages sent, the raw reply (null when the\nmodel did not answer), the model name, the time it took and the trace chain it\nbelongs to. What code did with the reply is in the trace. A note's prompt\ncontains the patient's words; that message is hidden unless the patient shares\ntheir notes.",
+        "operationId": "patient_exchanges_v1_clinic_patients__patient_id__exchanges_get",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "task",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z_]{1,30}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Task"
+            }
+          },
+          {
+            "name": "chain_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Chain Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/clinic/patients/{patient_id}/trace": {
       "get": {
         "tags": [

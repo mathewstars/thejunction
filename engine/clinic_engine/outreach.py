@@ -41,6 +41,7 @@ class Outreach:
     def __init__(self, settings: Settings, transport: httpx.AsyncBaseTransport | None = None):
         self.settings = settings
         self.transport = transport
+        self.recorder = None  # set by the app: keeps the raw exchange for the clinician
 
     def _check_url(self, purpose: str, url: str) -> None:
         parts = urlsplit(url)
@@ -81,6 +82,16 @@ class Outreach:
     async def gemini_complete(self, pack: Pack) -> str | None:
         if not self.gemini_on or pack.level != 2:
             return None
+        import time
+        out, t0 = None, time.monotonic()
+        try:
+            out = await self._level2(pack)
+            return out
+        finally:
+            if self.recorder is not None:
+                self.recorder(pack, out, (time.monotonic() - t0) * 1000, self.level2_model, 2)
+
+    async def _level2(self, pack: Pack) -> str | None:
         try:
             if pack.task == "reading":
                 INPUT_GATE.check_reading_outbound(pack.payload)
