@@ -509,7 +509,7 @@ class AssocOverallReply(_Strict):
                      "opposite_to_expectation", "insufficient_data"]
     confidence: Literal["low", "medium", "high"]
     independent_lines: int = Field(ge=0, le=20)
-    strongest: list[str] = Field(max_length=3)
+    strongest: list[str] = Field(max_length=12)  # code keeps at most three
     leads_reference: bool
     main_alternative: str
     next_step: Literal["collect_more_sessions", "add_reference_rating", "review_tracking_quality",

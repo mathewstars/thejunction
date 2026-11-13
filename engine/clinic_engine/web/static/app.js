@@ -148,6 +148,7 @@
   function parseHash() {
     const parts = (location.hash || "").replace(/^#\/?/, "").split("/").filter(Boolean);
     if (parts[0] === "demo") return { view: "demo", pid: null, tab: "overview" };
+    if (parts[0] === "blueprint") return { view: "blueprint", pid: null, tab: "overview" };
     if ((parts[0] === "p" || parts[0] === "patient") && parts[1]) {
       const tab = TABS.some((t) => t[0] === parts[2]) ? parts[2] : "overview";
       return { view: "patient", pid: decodeURIComponent(parts[1]), tab };
@@ -240,12 +241,14 @@
     const r = S.route;
     $("nav-patients").toggleAttribute("aria-current", false);
     $("nav-demo").toggleAttribute("aria-current", false);
-    (r.view === "demo" ? $("nav-demo") : $("nav-patients")).setAttribute("aria-current", "page");
+    $("nav-blueprint").toggleAttribute("aria-current", false);
+    (r.view === "demo" ? $("nav-demo") : r.view === "blueprint" ? $("nav-blueprint") : $("nav-patients")).setAttribute("aria-current", "page");
     const focusKey = document.activeElement && document.activeElement.getAttribute ? document.activeElement.getAttribute("data-key") : null;
     clear(view);
     if (r.view !== "patient" || !S.detail) clear($("subnav"));
     if (r.view === "patients") view.appendChild(viewPatients());
     else if (r.view === "demo") view.appendChild(viewDemo());
+    else if (r.view === "blueprint") view.appendChild(viewBlueprint());
     else view.appendChild(viewPatient());
     if (focusKey) { const again = view.querySelector('[data-key="' + focusKey + '"]'); if (again) again.focus({ preventScroll: true }); }
   }
@@ -836,6 +839,56 @@
     wrap.appendChild(chat);
     return wrap;
   }
+  // ---- blueprint: how the learning loop works
+  function viewBlueprint() {
+    const wrap = el("div", { class: "stack" });
+    wrap.appendChild(el("div", { class: "head" }, el("h1", null, "How the system learns")));
+    wrap.appendChild(el("p", { class: "lead" }, "The system learns which small things suit one person. A model proposes, code decides. Nothing a model writes reaches the patient, and a lesson can only change the order of offers that we wrote ourselves."));
+    const W = 960, H = 318, BW = 262, BH = 88;
+    const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "bp", role: "img",
+      "aria-label": "The learning loop: the phone sends answers, code gathers evidence, model 1 proposes lessons, code checks them, model 2 may object, accepted lessons go to memory and change the order of the next offers." });
+    const box = (x, y, n, title, l1, l2, cls) => {
+      s.appendChild(svg("rect", { x, y, width: BW, height: BH, rx: 10, class: "bp-box " + cls }));
+      s.appendChild(svg("text", { x: x + 14, y: y + 26, class: "bp-t" }, n + "  " + title));
+      s.appendChild(svg("text", { x: x + 14, y: y + 48, class: "bp-s" }, l1));
+      s.appendChild(svg("text", { x: x + 14, y: y + 66, class: "bp-s" }, l2));
+    };
+    const arrow = (x1, y1, x2, y2, label, lx, ly, anchor) => {
+      s.appendChild(svg("line", { x1, y1, x2, y2, class: "bp-line" }));
+      const ang = Math.atan2(y2 - y1, x2 - x1), hx = (da, len) => (x2 - len * Math.cos(ang + da)).toFixed(1) + "," + (y2 - len * Math.sin(ang + da)).toFixed(1);
+      s.appendChild(svg("polygon", { points: x2 + "," + y2 + " " + hx(0.4, 10) + " " + hx(-0.4, 10), class: "bp-head" }));
+      if (label) s.appendChild(svg("text", { x: lx, y: ly, class: "bp-l", "text-anchor": anchor || "middle" }, label));
+    };
+    const X = [10, 349, 688], Y = [14, 216];
+    box(X[0], Y[0], "1", "The person", "offers answered, sessions played,", "a few words written", "code");
+    box(X[1], Y[0], "2", "Evidence · code", "what was offered, what was done,", "how the next days went", "code");
+    box(X[2], Y[0], "3", "Model 1 proposes", "lessons and up to 3 questions,", "only from lists it is given", "model");
+    box(X[2], Y[1], "4", "Check · code", "every proposal must point at evidence", "that supports it, or it is dropped", "code");
+    box(X[1], Y[1], "5", "Model 2 may object", "weak evidence, contradicts recent days,", "too broad", "model");
+    box(X[0], Y[1], "6", "Memory", "accepted lessons, open questions,", "the person's own rules", "code");
+    arrow(X[0] + BW, Y[0] + BH / 2, X[1], Y[0] + BH / 2, "numbers", (X[0] + BW + X[1]) / 2, Y[0] + BH / 2 - 8);
+    arrow(X[1] + BW, Y[0] + BH / 2, X[2], Y[0] + BH / 2, "anonymous", (X[1] + BW + X[2]) / 2, Y[0] + BH / 2 - 8);
+    arrow(X[2] + BW / 2, Y[0] + BH, X[2] + BW / 2, Y[1], "raw reply", X[2] + BW / 2 + 10, (Y[0] + BH + Y[1]) / 2 + 4, "start");
+    arrow(X[2], Y[1] + BH / 2, X[1] + BW, Y[1] + BH / 2, "kept", (X[1] + BW + X[2]) / 2, Y[1] + BH / 2 - 8);
+    arrow(X[1], Y[1] + BH / 2, X[0] + BW, Y[1] + BH / 2, "not objected", (X[0] + BW + X[1]) / 2, Y[1] + BH / 2 - 8);
+    arrow(X[0] + BW / 2, Y[1], X[0] + BW / 2, Y[0] + BH, "changes only the order of the next offers", X[0] + BW / 2 + 10, (Y[0] + BH + Y[1]) / 2 + 4, "start");
+    wrap.appendChild(el("section", { class: "panel" }, el("figure", { class: "bp-fig" }, s,
+      el("figcaption", { class: "muted small" }, "Amber boxes are models, the others are plain code. The loop runs after new answers arrive and once a day."))));
+    const step = (n, t, body) => el("div", { class: "row" }, el("div", { class: "top" }, el("span", { class: "chip" }, n), el("span", { class: "t" }, t)), el("div", { class: "d" }, body));
+    wrap.appendChild(panel("Step by step", null, el("div", { class: "rows" },
+      step("1", "The person answers", "Each offer ends as did it, not today or no answer. Sessions and daily steps arrive from the phone. Typed words are turned into labels on this server and are never part of learning as text."),
+      step("2", "Code gathers the evidence", "One row per offer: the action, the situation (weekday, time of day, what was held), the answer, and whether the following days were better or worse against the person's own normal. Each row gets a short reference that means nothing outside this one request."),
+      step("3", "Model 1 proposes", "The local model receives those rows and lists of allowed actions, situations and reason codes. It returns lessons of the form “prefer or avoid this action in this situation, because of these rows”, and at most three questions it would like answered."),
+      step("4", "Code checks every proposal", "A lesson is kept only if its rows exist, there are enough of them, and they really point the way the lesson claims. A question already asked is dropped. Anything outside the lists is dropped. Every drop is written to the refusal log with its reason."),
+      step("5", "Model 2 gives a second opinion", "A second model sees the kept lessons with their evidence, with no identity, and can only object with one of three codes. An objection removes the lesson. It cannot add one."),
+      step("6", "Memory and the next offer", "Accepted lessons go into the person's memory. When the next offer is due, code picks from our fixed list of actions; lessons move suited actions up and unsuited ones down. The person's own rules, such as quiet hours, always win."))));
+    wrap.appendChild(el("div", { class: "grid" },
+      panel("A lesson can", null, el("ul", { class: "plain" }, el("li", null, "move an action up or down in the order of offers"), el("li", null, "apply only in the situation it was learned in"), el("li", null, "be withdrawn when later evidence points the other way"))),
+      panel("A lesson cannot", null, el("ul", { class: "plain" }, el("li", null, "add an action that is not on our list"), el("li", null, "write or change any text the person sees"), el("li", null, "open, raise or close attention, or send an alert"), el("li", null, "override the person's own rules")))));
+    wrap.appendChild(panel("See it on real runs", null, el("p", { class: "small" }, "Open a patient, then Learned. “How it learns” lists each run with exactly what each model was sent and what it answered. The Timeline shows the same exchange inside the trigger that caused it, next to what code kept and dropped.")));
+    return wrap;
+  }
+
   // ---- research: how this person's measures moved with the reference
   const R_PATTERN = { consistent_with_worse_state: "Moves as expected when the state is worse", partly_consistent: "Partly as expected",
     no_clear_relation: "No clear relation", opposite_to_expectation: "Opposite to what was expected", insufficient_data: "Not enough data" };
@@ -884,6 +937,19 @@
     return panel("Samples collected", all.length, el("p", { class: "muted small" }, "One row per session from the phone. ▲ ▼ mark a value at least 2 spreads from this person's own usual."),
       el("div", { class: "scroll-x" }, table(heads, rows, "samples")));
   }
+  function caveatCell(r) {
+    const cs = r.caveats || [];
+    if (!cs.length) return el("td", { class: "muted" }, "–");
+    const key = "cav-" + r.key, open = !!S.open[key];
+    return el("td", { class: "cav" },
+      el("button", { type: "button", class: "btn btn-small", "aria-expanded": open ? "true" : "false", "data-key": key,
+        on: { click: () => { Object.keys(S.open).forEach((k) => { if (k.indexOf("cav-") === 0 && k !== key) delete S.open[k]; }); S.open[key] = !open; render(); } } },
+        cs.length + (cs.length === 1 ? " caveat" : " caveats")),
+      open ? el("div", { class: "pop", role: "dialog", "aria-label": "Caveats for " + r.label },
+        el("div", { class: "pop-h" }, r.label),
+        el("ul", { class: "plain" }, cs.map((c) => el("li", null, c.text, el("span", { class: "muted" }, c.by === "model" ? " (named by the model)" : " (added by code)")))),
+        el("button", { type: "button", class: "linklike small", on: { click: () => { delete S.open[key]; render(); } } }, "Close")) : null);
+  }
   function tabResearch(d) {
     const wrap = el("div", { class: "stack" });
     const a = S.assoc;
@@ -891,11 +957,11 @@
       S.demoMsg = ""; flash("Running the appraisal…");
       try { S.assoc = await api("POST", "/v1/clinic/patients/" + encodeURIComponent(d.patient_id) + "/associations/run"); flash(""); } catch (e) { flash(e.message); }
       render();
-    } } }, "Run now");
+    } }, title: "Compute the statistics again from the data held now and ask the model for a new judgement. Takes about 15 seconds." }, "Recalculate");
     if (!a) { wrap.appendChild(empty("Loading…")); return wrap; }
     wrap.appendChild(el("div", { class: "bar" },
       el("span", { class: "muted small" }, a.disclaimer || ""), el("div", { class: "push" }, run)));
-    if (a.status !== "ready") { wrap.appendChild(empty("Not computed yet. Select “Run now”.")); return wrap; }
+    if (a.status !== "ready") { wrap.appendChild(empty("Not computed yet. Select “Recalculate”.")); return wrap; }
     const o = a.overall || {}, ref = a.reference || {}, des = a.design || {}, src = o.sources || {};
     wrap.appendChild(panel("Overall", null,
       el("div", { class: "facts" },
@@ -928,7 +994,7 @@
             el("td", { class: "r num" }, tested && r.lead_days !== null && r.lead_days !== undefined ? (r.lead_days > 0 ? "+" : "") + r.lead_days + " d" : "–"),
             el("td", null, tested ? [el("span", { class: "chip " + (r.agreement === "consistent" ? "good" : r.agreement === "opposite" ? "bad" : "") }, words(r.agreement).toLowerCase() + (r.strength ? ", " + r.strength : "")),
               el("span", { class: "sub" }, SRC[r.agreement_source] || "")] : "–"),
-            el("td", { class: "small muted", title: (r.caveats || []).map((c) => c.text).join(" ") }, (r.caveats || []).map((c) => words(c.code).toLowerCase()).join(", ") || "–"));
+            caveatCell(r));
         }), "assoc")));
     });
     wrap.appendChild(samplesPanel(d));
