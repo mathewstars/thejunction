@@ -27,6 +27,9 @@ from .security import hash_password, issue_token, new_id, sha256_hex
 from .store import Store, make_store
 
 DEMO_LABEL = "Patient A-014"
+# Invented example names, shown only on the clinician page.
+DEMO_DISPLAY_NAME = "Anna K."
+EXTRA_DISPLAY_NAMES = ("Mikko L.", "Sofia R.", "Jari H.", "Elina P.", "Tomas V.")
 DIP_DAYS = 5
 
 
@@ -50,10 +53,15 @@ def create_clinician(store: Store, clinic_id: str, username: str, password: str,
 
 
 def create_patient(store: Store, clinic_id: str, label: str, tz: str, now: datetime,
-                   example: bool, allow_outside: bool = False, share_notes: bool = False) -> str:
+                   example: bool, allow_outside: bool = False, share_notes: bool = False,
+                   display_name: str | None = None) -> str:
+    """`label` is the clinic's code for the person; it is what an alert carries.
+    `display_name` is optional, set by the clinic, and shown only on the clinician page
+    behind its login. It never goes into an alert, a model pack or a log."""
     pid = new_id("pat")
     store.put(f"clinics/{clinic_id}/patients/{pid}/patient.json", {
-        "id": pid, "clinic_id": clinic_id, "label": label, "timezone": tz, "example": example,
+        "id": pid, "clinic_id": clinic_id, "label": label, "display_name": display_name,
+        "timezone": tz, "example": example,
         "allow_outside_processing": allow_outside, "share_notes": share_notes,
         "created_at": now.isoformat()})
     store.put(f"patients/{pid}.json", {"clinic_id": clinic_id, "patient_id": pid})
@@ -368,14 +376,16 @@ def create_demo(store: Store, settings: Settings, now: datetime, extra: int = 0,
     tz = settings.default_timezone
     clinic = create_clinic(store, "Demo clinic", now)
     clinician = create_clinician(store, clinic, username, password, now)
-    patient = create_patient(store, clinic, DEMO_LABEL, tz, now, example=True, allow_outside=True)
+    patient = create_patient(store, clinic, DEMO_LABEL, tz, now, example=True, allow_outside=True,
+                             display_name=DEMO_DISPLAY_NAME)
     device_token = pair_device_direct(store, clinic, patient, "demo device", now)
     admin_token = issue_token(store, "admin", now=now)
     fill_patient(store, clinic, patient, now, seed=14)
     extras = []
     for n in range(extra):
         scen = ("normal", "dip", "silent")[n % 3]
-        pid = create_patient(store, clinic, f"Example B-{21 + n:03d}", tz, now, example=True)
+        pid = create_patient(store, clinic, f"Example B-{21 + n:03d}", tz, now, example=True,
+                             display_name=EXTRA_DISPLAY_NAMES[n % len(EXTRA_DISPLAY_NAMES)])
         fill_patient(store, clinic, pid, now - (timedelta(days=4) if scen == "silent" else timedelta()),
                      seed=100 + n, scenario="dip" if scen == "dip" else "normal", history=False)
         extras.append(pid)

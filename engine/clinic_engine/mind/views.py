@@ -193,6 +193,7 @@ def clinician_line(mind, repo: PatientRepo) -> dict:
         "reason_short": reason_short(view, status, items),
         "spark": spark(view),
         "patient_id": repo.patient_id, "label": patient["label"],
+        "display_name": patient.get("display_name"),
         "example": bool(patient.get("example")), "status": status,
         "level": LEVELS[top] if top >= 0 else None,
         "attention": [{"id": i["id"], "kind": i["kind"], "level": i["level"], "since": i["since"]}

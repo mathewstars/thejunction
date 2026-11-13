@@ -302,7 +302,8 @@
       const since = oldestSince(p);
       return el("tr", { class: "is-" + p.status, on: { click: () => go(href) } },
         el("td", null, statusChip(p.status)),
-        el("td", null, el("a", { href }, p.label), p.example ? el("span", { class: "sub" }, "example data") : null),
+        el("td", null, el("a", { href }, p.display_name || p.label),
+          el("span", { class: "sub" }, [p.display_name ? p.label : null, p.example ? "example data" : null].filter(Boolean).join(" · "))),
         el("td", null, reasonShort(p), " ", levelChip(p.level)),
         el("td", { class: "num" }, since ? held(since, today) : "–"),
         hasSpark ? el("td", null, Array.isArray(p.spark) ? spark(p.spark) : "–") : null,
@@ -320,7 +321,7 @@
     if (!d) { wrap.appendChild(empty("Loading…")); return wrap; }
     const today = (d.progress && d.progress.today) || todayStr();
     wrap.appendChild(el("div", { class: "head" },
-      el("h1", null, d.label), statusChip(d.status), levelChip(d.level),
+      el("h1", null, d.display_name || d.label), d.display_name ? el("span", { class: "muted" }, d.label) : null, statusChip(d.status), levelChip(d.level),
       d.example ? el("span", { class: "chip tag" }, "example data") : null,
       el("div", { class: "push" }, el("span", { class: "muted small" }, "Last data " + ago(d.last_data_day, today)), refreshBtn())));
     const tabs = el("div", { class: "tabs", role: "tablist", "aria-label": "Patient sections" });
