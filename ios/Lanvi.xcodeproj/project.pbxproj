@@ -1,0 +1,367 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CA1C956F7514A490E2C77E /* Theme.swift */; };
+		43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856CB611495D91BE8B81E2D4 /* WelcomeView.swift */; };
+		471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4534A11EF57C9E6ACC5030B /* HomeView.swift */; };
+		A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */; };
+		B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA73738285D12F12C9ADB24B /* Chunky.swift */; };
+		DDD5D6ED52809D10373598F9 /* SkyScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A53ADD818B703E6EC089EFE /* SkyScene.swift */; };
+		E2EA7F75523F7FE49830A106 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */; };
+		F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		11CA1C956F7514A490E2C77E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		248059A5DA624F501FEE521B /* Lanvi.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lanvi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviApp.swift; sourceTree = "<group>"; };
+		856CB611495D91BE8B81E2D4 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		9A53ADD818B703E6EC089EFE /* SkyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyScene.swift; sourceTree = "<group>"; };
+		BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviView.swift; sourceTree = "<group>"; };
+		CA73738285D12F12C9ADB24B /* Chunky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chunky.swift; sourceTree = "<group>"; };
+		E4534A11EF57C9E6ACC5030B /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		34E5733CDBCA97363404C909 /* Mascot */ = {
+			isa = PBXGroup;
+			children = (
+				BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */,
+			);
+			path = Mascot;
+			sourceTree = "<group>";
+		};
+		36B552B215523292A0F4EB76 /* Design */ = {
+			isa = PBXGroup;
+			children = (
+				CA73738285D12F12C9ADB24B /* Chunky.swift */,
+				9A53ADD818B703E6EC089EFE /* SkyScene.swift */,
+				11CA1C956F7514A490E2C77E /* Theme.swift */,
+			);
+			path = Design;
+			sourceTree = "<group>";
+		};
+		3F0EBB194C53EDDC4A2C5862 /* Lanvi */ = {
+			isa = PBXGroup;
+			children = (
+				EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */,
+				4F606C670065BC511016C9E0 /* App */,
+				36B552B215523292A0F4EB76 /* Design */,
+				34E5733CDBCA97363404C909 /* Mascot */,
+				F0A030A22324AB7E17D462AE /* Screens */,
+			);
+			path = Lanvi;
+			sourceTree = "<group>";
+		};
+		3FC900789D97517605FE2E00 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				248059A5DA624F501FEE521B /* Lanvi.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		3FDFC24BB2362B33AAB64101 = {
+			isa = PBXGroup;
+			children = (
+				3F0EBB194C53EDDC4A2C5862 /* Lanvi */,
+				3FC900789D97517605FE2E00 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4F606C670065BC511016C9E0 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		F0A030A22324AB7E17D462AE /* Screens */ = {
+			isa = PBXGroup;
+			children = (
+				E4534A11EF57C9E6ACC5030B /* HomeView.swift */,
+				856CB611495D91BE8B81E2D4 /* WelcomeView.swift */,
+			);
+			path = Screens;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		10898CC770015E851A7CB1E7 /* Lanvi */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BD0EB4F98DD1E091886F773B /* Build configuration list for PBXNativeTarget "Lanvi" */;
+			buildPhases = (
+				E5C7F7C9206C9613B2737DF2 /* Sources */,
+				2C2271AFF0A56B9E310F530F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Lanvi;
+			packageProductDependencies = (
+			);
+			productName = Lanvi;
+			productReference = 248059A5DA624F501FEE521B /* Lanvi.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1DECB0257BF1641BC0C7ACF9 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = CF81EC83B365D501DC8D50BB /* Build configuration list for PBXProject "Lanvi" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 3FDFC24BB2362B33AAB64101;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 3FC900789D97517605FE2E00 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				10898CC770015E851A7CB1E7 /* Lanvi */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		2C2271AFF0A56B9E310F530F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E2EA7F75523F7FE49830A106 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E5C7F7C9206C9613B2737DF2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */,
+				471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */,
+				A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */,
+				F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */,
+				DDD5D6ED52809D10373598F9 /* SkyScene.swift in Sources */,
+				20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */,
+				43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		508D4D4C556DB56F8EACAA50 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		555E194A5A0A2E5EB1D5522D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Lanvi;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lanvi.Lanvi;
+				PRODUCT_NAME = Lanvi;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		922970F5DEBD0601D8E41D52 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		BE7CA044E12E7315165FB3F0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Lanvi;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lanvi.Lanvi;
+				PRODUCT_NAME = Lanvi;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BD0EB4F98DD1E091886F773B /* Build configuration list for PBXNativeTarget "Lanvi" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				555E194A5A0A2E5EB1D5522D /* Debug */,
+				BE7CA044E12E7315165FB3F0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CF81EC83B365D501DC8D50BB /* Build configuration list for PBXProject "Lanvi" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				922970F5DEBD0601D8E41D52 /* Debug */,
+				508D4D4C556DB56F8EACAA50 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 1DECB0257BF1641BC0C7ACF9 /* Project object */;
+}
