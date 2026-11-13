@@ -4,7 +4,11 @@ import SwiftUI
 struct LanviApp: App {
     var body: some Scene {
         WindowGroup {
-            RootView()
+            if UserDefaults.standard.string(forKey: "screen") == "focus" {
+                FocusGameView { print("focus: done \(String(describing: $0))") }
+            } else {
+                RootView()
+            }
         }
     }
 }
