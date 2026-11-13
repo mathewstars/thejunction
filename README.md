@@ -52,4 +52,6 @@ Live: https://gridzilla.victronlab.sk (site at `/`, operator console at `/consol
 
 ## Layout
 
-Nothing yet. Suggested once we start: `docs/` for the challenge brief and pitch, one top-level folder per component.
+- `astrazeneca/` — the AstraZeneca challenge "Equal Care Across Finland": brief, judging criteria and Goal 3 indicators in `CHALLENGE.md`, plus the strategy, roadmap and link list they provided.
+
+Suggested once we start building: `docs/` for the pitch, one top-level folder per component.
