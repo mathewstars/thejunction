@@ -17,7 +17,9 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            if onHome {
+            if UserDefaults.standard.string(forKey: "screen") == "breathe" {
+                BreatheView { _ in }
+            } else if onHome {
                 HomeView(demo: demo)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             } else {

@@ -29,3 +29,4 @@ DerivedData/
 
 # iCloud conflict copies ("name 2.ext")
 * 2.*
+build/

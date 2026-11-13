@@ -10,18 +10,24 @@
 		20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CA1C956F7514A490E2C77E /* Theme.swift */; };
 		43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856CB611495D91BE8B81E2D4 /* WelcomeView.swift */; };
 		471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4534A11EF57C9E6ACC5030B /* HomeView.swift */; };
+		942A29C36871C91B6C4230BA /* BreathePieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29013F2F7831D454F4237DF1 /* BreathePieces.swift */; };
 		A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */; };
 		B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA73738285D12F12C9ADB24B /* Chunky.swift */; };
+		B6A861C26917D5B2F511CE9C /* BreatheResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B1F65C7973CFFB5D41825 /* BreatheResult.swift */; };
 		DDD5D6ED52809D10373598F9 /* SkyScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A53ADD818B703E6EC089EFE /* SkyScene.swift */; };
 		E2EA7F75523F7FE49830A106 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */; };
+		EEDB19C869011580DA5780AC /* BreatheView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E9EB5764D665F8A8B7399B /* BreatheView.swift */; };
 		F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		11CA1C956F7514A490E2C77E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		248059A5DA624F501FEE521B /* Lanvi.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lanvi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		29013F2F7831D454F4237DF1 /* BreathePieces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreathePieces.swift; sourceTree = "<group>"; };
+		455B1F65C7973CFFB5D41825 /* BreatheResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheResult.swift; sourceTree = "<group>"; };
 		590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviApp.swift; sourceTree = "<group>"; };
 		856CB611495D91BE8B81E2D4 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		98E9EB5764D665F8A8B7399B /* BreatheView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheView.swift; sourceTree = "<group>"; };
 		9A53ADD818B703E6EC089EFE /* SkyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyScene.swift; sourceTree = "<group>"; };
 		BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviView.swift; sourceTree = "<group>"; };
 		CA73738285D12F12C9ADB24B /* Chunky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chunky.swift; sourceTree = "<group>"; };
@@ -30,6 +36,16 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		0D7E93C8CF5FB597A3B43917 /* Breathe */ = {
+			isa = PBXGroup;
+			children = (
+				29013F2F7831D454F4237DF1 /* BreathePieces.swift */,
+				455B1F65C7973CFFB5D41825 /* BreatheResult.swift */,
+				98E9EB5764D665F8A8B7399B /* BreatheView.swift */,
+			);
+			path = Breathe;
+			sourceTree = "<group>";
+		};
 		34E5733CDBCA97363404C909 /* Mascot */ = {
 			isa = PBXGroup;
 			children = (
@@ -89,6 +105,7 @@
 			children = (
 				E4534A11EF57C9E6ACC5030B /* HomeView.swift */,
 				856CB611495D91BE8B81E2D4 /* WelcomeView.swift */,
+				0D7E93C8CF5FB597A3B43917 /* Breathe */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
@@ -160,6 +177,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				942A29C36871C91B6C4230BA /* BreathePieces.swift in Sources */,
+				B6A861C26917D5B2F511CE9C /* BreatheResult.swift in Sources */,
+				EEDB19C869011580DA5780AC /* BreatheView.swift in Sources */,
 				B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */,
 				471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */,
 				A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */,
