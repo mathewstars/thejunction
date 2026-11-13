@@ -178,7 +178,7 @@
         const base = "/v1/clinic/patients/" + encodeURIComponent(r.pid);
         if (force || !S.detail) S.detail = await api("GET", base);
         if (r.tab === "timeline" && (force || !S.trace)) {
-          try { S.trace = await api("GET", base + "/trace?limit=200"); } catch (e) { S.trace = await api("GET", base + "/trace"); }
+          try { S.trace = await api("GET", base + "/trace?limit=100"); } catch (e) { S.trace = await api("GET", base + "/trace"); }
         }
       }
       flash("");
@@ -585,7 +585,14 @@
       if (layer === "watchers") out.push(e.code === "fired" ? el("span", { class: "chip l-attention" }, "fired") : el("span", { class: "muted" }, words(e.code).toLowerCase()));
       else if (layer === "attention") out.push(el("span", { class: "chip l-" + (d.level || "watch") }, icon(e.code === "raised" ? "up" : LEVEL_ICON[d.level] || "ring"), kind(d.kind) + " " + e.code));
       else if (layer === "response") out.push(e.code === "suggested" ? el("span", { class: "chip good" }, icon("diamond"), action(d.action)) : el("span", { class: "muted" }, words(d.reason || e.code).toLowerCase()));
-      else if (layer === "level1" || layer === "level2") out.push(/refus/.test(e.code) ? el("span", { class: "chip bad" }, "refused" + (d.reason ? ": " + words(d.reason).toLowerCase() : "")) : el("span", { class: e.code === "off" ? "muted" : null }, words(e.code).toLowerCase()));
+      else if (layer === "level1" || layer === "level2") {
+        const task = d.task ? words(d.task).toLowerCase() + ": " : "";
+        const why = Array.isArray(d.reasons) && d.reasons.length ? d.reasons : d.reason ? [d.reason] : [];
+        const whyText = why.length ? " (" + Array.from(new Set(why)).map((w) => words(w).toLowerCase()).join(", ") + ")" : "";
+        if (e.code === "partly_refused") out.push(el("span", null, task + "kept part, dropped " + why.length + whyText));
+        else if (/refus/.test(e.code)) out.push(el("span", { class: "chip bad" }, task + "refused" + whyText));
+        else out.push(el("span", { class: e.code === "off" ? "muted" : null }, task + words(e.code).toLowerCase()));
+      }
       else if (layer === "notifier") out.push(e.code === "sent" ? el("span", { class: "chip l-urgent" }, icon("dot"), "sent") : el("span", null, words(e.code).toLowerCase()));
       else if (layer === "learning") out.push(el("span", null, d.accepted && d.accepted.length ? d.accepted.length + " lesson" + (d.accepted.length > 1 ? "s" : "") : words(e.code).toLowerCase()));
     });
