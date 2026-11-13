@@ -297,7 +297,7 @@
     if (!list.length) { wrap.appendChild(empty("No patients yet.")); return wrap; }
     const hasSpark = list.some((p) => Array.isArray(p.spark));
     const heads = ["Status", "Patient", "Why", "Held", hasSpark ? "28 days" : null, "Last data"].filter(Boolean);
-    const rows = list.map((p) => {
+    const rowOf = (p) => {
       const href = "#/p/" + encodeURIComponent(p.patient_id);
       const since = oldestSince(p);
       return el("tr", { class: "is-" + p.status, on: { click: () => go(href) } },
@@ -308,8 +308,31 @@
         el("td", { class: "num" }, since ? held(since, today) : "–"),
         hasSpark ? el("td", null, Array.isArray(p.spark) ? spark(p.spark) : "–") : null,
         el("td", { class: "num" }, ago(p.last_data_day, today)));
-    });
-    wrap.appendChild(el("section", { class: "panel" }, table(heads, rows, "pick")));
+    };
+    // Search and paging redraw only the table, so the search box keeps its focus.
+    const hay = (p) => [p.display_name, p.label, STATUS[p.status], p.reason_short].filter(Boolean).join(" ").toLowerCase();
+    const body = el("div"), info = el("span", { class: "muted small num" });
+    const prev = el("button", { type: "button", class: "btn btn-small", "data-key": "pl-prev" }, "← Previous");
+    const next = el("button", { type: "button", class: "btn btn-small", "data-key": "pl-next" }, "Next →");
+    const draw = () => {
+      const terms = (S.q || "").toLowerCase().split(/\s+/).filter(Boolean);
+      const found = list.filter((p) => { const h = hay(p); return terms.every((t) => h.indexOf(t) >= 0); });
+      const pages = Math.max(1, Math.ceil(found.length / PATIENTS_PAGE));
+      S.ppage = Math.min(Math.max(S.ppage || 0, 0), pages - 1);
+      const from = S.ppage * PATIENTS_PAGE, shown = found.slice(from, from + PATIENTS_PAGE);
+      info.textContent = found.length ? (from + 1) + "–" + (from + shown.length) + " of " + found.length : "0 of " + list.length;
+      prev.disabled = S.ppage === 0; next.disabled = S.ppage >= pages - 1;
+      body.replaceChildren(found.length ? el("section", { class: "panel" }, table(heads, shown.map(rowOf), "pick"))
+        : empty("No patient matches “" + S.q + "”."));
+    };
+    prev.addEventListener("click", () => { S.ppage -= 1; draw(); });
+    next.addEventListener("click", () => { S.ppage += 1; draw(); });
+    const box = el("input", { type: "search", class: "search", placeholder: "Search by name, code or status", "aria-label": "Search patients", "data-key": "pl-search" });
+    box.value = S.q || "";
+    box.addEventListener("input", () => { S.q = box.value; S.ppage = 0; draw(); });
+    wrap.appendChild(el("div", { class: "bar" }, box, el("div", { class: "push pager" }, prev, info, next)));
+    wrap.appendChild(body);
+    draw();
     return wrap;
   }
 
@@ -577,6 +600,7 @@
   }
   const TL_COLS = [["watchers", "Watchers"], ["attention", "Attention"], ["response", "Response"], ["level1", "Model 1"], ["level2", "Model 2"], ["notifier", "Alert"], ["learning", "Learning"]];
   const PAGE = 15;
+  const PATIENTS_PAGE = 10;
   function layerCell(c, layer) {
     const es = (c.entries || []).filter((e) => e.layer === layer);
     if (!es.length) return el("span", { class: "muted" }, "–");
