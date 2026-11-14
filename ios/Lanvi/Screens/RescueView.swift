@@ -25,6 +25,7 @@ struct RescueView: View {
     @State private var wakeTick = 0
     @State private var shakeOff: Date?
     @State private var holdTask: Task<Void, Never>?
+    @State private var kitCenter: CGPoint = .zero
 
     var body: some View {
         GeometryReader { geo in
@@ -109,6 +110,8 @@ struct RescueView: View {
             }
             .contentShape(Rectangle())
             .gesture(holdGesture(kit: kit, kitW: kitW))
+            .onAppear { kitCenter = kit }
+            .onChange(of: geo.size) { _, _ in kitCenter = kit }
         }
         .sensoryFeedback(.impact(weight: .light, intensity: 0.6), trigger: heartbeat)
         .sensoryFeedback(.success, trigger: wakeTick)
@@ -119,8 +122,7 @@ struct RescueView: View {
             withAnimation(LanviTiming.screen) { showHint = true }
             if auto {
                 try? await Task.sleep(for: .milliseconds(1200))
-                touch = CGPoint(x: 0, y: 0)
-                beginHold(at: nil)
+                beginHold(at: kitCenter)
             }
         }
     }

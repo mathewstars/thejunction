@@ -8,7 +8,7 @@ struct HealthAskView: View {
     var onFinished: () -> Void
 
     @State private var pose: LanviPose = .curious
-    @State private var line = "I only look at how much you move and sleep. Never your messages, photos or location."
+    @State private var line = "Can I see how much you move and sleep? It helps me know how you are."
     @State private var bounce = 0
     @State private var busy = false
     @State private var thanked = false

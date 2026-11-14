@@ -76,7 +76,8 @@ struct RootView: View {
                 switch step {
                 // Every first-run step arrives the same calm way: it rises a little and fades in.
                 case .welcome:
-                    WelcomeView(demo: demo) { go(demo ? .home : (store.needsPairing ? .pair : .helps)) }
+                    // The opening is the rescue: a kit alone in the snow, warmed by holding him.
+                    RescueView(auto: demo || flow) { go(demo ? .home : (store.needsPairing ? .pair : .helps)) }
                         .transition(LanviTiming.arrive)
                 case .pair:
                     PairView { go(welcomedBefore ? .home : .helps) }
@@ -93,11 +94,6 @@ struct RootView: View {
         .task {
             // Pair and load while the welcome is showing.
             await store.start()
-        }
-        .task {
-            guard demo || flow else { return }
-            try? await Task.sleep(for: .seconds(flow ? 3.5 : 4.2))
-            go(flow ? .helps : .home)
         }
         .onAppear {
             // Already through the welcome before, but this phone is not paired (a new

@@ -422,10 +422,16 @@ struct HomeView: View {
     }
 
     /// Lanvi's one line. When today's thing is done, it says so.
+    /// In the care voice: Lanvi asks for today's thing; after an activity, the
+    /// server's line; when it is done, glad you came; never guilt, never a countdown.
     private var bubbleText: String {
-        if case .done(let d) = store.todayThing, !d.restful, !celebrating {
-            return "That's our thing for today."
+        if celebrating { return store.line.isEmpty ? " " : store.line }
+        if case .done(let d) = store.todayThing {
+            return d.restful ? "That's all right. I'm here." : "That was our thing for today. I'm glad you came."
         }
+        if store.backAfterGap { return "I kept a spot warm for you." }
+        if let s = store.suggestion { return s.text }          // the server's own words
+        if case .game(let k) = store.todayThing { return TodayCopy.ask(k, firstTime: store.firstTime) }
         return store.line.isEmpty ? " " : store.line
     }
 
