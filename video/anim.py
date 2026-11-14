@@ -72,7 +72,7 @@ def check(t, beats):
     for i in range(0, int(upto) + 1, 3): pts.append((X(i / RATE), Y(SMILE[i])))
     if len(pts) > 1: g.line(pts, fill=INK, width=3 * S, joint="curve")
     heads = [("Rules notice a change.", "Plain rules we can explain raise each flag."),
-             ("Two models weigh it.", "A small local model and Gemini: agree, raise or lower."),
+             ("Two models weigh in.", "A small local model and Gemini: agree, raise or lower."),
              ("Code checks every claim.", "What the numbers don't support is dropped.")]
     for k, (hd, sub) in enumerate(heads):
         if t < beats[k]: continue
