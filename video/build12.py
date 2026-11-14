@@ -165,9 +165,14 @@ def reveal(d):
     run(["-i", o, "-vf", f"fade=t=out:st={d - 0.45:.3f}:d=0.45:color={AURORA}", "-t", str(d)] + V + [o.replace(".mp4", "_f.mp4")]); os.replace(o.replace(".mp4", "_f.mp4"), o)
 def app_from_light(d):
     phone(A("home"), d, ss=1.0); from_light(f"seg8/{n[0]:03d}.mp4", d)
-def nurse_shot(d):
-    ss, _ = rule("nurse", d, 0.0)
-    windows(C("nurse"), d, [("w_tg.png", 0.3, 2.2), ("w_anna.png", 2.0, d + 0.3)], ss=ss, wfade=0.5)
+def win_shot(k, d, png, a, ss=0.0, slide=0):
+    """One footage shot with one framed window over it for the whole shot: it comes in at `a` (sliding up by `slide` px if asked) and fades out just before the cut."""
+    ss, _ = rule(k, d, ss); o = out()
+    y = f"if(lt(t,{a + 0.7}),{slide}*pow(1-(t-{a})/0.7,2),0)" if slide else "0"
+    vf = (f"[0:v]scale=1280:720,fps=24,eq=brightness=-0.10[b];[1:v]format=rgba,fade=t=in:st={a}:d=0.5:alpha=1,fade=t=out:st={d - 0.45:.3f}:d=0.4:alpha=1[w];"
+          f"[b][w]overlay=x=0:y='{y}':eval=frame:enable='gte(t,{a})'[x];[x][2:v]overlay=0:0[v]")
+    run(["-ss", str(ss), "-i", C(k), "-loop", "1", "-t", str(d), "-i", png, "-i", f"{OLD}/tag_gen.png", "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
+def nurse_shot(d): win_shot("nurse", d, "w_tg.png", 0.25, slide=110)       # the alert slides up and stays for the whole shot
 GETUP_SS = 3.4; PICK_SS = 0.6
 # v12: the v11 film on a take that pauses between sentences (v12/track12.m4a, Suno song 69f1fc08).
 text_png("c11_a.png", [("This is not a habit tracker.", 58, 190, INK)], bg=(11, 19, 30, 165))
@@ -186,7 +191,7 @@ at(45.8, lambda d: screen("v12/check.mp4", d))                                  
 at(59.5, lambda d: fclip("november", d, ss=0.05))
 at(63.9, lambda d: fclip("night", d, cap=("cap_help.png", 1.9)))
 at(68.0, nurse_shot)                                        # "Her words reach her clinic."
-at(72.0, lambda d: fclip("nurse2", d, ss=0.2))              # "Next morning, her nurse calls."
+at(72.0, lambda d: win_shot("nurse2", d, "w_anna_left.png", 0.3, ss=0.2))              # "Next morning, her nurse calls."
 at(76.0, lambda d: fclip("call", d))                        # "Anna, I read your note. I'm here."
 at(80.95, lambda d: fclip("return", d, ss=0.0))             # "This time, she doesn't wait six weeks."
 at(85.9, lambda d: card("c_brand6.png", d, fade=0.8))
