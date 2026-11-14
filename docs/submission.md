@@ -12,10 +12,10 @@ The platform does not read this file. After a change here, the same change has t
 |---|---|---|
 | Project name | 30 characters | Lanvi |
 | Punchline | 200 characters | See below (155 characters) |
-| Description | 5,000 characters | See below (4,919 characters) |
+| Description | 5,000 characters | See below (4,997 characters) |
 | Challenge | one | Aalto University, Beyond the Clinic |
 | Tech challenge | any number | Google DeepMind, Best Use of Gemini API |
-| Project demo | link | https://lanvi.app |
+| Project demo | link | https://lanvi.app/demo (no login, read only; https://lanvi.app itself needs a login, which is no longer published) |
 | Source code | link | https://github.com/mathewstars/thejunction |
 | Video | public link, at most 2:00 | the film is ready (1:49); the link is missing until it is uploaded |
 | Other link | link | empty |
@@ -37,59 +37,44 @@ Lanvi helps people stay well at home after depression treatment. It learns each 
 
 ## Description
 
-Plain text on purpose. The form says it supports markdown, but we keep it without markdown symbols so it reads the same everywhere.
+Plain text on purpose. The form says it supports markdown, but we keep it without markdown symbols so it reads the same everywhere. Rewritten on Saturday night at Matej's word: brief on the clinic software, long on the AR research and on how the mind was tested; the film carries the whole prototype.
 
 ```
-THE PROBLEM
+IN SHORT
 
-TMS helps many people with severe depression, but it means daily clinic visits. When they end, the risk of relapse stays, and at home there's no scan and no psychiatrist. Relapse rarely starts with a crisis. It starts with a few quieter days: fewer steps, slower walking, broken sleep. Nobody notices them in time.
+After TMS treatment for depression the clinic visits end and nobody is looking. Lanvi is a small Arctic fox on the phone that asks for one small thing a day. Behind it the phone keeps count in numbers only, each person is compared with their own normal, and a clinic page shows who has drifted. The film shows the whole prototype. This text is about the two parts we tested hardest: what the camera and the game measure, and the mind that decides what the clinic hears.
 
-THE RECOVERY CYCLE
+THE AR RESEARCH
 
-Lanvi stays with the person through good weeks and dips, and steps in early.
+During the 90-second game and the breathing minute, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. The server computes 18 measures from them: smiles and whether they reach the eyes, blinks, gaze down, brows, lip corners, how much the face moves at all.
 
-1. It learns their normal. Steps, walking speed and sleep come from Apple Health, and each day is compared with that person's own last four weeks.
-2. It notices the drift: three low days out of five, going quiet, or skipping what it suggests.
-3. It answers with one small thing, picked from what the person prefers and what helped before.
-4. It brings in the clinic when needed: one short "needs review" message.
-5. It lets go when they're back: after three days in a row near their normal, or once a clinician has looked.
-6. It remembers what worked and starts with that next time.
+The game, Revontulet, is built from tasks with a study behind them: a choice between an easy and a hard shot (effort for reward), a traced half circle (drawing speed and lifts), reaction time to embers, and slow strokes over the sleeping fox (swipe speed). Each number is compared only with that person's own earlier games.
 
-THE MIND
+Two readers go through every face session: a fixed rule in code, and Gemini, whose every reported smile is checked against the numbers. We tested both on sessions we generated with smiles planted at known places. On ten hard sessions, with talking and a moving phone, the fixed rule found 20 of 28 clear smiles and none of 13 faint ones. A simple rule relative to the person's own rest found them all but also reported 22 things that were not smiles. Gemini found all 41 and reported nothing else; across 50 sessions it did the same. Gemini had been told what talking looks like and the rules had not, and generated data is cleaner than a face. Step one of the study is the same count on real recordings marked by two people.
 
-Behind the fox is what we call the mind, in three layers. Plain rules that we can explain notice when something changes and raise a flag. Two models then weigh how much it matters: a small one on the clinic's own hardware sets the level and Gemini, as the second reader, agrees, raises or lowers. Plain code guards both: every answer has a fixed form, a request for help is always urgent and never waits for a model, no model can lower a flag the rules hold at "needs review today" or go more than one step below the rules, and the rules' own level applies whenever no model answers. A clinician can also write a rule for one person in their own words ("planned rest after surgery, lower movement only needs watching"); the clinic's own model reads it, the flag shows the rule and who wrote it, and the words never leave the clinic's server. We checked it on 40 generated pictures read by the real models: a worse picture never got a lower level (0 of 107 flags). We also report what did not flatter us: Gemini agreed with the first model on 370 of 372 readings, and the same picture read twice differed on 6 of 107 flags. The Blueprint section "The mind" has every number and the repository has every reading. Attention, memory and learning: Small watchers check every new day, activity or note, and once something needs attention Lanvi holds on to it until things really recover. One good day doesn't make it forget a slow slide.
+We fixed 24 hypotheses before any data: which way each measure should move when symptoms are worse (three were redefined when the game changed). For each person the server computes a rank correlation between every measure and their PHQ-9, one observation per rating, with a bootstrap interval, a permutation test and a correction for many measures. For an example person whose score stayed stable, the page says there is too little change to tell.
 
-It has two kinds of memory: the person's own rules, like "not before 9", which come first, and the lessons it learns about what helps them. Each lesson is checked against the person's real data, and they can see it and say "not true".
+TESTING THE MIND
 
-WHAT THE PERSON SEES
+The mind has three layers. Plain rules we can explain notice a change and raise a flag. Two models weigh it: a small one on the clinic's own hardware sets how soon someone should look, and Gemini, as second reader, agrees, raises or lowers by one step. Plain code guards both: a request for help is always urgent and waits for no model, no model can lower a flag the rules hold at "needs review today", and the rules' level stands when no model answers. A clinician can write a rule for one person in plain words; the clinic's own model reads it and the words never leave the clinic's server.
 
-A small Arctic fox called Lanvi whose tail glows. In Finland the northern lights are called fox fires. Lanvi grows as the person looks after themselves and never makes them feel guilty, even after a week away. The activities take a minute or less:
+We checked it on 40 generated cases read by the real models: each as it is, a second time, strictly worse, and with a clinic rule.
 
-Sparks and snow, a short focus game.
-Breathe with Lanvi, one minute of slow breathing.
-Evening check-in, three good things from today and one for tomorrow.
+Worse never meant lower: 0 of 107 flags.
+The models respond to severity: of 88 flags the rules level the same in both cases, they set 33 higher and none lower.
+Where they differ from the rules as the cases stand, they only lower: 12 of 107, by one step.
+The clinic rule was applied to the flag it was about in 20 of 20 cases and named on no other.
+What does not flatter us: the same case read twice changed on 7 of 107 flags, and Gemini agreed in 369 of 372 readings, so far a second signature more than a second opinion.
 
-During the first two, if the person allows it, the front camera notices how their face moves. No photo or video is saved.
+The check earned its place the night before the deadline. On a case with six open flags the local model ignored a clinic rule, 0 of 4. We changed one paragraph of its instruction, got 6 of 6, and the full check then showed our first, larger rewrite had made the model more timid everywhere else, so we kept the small change. The check's output is in the repository.
 
-FOR THE CLINICIAN
+THE CLINIC SOFTWARE, BRIEFLY
 
-One page with a line per patient. Those who have drifted from their normal are on top, with a short plain summary. For urgent cases the clinician gets an alert the same day, with a case label and a link and no health data in it. For each patient the clinician can also read, step by step, why the system did what it did.
-
-HOW IT USES AI
-
-Two models work behind Lanvi, and neither is in charge. A small model on the clinic's own hardware does the everyday work: it words Lanvi's suggestion and sorts a typed note into a few labels.
-
-Gemini does the harder reading. ARKit turns the front camera into numbers about how the face moves; no picture leaves the phone. Plain code counts smiles and blinks with a fixed rule. Gemini reads the same numbers and reports each smile with its start and end, judged against that person's own resting level. Code then checks every item Gemini reports. On 50 sessions we generated with smiles planted at known places, Gemini reported every planted smile and nothing else. That shows how the readers handle a known signal, not how well they read a person. Gemini reads the last weeks of daily Apple Health numbers the same way and names the stretches that changed, including a slow slide that never crosses our fixed rule on a single day. Code checks each one. When Gemini catches something the fixed rules missed and code confirms it in the numbers (a slow decline in the daily numbers, or smiles that have become faint), the clinic gets a low-level flag: noticed by the model, confirmed by code.
-
-SAFETY
-
-What Lanvi offers comes from a short list we wrote ourselves, and plain code picks from it. Everything a model returns is checked before it is used, and what fails is logged where the clinician can read it. Lanvi's lines are fixed, so it can't drift into giving advice.
-
-Gemini gets numbers only, with no name, date or text, and only when the patient's record allows outside processing (the clinic sets that with the patient). Typed notes stay on the clinic's server, except in an optional chat mode, off by default, where a note that does not ask for help goes to Gemini without any name or id. If a note sounds like someone needs help, the help screen opens straight away and the clinic hears the same day. Lanvi doesn't diagnose. It tells the clinician that something changed.
+One page: a line per patient, those who drifted on top, every flag with what the rules, the local model and Gemini each said, a timeline of every decision with exactly what was sent to a model, and the research page. It is open at lanvi.app/demo with no login, read only. Signing in is needed only to change something.
 
 WHAT IS REAL AND WHAT IS NOT
 
-This is a weekend prototype, not a validated measure. Live at lanvi.app: the server and clinician page, the rules with their record of every decision, the local model, Gemini reading the face and daily numbers, and the same-day alert. The patients on the page are examples with invented names and simulated histories, and the page says so; the model answers shown are real. Nothing has been tested with patients, and nothing here shows that these measures follow depression. That is the study we would like to run with Aalto: about thirty people after TMS, twelve weeks, each compared only with themselves.
+A weekend prototype, not a validated measure. Live: the server, the clinician page, both models, the same-day alert. One team member's iPhone has sent real games, face numbers and Apple Health days through the whole path. The other people on the page are generated examples and the page says so. Nothing is tested with patients, and nothing here shows these measures follow depression. That is the study we want to run with Aalto: about thirty people after TMS, twelve weeks, each compared only with themselves.
 
 BUILT WITH
 

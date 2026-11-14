@@ -40,7 +40,7 @@ What an install sends (games, face numbers and, if you allow it, Apple Health da
 
 Rules we can explain notice a change and raise a flag. Two models weigh it: the clinic's own small model sets how soon someone should look, and Gemini agrees, raises or lowers. Plain code guards both, and a request for help never waits for a model.
 
-On 40 generated cases read by the real models, a worse case never got a lower level (0 of 107 flags). The same case read twice changed on 6 of 107.
+On 40 generated cases read by the real models, a worse case never got a lower level (0 of 107 flags). The same case read twice changed on 7 of 107.
 
 - Explained with a live example: https://lanvi.app/demo#/blueprint/mind
 - Code: [`engine/clinic_engine/mind/`](engine/clinic_engine/mind/) (start with `watchers.py`, `triage.py`, `gates.py`)
