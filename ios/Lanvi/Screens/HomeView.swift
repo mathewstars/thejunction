@@ -501,8 +501,6 @@ struct HomeView: View {
         }
     }
 
-    }
-
     /// Back from the wandering: Lanvi runs in from the side, then looks up, a story to tell.
     private func runIn() {
         let w = max(size.width, 400)
