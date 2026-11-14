@@ -47,12 +47,6 @@ enum Rig {
     /// The head turns low in its neck stub, under the chin, so tilting never opens a gap.
     static let head = Part(name: "head", center: CGPoint(x: 1086, y: 832), scale: 1.5, pivot: UnitPoint(x: 0.5, y: 0.85))
 
-    /// The head's neck stub fades out from here to here (0...1 of the head's height),
-    /// so the stub melts into the chest instead of drawing a collar line.
-    static let neckFade: (from: CGFloat, to: CGFloat) = (575.0 / 749, 650.0 / 749)
-    /// The front legs fade in over their top part, so they grow out of the chest fur.
-    static let legFade: CGFloat = 0.42
-
     /// The tail's second joint (0...1 of the tail): the tip turns around it a beat late.
     static let tailMid = UnitPoint(x: 0.55, y: 0.55)
 
@@ -83,8 +77,8 @@ enum Rig {
 
 // MARK: - Face pieces
 
-/// Eye pairs from the face sheet. Each pair is one image, drawn as two halves so each
-/// eye sits on its own white patch on the head.
+/// Eye sets from the face sheet. Each pair is saved as two halves (`<name>-l`, `-r`)
+/// so each eye sits on its own white patch on the head.
 enum EyeShape: Equatable {
     case open, half, closed, happy, left, right, up, wide
 
@@ -229,15 +223,20 @@ enum Motion {
     /// Returns (lift, squash) where squash < 1 is squashed, > 1 stretched.
     static func hop(_ t: Double, height: Double) -> (lift: Double, squash: Double) {
         guard t >= 0, t < 1.2 else { return (0, 1) }
+        // Every airborne curve starts, peaks and ends at zero speed (sin squared), so the
+        // spacing between frames grows and shrinks smoothly; the squash sells the impact.
+        let s2 = { (x: Double) -> Double in let v = sin(x); return v * v }
         if t < 0.09 { return (0, 1 - 0.08 * easeOut(t / 0.09)) }
-        if t < 0.27 { let p = easeOut((t - 0.09) / 0.18); return (height * p, 0.92 + 0.15 * p) }
-        if t < 0.42 { let p = easeIn((t - 0.27) / 0.15); return (height * (1 - p), 1.07 - 0.04 * p) }
-        if t < 0.54 { let p = (t - 0.42) / 0.12; return (0, 1 - 0.09 * sin(p * .pi / 2)) }
-        // two small settling bounces, each landing with a softer squash
-        if t < 0.72 { let p = (t - 0.54) / 0.18; return (height * 0.09 * 4 * p * (1 - p), 0.91 + 0.09 * sin(p * .pi / 2)) }
-        if t < 0.78 { let p = (t - 0.72) / 0.06; return (0, 1 - 0.04 * sin(p * .pi)) }
-        if t < 0.9 { let p = (t - 0.78) / 0.12; return (height * 0.03 * 4 * p * (1 - p), 1) }
-        let p = t - 0.9
-        return (0, 1 - 0.02 * sin(p / 0.12 * .pi) * exp(-p * 8))
+        if t < 0.27 { let p = (t - 0.09) / 0.18; return (height * s2(p * .pi / 2), 0.92 + 0.15 * sin(p * .pi / 2)) }
+        if t < 0.42 { let p = (t - 0.27) / 0.15; return (height * (1 - s2(p * .pi / 2)), 1.07 - 0.07 * p) }
+        // Landing squash, then two small settling bounces. Each bounce starts while the
+        // squash before it is still springing back, so the motion never pauses.
+        var lift = 0.0, squash = 1.0
+        if t < 0.54 { squash -= 0.09 * sin((t - 0.42) / 0.12 * .pi) }
+        if t >= 0.49 && t < 0.67 { lift += height * 0.09 * s2((t - 0.49) / 0.18 * .pi) }
+        if t >= 0.64 && t < 0.72 { squash -= 0.035 * sin((t - 0.64) / 0.08 * .pi) }
+        if t >= 0.69 && t < 0.81 { lift += height * 0.03 * s2((t - 0.69) / 0.12 * .pi) }
+        return (lift, squash)
     }
+
 }

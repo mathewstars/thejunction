@@ -31,7 +31,7 @@ Update this table as soon as something is decided, so all three of us read the s
 
 A clinician sees one line per patient: who is outside their own normal this week.
 
-The person can also write a few words. The server only turns them into a few fixed labels and answers from a fixed set; it is not a chat. If the words suggest the person needs help, the help screen opens at once and the clinic gets a short "needs review" message.
+The person can also write a few words. The server turns them into a few fixed labels and answers from a fixed set. An optional chat mode (off by default) lets Gemini write the answer instead, checked by the server; the words then go to Gemini, never with a name or id. If the words suggest the person needs help, the help screen opens at once and the clinic gets a short "needs review" message.
 
 **Checked with the Aalto mentors on Friday night:** they like the AR game idea.
 

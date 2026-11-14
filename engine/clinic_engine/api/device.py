@@ -152,8 +152,15 @@ async def feedback(body: FeedbackIn, request: Request, p: Principal = Depends(de
 async def notes(body: NoteIn, request: Request, p: Principal = Depends(device_only)):
     """The text is untrusted data. It is classified into enums (code lexicon
     plus the local model through the gates), never followed as an
-    instruction, never logged, and never sent outside the server. The reply
-    is a fixed template. When `crisis` is true the help block is included."""
+    instruction and never logged. When `crisis` is true the help block is
+    included and the reply is the fixed help line.
+
+    CHAT_MODE=fixed (default): the reply is a fixed template and the text is
+    never sent outside the server.
+    CHAT_MODE=gemini: for a note that did not open the help screen, and only
+    for a patient who allowed outside processing, the note and today's earlier
+    turns go to Gemini, which writes Lanvi's reply (`template_id: gemini`),
+    checked by code. Any failure gives the fixed template."""
     return await service.record_note(ctx_of(request), p, body.id, body.text, rid_of(request))
 
 

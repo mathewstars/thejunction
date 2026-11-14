@@ -85,7 +85,7 @@ SAFETY
 
 What Lanvi offers comes from a short list we wrote ourselves, and plain code picks from it. The models describe and suggest, but everything they return is checked before it is used, and whatever fails the check is logged where the clinician can read it. Lanvi's lines are fixed as well, so it can't drift into giving advice.
 
-Typed notes stay on the clinic's server. What goes to Gemini is numbers only, with no name, date or text (where a label is needed, it is random and changes every time), and only when the patient's record allows outside processing (in this prototype the clinic sets that with the patient; a screen for the patient to change it is not built yet). If a note sounds like someone needs help, the help screen opens straight away and the clinic hears about it the same day. Lanvi doesn't diagnose. It tells the clinician that something changed.
+Typed notes stay on the clinic's server. What goes to Gemini is numbers only, with no name, date or text (where a label is needed, it is random and changes every time), and only when the patient's record allows outside processing (in this prototype the clinic sets that with the patient; a screen for the patient to change it is not built yet). The one exception is an optional chat mode, off by default: when the clinic turns it on, a note that does not ask for help goes to Gemini, without any name or id, so it can write Lanvi's reply. If a note sounds like someone needs help, the help screen opens straight away and the clinic hears about it the same day. Lanvi doesn't diagnose. It tells the clinician that something changed.
 
 WHAT IS REAL AND WHAT IS NOT
 

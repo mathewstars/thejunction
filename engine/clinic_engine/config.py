@@ -85,6 +85,14 @@ class Settings:
     gemini_frames_retry_wait_s: float = 2.0
     gemini_frames_timeout_s: float = 60.0
 
+    # Lanvi's reply to a note: fixed (a vetted line, nothing leaves the server)
+    # | gemini (Gemini writes the reply for a note that did not open the help screen,
+    # checked by code; any failure falls back to the fixed line). Needs GEMINI_API_KEY
+    # and a model id (CHAT_MODEL, else GEMINI_MODEL). Independent of OUTREACH_MODE.
+    chat_mode: str = "fixed"
+    chat_model: str = ""
+    chat_timeout_s: float = 4.0
+
     # Help (crisis) block, always shown by GET /v1/today. Wording: data/help_block.json
     emergency_number: str = "112"
     clinic_contact_label: str = ""  # e.g. "the clinic's nurse line"
@@ -143,6 +151,9 @@ class Settings:
             gemini_frames_max_tokens=_env_int("GEMINI_FRAMES_MAX_TOKENS", 16000),
             gemini_frames_retry_wait_s=_env_float("GEMINI_FRAMES_RETRY_WAIT_S", 2.0),
             gemini_frames_timeout_s=_env_float("GEMINI_FRAMES_TIMEOUT_S", 60.0),
+            chat_mode=_env("CHAT_MODE", "fixed").lower(),
+            chat_model=_env("CHAT_MODEL"),
+            chat_timeout_s=_env_float("CHAT_TIMEOUT_S", 4.0),
             emergency_number=_env("EMERGENCY_NUMBER", "112"),
             clinic_contact_label=_env("CLINIC_CONTACT_LABEL"),
             clinic_contact_phone=_env("CLINIC_CONTACT_PHONE"),
