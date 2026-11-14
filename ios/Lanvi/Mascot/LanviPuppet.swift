@@ -537,7 +537,7 @@ struct LanviPuppet: View {
     /// The tail turns at its hidden base and bends along its length, the tip trailing.
     private func tail(_ f: RigFrame) -> some View {
         let p = Rig.tail
-        return banded(p, "tail", count: 12, bend: f.tailBend)
+        return banded(p, "tail", count: LanviArt.bands["tail"] ?? 0, bend: f.tailBend)
             .rotationEffect(.degrees(f.pose.tail), anchor: p.pivot)
             .position(x: p.local.x * k, y: p.local.y * k)
     }
@@ -556,7 +556,7 @@ struct LanviPuppet: View {
         let sx = (1 + 0.04 * near - 0.02 * far) * (1 - 0.1 * far)
         let sy = (1 + 0.04 * near - 0.02 * far) * (1 - 0.05 * abs(hy)) * (1 + (left ? q.earLS : q.earRS))
         let angle = left ? -q.earL : q.earR
-        return banded(p, left ? "ear-left" : "ear-right", count: 10, bend: left ? f.earLBend : f.earRBend)
+        return banded(p, left ? "ear-left" : "ear-right", count: LanviArt.bands[left ? "ear-left" : "ear-right"] ?? 0, bend: left ? f.earLBend : f.earRBend)
             .scaleEffect(x: sx, y: sy, anchor: p.pivot)
             .rotationEffect(.degrees(angle), anchor: p.pivot)
             .transformEffect(CGAffineTransform(translationX: dx * mu, y: dy * mu))
