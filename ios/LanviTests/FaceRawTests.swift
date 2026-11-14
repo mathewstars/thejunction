@@ -328,14 +328,56 @@ final class FaceFineTests: XCTestCase {
 
     func testTheRestingShapeIsTheMedianSoOneEarlyMovementDoesNotShiftIt() throws {
         let shape = grid()
-        // A movement inside the first 45 frames: the median still rests on the still face.
+        // A movement inside the first 45 frames: that stretch is not quiet, so the rest
+        // is learned from the next one, and the movement still shows in full.
         let fine = try XCTUnwrap(recorded { i in
             (10..<15).contains(i) ? self.pushed(shape, region: "jaw", mm: 3) : shape
         }.faceFine())
         let j = try XCTUnwrap(fine.regions.firstIndex(of: "jaw"))
         XCTAssertEqual(fine.samples[12][j], 3.0, accuracy: 0.01)
         XCTAssertEqual(fine.samples[70][j], 0)
+        XCTAssertEqual(fine.noiseMm, 0)   // measured on the quiet stretch, not the restless one
+    }
+
+    func testARestlessStartDoesNotBecomeTheRest() throws {
+        let shape = grid()
+        // The first 1.5 seconds the jaw sits 2 to 3 mm away and wobbles; then the face is still.
+        let fine = try XCTUnwrap(recorded(frames: 150) { i in
+            i < 45 ? self.pushed(shape, region: "jaw", mm: i % 2 == 0 ? 2 : 3) : shape
+        }.faceFine())
+        let j = try XCTUnwrap(fine.regions.firstIndex(of: "jaw"))
+        XCTAssertGreaterThanOrEqual(fine.samples[10][j], 1.99)
+        XCTAssertEqual(fine.samples[60][j], 0)    // the still face is the rest, so it reads zero
+        XCTAssertEqual(fine.samples[140][j], 0)
+        XCTAssertEqual(fine.noiseMm, 0)
+    }
+
+    func testAGameThatEndsBeforeAQuietStretchSendsTheQuietestOne() throws {
+        let shape = grid()
+        // Never quiet: the jaw wobbles by 1 mm the whole time, and the game ends after 2 seconds.
+        let fine = try XCTUnwrap(recorded(frames: 60) { i in
+            i % 2 == 0 ? shape : self.pushed(shape, region: "jaw", mm: 1)
+        }.faceFine())
+        XCTAssertEqual(fine.samples.count, 60)
         XCTAssertGreaterThan(try XCTUnwrap(fine.noiseMm), 0)
+    }
+
+    func testFramesJustAfterTrackingReturnsAreLeftOut() throws {
+        let shape = grid()
+        var r = FaceFineRecorder(rateHz: 30)
+        for i in 0..<150 {
+            // Lost for 5 frames; when it comes back the mesh jumps 4 mm for 6 frames.
+            let lost = (80..<85).contains(i)
+            let jump = (85..<91).contains(i)
+            r.add(time: 9 + Double(i) / 30, tracked: !lost) {
+                jump ? self.pushed(shape, region: "nose", mm: 4) : shape
+            }
+        }
+        let fine = try XCTUnwrap(r.faceFine())
+        let tracked = try XCTUnwrap(fine.tracked)
+        XCTAssertEqual(tracked.filter { $0 == 0 }.count, 5 + FaceFineRecorder.regainFrames)
+        XCTAssert(fine.samples.allSatisfy { $0.allSatisfy { $0 == 0 } })   // the jump never shows
+        XCTAssertEqual(tracked[96], 1)
     }
 
     func testTooFewTrackedFramesGiveNothing() {
@@ -357,9 +399,9 @@ final class FaceFineTests: XCTestCase {
         let fine = try XCTUnwrap(r.faceFine())
         // A frame lands in the slot nearest its time, so 240 frames fill slots 0...120.
         XCTAssertEqual(fine.samples.count, 121)
-        XCTAssertEqual(asked, 111)   // the mesh is read only for frames that are kept and tracked
+        XCTAssertEqual(asked, 101)   // the mesh is read only for frames that are kept and tracked
         let tracked = try XCTUnwrap(fine.tracked)
-        XCTAssertEqual(tracked.filter { $0 == 0 }.count, 10)
+        XCTAssertEqual(tracked.filter { $0 == 0 }.count, 20)   // ten lost, ten left out after
         XCTAssertEqual(tracked[70], 0)
     }
 
