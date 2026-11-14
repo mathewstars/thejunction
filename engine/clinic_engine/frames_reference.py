@@ -202,7 +202,10 @@ def _line(name: str, t: dict) -> str:
             f"{share(t['faint_found'], t['faint_planted'])} | {t['false']} of {t['reported']} |")
 
 
-async def run(with_model: bool, sessions: int, hard: bool = True) -> dict:
+async def run(with_model: bool, sessions: int, hard: bool = True, hard_seed: int = 2000,
+              hard_count: int | None = None) -> dict:
+    """hard_seed and hard_count make a hard set on other seeds than the usual
+    ten (a set nobody looked at while the instruction and the check were written)."""
     outreach = None
     if with_model:
         from .config import Settings
@@ -212,7 +215,8 @@ async def run(with_model: bool, sessions: int, hard: bool = True) -> dict:
             raise SystemExit("level 2 is not configured (OUTREACH_MODE, GEMINI_API_KEY, GEMINI_MODEL)")
     plan = [("clean", 1000 + k, None) for k in range(sessions)]
     if hard:
-        plan += [("hard", 2000 + k, kind) for k, kind in enumerate(HARD)]
+        kinds = HARD if hard_count is None else [HARD[k % len(HARD)] for k in range(hard_count)]
+        plan += [("hard", hard_seed + k, kind) for k, kind in enumerate(kinds)]
     out: dict = {"seconds_each": SECONDS, "sets": {}}
     if outreach is not None:
         out["model"] = outreach.level2_model
@@ -281,9 +285,12 @@ def main() -> None:
     ap.add_argument("--model", action="store_true", help="also send every session to level 2")
     ap.add_argument("--sessions", type=int, default=SESSIONS, help="sessions in the clean set")
     ap.add_argument("--no-hard", action="store_true", help="leave the hard set out")
+    ap.add_argument("--hard-seed", type=int, default=2000, help="first seed of the hard set")
+    ap.add_argument("--hard-count", type=int, default=None, help="sessions in the hard set")
     ap.add_argument("--out", help="write the result as JSON to this file")
     args = ap.parse_args()
-    out = asyncio.run(run(args.model, args.sessions, not args.no_hard))
+    out = asyncio.run(run(args.model, args.sessions, not args.no_hard, args.hard_seed,
+                          args.hard_count))
     if args.out:
         with open(args.out, "w", encoding="utf-8") as f:
             json.dump(out, f, indent=1)

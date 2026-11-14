@@ -141,7 +141,9 @@ def _add(total: dict, part: dict) -> None:
         total[k] = total.get(k, 0) + v
 
 
-async def run(with_model: bool, series: int = len(KINDS)) -> dict:
+async def run(with_model: bool, series: int = len(KINDS), seed: int = 3000) -> dict:
+    """seed: the first seed; another value makes a set nobody looked at while
+    the instruction and the check were written."""
     outreach = None
     if with_model:
         from .config import Settings
@@ -157,14 +159,14 @@ async def run(with_model: bool, series: int = len(KINDS)) -> dict:
     if outreach is not None:
         out["model"] = outreach.level2_model
     for k, kind in enumerate(KINDS[:series]):
-        days, truth = make_series(3000 + k, kind)
+        days, truth = make_series(seed + k, kind)
         out["series"] += 1
         payload = dr.reduce(days, {})
         view = dr.code_view(payload)
         _add(out["code_vs_truth"], score(_lower_steps(view["stretches"]), truth))
         _add(out["trend_scan_vs_truth"], score(trend_scan(payload), truth))
         # The weekly rhythm: weekdays on which the generator made this person walk less.
-        rng = random.Random(3000 + k)
+        rng = random.Random(seed + k)
         rng.uniform(0, 1), rng.uniform(0, 1)
         low_days = set(rng.sample(range(1, 8), rng.choice([1, 2])))
         out["weekday"]["planted"] += len(low_days)
@@ -218,9 +220,10 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--model", action="store_true", help="also send every series to level 2")
     ap.add_argument("--series", type=int, default=len(KINDS))
+    ap.add_argument("--seed", type=int, default=3000, help="first seed of the set")
     ap.add_argument("--out", help="write the result as JSON to this file")
     args = ap.parse_args()
-    out = asyncio.run(run(args.model, args.series))
+    out = asyncio.run(run(args.model, args.series, args.seed))
     if args.out:
         with open(args.out, "w", encoding="utf-8") as f:
             json.dump(out, f, indent=1)
