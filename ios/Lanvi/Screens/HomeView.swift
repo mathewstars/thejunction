@@ -105,15 +105,12 @@ struct HomeView: View {
                         .lanviMood(restingMood)
                         .lanviLookAt(look)
                         .lanviMouth(mouth)
-                        // Alongside the puppet's own tap reaction (a child's tap would otherwise win).
-                        .simultaneousGesture(TapGesture().onEnded { tapFox() })
+                        // A tap is only the puppet's own touch reaction; growth opens from the Day pill.
                 }
                 .frame(width: L.fox * 2, height: L.fox * 2)
                 .position(x: L.foxCenter.x, y: L.foxCenter.y)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Lanvi")
-                .accessibilityHint("Shows how Lanvi is growing")
-                .accessibilityAddTraits(.isButton)
                 .accessibilityIdentifier("home.fox")
 
                 // What Lanvi says, in one soft bubble above it. Tap to talk.
@@ -462,15 +459,6 @@ struct HomeView: View {
         }
         if next != pose {
             pose = next
-        }
-    }
-
-    /// Tapping Lanvi: a happy hop, then how it is growing.
-    /// Tapping Lanvi: the puppet reacts by itself; then how it is growing.
-    private func tapFox() {
-        Task {
-            try? await Task.sleep(for: .milliseconds(450))
-            if cover == nil, sheet == nil { sheet = .growth }
         }
     }
 
