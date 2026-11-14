@@ -211,13 +211,13 @@ at(28.1, lambda d: measure_screen(A("focus"), "v16/stream.mp4", d))             
 at(43.6, lambda d: screen("v16/check.mp4", d))                                     # the software reads them and checks its own claims
 at(49.8, lambda d: fclip("november", d, ss=0.05))
 at(54.6, lambda d: wins_shot("night", d, [("v16/w_help.png", 3.0, None, 90)]))     # "I need help.": the app's help screen comes up beside her
-at(59.55, lambda d: wins_shot("nurse", d, [("w_tg.png", 0.3, 3.3, 110), ("w_anna_left.png", 3.1, None, 0)]))   # the alert; then her page as the nurse reads
-at(64.5, lambda d: wins_shot("nurse3", d, [("w_anna_left.png", 0.0, 2.6, 0)], ss=0.0))                         # she reads on, then reaches for her phone
-at(69.45, lambda d: fclip("nurse2", d, ss=0.0))                                    # "Anna, I read your note."
-at(74.4, lambda d: fclip("call", d, ss=0.0))                                       # "I'm here."
-at(79.35, lambda d: fclip("frontdoor", d, ss=0.0))                                 # "This time,"
-at(84.3, lambda d: wins_shot("return", d, [], ss=0.0, dim=0.0, fout=0.6))          # "Anna doesn't wait six weeks."; fades down into the end card
-at(89.25, lambda d: end_card(d, 2.1, 7.0, 12.3, 13.3))
+at(59.55, lambda d: wins_shot("nurse", d, [("w_tg.png", 0.3, None, 110)]))                  # "Her clinic is told.": the alert, once, for the whole shot
+at(63.85, lambda d: wins_shot("nurse3", d, [("w_anna_left.png", 0.3, 4.5, 0)], ss=0.0))     # her page, once; then she reaches for her phone
+at(68.8, lambda d: fclip("nurse2", d, ss=0.0))                                     # "Anna, I read your note."
+at(73.75, lambda d: fclip("call", d, ss=0.0))                                      # "I'm here."
+at(78.7, lambda d: fclip("frontdoor", d, ss=0.0))                                  # "This time,"
+at(83.65, lambda d: wins_shot("return", d, [], ss=0.0, dim=0.0, fout=0.6))         # "Anna doesn't wait six weeks."; fades down into the end card
+at(88.6, lambda d: end_card(d, 2.8, 7.7, 12.95, 14.0))
 AEND = 109.2; END = 109.2
 FIXED = {t for t, _ in T}                                   # every cut is placed by hand; none is moved onto a beat
 B = json.load(open("v8/beats8.json"))
