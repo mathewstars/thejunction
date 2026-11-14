@@ -51,7 +51,11 @@ struct RevontuletAutoPlay {
         let key = "\(e.beat.rawValue)-\(e.round)-\(e.strokesCounted)-\(e.beatStart)"
         if key != planKey {
             planKey = key
+            // A finger that is down still lifts, whatever the new beat plans.
+            // It lifts now, before anything the new beat plans.
+            let lift = plan.first { if case .up = $0.input { return finger != nil } else { return false } }
             plan = makePlan(e, now: now)
+            if let l = lift { plan.insert(Step(at: now, input: l.input), at: 0) }
         }
         var out: [RevontuletInput] = []
         while let first = plan.first, first.at <= now {

@@ -114,16 +114,17 @@ struct RevontuletView: View {
         let lineY: CGFloat = e.beat == .intro ? L.startY - 27 - 30 : L.lineY
         return ZStack {
             if e.beat == .intro {
-                VStack(spacing: 2) {
+                // On the dark glass, where white reads clearly, with room around it.
+                VStack(spacing: 6) {
                     Text("Revontulet")
-                        .font(Theme.rounded(38, .black))
-                        .foregroundStyle(Theme.ink)
+                        .font(Theme.rounded(42, .black))
+                        .foregroundStyle(.white)
                     Text("Help me light up the sky")
-                        .font(Theme.rounded(17, .heavy))
-                        .foregroundStyle(Theme.inkSecondary)
+                        .font(Theme.rounded(18, .heavy))
+                        .foregroundStyle(.white.opacity(0.82))
                 }
-                .shadow(color: .white.opacity(0.7), radius: 10)
-                .position(x: L.size.width / 2, y: L.startY - 27 - 22 - 36)
+                .shadow(color: Color(red: 0.02, green: 0.05, blue: 0.16).opacity(0.7), radius: 14)
+                .position(x: L.size.width / 2, y: L.wall.minY + L.wall.height * 0.5)
                 .allowsHitTesting(false)
                 .transition(.opacity)
 

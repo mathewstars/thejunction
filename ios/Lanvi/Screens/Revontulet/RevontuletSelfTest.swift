@@ -96,6 +96,13 @@ enum RevontuletSelfTest {
             if let problem = check(r, closed: closeAt != nil || leaveAt != nil) {
                 report.failures.append("\(label): \(problem)")
             }
+            // A player at a normal pace, with no mischief, breaks the wall with their own three
+            // shots and strokes the fox three times: the clock's safety nets must not be needed.
+            if mischief < 4, styles[n % 4] != .idle, pace <= 1 {
+                if !r.completed || r.foxFinishedWall || r.launches != 3 || r.strokes.count != 3 {
+                    report.failures.append("\(label): a normal game did not play out (launches \(r.launches), strokes \(r.strokes.count), fox finished \(r.foxFinishedWall))")
+                }
+            }
         }
         return report
     }

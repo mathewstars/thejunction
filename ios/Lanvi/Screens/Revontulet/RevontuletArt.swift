@@ -2,28 +2,50 @@ import SwiftUI
 import UIKit
 import CoreImage
 
-/// The shapes the game draws, worked out once per screen: the pane of ice as real fracture
-/// pieces (the same pieces fall out on impacts and fly apart in the burst), the cracks each
-/// impact leaves, and the snow on the fox's fur. Kept in step with the engine by `sync`.
-/// Visual only: nothing here is measured.
+/// Everything the game draws that does not change while playing, made once when the game
+/// opens: the glass (the night painting blurred, darkened and cooled), the wall's hidden
+/// fracture geometry, the shards cut from the wall picture as small sprites, the fault lines
+/// as tapered windows, frost, bubbles and the snow on the fox's fur. Kept in step with the
+/// engine by `sync`. Visual only: nothing here is measured.
 final class RevontuletArt {
     struct Facet {
         var points: [CGPoint]
         var center: CGPoint
         var path: Path
-        /// −1...1: a little lighter or darker than its neighbours.
-        var shade: Double
-        /// 0...1: how much its edges catch the light.
-        var glint: Double
+    }
+
+    /// A piece of the wall that flies: its own bit of the wall picture.
+    struct Shard {
+        var facet: Int
+        var center: CGPoint
+        /// The outline around `center`.
+        var local: Path
+        var bounds: CGRect
+        var image: CGImage?
+        /// One or two edges that catch the light, around `center`.
+        var litEdges: [(CGPoint, CGPoint)]
+        var size: CGFloat
         var spin: Double
         var tumble: Double
         var phase: Double
+        var hue: Int
     }
 
     struct Crack {
         var points: [CGPoint]
         var width: CGFloat
         var delay: Double
+    }
+
+    /// A fault line: a tapered window onto the sky, its centre line, and the points light
+    /// pours from.
+    struct Fault {
+        var window: Path
+        var core: Path
+        var line: [CGPoint]
+        var knots: [CGPoint]
+        var center: CGPoint
+        var length: CGFloat
     }
 
     struct Mote {
@@ -33,29 +55,46 @@ final class RevontuletArt {
         var life: Double
     }
 
+    struct Glitter {
+        var p: CGPoint
+        var v: CGVector
+        var r: CGFloat
+        var life: Double
+        var phase: Double
+    }
+
     struct Speck {
         /// From the fox's centre, in fox sizes.
         var offset: CGPoint
         var radius: CGFloat
         var group: Int
         var delay: Double
+        var lobes: [CGVector]
     }
 
     let layout: RevontuletLayout
     let facets: [Facet]
+    let shards: [Shard]
     let outline: Path
+    /// The jagged top edge, left to right.
+    let topEdge: Path
+    let faults: [(easy: Fault, hard: Fault)]
     let frost: [(p: CGPoint, r: CGFloat, a: Double, phase: Double)]
+    let bubbles: [(p: CGPoint, len: CGFloat, angle: Double, a: Double)]
+    let hints: [Path]
     let specks: [Speck]
     let motes: [Mote]
-    /// The night painting, blurred once, and where it sits on screen: seen through the ice.
+    let glitter: [Glitter]
+    /// The night painting blurred and cooled (the glass), and where the painting sits on screen.
     let frostedSky: CGImage?
     let skyRect: CGRect
 
     /// When each facet fell out (by index).
     private(set) var fallAt: [Int: Double] = [:]
-    /// The cracks of each impact, and where the burst started.
+    /// Each shard's push when its facet falls or the wall bursts.
+    private(set) var push: [CGVector]
     private(set) var cracks: [[Crack]] = []
-    private(set) var burstPush: [CGVector] = []
+    private(set) var burstPoint: CGPoint?
     /// When each snow speck was brushed off (by index).
     private(set) var speckGone: [Int: Double] = [:]
     private var impactsSeen = 0
@@ -65,103 +104,212 @@ final class RevontuletArt {
     init(layout: RevontuletLayout, seed: UInt64 = 11) {
         self.layout = layout
         var rng = Rng(seed: seed)
-        let wall = layout.wall
-        let cols = 6, rows = 10
-        let cw = wall.width / CGFloat(cols), ch = wall.height / CGFloat(rows)
         func r(_ a: Double, _ b: Double) -> CGFloat { CGFloat(a + (b - a) * rng.next()) }
+        let wall = layout.wall
+        let frame = WorldFrame(screen: layout.size)
+        skyRect = CGRect(x: frame.origin.x, y: frame.origin.y,
+                         width: WorldFrame.imageSize.width * frame.scale, height: WorldFrame.imageSize.height * frame.scale)
 
-        // A jittered grid: inner points wander, the top edge is ragged, the base is buried.
+        // The hidden fracture geometry: a jittered grid, a jagged crystal top, the base buried.
+        let cols = 7, rows = 9
+        let cw = wall.width / CGFloat(cols), ch = wall.height / CGFloat(rows)
         var grid: [[CGPoint]] = []
         for j in 0...rows {
             var row: [CGPoint] = []
             for i in 0...cols {
                 var x = wall.minX + CGFloat(i) * cw
                 var y = wall.minY + CGFloat(j) * ch
-                if i > 0 && i < cols { x += r(-0.34, 0.34) * cw } else { x += r(-4, 4) }
-                if j > 0 && j < rows { y += r(-0.32, 0.32) * ch }
-                if j == 0 { y += r(-6, 16) }
+                if i > 0 && i < cols { x += r(-0.34, 0.34) * cw }
+                if j > 0 && j < rows { y += r(-0.3, 0.3) * ch }
+                if j == 0 { y += r(-4, 14) }
                 row.append(CGPoint(x: x, y: y))
             }
             grid.append(row)
         }
-        // Crags along the top: an extra point raised between each pair.
-        var crags: [CGPoint] = []
+        var crags: [[CGPoint]] = []
         for i in 0..<cols {
             let a = grid[0][i], b = grid[0][i + 1]
-            crags.append(CGPoint(x: (a.x + b.x) / 2 + r(-0.2, 0.2) * cw, y: min(a.y, b.y) - r(6, 30)))
+            let peak = CGPoint(x: a.x + (b.x - a.x) * r(0.3, 0.7), y: min(a.y, b.y) - r(10, 30))
+            let shoulder = CGPoint(x: a.x + (peak.x - a.x) * r(0.4, 0.7), y: a.y - r(2, 10))
+            crags.append([shoulder, peak])
         }
-
         var list: [Facet] = []
         for j in 0..<rows {
             for i in 0..<cols {
-                var pts = [grid[j][i]]
-                if j == 0 { pts.append(crags[i]) }
-                pts += [grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]]
-                let c = CGPoint(x: pts.map(\.x).reduce(0, +) / CGFloat(pts.count),
-                                y: pts.map(\.y).reduce(0, +) / CGFloat(pts.count))
-                var path = Path()
-                path.addLines(pts)
-                path.closeSubpath()
-                list.append(Facet(points: pts, center: c, path: path, shade: rng.next() * 2 - 1, glint: rng.next(),
-                                  spin: (rng.next() - 0.5) * 4.4, tumble: 1.4 + rng.next() * 3.2, phase: rng.next() * 6.28))
+                var corners = [grid[j][i]]
+                if j == 0 { corners += crags[i] }
+                corners += [grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]]
+                // Broken, jagged edges inside the pane (the outer edge stays as it is);
+                // neighbours share each edge exactly, so nothing gaps.
+                var pts: [CGPoint] = []
+                for k in 0..<corners.count {
+                    let a = corners[k], b = corners[(k + 1) % corners.count]
+                    pts.append(a)
+                    let outer = (j == 0 && k < corners.count - 3) || (i == cols - 1 && k == corners.count - 3)
+                        || (j == rows - 1 && k == corners.count - 2) || (i == 0 && k == corners.count - 1)
+                    if !outer { pts += Self.jag(a, b) }
+                }
+                list.append(Facet(points: pts, center: Self.centroid(corners), path: Self.polygon(pts)))
             }
         }
         facets = list
 
-        var out = Path()
-        out.move(to: grid[0][0])
+        var top = Path()
+        top.move(to: grid[0][0])
         for i in 0..<cols {
-            out.addLine(to: crags[i])
-            out.addLine(to: grid[0][i + 1])
+            for c in crags[i] { top.addLine(to: c) }
+            top.addLine(to: grid[0][i + 1])
         }
-        for j in 1...rows { out.addLine(to: grid[j][cols]) }
-        for i in stride(from: cols - 1, through: 0, by: -1) { out.addLine(to: grid[rows][i]) }
-        for j in stride(from: rows - 1, through: 1, by: -1) { out.addLine(to: grid[j][0]) }
+        topEdge = top
+        var out = top
+        out.addLine(to: CGPoint(x: wall.maxX, y: wall.maxY))
+        out.addLine(to: CGPoint(x: wall.minX, y: wall.maxY))
         out.closeSubpath()
         outline = out
 
-        // Frost: fine specks hugging the top and the sides.
-        var f: [(p: CGPoint, r: CGFloat, a: Double, phase: Double)] = []
-        for k in 0..<110 {
-            let side = k % 3
-            let u = rng.next()
-            let p: CGPoint
-            switch side {
-            case 0:
-                let i = min(cols - 1, Int(u * Double(cols)))
-                let a = grid[0][i], b = grid[0][i + 1]
-                let v = CGFloat(rng.next())
-                p = CGPoint(x: a.x + (b.x - a.x) * v, y: a.y + (b.y - a.y) * v + r(0, 18))
-            case 1:
-                p = CGPoint(x: wall.minX + r(0, 16), y: wall.minY + CGFloat(u) * wall.height * 0.9)
-            default:
-                p = CGPoint(x: wall.maxX - r(0, 16), y: wall.minY + CGFloat(u) * wall.height * 0.9)
-            }
-            let alpha = 0.25 + rng.next() * 0.5
-            let ph = rng.next() * 6.28
-            f.append((p: p, r: r(0.5, 1.7), a: alpha, phase: ph))
-        }
-        frost = f
+        // The glass: made once from the painting, never blurred live.
+        frostedSky = Self.frostedWorld(screen: layout.size, skyWidth: skyRect.width)
 
-        // Snow on the fur: across the head between the ears, the ears, the shoulders.
+        // Shards: some pieces stay whole slabs, most split, some into slivers.
+        var pieces: [Shard] = []
+        for (fi, f) in list.enumerated() {
+            let roll = rng.next()
+            var polys: [[CGPoint]] = []
+            if roll < 0.24 {
+                polys = [f.points]
+            } else if roll < 0.66 {
+                let n = f.points.count
+                let k = n / 2
+                polys = [Array(f.points[0...k]), Array(f.points[k...]) + [f.points[0]]]
+            } else {
+                // Slivers: four wedges from the middle, each keeping its stretch of broken edge.
+                let c = f.center
+                let n = f.points.count
+                for q in 0..<4 {
+                    let from = q * n / 4, to = (q + 1) * n / 4
+                    var wedge = [c]
+                    for i in from...to { wedge.append(f.points[i % n]) }
+                    polys.append(wedge)
+                }
+            }
+            for poly in polys {
+                let c = Self.centroid(poly)
+                let local = poly.map { CGPoint(x: $0.x - c.x, y: $0.y - c.y) }
+                let path = Self.polygon(local)
+                let b = path.boundingRect
+                // The edge facing up and left catches the light; slabs sometimes a second.
+                var edges: [(CGPoint, CGPoint, CGFloat)] = []
+                for i in 0..<local.count {
+                    let a = local[i], e = local[(i + 1) % local.count]
+                    let mid = CGPoint(x: (a.x + e.x) / 2, y: (a.y + e.y) / 2)
+                    edges.append((a, e, -(mid.x + mid.y * 1.4)))
+                }
+                edges.sort { $0.2 > $1.2 }
+                let lit = edges.prefix(poly.count > 3 ? 2 : 1).map { ($0.0, $0.1) }
+                pieces.append(Shard(facet: fi, center: c, local: path, bounds: b, image: nil, litEdges: lit,
+                                    size: sqrt(b.width * b.height), spin: (rng.next() - 0.5) * 7,
+                                    tumble: 2 + rng.next() * 5, phase: rng.next() * 6.28, hue: Int(rng.next() * 3)))
+            }
+        }
+        if let sky = frostedSky {
+            let fmt = UIGraphicsImageRendererFormat()
+            fmt.scale = 2
+            fmt.opaque = false
+            let ui = UIImage(cgImage: sky)
+            let skyRect = self.skyRect
+            for i in pieces.indices {
+                let s = pieces[i]
+                let bounds = s.bounds.offsetBy(dx: s.center.x, dy: s.center.y).insetBy(dx: -1, dy: -1)
+                let path = s.local
+                let center = s.center
+                pieces[i].image = UIGraphicsImageRenderer(size: bounds.size, format: fmt).image { ctx in
+                    let cg = ctx.cgContext
+                    cg.translateBy(x: -bounds.minX, y: -bounds.minY)
+                    cg.translateBy(x: center.x, y: center.y)
+                    cg.addPath(path.cgPath)
+                    cg.clip()
+                    cg.translateBy(x: -center.x, y: -center.y)
+                    ui.draw(in: skyRect.offsetBy(dx: 3, dy: 5))
+                    // A cold sheen across the face, darker toward one corner.
+                    UIColor(white: 1, alpha: 0.07).setFill()
+                    cg.fill(bounds)
+                    let colors = [UIColor(red: 0.66, green: 0.84, blue: 0.98, alpha: 0.34).cgColor,
+                                  UIColor(red: 0.05, green: 0.1, blue: 0.22, alpha: 0.0).cgColor,
+                                  UIColor(red: 0.0, green: 0.02, blue: 0.08, alpha: 0.35).cgColor]
+                    if let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 0.5, 1]) {
+                        cg.drawLinearGradient(g, start: CGPoint(x: bounds.minX, y: bounds.minY),
+                                              end: CGPoint(x: bounds.maxX, y: bounds.maxY), options: [])
+                    }
+                }.cgImage
+                pieces[i].bounds = CGRect(x: bounds.minX - center.x, y: bounds.minY - center.y, width: bounds.width, height: bounds.height)
+            }
+        }
+        shards = pieces
+        push = Array(repeating: .zero, count: pieces.count)
+
+        // Fault lines as tapered windows: the crack a hairline, the vein wide and branching.
+        var fs: [(easy: Fault, hard: Fault)] = []
+        for round in 0..<3 {
+            let f = layout.faults(round: round)
+            fs.append((Self.fault(f.easy, width: 3, branches: 1, seed: Double(round), rng: &rng),
+                       Self.fault(f.hard, width: 11, branches: 4, seed: Double(round) + 7, rng: &rng)))
+        }
+        faults = fs
+
+        // Frost: fine speckle densest just under the jagged top.
+        var fr: [(p: CGPoint, r: CGFloat, a: Double, phase: Double)] = []
+        let topPts = grid[0]
+        for _ in 0..<170 {
+            let u = rng.next()
+            let i = min(cols - 1, Int(u * Double(cols)))
+            let a = topPts[i], b = topPts[i + 1]
+            let v = CGFloat(rng.next())
+            let depth = CGFloat(pow(rng.next(), 2.2)) * 46
+            let p = CGPoint(x: a.x + (b.x - a.x) * v, y: a.y + (b.y - a.y) * v + depth + 3)
+            let alpha = (0.2 + rng.next() * 0.5) * Double(1 - depth / 60)
+            fr.append((p: p, r: r(0.4, 1.5), a: alpha, phase: rng.next() * 6.28))
+        }
+        frost = fr
+        bubbles = (0..<16).map { _ in
+            (p: CGPoint(x: r(0.05, 0.95) * layout.size.width, y: wall.minY + r(0.15, 0.9) * wall.height),
+             len: r(4, 11), angle: -1.45 + rng.next() * 0.5, a: 0.1 + rng.next() * 0.16)
+        }
+        var hs: [Path] = []
+        for _ in 0..<5 {
+            var p = CGPoint(x: r(0.05, 0.95) * layout.size.width, y: wall.minY + r(0.1, 0.8) * wall.height)
+            var a = rng.next() * 6.28
+            var path = Path()
+            path.move(to: p)
+            for _ in 0..<7 {
+                a += (rng.next() - 0.5) * 0.6
+                p = CGPoint(x: p.x + CGFloat(cos(a)) * r(14, 26), y: p.y + CGFloat(sin(a)) * r(14, 26))
+                path.addLine(to: p)
+            }
+            hs.append(path)
+        }
+        hints = hs
+
+        // Snow on the fur: soft clumps along the head, the ears, the back and the tail.
         var s: [Speck] = []
         let spots: [(CGFloat, CGFloat)] = [
-            (-0.15, -0.31), (-0.09, -0.335), (-0.03, -0.345), (0.03, -0.345), (0.09, -0.335), (0.15, -0.31),
-            (-0.12, -0.28), (0.0, -0.3), (0.12, -0.28), (-0.27, -0.41), (0.26, -0.41), (-0.22, -0.36), (0.21, -0.36),
-            (-0.24, 0.02), (-0.18, -0.01), (0.2, 0.0), (0.25, 0.03), (-0.05, -0.27), (0.06, -0.265),
+            (-0.15, -0.31), (-0.08, -0.335), (0.0, -0.345), (0.08, -0.335), (0.15, -0.31),
+            (-0.11, -0.27), (0.11, -0.27), (-0.27, -0.42), (0.26, -0.42), (-0.22, -0.36), (0.21, -0.36),
+            (-0.24, 0.03), (-0.17, -0.0), (0.19, 0.0), (0.25, 0.04), (-0.05, -0.27), (0.06, -0.265),
+            (-0.36, 0.22), (-0.42, 0.28), (-0.3, 0.27),
         ]
         for (k, spot) in spots.enumerated() {
+            let lobes = (0..<(3 + k % 3)).map { _ in CGVector(dx: r(-0.9, 0.9), dy: r(-0.5, 0.5)) }
             s.append(Speck(offset: CGPoint(x: spot.0 + r(-0.012, 0.012), y: spot.1 + r(-0.01, 0.01)),
-                           radius: r(1.6, 3.2), group: k % 3, delay: rng.next() * 0.9))
+                           radius: r(2.4, 4.2), group: k % 3, delay: rng.next() * 0.9, lobes: lobes))
         }
         specks = s
 
-        let sky = Self.blurredWorld(screen: layout.size)
-        frostedSky = sky?.image
-        skyRect = sky?.rect ?? .zero
-
         motes = (0..<28).map { _ in
             Mote(angle: rng.next() * 6.28, speed: 50 + rng.next() * 170, size: r(0.7, 2.1), life: 0.55 + rng.next() * 0.5)
+        }
+        glitter = (0..<150).map { _ in
+            Glitter(p: CGPoint(x: r(0, 1) * layout.size.width, y: wall.minY + r(0, 1) * wall.height),
+                    v: CGVector(dx: r(-40, 40), dy: r(-30, 20)), r: r(0.5, 1.6), life: 1.2 + rng.next() * 1.3, phase: rng.next() * 6.28)
         }
     }
 
@@ -172,23 +320,30 @@ final class RevontuletArt {
             let k = impactsSeen
             let hit = e.impacts[k]
             var rng = Rng(seed: e.seed &+ UInt64(k * 977 + 13))
-            cracks.append(Self.makeCracks(from: hit.point, pieces: hit.pieces, breaking: hit.breaking, wall: layout.wall, rng: &rng))
+            cracks.append(Self.makeCracks(from: hit.point, pieces: hit.pieces, breaking: hit.breaking, rng: &rng))
             if !hit.breaking {
                 var near: [(i: Int, d: CGFloat)] = []
                 for i in facets.indices where fallAt[i] == nil {
                     near.append((i, dist(facets[i].center, hit.point)))
                 }
                 near.sort { $0.d < $1.d }
-                let order = near.map(\.i)
-                for (n, i) in order.prefix(hit.pieces).enumerated() {
-                    fallAt[i] = hit.time + 0.2 + 0.11 * Double(n)
+                for (n, item) in near.prefix(hit.pieces).enumerated() {
+                    fallAt[item.i] = hit.time + 0.08 + 0.07 * Double(n)
+                }
+                for (i, s) in shards.enumerated() where fallAt[s.facet] != nil && push[i] == .zero {
+                    let dx = s.center.x - hit.point.x, dy = s.center.y - hit.point.y
+                    let d = max(hypot(dx, dy), 1)
+                    let v = 50 + 90 * rng.next()
+                    push[i] = CGVector(dx: dx / d * v, dy: dy / d * v - 70)
                 }
             } else {
-                burstPush = facets.map { f in
-                    let dx = f.center.x - hit.point.x, dy = f.center.y - hit.point.y
+                burstPoint = hit.point
+                for (i, s) in shards.enumerated() where fallAt[s.facet] == nil {
+                    let dx = s.center.x - hit.point.x, dy = s.center.y - hit.point.y
                     let d = max(hypot(dx, dy), 1)
-                    let v = 70 + 170 * rng.next()
-                    return CGVector(dx: dx / d * v, dy: dy / d * v - 60 * rng.next())
+                    // Small pieces fly further; everything is blown outward and up a little.
+                    let v = (160 + 260 * rng.next()) * Double(min(1.6, 40 / max(s.size, 16)))
+                    push[i] = CGVector(dx: dx / d * v, dy: dy / d * v - 120 * rng.next())
                 }
             }
             impactsSeen += 1
@@ -220,63 +375,178 @@ final class RevontuletArt {
         if let c = standingCache, c.fallen == fallen, c.burst == burst { return c.path }
         var p = Path()
         if !burst {
-            for (i, f) in facets.enumerated() where (fallAt[i].map { $0 > now } ?? true) {
-                p.addPath(f.path)
+            if fallen == 0 {
+                p = outline
+            } else {
+                for (i, f) in facets.enumerated() where (fallAt[i].map { $0 > now } ?? true) {
+                    p.addPath(f.path)
+                }
             }
         }
         standingCache = (fallen, burst, p)
         return p
     }
 
-    /// A small copy of the night painting with a wide blur, made once: the sky as seen
-    /// through thick ice, with no live blur while playing.
-    private static func blurredWorld(screen: CGSize) -> (image: CGImage, rect: CGRect)? {
+    // MARK: Making things once
+
+    /// The night painting, small, blurred wide, darkened and cooled: the sky seen through
+    /// thick ice.
+    private static func frostedWorld(screen: CGSize, skyWidth: CGFloat) -> CGImage? {
         guard let ui = UIImage(named: "world-night"), let cg = ui.cgImage else { return nil }
-        let w = 260.0
+        let w = 300.0
         let k = w / Double(cg.width)
         let small = CGRect(x: 0, y: 0, width: w, height: Double(cg.height) * k)
+        let pointsPerPixel = Double(skyWidth) / w
         let input = CIImage(cgImage: cg).transformed(by: CGAffineTransform(scaleX: k, y: k))
-        let blurred = input.clampedToExtent().applyingGaussianBlur(sigma: 4.5).cropped(to: small)
-        guard let out = CIContext().createCGImage(blurred, from: small) else { return nil }
-        let s = max(screen.width / 1520, screen.height / 2688)
-        let rect = CGRect(x: (screen.width - 1520 * s) / 2, y: (screen.height - 2688 * s) / 2, width: 1520 * s, height: 2688 * s)
-        return (out, rect)
+        var img = input.clampedToExtent().applyingGaussianBlur(sigma: 12 / pointsPerPixel)
+        img = img.applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: 0.42, kCIInputBrightnessKey: -0.04,
+                                                                 kCIInputContrastKey: 0.92])
+        img = img.applyingFilter("CIColorMatrix", parameters: [
+            "inputRVector": CIVector(x: 0.34, y: 0, z: 0, w: 0),
+            "inputGVector": CIVector(x: 0, y: 0.44, z: 0, w: 0),
+            "inputBVector": CIVector(x: 0, y: 0, z: 0.7, w: 0),
+            "inputBiasVector": CIVector(x: 0.0, y: 0.02, z: 0.06, w: 0),
+        ])
+        return CIContext().createCGImage(img.cropped(to: small), from: small)
     }
 
-    // MARK: Cracks
+    private static func fault(_ pts: [CGPoint], width: CGFloat, branches: Int, seed: Double, rng: inout Rng) -> Fault {
+        // A natural crack: the zigzag smoothed into a wandering curve, with fine irregularity.
+        var line = resample(pts, n: 28)
+        for _ in 0..<3 {
+            var smoothed = line
+            for i in 1..<(line.count - 1) {
+                smoothed[i] = CGPoint(x: (line[i - 1].x + line[i].x * 2 + line[i + 1].x) / 4,
+                                      y: (line[i - 1].y + line[i].y * 2 + line[i + 1].y) / 4)
+            }
+            line = smoothed
+        }
+        for i in 1..<(line.count - 1) {
+            line[i].y += CGFloat(sin(Double(i) * 2.3 + seed) * 1.6)
+            line[i].x += CGFloat(cos(Double(i) * 1.7 + seed) * 1.0)
+        }
+        var window = taper(line, width: width, seed: seed)
+        var core = Path()
+        core.addLines(line)
+        // Branches leave from inside the line, thinner, also ending in points.
+        for b in 0..<branches {
+            let i = 5 + Int(Double(line.count - 10) * (Double(b) + 0.5) / Double(max(branches, 1)))
+            let a = line[i], next = line[min(line.count - 1, i + 1)]
+            let dir = atan2(Double(next.y - a.y), Double(next.x - a.x)) + (b % 2 == 0 ? -1 : 1) * (0.7 + 0.5 * rng.next())
+            var q = a
+            var bl: [CGPoint] = [q]
+            let len = (14 + 20 * rng.next()) * Double(width / 5)
+            var d = dir
+            for _ in 0..<5 {
+                d += (rng.next() - 0.5) * 0.5
+                q = CGPoint(x: q.x + CGFloat(cos(d) * len / 5), y: q.y + CGFloat(sin(d) * len / 5))
+                bl.append(q)
+            }
+            window.addPath(taper(bl, width: width * 0.45, seed: seed + Double(b)))
+            core.move(to: bl[0])
+            core.addLines(bl)
+        }
+        var length: CGFloat = 0
+        for i in 1..<line.count { length += dist(line[i - 1], line[i]) }
+        let knots = [0.22, 0.5, 0.78].map { line[Int(Double(line.count - 1) * $0)] }
+        return Fault(window: window, core: core, line: line, knots: knots, center: line[line.count / 2], length: length)
+    }
 
-    private static func makeCracks(from p: CGPoint, pieces: Int, breaking: Bool, wall: CGRect, rng: inout Rng) -> [Crack] {
+    /// Three jagged points between two corners, the same whichever way the edge is walked.
+    private static func jag(_ a: CGPoint, _ b: CGPoint) -> [CGPoint] {
+        let flip = (a.x, a.y) > (b.x, b.y)
+        let p = flip ? b : a, q = flip ? a : b
+        let dx = q.x - p.x, dy = q.y - p.y
+        let len = max(hypot(dx, dy), 0.001)
+        let nx = -dy / len, ny = dx / len
+        var r = Rng(seed: UInt64(abs(Int(p.x * 131 + p.y * 977 + q.x * 7 + q.y * 3))) &+ 99)
+        var out: [CGPoint] = []
+        for t in [0.22, 0.5, 0.78] {
+            let off = CGFloat(r.next() - 0.5) * min(12, len * 0.16)
+            let along = CGFloat(t + (r.next() - 0.5) * 0.08)
+            out.append(CGPoint(x: p.x + dx * along + nx * off, y: p.y + dy * along + ny * off))
+        }
+        return flip ? out.reversed() : out
+    }
+
+    /// Points evenly spaced along a polyline.
+    private static func resample(_ pts: [CGPoint], n: Int) -> [CGPoint] {
+        var lengths: [CGFloat] = [0]
+        for i in 1..<pts.count { lengths.append(lengths[i - 1] + dist(pts[i - 1], pts[i])) }
+        let total = lengths.last ?? 1
+        var out: [CGPoint] = []
+        var j = 0
+        for k in 0..<n {
+            let target = total * CGFloat(k) / CGFloat(n - 1)
+            while j < pts.count - 2 && lengths[j + 1] < target { j += 1 }
+            let seg = max(lengths[j + 1] - lengths[j], 0.0001)
+            let u = (target - lengths[j]) / seg
+            out.append(CGPoint(x: pts[j].x + (pts[j + 1].x - pts[j].x) * u, y: pts[j].y + (pts[j + 1].y - pts[j].y) * u))
+        }
+        return out
+    }
+
+    /// A crack shape along a line: widest in the middle, irregular, ending in points.
+    private static func taper(_ line: [CGPoint], width: CGFloat, seed: Double) -> Path {
+        var left: [CGPoint] = [], right: [CGPoint] = []
+        let n = line.count
+        for i in 0..<n {
+            let a = line[max(0, i - 1)], b = line[min(n - 1, i + 1)]
+            let dx = b.x - a.x, dy = b.y - a.y
+            let len = max(hypot(dx, dy), 0.0001)
+            let nx = -dy / len, ny = dx / len
+            let t = Double(i) / Double(n - 1)
+            let w = width * CGFloat(pow(sin(.pi * t), 0.7) * (0.65 + 0.35 * sin(t * 17 + seed))) / 2
+            let skew = CGFloat(0.8 + 0.4 * sin(t * 9 + seed * 2))
+            left.append(CGPoint(x: line[i].x + nx * w * skew, y: line[i].y + ny * w * skew))
+            right.append(CGPoint(x: line[i].x - nx * w / skew, y: line[i].y - ny * w / skew))
+        }
+        return polygon(left + right.reversed())
+    }
+
+    private static func makeCracks(from p: CGPoint, pieces: Int, breaking: Bool, rng: inout Rng) -> [Crack] {
         var out: [Crack] = []
-        let mains = breaking ? 10 : 3 + pieces * 2
-        let reach: CGFloat = breaking ? wall.width * 0.75 : CGFloat(34 + 22 * pieces)
+        let mains = breaking ? 12 : 4 + pieces * 2
+        let reach: CGFloat = breaking ? 260 : CGFloat(40 + 26 * pieces)
         for m in 0..<mains {
             let spread: Double = Double(m) / Double(mains) * 2 * Double.pi
             var a: Double = spread + (rng.next() - 0.5) * 0.7
-            let length = reach * CGFloat(0.55 + 0.6 * rng.next())
-            let segs = 6 + Int(rng.next() * 4)
+            let length = reach * CGFloat(0.5 + 0.7 * rng.next())
+            let segs = 7 + Int(rng.next() * 4)
             var q = p
             var pts = [q]
             for s in 0..<segs {
-                a += (rng.next() - 0.5) * 0.75
+                a += (rng.next() - 0.5) * 0.7
                 let step = length / CGFloat(segs) * CGFloat(0.7 + 0.6 * rng.next())
                 q = CGPoint(x: q.x + CGFloat(cos(a)) * step, y: q.y + CGFloat(sin(a)) * step)
                 pts.append(q)
-                if rng.next() < 0.32 {
+                if rng.next() < 0.28 {
                     var b = a + (rng.next() < 0.5 ? -1 : 1) * (0.5 + 0.6 * rng.next())
                     var bq = q
                     var bpts = [bq]
                     for _ in 0..<(2 + Int(rng.next() * 3)) {
                         b += (rng.next() - 0.5) * 0.6
-                        let st = length * 0.12 * CGFloat(0.6 + 0.8 * rng.next())
+                        let st = length * 0.1 * CGFloat(0.6 + 0.8 * rng.next())
                         bq = CGPoint(x: bq.x + CGFloat(cos(b)) * st, y: bq.y + CGFloat(sin(b)) * st)
                         bpts.append(bq)
                     }
-                    out.append(Crack(points: bpts, width: 0.7, delay: 0.32 * Double(s + 1) / Double(segs)))
+                    out.append(Crack(points: bpts, width: 0.5, delay: 0.2 * Double(s + 1) / Double(segs)))
                 }
             }
-            out.append(Crack(points: pts, width: breaking ? 1.7 : 1.3, delay: 0))
+            out.append(Crack(points: pts, width: breaking ? 1.0 : 0.8, delay: 0))
         }
         return out
+    }
+
+    private static func polygon(_ pts: [CGPoint]) -> Path {
+        var p = Path()
+        p.addLines(pts)
+        p.closeSubpath()
+        return p
+    }
+
+    private static func centroid(_ pts: [CGPoint]) -> CGPoint {
+        CGPoint(x: pts.map(\.x).reduce(0, +) / CGFloat(pts.count), y: pts.map(\.y).reduce(0, +) / CGFloat(pts.count))
     }
 }
 
