@@ -59,30 +59,29 @@ def card_wall(png, d, fade=0.3):
     run(["-loop", "1", "-i", "wall.png", "-loop", "1", "-i", png, "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
 def over(src, png, d, ss=0.0, speed=1.0):
     """Words over darkened footage."""
-    o = out(); L = dur_of(src) - 0.1
-    if ss + d * speed > L: ss = max(0.0, L - d * speed)
-    if ss + d * speed > L: speed = (L - ss) / d
-    vf = f"[0:v]setpts=PTS/{speed},scale=1280:720,fps=24,eq=brightness=-0.22:saturation=0.8,gblur=sigma=3[b];[b][1:v]overlay=0:0[w];[w][2:v]overlay=0:0[v]"
+    o = out(); L = dur_of(src) - 0.1; speed = min(1.0, (L - ss) / d)
+    slow = ",minterpolate=fps=24:mi_mode=mci:mc_mode=aobmc:vsbmc=1" if speed < 0.985 else ""
+    vf = f"[0:v]setpts=PTS/{speed}{slow},scale=1280:720,fps=24,eq=brightness=-0.22:saturation=0.8,gblur=sigma=3[b];[b][1:v]overlay=0:0[w];[w][2:v]overlay=0:0[v]"
     run(["-ss", str(ss), "-i", src, "-i", png, "-i", f"{OLD}/tag_gen.png", "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
-def windows(src, d, wins, ss=0.0, tag=None, dim=-0.10, fin=0.0, fout=0.0):
-    """The clip (or still) stays as it was; framed windows come up over it."""
+MCI = ",minterpolate=fps=24:mi_mode=mci:mc_mode=aobmc:vsbmc=1"      # slow motion from computed in-between frames, never repeated ones
+def windows(src, d, wins, ss=0.0, tag=None, dim=-0.10, fin=0.0, fout=0.0, wfade=0.3):
+    """The clip (or still) stays as it was; framed windows come up over it and fade out again before the cut."""
     o = out(); img = src.endswith(".png")
     if img:
         ins = ["-loop", "1", "-t", str(d), "-i", src]; vf = f"[0:v]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,fps=24,eq=brightness={dim}[b0];"
     else:
         L = dur_of(src) - 0.1; speed = min(1.0, (L - ss) / d); ins = ["-ss", str(ss), "-i", src]
-        slow = ",minterpolate=fps=24:mi_mode=mci:mc_mode=aobmc:vsbmc=1" if speed < 0.985 else ""
-        vf = f"[0:v]setpts=PTS/{speed}{slow},scale=1280:720,fps=24,eq=brightness={dim}[b0];"
+        vf = f"[0:v]setpts=PTS/{speed}{MCI if speed < 0.985 else ''},scale=1280:720,fps=24,eq=brightness={dim}[b0];"
     cur = "[b0]"
     for i, (png, a, b) in enumerate(wins):
-        ins += ["-loop", "1", "-t", str(d), "-i", png]
-        vf += f"[{i+1}:v]format=rgba,fade=t=in:st={a}:d=0.3:alpha=1,fade=t=out:st={b-0.3}:d=0.3:alpha=1[w{i}];{cur}[w{i}]overlay=0:0:enable='between(t,{a},{b})'[b{i+1}];"; cur = f"[b{i+1}]"
+        oe = min(b, d); ins += ["-loop", "1", "-t", str(d), "-i", png]
+        vf += f"[{i+1}:v]format=rgba,fade=t=in:st={a}:d={wfade}:alpha=1,fade=t=out:st={oe - wfade - 0.02:.3f}:d={wfade}:alpha=1[w{i}];{cur}[w{i}]overlay=0:0:enable='between(t,{a},{oe})'[b{i+1}];"; cur = f"[b{i+1}]"
     fades = (f",fade=t=in:d={fin}" if fin else "") + (f",fade=t=out:st={d - fout:.3f}:d={fout}" if fout else "")
     ins += ["-i", tag or f"{OLD}/tag_gen.png"]; vf += f"{cur}[{len(wins)+1}:v]overlay=0:0{fades}[v]"
     run(ins + ["-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
 AURORA = "0x8CF0C8"
 def into_phone(src, d, fx=0.42, fy=0.74):
-    """Our own version of the reveal: the camera dives into the glowing phone and the picture floods with aurora light."""
+    """Our own version of the reveal, used only if the generated one is missing."""
     o = out(); N = int(round(d * 24))
     vf = (f"[0:v]scale=3840:2160:force_original_aspect_ratio=increase,crop=3840:2160,"
           f"zoompan=z='1+pow(on/{N},2.2)*5.0':x='(iw-iw/zoom)*{fx}':y='(ih-ih/zoom)*{fy}':d={N}:s=1280x720:fps=24,"
@@ -90,8 +89,8 @@ def into_phone(src, d, fx=0.42, fy=0.74):
     run(["-loop", "1", "-i", src, "-i", f"{OLD}/tag_gen.png", "-filter_complex", vf, "-map", "[w]", "-frames:v", str(N)] + V + [o]); check(o, N / 24)
 def from_light(fn_out, d, fin=0.7):
     """The next shot comes up out of the same light."""
-    tmp = fn_out; o2 = tmp.replace(".mp4", "_f.mp4")
-    run(["-i", tmp, "-vf", f"fade=t=in:d={fin}:color={AURORA}", "-t", str(d)] + V + [o2]); os.replace(o2, tmp)
+    o2 = fn_out.replace(".mp4", "_f.mp4")
+    run(["-i", fn_out, "-vf", f"fade=t=in:d={fin}:color={AURORA}", "-t", str(d)] + V + [o2]); os.replace(o2, fn_out)
 def measure_screen(app_src, panel, d, ss=1.0):
     """One calm screen for the three measures: the app on the left, the three lines arriving on the right."""
     o = out()
@@ -150,8 +149,8 @@ at(0.0,  lambda d: clip(C("exit"), d, ss=0.2) if have("exit") else clip(C("door"
 at(4.3,  lambda d: clip(C("card"), d, ss=0.4) if have("card") else clip(C("door"), d, ss=2.4))
 # 2 she finds him
 at(8.0,  lambda d: clip(C("cub"), d))
-at(12.6, lambda d: clip(C("cub"), d, ss=3.0, zoom=1.2, fx=0.5, fy=0.3))
-at(15.0, lambda d: clip(C("hold"), d, ss=1.0))
+at(12.6, lambda d: clip(C("cub"), d, ss=2.5, zoom=1.2, fx=0.5, fy=0.3))
+at(15.0, lambda d: clip(C("hold"), d, ss=1.0, zoom=1.4, fx=0.05, fy=0.75))
 # the wow: he turns to light and goes into her phone; the next thing we see is the real app
 def reveal(d):
     if have("reveal"):
@@ -167,23 +166,23 @@ at(22.4, lambda d: clip(C("sofa"), d, ss=0.8))
 at(24.3, lambda d: clip(C("grey"), d, ss=0.2))
 at(26.8, lambda d: clip(C("curtains"), d, ss=0.6) if have("curtains") else still(N8("n06"), d, z0=1.0, z1=1.12, fx=0.6, fy=0.4))
 # 4 she said yes; every moment with him is a number
-at(30.7, lambda d: over(C("sofa"), "c_yes.png", d, ss=1.5, speed=0.5))
+at(30.7, lambda d: over(C("sofa"), "c_yes.png", d))
 at(37.0, lambda d: measure_screen(A("home"), "v8/triple.mp4", d))                 # one screen: the app, and the three lines arriving
 at(44.3, lambda d: two_step_card("c8_num.png", "c8_gem.png", d, at2=2.2))            # one card: numbers only; then Gemini and the check
 # 5 the questionnaire beside the lines, one continuous shot
 at(53.2, lambda d: chart("v8/chart_full.mp4", d))
 # 6 November
-at(61.1, lambda d: clip(C("grey"), d, ss=2.2, zoom=1.15, fx=0.7, fy=0.6))
+at(61.1, lambda d: clip(C("grey"), d, ss=1.2, zoom=1.15, fx=0.7, fy=0.6))
 at(64.5, lambda d: clip(C("night"), d, ss=0.2, cap=("cap_help.png", 2.8)))
-at(70.2, lambda d: windows(C("nurse"), d, [("w_tg.png", 0.3, d + 0.3)], ss=0.2))                      # the clinic: the nurse reads the real alert
-at(73.5, lambda d: windows(C("nurse"), d, [("w_anna.png", 0.3, d - 0.05)], ss=2.6))                   # she opens Anna's page and picks up the phone
-at(77.6, lambda d: clip(C("call"), d, speed=0.72))                                                    # "I read your note. I'm here."
+at(70.2, lambda d: windows(C("nurse"), d, [("w_tg.png", 0.3, 3.4), ("w_anna.png", 3.2, d + 0.3)], ss=0.1, wfade=0.6))   # one natural-speed shot: the alert, then her page, staying on and fading out by the cut
+at(76.7, lambda d: clip(C("call"), d))                                                                # "Anna, I read your note. I'm here."
+at(81.6, lambda d: clip(C("frontdoor"), d, ss=1.2) if have("frontdoor") else clip(C("curtains"), d, ss=1.0))   # she opens her front door to the sun
 # 7 this time
 at(84.5, lambda d: clip(C("return"), d, ss=0.3))
 # 8 the name and the motto
 at(89.1, lambda d: card("c_brand6.png", d, fade=0.8))
 END = 99.4
-FIXED = {0.0, 8.0, 17.0, 20.6, 37.0, 44.3, 53.2, 89.1}
+FIXED = {0.0, 8.0, 17.0, 20.6, 37.0, 44.3, 53.2, 70.2, 76.7, 81.6, 84.5, 89.1}
 B = json.load(open("v8/beats8.json"))
 def snap(t, prev):
     best, bs = t, -9
