@@ -2,7 +2,7 @@
 
 Revontulet is Lanvi's 90-second game: pick a fault line in the ice (easy or hard), trace a half-circle, pull the spark back like a slingshot and let go, tap the embers on a hard shot, then stroke the sleeping fox. The app sends it as a `focus` record with one extra object, `revontulet` (shape and limits: `docs/api/README.md` and `openapi.json`, `RevontuletIn`).
 
-The server stores these numbers and shows them to the clinician. **It does not use them** to judge a day, pick suggestions or count XP. Since 14 November it does compare four of them with the person's own earlier Revontulet games, for the clinician page only: see "Own normal" at the end. Nothing here is validated in Lanvi; the studies below are where each idea comes from, with the numbers as the research summary for this game gives them. On 14 November the two effort papers (Treadway 2009 and 2012) and the swipe paper (Chitale 2025) were read on PMC and the rows below corrected; the tablet handwriting paper could not be opened and stays unchecked.
+The server stores these numbers and shows them to the clinician. **It does not use them** to judge a day, pick suggestions or count XP. Since 14 November it does compare four of them with the person's own earlier Revontulet games, for the clinician page only: see "Own normal" at the end. Nothing here is validated in Lanvi; the studies below are where each idea comes from, with the numbers as the research summary for this game gives them. On 14 November the two effort papers (Treadway 2009 and 2012) and the swipe paper (Chitale 2025) were read on PMC and the rows below corrected; of the tablet handwriting paper (Džepina et al. 2025, Applied Sciences) only the abstract was read, through Crossref: 20 youths with depression and 20 controls wrote the cursive letter "l" repeatedly; 177 features were cut to 3; 82.5% of subjects were sorted correctly. The abstract does not mention semicircles.
 
 | Measure | What it is | Study idea behind it |
 |---|---|---|
@@ -24,8 +24,16 @@ Four numbers are taken from each game (`revontulet_features` in `engine/clinic_e
 - **The games just before**: at least 8 earlier Revontulet games, at most the last 20. This reference moves with the person.
 - **The start**: games 3 to 12 (the first two are practice). This one does not move, so a slow slide cannot hide in it.
 
-The page labels a game only on the two speeds, at 2.0 or more either way. The harder crack has four possible values a game, so it is only compared over several games. Sparks and snow games never enter these references, and nothing here reaches the watchers or the judging of a day.
+Both count only games on the same phone (the same `pt_per_cm`, within 0.5): on a new phone they start again. The page labels a game only on the two speeds, at 2.5 or more either way, and a stroke speed needs at least two strokes. The harder crack has four possible values a game, so it is only compared over several games. Sparks and snow games never enter these references, and nothing here reaches the watchers or the judging of a day.
 
-How the rule behaves on generated games: `python -m clinic_engine.revontulet_check`. On the generator in `seed_revontulet.py`, a person who does not change gets a label against the recent games on about 2% of games and against the start on about 2%, and almost none get three labelled games in a row (with 5 games, a cut of 1.5 and a label on time to choose as well it was 37%, which is why the rule is stricter here and why a stroke speed needs two strokes). The slide built into the example is labelled in 83% of the last two weeks' games against the moving reference and 100% against the start. The 8 games and the cut of 2.0 were picked on this generator, whose game-to-game spread in tracing speed is smaller than real play is likely to be, so on people expect more labels. These are properties of the generator, not of people.
+How the rule behaves on generated games: `python -m clinic_engine.revontulet_check`. "Spread" is how much the two speeds vary from game to game, as a multiple of the example's 10% either way; nobody has measured it on people. Measured on 5,000 runs of 24 games per row, with the rule as it is (8 games, 2.5):
+
+| Spread | Unchanged games labelled, recent | start | either | Unchanged people with three in a row, recent | start | Example's slide, last two weeks, labelled slower: recent | start |
+|---|---|---|---|---|---|---|---|
+| 1 | 0.1% | 0.1% | 0.2% | 0.0% | 0.0% | 70% | 100% |
+| 2 | 7.4% | 7.1% | 9.9% | 1.0% | 1.1% | 32% | 98% |
+| 3 | 9.4% | 9.8% | 13.2% | 2.5% | 3.9% | 17% | 81% |
+
+How the rule got here, on the same generator: with 5 games, a cut of 1.5 and a label on time to choose as well, 37% of unchanged games were labelled at spread 1. With 8 games, 2.0 and two speeds it was 2% at spread 1 but 15 to 17% at spreads 2 and 3. The cut of 2.5 was chosen from this table. It trades away the moving reference's power to see a slow slide, which is what the start is for. These are properties of the generator, not of people.
 
 The example person for the page: `python -m clinic_engine.seed_revontulet` (Example V-001, 24 generated games with the slide written in).

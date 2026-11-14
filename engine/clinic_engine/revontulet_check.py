@@ -33,8 +33,8 @@ NEED = T.revontulet_baseline_min
 START = slice(T.revontulet_start_from, T.revontulet_start_to)  # games 3 to 12
 
 
-def _series(rng: random.Random, slides: list[float]) -> list[dict]:
-    return [revontulet_features({"revontulet": _game(rng, s)}) for s in slides]
+def _series(rng: random.Random, slides: list[float], spread: float = 1.0) -> list[dict]:
+    return [revontulet_features({"revontulet": _game(rng, s, spread)}) for s in slides]
 
 
 def _moving_z(games: list[dict], k: int, name: str) -> float | None:
@@ -59,7 +59,7 @@ def _off(z: float | None) -> bool:
     return z is not None and abs(round(z, 1)) >= CUT
 
 
-def run(runs: int = 3000, seed: int = 7) -> dict:
+def run(runs: int = 3000, seed: int = 7, spread: float = 1.0) -> dict:
     rng = random.Random(seed)
     n = WEEKS * len(PER_WEEK)
     flat = [0.0] * n
@@ -70,7 +70,7 @@ def run(runs: int = 3000, seed: int = 7) -> dict:
     per = {name: 0 for name in LABELLED}
     mov = fix = late_games = 0
     for _ in range(runs):
-        g = _series(rng, flat)
+        g = _series(rng, flat, spread)
         r_flags, s_flags = [], []
         for k in range(NEED, n):
             hit = {name: _off(_moving_z(g, k, name)) for name in LABELLED}
@@ -87,7 +87,7 @@ def run(runs: int = 3000, seed: int = 7) -> dict:
                 s_flags.append(s_hit)
         recent_runs += _run_of_three(r_flags)
         start_runs += _run_of_three(s_flags)
-        g = _series(rng, slide)
+        g = _series(rng, slide, spread)
         for k in late:
             late_games += 1
             zm, zf = _moving_z(g, k, "trace_speed_cm_s"), _start_z(g, k, "trace_speed_cm_s")
@@ -106,17 +106,19 @@ def run(runs: int = 3000, seed: int = 7) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--runs", type=int, default=3000)
-    out = run(ap.parse_args().runs)
-    print(f"Generated data, {out['runs']} runs of 24 games. Nothing changes:")
-    print(f"  against the recent games, {out['unchanged_recent_label']:.0%} of games from the ninth on "
-          f"carry a label (" + ", ".join(f"{k} {v:.0%}" for k, v in out["unchanged_per_measure"].items())
-          + f"); {out['unchanged_people_three_in_a_row_recent']:.0%} of people get three such games in a row.")
-    print(f"  against the start, {out['unchanged_start_label']:.0%} of games from the thirteenth on carry "
-          f"a label; {out['unchanged_people_three_in_a_row_start']:.0%} of people get three in a row.")
-    print(f"  either label: {out['unchanged_any_label']:.0%} of games from the ninth on.")
-    print(f"The example's slide, last two weeks: tracing labelled slower in "
-          f"{out['slide_last_two_weeks_tracing_slower_moving']:.0%} of games against the moving "
-          f"range and {out['slide_last_two_weeks_tracing_slower_start']:.0%} against the fixed start.")
+    args = ap.parse_args()
+    print(f"Generated data, {args.runs} runs of 24 games per row. 'Spread' is how much the two speeds vary")
+    print("from game to game, as a multiple of the example's 10% either way. Shares of games that carry a label")
+    print("when nothing changes, and of the slide's last two weeks labelled slower in tracing:")
+    print(f"{'spread':>7} {'recent':>8} {'start':>7} {'either':>7} {'3 in a row, recent':>19} {'start':>7} "
+          f"{'slide, recent':>14} {'start':>7}")
+    for spread in (1.0, 2.0, 3.0):
+        o = run(args.runs, spread=spread)
+        print(f"{spread:>7.0f} {o['unchanged_recent_label']:>8.1%} {o['unchanged_start_label']:>7.1%} "
+              f"{o['unchanged_any_label']:>7.1%} {o['unchanged_people_three_in_a_row_recent']:>19.1%} "
+              f"{o['unchanged_people_three_in_a_row_start']:>7.1%} "
+              f"{o['slide_last_two_weeks_tracing_slower_moving']:>14.0%} "
+              f"{o['slide_last_two_weeks_tracing_slower_start']:>7.0%}")
 
 
 if __name__ == "__main__":

@@ -132,7 +132,8 @@ def revontulet_features(a: dict) -> dict | None:
             "choice_ms": float(median(choose)) if choose else None,
             "trace_speed_cm_s": speed(rounds, "trace_mean_speed_pt_s"),
             # one stroke is too little to compare: the stroke speed needs two
-            "stroke_speed_cm_s": speed(strokes, "mean_speed_pt_s") if len(strokes) >= 2 else None}
+            "stroke_speed_cm_s": speed(strokes, "mean_speed_pt_s") if len(strokes) >= 2 else None,
+            "pt_per_cm": per_cm}
 
 
 def face_quality(a: dict, th: Thresholds = T) -> str:
@@ -191,7 +192,13 @@ def process_activity(a: dict, previous: list[dict], th: Thresholds = T) -> dict:
     if rvf is not None:
         # Own normal over the earlier Revontulet games only. A record without
         # the object gets none of these keys and is stored as it always was.
-        every = [p["revontulet_features"] for p in previous if p.get("revontulet_features")]
+        # Only games on the same phone: the half circle is laid out in screen
+        # points, so a new phone (a different points-per-centimetre) changes the
+        # speeds, and both references start again there.
+        per_cm = rvf.get("pt_per_cm")
+        every = [p["revontulet_features"] for p in previous if p.get("revontulet_features")
+                 and (per_cm is None or p["revontulet_features"].get("pt_per_cm") is None
+                      or abs(p["revontulet_features"]["pt_per_cm"] - per_cm) <= 0.5)]
         earlier = every[-th.activity_baseline_max:]
         # Two references. The moving one: the games just before this one. The
         # fixed one: the person's start, which a slow slide cannot drag along.

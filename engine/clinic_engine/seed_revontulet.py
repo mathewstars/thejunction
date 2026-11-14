@@ -32,13 +32,16 @@ PHQ9 = (5, 4, 5, 6, 8, 11, 13, 15)
 PT_PER_CM = 64.2
 
 
-def _game(rng: random.Random, slide: float) -> dict:
-    """One game's `revontulet` object (the shape of models.RevontuletIn)."""
+def _game(rng: random.Random, slide: float, spread: float = 1.0) -> dict:
+    """One game's `revontulet` object (the shape of models.RevontuletIn).
+    `spread` widens how much the two speeds vary from game to game (1.0: the
+    example's 10% either way), for revontulet_check."""
+    wob = lambda: rng.uniform(1 - 0.1 * spread, 1 + 0.1 * spread)  # noqa: E731
     rounds = []
     for _ in range(3):
         hard = rng.random() < 0.8 - 0.7 * slide
         shown = 2 if hard else 0
-        speed = PT_PER_CM * (3.4 - 1.25 * slide) * rng.uniform(0.9, 1.1)
+        speed = PT_PER_CM * (3.4 - 1.25 * slide) * wob()
         ms = int(rng.uniform(1100, 1500) * (1 + 0.6 * slide))
         rounds.append({
             "effort": "hard" if hard else "easy",
@@ -54,7 +57,7 @@ def _game(rng: random.Random, slide: float) -> dict:
             "embers_hit": sum(rng.random() < 0.9 - 0.3 * slide for _ in range(shown)),
             "bonus": hard and rng.random() < 0.3})
     strokes = [{"ms": int(rng.uniform(1100, 1700)), "length_pt": round(rng.uniform(350, 430), 1),
-                "mean_speed_pt_s": round(PT_PER_CM * (4.6 - 1.4 * slide) * rng.uniform(0.9, 1.1), 1)}
+                "mean_speed_pt_s": round(PT_PER_CM * (4.6 - 1.4 * slide) * wob(), 1)}
                for _ in range(rng.randint(1, 3))]
     fox = rng.random() < 0.6 * slide
     return {"rounds": rounds, "strokes": strokes,
