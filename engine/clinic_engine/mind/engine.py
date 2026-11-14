@@ -276,38 +276,55 @@ class Mind:
         view = self.build_view(repo, now)
         why: dict[str, str] = {}
         triage_on = self.triage_on
+        decided: dict[str, dict] = {}
+        fall_back = False
         if triage_on:
             # The rules keep their own level beside the one the models set, so
             # that what the rules say never depends on what the models said.
             levels = escalate([{**it, "level": it.get("rules_level", it["level"])}
                                for it in view.items], view, why)
-            decided = self._triage_decisions(repo)
+            for it in view.items:
+                if it["state"] == "open" and it.get("rules_level") != levels.get(it["id"]):
+                    it["rules_level"] = levels.get(it["id"], it["level"])
+                    repo.put(f"attention/{it['id']}.json", it)
+            # A decision counts only for the picture it was made on. For a
+            # changed picture the rules apply until the new triage lands; when
+            # no model answered for this picture, levels the models had set go
+            # back to the rules' level.
+            doc = repo.get("mind/triage.json") or {}
+            try:
+                basis = self._triage_basis(self._triage_inputs(repo, now)[3])
+            except GateError:
+                basis = None
+            if doc.get("basis") == basis:
+                decided = doc.get("levels") or {} if doc.get("status") == "ready" else {}
+                fall_back = doc.get("status") == "no_models"
         else:
             levels = escalate(view.items, view, why)
-            decided = {}
         for it in view.items:
             if it["state"] != "open":
                 continue
             new = levels.get(it["id"], it["level"])
-            if triage_on and it.get("rules_level") != new:
-                it["rules_level"] = new
-                repo.put(f"attention/{it['id']}.json", it)
             dec = decided.get(it["id"]) if it["kind"] != "asked_for_help" else None
+            if dec is None and fall_back and it.get("level_source") == "models" \
+                    and it["level"] != new:
+                dec = {"level": new, "back_to_rules": True}
             if dec is not None:
                 # The two model levels set this item's level, up or down.
                 if dec["level"] != it["level"]:
                     old = it["level"]
+                    by = "rules" if dec.get("back_to_rules") else "models"
                     it.update(level=dec["level"], level_changed_at=now.isoformat(),
-                              level_source="models",
+                              level_source=by,
                               peak_level=level_max(it.get("peak_level", old), dec["level"]))
                     it["history"].append({"at": now.isoformat(), "event": "level",
-                                          "level": dec["level"], "by": "models"})
+                                          "level": dec["level"], "by": by})
                     repo.put(f"attention/{it['id']}.json", it)
                     self.audit(repo, "attention_triage", attention_id=it["id"], kind=it["kind"],
-                               from_level=old, level=dec["level"], rules_level=new)
+                               from_level=old, level=dec["level"], rules_level=new, by=by)
                     self.trace(repo, "attention", "triaged",
                                {"attention_id": it["id"], "kind": it["kind"], "from_level": old,
-                                "level": dec["level"], "rules_level": new,
+                                "level": dec["level"], "rules_level": new, "by": by,
                                 "level1": dec.get("level1"), "level2": dec.get("verdict2")},
                                notable=True)
                 continue
@@ -354,10 +371,6 @@ class Mind:
     def triage_on(self) -> bool:
         return getattr(self.settings, "triage_mode", "rules") == "models"
 
-    def _triage_decisions(self, repo: PatientRepo) -> dict[str, dict]:
-        doc = repo.get("mind/triage.json") or {}
-        return doc.get("levels") or {} if doc.get("status") == "ready" else {}
-
     def _triage_inputs(self, repo: PatientRepo, now: datetime):
         view = self.build_view(repo, now)
         items = [it for it in view.items if it["state"] == "open"]
@@ -374,15 +387,16 @@ class Mind:
                             and a["type"] in ("focus", "breathing")),
             checkins_7d=sum(1 for a in view.activities if a["started_at"] >= cut7
                             and a["type"] == "checkin"),
-            today=view.today, clinic_rules=self.clinic_rules(repo))
+            today=view.today, clinic_rules=self.clinic_rules(repo, now))
         return view, items, rules, payload, refs
 
-    @staticmethod
-    def clinic_rules(repo: PatientRepo) -> list[dict]:
+    def clinic_rules(self, repo: PatientRepo, now: datetime | None = None) -> list[dict]:
         """The clinic's own rules for this person, oldest first: free text
-        written by a clinician, read by level 1 in the triage, never sent out."""
+        written by a clinician, read by level 1 in the triage, never sent out.
+        A rule stops applying when it is removed or when its time is over."""
+        now_s = (now or self.clock.now()).isoformat()
         return [r for r in (repo.get("mind/clinic_rules.json") or {}).get("rules", [])
-                if r.get("active", True)]
+                if r.get("active", True) and (r.get("expires_at") or "9999") > now_s]
 
     @staticmethod
     def _triage_basis(payload: dict | None) -> str:
@@ -489,26 +503,10 @@ class Mind:
                                           "at": now.isoformat(), "levels": {}})
             self.audit(repo, "triage", "refused", "no_model_answered", items=len(refs))
             return {"status": "no_models"}
-        step = {"agree": 0, "raise": 1, "lower": -1}
-        by_id = {it["id"]: it for it in items}
-        rule_ids = {f"r{i}": r["id"] for i, r in enumerate(self.clinic_rules(repo)[:10], 1)}
-        decisions: dict[str, dict] = {}
-        for ref, iid in refs.items():
-            one, two = first.get(ref), second.get(ref)
-            if one is None and two is None:
-                continue  # neither reader answered for this item: the rules' level stands
-            base = one["level"] if one else rules[iid]
-            # A level that follows the clinic's own rule for this person is not
-            # moved by the second reader: the clinician outranks the model.
-            rule_id = rule_ids.get(one.get("rule")) if one else None
-            idx = LEVELS.index(base) + (step[two["verdict"]] if two and rule_id is None else 0)
-            fixed = by_id[iid]["kind"] == "asked_for_help"  # urgent by rule, whatever was said
-            decisions[iid] = {
-                "level": "urgent" if fixed else LEVELS[max(0, min(len(LEVELS) - 1, idx))],
-                "rules_level": rules[iid], "fixed_by_rule": fixed, "clinic_rule_id": rule_id,
-                "level1": one["level"] if one else None, "reason1": one["reason"] if one else None,
-                "verdict2": two["verdict"] if two else None,
-                "reason2": two["reason"] if two else None}
+        from .triage import combine
+        rule_ids = {f"r{i}": r["id"] for i, r in enumerate(self.clinic_rules(repo, now)[:10], 1)}
+        decisions = combine(refs, rules, {it["id"]: it["kind"] for it in items}, first, second,
+                            rule_ids)
         repo.put("mind/triage.json", {"status": "ready", "basis": basis, "at": now.isoformat(),
                                       "models": names, "levels": decisions})
         self.audit(repo, "triage", items=len(refs), decided=len(decisions),

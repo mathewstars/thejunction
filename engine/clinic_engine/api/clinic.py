@@ -216,7 +216,8 @@ MAX_CLINIC_RULES = 10
 
 
 def _rules_out(ctx, repo) -> dict:
-    rules = [{k: r.get(k) for k in ("id", "text", "at", "by")} for r in ctx.mind.clinic_rules(repo)]
+    rules = [{k: r.get(k) for k in ("id", "text", "at", "by", "expires_at")}
+             for r in ctx.mind.clinic_rules(repo)]
     return {"rules": rules, "applies": ctx.mind.triage_on}
 
 
@@ -234,7 +235,8 @@ async def list_clinic_rules(request: Request, patient_id: str = Path(pattern=SID
 async def add_clinic_rule(body: ClinicRuleIn, request: Request,
                           patient_id: str = Path(pattern=SID),
                           p: Principal = Depends(clinician_only)):
-    """At most 10 rules per person, 3 to 300 characters each. The rule is read
+    """At most 10 rules per person, 3 to 300 characters each. A rule applies
+    for `days` days (14 unless said otherwise, at most 90). The rule is read
     by the local model the next time the levels are set (at once when
     `TRIAGE_MODE=models`). The audit log records that a rule was added and its
     length, never its text."""
@@ -246,15 +248,17 @@ async def add_clinic_rule(body: ClinicRuleIn, request: Request,
         raise ApiError(422, "invalid_request", "The rule has no readable text.")
     async with ctx.mind.lock(p.clinic_id, patient_id):
         doc = repo.get("mind/clinic_rules.json") or {"rules": []}
-        if len([r for r in doc["rules"] if r.get("active", True)]) >= MAX_CLINIC_RULES:
+        if len(ctx.mind.clinic_rules(repo)) >= MAX_CLINIC_RULES:
             raise ApiError(409, "conflict", f"At most {MAX_CLINIC_RULES} rules per person.")
         rule = {"id": new_id("crl"), "text": text, "at": ctx.clock.now().isoformat(),
-                "by": p.actor, "active": True}
+                "by": p.actor, "active": True,
+                "expires_at": (ctx.clock.now() + timedelta(days=body.days)).isoformat()}
         doc["rules"].append(rule)
         repo.put("mind/clinic_rules.json", doc)
         write_audit(ctx.store, ctx.clock.now(), clinic_id=p.clinic_id, patient_id=patient_id,
                     actor=p.actor, action="clinic_rule_add",
-                    detail={"rule_id": rule["id"], "chars": len(text)}, request_id=rid_of(request))
+                    detail={"rule_id": rule["id"], "chars": len(text), "days": body.days},
+                    request_id=rid_of(request))
         await ctx.mind.publish("rule", p.clinic_id, patient_id)
     return _rules_out(ctx, repo)
 

@@ -1,7 +1,9 @@
 """TRIAGE_MODE=models: the watchers stay the triggers, the two model levels set
 the level of each open item (level 1 sets, level 2 agrees, raises or lowers).
-The rules' level is kept beside it and applies when no model answers; a request
-for help is urgent by rule and is never sent to a model."""
+The rules' level is kept beside it and applies when no model answers. A request
+for help is part of the picture both models get, and its level is urgent by rule.
+A model cannot lower a flag the rules hold at urgent, or go more than one step
+below the rules; only the clinic's own rule can."""
 
 import json
 import re
@@ -66,7 +68,7 @@ def test_the_two_model_levels_set_the_level_up_and_down():
     assert doc["status"] == "ready" and doc["models"]["level2"] == "test-model"
     d = doc["levels"][dev["id"]]
     assert d == {"level": "urgent", "rules_level": "attention", "fixed_by_rule": False,
-                 "clinic_rule_id": None, "level1": "attention",
+                 "clinic_rule_id": None, "held_by_floor": False, "level1": "attention",
                  "reason1": "several_signals_agree", "verdict2": "raise",
                  "reason2": "deep_and_held"}
     # The clinician sees who set it and what the rules alone would say.
@@ -215,7 +217,7 @@ def test_a_clinic_rule_in_plain_words_sets_the_level_and_outranks_the_second_rea
     assert [x["text"] for x in det["clinic_rules"]] == [RULE]
     assert det["triage"]["levels"][dev["id"]]["clinic_rule_id"] == rule_id
     ev = [e for e in env.audit() if e["action"] == "clinic_rule_add"]
-    assert ev and ev[-1]["detail"] == {"rule_id": rule_id, "chars": len(RULE)}
+    assert ev and ev[-1]["detail"] == {"rule_id": rule_id, "chars": len(RULE), "days": 14}
     assert "mother" not in json.dumps(env.audit())
     # Removing the rule: the levels are set again without it.
     r = env.client.delete(f"/v1/clinic/patients/{env.demo['patient_id']}/clinic-rules/{rule_id}",
@@ -279,3 +281,78 @@ def test_in_rules_mode_a_clinic_rule_is_stored_and_says_it_does_not_apply():
     assert r.status_code == 200 and r.json()["applies"] is False
     assert open_items(env)["deviation"]["level"] == "attention"
     assert not [p for p in env.local.packs if p.task == "triage"]
+
+
+# ---- the floors: what the models cannot undo by themselves --------------------------------
+
+def test_a_model_cannot_lower_what_the_rules_hold_at_urgent_or_go_two_steps_down():
+    from clinic_engine.mind.triage import combine
+    refs = {"a1": "i1", "a2": "i2", "a3": "i3", "a4": "i4"}
+    rules = {"i1": "urgent", "i2": "urgent", "i3": "attention", "i4": "urgent"}
+    kinds = {"i1": "deviation", "i2": "deviation", "i3": "silence", "i4": "deviation"}
+    one = lambda level, rule=None: {"level": level, "reason": "getting_better", "rule": rule}
+    lower = {"verdict": "lower", "reason": "getting_better"}
+    out = combine(refs, rules, kinds,
+                  {"a1": one("watch"), "a2": one("urgent"), "a3": one("attention"),
+                   "a4": one("watch", "r1")},
+                  {"a1": lower, "a2": lower, "a3": lower, "a4": {"verdict": "raise", "reason": "deep_and_held"}},
+                  {"r1": "crl_x"})
+    # The rules say urgent: neither model, nor both together, can take it down.
+    assert out["i1"]["level"] == "urgent" and out["i1"]["held_by_floor"] is True
+    assert out["i2"]["level"] == "urgent" and out["i2"]["held_by_floor"] is True
+    # One step below the rules is allowed.
+    assert out["i3"]["level"] == "watch" and out["i3"]["held_by_floor"] is False
+    # Only the clinic's own rule goes under the floor; the second reader's
+    # "raise" is recorded, so the page can show it, and not applied.
+    assert out["i4"]["level"] == "watch" and out["i4"]["clinic_rule_id"] == "crl_x"
+    assert out["i4"]["verdict2"] == "raise" and out["i4"]["held_by_floor"] is False
+    # Raising is never limited.
+    up = combine({"a1": "i1"}, {"i1": "watch"}, {"i1": "silence"}, {"a1": one("urgent")}, {}, {})
+    assert up["i1"]["level"] == "urgent"
+    # The second reader alone, on the rules' level.
+    solo = combine({"a1": "i1"}, {"i1": "urgent"}, {"i1": "deviation"}, {}, {"a1": lower}, {})
+    assert solo["i1"]["level"] == "urgent" and solo["i1"]["held_by_floor"] is True
+
+
+def test_a_decision_counts_only_for_its_picture_and_no_answer_puts_the_rules_back():
+    rec = Level2Recorder(second_reader())
+    env = env_with(FakeLocal(triage=first_reader({"deviation": "urgent"}, default="watch")), rec)
+    dev = open_items(env)["deviation"]
+    assert dev["level"] == "urgent" and dev["rules_level"] == "attention"
+    doc = env.repo().get("mind/triage.json")
+    # The models stop answering for this picture: the rules' level comes back, down too.
+    env.repo().put("mind/triage.json", {"status": "no_models", "basis": doc["basis"],
+                                        "at": env.clock.now().isoformat()})
+    env.run(env.mind.tick())
+    dev = open_items(env)["deviation"]
+    assert dev["level"] == "attention" and dev["level_source"] == "rules"
+    assert dev["history"][-1]["by"] == "rules"
+    # A decision made on another picture is not applied: the picture is read again.
+    stale = {**doc, "basis": "0" * 24,
+             "levels": {k: {**v, "level": "watch"} for k, v in doc["levels"].items()}}
+    env.repo().put("mind/triage.json", stale)
+    env.run(env.mind.tick())
+    env.run(env.mind.idle())
+    assert open_items(env)["deviation"]["level"] == "urgent"
+    assert env.repo().get("mind/triage.json")["basis"] == doc["basis"]
+
+
+def test_a_clinic_rule_ends_by_itself():
+    from datetime import timedelta
+    local = FakeLocal(triage=rule_reader())
+    env = env_with(local, Level2Recorder(second_reader()))
+    pid = env.demo["patient_id"]
+    r = env.client.post(f"/v1/clinic/patients/{pid}/clinic-rules", headers=env.C(),
+                        json={"text": RULE, "days": 3})
+    assert r.status_code == 200
+    rule = r.json()["rules"][0]
+    assert rule["expires_at"] == (env.clock.now() + timedelta(days=3)).isoformat()
+    assert open_items(env)["deviation"]["level"] == "watch"
+    line = next(x for x in env.client.get("/v1/clinic/patients", headers=env.C()).json()["patients"]
+                if x["patient_id"] == pid)
+    assert line["lowered_by_clinic_rule"] == 1
+    assert env.client.post(f"/v1/clinic/patients/{pid}/clinic-rules", headers=env.C(),
+                           json={"text": RULE, "days": 91}).status_code == 422
+    # After its time the rule is no longer read, and nothing has to be removed by hand.
+    assert env.mind.clinic_rules(env.repo(), env.clock.now() + timedelta(days=3, minutes=1)) == []
+    assert len(env.mind.clinic_rules(env.repo(), env.clock.now() + timedelta(days=2))) == 1
