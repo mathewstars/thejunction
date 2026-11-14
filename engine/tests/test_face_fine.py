@@ -82,7 +82,17 @@ def test_too_little_tracked_time_gives_nulls_and_noise_is_named():
     fine["tracked"] = [1] * 100 + [0] * (len(fine["samples"]) - 100)   # under 2 s tracked
     s = face_fine.summarize(fine)
     assert s["quality"] == "short" and all(v is None for v in s["regions"].values())
-    assert face_fine.summarize(make_fine(noise=1.5))["quality"] == "noisy"
+    # The noise is read from the stream itself, whatever the phone states.
+    rng = random.Random(4)
+    loud = make_fine()
+    loud["samples"] = [[round(6 + rng.gauss(0, 1.5), 3) for _ in r] for r in loud["samples"]]
+    loud["noise_mm"] = 0.05
+    s = face_fine.summarize(loud)
+    assert s["quality"] == "noisy" and 1.2 < s["noise_mm"] < 1.8 and s["noise_stated_mm"] == 0.05
+    quiet = make_fine(noise=0.05)
+    quiet["noise_mm"] = 1.9          # what the first real games stated
+    s = face_fine.summarize(quiet)
+    assert s["quality"] == "good" and s["noise_mm"] < 0.1 and s["noise_stated_mm"] == 1.9
 
 
 def test_check_names_positions_only():
@@ -173,9 +183,10 @@ def test_code_finds_the_planted_movements_and_reports_nothing_else():
     assert res["clean"]["missed"] == 0 and res["clean"]["extra"] == 0
     # Slow expressions and a higher noise floor do not become brief movements.
     assert res["expression"]["extra"] == 0 and res["noisy"]["extra"] == 0
-    # Known weakness, kept visible: after the phone shifts, the usual level is
-    # judged over the whole session and some movements are missed.
-    assert res["step"]["extra"] == 0 and res["step"]["missed"] > 0
+    # After the phone shifts every region sits at a new level. The level is followed
+    # over ten seconds, so the movements after the step are found and the step itself
+    # is not reported. (Before rules version 4 nine of 28 were missed.)
+    assert res["step"]["extra"] == 0 and res["step"]["missed"] == 0
 
 
 def test_a_models_reply_is_checked_item_by_item():
@@ -253,9 +264,11 @@ def test_the_example_person_has_generated_fine_movement_and_code_marks_it(env):
 
 def test_a_partly_tracked_or_noisy_session_counts_toward_the_own_usual_with_its_label_shown(env):
     part = make_fine(seed=11)
-    part["tracked"] = [i % 4 != 0 for i in range(len(part["samples"]))]   # three quarters tracked
+    n = len(part["samples"])
+    part["tracked"] = [not n // 2 <= i < n // 2 + n // 4 for i in range(n)]   # three quarters tracked
+    rng = random.Random(12)
     loud = make_fine(seed=12)
-    loud["noise_mm"] = 1.5
+    loud["samples"] = [[round(6 + rng.gauss(0, 1.5), 3) for _ in r] for r in loud["samples"]]
     streams = [make_fine(seed=10), part, loud, make_fine(seed=13)]
     for k, fine in enumerate(streams):
         rec = focus_fine(f"act-fine-cnt-{k:03d}", fine,
@@ -311,3 +324,30 @@ def test_corner_regions_pass_the_api_and_reach_the_page(env):
     sessions = env.client.get(f"/v1/clinic/patients/{pid}", headers=C).json()["activities"]["focus"]["sessions"]
     mine = [x for x in sessions if x["id"] == "act-fine-corner-1"][0]
     assert mine["fine"]["mouth_corners"]["left"] == 1 and mine["fine"]["mouth_corners"]["right"] == 1
+
+
+def test_frames_just_after_tracking_returns_are_left_out_and_a_slow_creep_is_not_movement():
+    raw = make_fine(seconds=40, rate=30, noise=0.02, seed=21)
+    n = len(raw["samples"])
+    raw["tracked"] = [not 300 <= i < 330 for i in range(n)]
+    for i in range(330, 336):                       # the mesh jumps as tracking comes back
+        raw["samples"][i] = [v + 4.0 for v in raw["samples"][i]]
+    assert 331 not in face_fine.kept(raw) and 345 in face_fine.kept(raw)
+    assert face_fine.twitches(raw) == []
+    still = face_fine.summarize(raw)["regions"]["mouth_left"]["reach_mm"]
+    creep = make_fine(seconds=40, rate=30, noise=0.02, seed=21)
+    creep["samples"] = [[round(v + 1.5 * i / n, 3) for v in r] for i, r in enumerate(creep["samples"])]
+    crept = face_fine.summarize(creep)["regions"]["mouth_left"]["reach_mm"]
+    assert still < 0.1 and crept < 0.1              # 1.5 mm of creep adds no reach
+
+
+def test_stored_summaries_can_be_made_again_from_the_kept_streams(env):
+    from clinic_engine import fine_resummarize
+    assert post(env, focus_fine("act-fine-again-01", make_fine(seed=31))).status_code == 200
+    rec = env.repo().get("activities/act-fine-again-01.json")
+    rec["face_fine"] = {**rec["face_fine"], "rules": 1, "quality": "noisy"}   # as an older version left it
+    env.repo().put("activities/act-fine-again-01.json", rec)
+    res = fine_resummarize.run(env.mind, env.store)
+    assert res["done_again"] >= 1
+    again = env.repo().get("activities/act-fine-again-01.json")["face_fine"]
+    assert again["rules"] == face_fine.RULES_VERSION and again["quality"] == "good"

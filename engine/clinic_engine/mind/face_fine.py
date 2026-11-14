@@ -19,10 +19,15 @@ of people; the noise floor of the sensor has to be measured first.
 
 from __future__ import annotations
 
+import bisect
 import math
 
-RULES_VERSION = 3   # 2: the top of a slow, small expression is no longer a brief movement
+RULES_VERSION = 4   # 2: the top of a slow, small expression is no longer a brief movement
 #                     3: brief movements of the mouth corners, by side (mouth_corners)
+#                     4: after the first seven real games: the noise is measured from the
+#                        stream itself (the phone's figure was 50 to 200 times the real
+#                        jitter), the frames just after tracking returns are left out, and
+#                        a slow creep of the level is taken out before anything is measured
 
 # The regions a phone may name. A fixed list, so that no free text arrives.
 REGIONS = ("mouth_left", "mouth_right", "lip_upper", "lip_lower", "cheek_left", "cheek_right",
@@ -37,7 +42,10 @@ MAX_SAMPLES = 12000
 MAX_MM = 50.0            # a region further than this from rest is not a face movement
 MIN_TRACKED_S = 5.0      # less tracked time: every measure null
 DEFAULT_NOISE_MM = 0.3   # used when the phone did not measure its own noise floor
-NOISY_ABOVE_MM = 1.0     # a stated noise floor above this marks the stream "noisy"
+NOISY_ABOVE_MM = 1.0     # a noise floor above this marks the stream "noisy"
+NOISE_MIN_STEPS = 30     # fewer frame-to-frame steps: the noise cannot be measured from the stream
+REGAIN_SKIP_S = 0.34     # frames left out after tracking returns: the mesh jumps there
+LEVEL_WINDOW_S = 10.0    # the level a region is measured from: its median over this long around each moment
 TWITCH_FLOOR_MM = 0.5    # a twitch rises at least this far above the region's usual level ...
 TWITCH_NOISE_FACTOR = 3.0  # ... and at least this many times the noise floor
 TWITCH_MAX_S = 0.4       # and is back within this time; anything longer is an expression
@@ -116,6 +124,80 @@ def _runs(mask: list[bool]) -> list[tuple[int, int]]:
     return runs
 
 
+def kept(raw: dict) -> list[int]:
+    """The frames that are measured: tracked, and not within REGAIN_SKIP_S after
+    tracking came back."""
+    tracked = raw.get("tracked")
+    n = len(raw["samples"])
+    if tracked is None:
+        return list(range(n))
+    skip = max(1, int(round(REGAIN_SKIP_S * float(raw["rate_hz"]))))
+    out, wait = [], 0
+    for i in range(n):
+        if not tracked[i]:
+            wait = skip
+        elif wait > 0 and i > 0:
+            wait -= 1
+        else:
+            out.append(i)
+    return out
+
+
+def measured_noise(raw: dict, keep: list[int] | None = None) -> float | None:
+    """The noise floor read from the stream itself: per region, how much the
+    number jumps from one frame to the next (a robust spread of the steps,
+    brought to the scale of one frame), averaged over the regions. Movements
+    are rare among the steps, so they do not raise it. None with too few steps.
+
+    Noise that is smooth from frame to frame reads smaller here than it is;
+    the twitch rule's fixed floor of TWITCH_FLOOR_MM covers that case."""
+    keep = kept(raw) if keep is None else keep
+    pairs = [(a, b) for a, b in zip(keep, keep[1:]) if b == a + 1]
+    if len(pairs) < NOISE_MIN_STEPS:
+        return None
+    spreads = []
+    for j in range(len(raw["regions"])):
+        d = sorted(raw["samples"][b][j] - raw["samples"][a][j] for a, b in pairs)
+        mid = _pct(d, 0.5)
+        mad = _pct(sorted(abs(v - mid) for v in d), 0.5)
+        spreads.append(1.4826 * mad / math.sqrt(2))
+    return round(sum(spreads) / len(spreads), 3)
+
+
+def noise_of(raw: dict, keep: list[int] | None = None) -> float:
+    """The noise the rules use: measured from the stream when it can be, else
+    what the phone stated, else the default."""
+    m = measured_noise(raw, keep)
+    if m is not None:
+        return m
+    stated = raw.get("noise_mm")
+    return DEFAULT_NOISE_MM if stated is None else float(stated)
+
+
+def _flatten(y: list[float], rate: float) -> list[float]:
+    """The series with its slow level taken out and its own median put back:
+    at each frame the median over LEVEL_WINDOW_S around it. A creep over the
+    session or a step when the phone shifts no longer counts as movement;
+    anything shorter than half the window stays."""
+    n = len(y)
+    half = int(round(LEVEL_WINDOW_S * rate / 2))
+    if n <= 2 * half:
+        return list(y)
+    overall = _pct(sorted(y), 0.5)
+    window = sorted(y[:half + 1])
+    out = []
+    for i in range(n):
+        if i > 0:
+            if i + half < n:
+                bisect.insort(window, y[i + half])
+            if i - half - 1 >= 0:
+                del window[bisect.bisect_left(window, y[i - half - 1])]
+        m = len(window)
+        lvl = window[m // 2] if m % 2 else (window[m // 2 - 1] + window[m // 2]) / 2
+        out.append(max(0.0, y[i] - lvl + overall))
+    return out
+
+
 def _twitch_runs(y: list[float], rate: float, noise: float) -> tuple[float, list[tuple[int, int]]]:
     """The region's usual level and its brief excursions as (first frame, frames)."""
     level = _pct(sorted(y), 0.5)
@@ -140,7 +222,7 @@ def _twitch_runs(y: list[float], rate: float, noise: float) -> tuple[float, list
 
 
 def _region(x: list[float], rate: float, noise: float) -> dict:
-    y = _median3(x)
+    y = _flatten(_median3(x), rate)
     s = sorted(y)
     level, twitches = _twitch_runs(y, rate, noise)
     reach = _pct(s, 0.95) - level
@@ -159,13 +241,11 @@ def twitches(raw: dict) -> list[dict]:
     rows out, as in the summary, so use it on streams that were tracked
     throughout when exact times matter."""
     rate = float(raw["rate_hz"])
-    tracked = raw.get("tracked")
-    keep = [i for i in range(len(raw["samples"])) if tracked is None or tracked[i]]
-    stated = raw.get("noise_mm")
-    noise = DEFAULT_NOISE_MM if stated is None else float(stated)
+    keep = kept(raw)
+    noise = noise_of(raw, keep)
     out = []
     for j, name in enumerate(raw["regions"]):
-        y = _median3([raw["samples"][i][j] for i in keep])
+        y = _flatten(_median3([raw["samples"][i][j] for i in keep]), rate)
         level, runs = _twitch_runs(y, rate, noise)
         for first, n in runs:
             out.append({"region": name, "start_s": round(keep[first] / rate, 2),
@@ -240,14 +320,16 @@ def summarize(raw: dict) -> dict:
     """The summary kept beside the activity. Movement only, per region; null
     wherever there was too little tracked time to say anything."""
     regions, rate = raw["regions"], float(raw["rate_hz"])
-    tracked = raw.get("tracked")
-    rows = [r for i, r in enumerate(raw["samples"]) if tracked is None or tracked[i]]
+    keep = kept(raw)
+    rows = [raw["samples"][i] for i in keep]
     tracked_s = len(rows) / rate
     stated = raw.get("noise_mm")
-    noise = DEFAULT_NOISE_MM if stated is None else float(stated)
+    noise = noise_of(raw, keep)
     share = 1.0 if not raw["samples"] else len(rows) / len(raw["samples"])
+    # noise_mm is the noise the rules used (measured from the stream when it can be);
+    # noise_stated_mm is what the phone said, kept for comparison.
     out = {"rules": RULES_VERSION, "source": raw["source"], "tracked_s": round(tracked_s, 1),
-           "noise_mm": stated, "regions": {}, "asymmetry": {}}
+           "noise_mm": noise, "noise_stated_mm": stated, "regions": {}, "asymmetry": {}}
     if tracked_s < MIN_TRACKED_S:
         out["quality"] = "short"
         out["regions"] = {name: None for name in regions}
@@ -261,7 +343,8 @@ def summarize(raw: dict) -> dict:
             # -1: only the right side moves; 0: both alike; +1: only the left side moves.
             out["asymmetry"][left.rsplit("_", 1)[0]] = round(
                 (a["reach_mm"] - b["reach_mm"]) / (a["reach_mm"] + b["reach_mm"]), 3)
-    mc = mouth_corners({**raw, "samples": rows, "tracked": None})
+    # The rows left out are gone here, so the corner rule measures the same frames.
+    mc = mouth_corners({**raw, "samples": rows, "tracked": None, "noise_mm": noise})
     if mc is not None:
         minutes = tracked_s / 60.0
         n = {side: sum(1 for e in mc["events"] if e["side"] == side) for side in ("left", "right", "both")}
