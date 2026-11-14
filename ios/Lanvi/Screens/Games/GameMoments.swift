@@ -15,6 +15,20 @@ import QuartzCore
 //     sparkMissed               a spark drifted all the way down without a tap
 //     focusEnded(finished:)     the round ran to its end (true) or the person closed it (false)
 //
+//   Revontulet (activity .focus; it replaces Sparks and snow, see ios/REVONTULET.md)
+//     revontuletStarted                 Start tapped; the 90-second clock begins
+//     effortChosen(round:effort:)       a fault line picked; round counts from 1, effort .easy or .hard
+//     traceStarted(round:)              the first touch on the half-circle
+//     traceEnded(round:)                the light reached the end of the half-circle
+//     slingReleased(round:)             the spark was let go
+//     emberHit(reactionMs:)             an ember lit; reactionMs = its flash -> finger down
+//     emberMissed                       an ember passed without a tap (it costs nothing)
+//     iceImpact(round:)                 the spark hit the ice
+//     iceShattered                      the wall burst (also a pleasant moment, FaceSense.mark())
+//     foxCelebrates                     the fox's celebration starts (also a pleasant moment)
+//     foxStroked(number:)               a stroke on the fox's fur ended; number counts from 1
+//     revontuletEnded(finished:)        the fox fell asleep (true) or the person closed it (false)
+//
 //   Breathe with Lanvi (activity .breathing)
 //     breatheStarted            the session starts (Start tapped)
 //     breathIn(number:)         an in-breath begins; number counts from 1
@@ -52,6 +66,11 @@ enum GameActivity: String, Sendable {
     case focus, breathing, checkin
 }
 
+/// Which fault line was picked in Revontulet.
+enum GameEffort: String, Sendable {
+    case easy, hard
+}
+
 /// A step of the evening check-in, by name only.
 enum GameCheckinStep: String, Sendable {
     case planQuestion = "plan_question"
@@ -68,6 +87,19 @@ enum GameMoment: Equatable, Sendable {
     case snowTapped
     case sparkMissed
     case focusEnded(finished: Bool)
+    // Revontulet
+    case revontuletStarted
+    case effortChosen(round: Int, effort: GameEffort)
+    case traceStarted(round: Int)
+    case traceEnded(round: Int)
+    case slingReleased(round: Int)
+    case emberHit(reactionMs: Int)
+    case emberMissed
+    case iceImpact(round: Int)
+    case iceShattered
+    case foxCelebrates
+    case foxStroked(number: Int)
+    case revontuletEnded(finished: Bool)
     // Breathe with Lanvi
     case breatheStarted
     case breathIn(number: Int)
@@ -82,6 +114,8 @@ enum GameMoment: Equatable, Sendable {
     var activity: GameActivity {
         switch self {
         case .focusStarted, .sparkCaught, .snowTapped, .sparkMissed, .focusEnded: .focus
+        case .revontuletStarted, .effortChosen, .traceStarted, .traceEnded, .slingReleased, .emberHit,
+             .emberMissed, .iceImpact, .iceShattered, .foxCelebrates, .foxStroked, .revontuletEnded: .focus
         case .breatheStarted, .breathIn, .breathHold, .breathOut, .breatheEnded: .breathing
         case .checkinStarted, .checkinStep, .checkinEnded: .checkin
         }
@@ -95,6 +129,18 @@ enum GameMoment: Equatable, Sendable {
         case .snowTapped: "snow_tapped"
         case .sparkMissed: "spark_missed"
         case .focusEnded: "focus_ended"
+        case .revontuletStarted: "revontulet_started"
+        case .effortChosen: "effort_chosen"
+        case .traceStarted: "trace_started"
+        case .traceEnded: "trace_ended"
+        case .slingReleased: "sling_released"
+        case .emberHit: "ember_hit"
+        case .emberMissed: "ember_missed"
+        case .iceImpact: "ice_impact"
+        case .iceShattered: "ice_shattered"
+        case .foxCelebrates: "fox_celebrates"
+        case .foxStroked: "fox_stroked"
+        case .revontuletEnded: "revontulet_ended"
         case .breatheStarted: "breathe_started"
         case .breathIn: "breath_in"
         case .breathHold: "breath_hold"
