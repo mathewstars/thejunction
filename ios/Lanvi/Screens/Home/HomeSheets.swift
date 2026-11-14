@@ -158,12 +158,8 @@ struct HomeMoreSheet: View {
                 }
                 .buttonStyle(SheetRowStyle())
             }
-            Spacer(minLength: 0)
+            Color.clear.frame(height: 20)
         }
-        .presentationDetents([.height(372)])
-        .presentationCornerRadius(32)
-        .presentationDragIndicator(.visible)
-        .presentationBackground(.white)
     }
 }
 
@@ -226,14 +222,10 @@ struct HomeGrowthSheet: View {
                     .stroke(Theme.line, lineWidth: 2).allowsHitTesting(false)
             }
             .padding(.top, 8)
-            Spacer(minLength: 0)
+            Color.clear.frame(height: 20)
         }
         .padding(.horizontal, 24)
         .padding(.top, 32)
-        .presentationDetents([.height(340)])
-        .presentationCornerRadius(32)
-        .presentationDragIndicator(.visible)
-        .presentationBackground(.white)
     }
 }
 
