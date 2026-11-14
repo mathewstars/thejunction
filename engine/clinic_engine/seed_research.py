@@ -42,7 +42,9 @@ def _simulate(store: Store, base: str, tz, now: datetime, plan: list[tuple[int, 
               seed: int, tag: str) -> None:
     """Write example days, sessions and weekly PHQ-9 for `plan`: (days ago, symptom level),
     oldest first. Every record is marked example and carries `tag` in its id."""
+    from . import seed as seed_module
     from .mind.activities import process_activity
+    seed_module._FINE_WHO = f"{tag}:{seed}:"   # this person's own fine movement streams
     today = now.astimezone(tz).date()
     rng, rx, noise = random.Random(seed), random.Random(seed + 1), random.Random(seed + 2)
     rv = random.Random(seed + 3)  # Revontulet's measures only: the other draws stay as they were
