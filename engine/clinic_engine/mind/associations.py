@@ -249,15 +249,19 @@ def _r2(x: float | None) -> float | None:
 
 
 def row_stats(key: str, expected: str, measure: dict[date, float], ref: dict[date, float],
-              held: set[date], th: Thresholds = T) -> dict:
+              held: set[date], th: Thresholds = T, daily: dict[date, float] | None = None,
+              find_lag: bool = True) -> dict:
     """All numbers for one measure. Rounded to 2 decimals here, so code judges
-    exactly the numbers the model sees."""
+    exactly the numbers the model sees. `measure` and `ref` hold one value per
+    observation (a rating occasion, or a day with a proxy reference); `daily`
+    is the day-by-day measure for the held-days contrast."""
     xs, ys = lagged_pairs(measure, ref, 0)
     n = len(xs)
     out: dict = {"n": n, "rho": None, "ci_low": None, "ci_high": None, "p": None,
                  "lead_days": None, "lead_n": None, "contrast": None}
-    held_vals = [v for d, v in measure.items() if d in held]
-    other_vals = [v for d, v in measure.items() if d not in held]
+    per_day = measure if daily is None else daily
+    held_vals = [v for d, v in per_day.items() if d in held]
+    other_vals = [v for d, v in per_day.items() if d not in held]
     if len(held_vals) >= th.assoc_min_contrast_days and len(other_vals) >= th.assoc_min_contrast_days:
         cd = cliffs_delta(held_vals, other_vals)
         if cd is not None:
@@ -275,7 +279,7 @@ def row_stats(key: str, expected: str, measure: dict[date, float], ref: dict[dat
     p = permutation_p(xs, ys, th.assoc_permutations, random.Random(seed + ":perm"))
     if sign < 0 and lo is not None:
         lo, hi = -hi, -lo
-    lead, lead_n = best_lag(measure, ref, expected, th)
+    lead, lead_n = best_lag(measure, ref, expected, th) if find_lag else (None, None)
     out.update(status="tested", rho=_r2(sign * raw), ci_low=_r2(lo), ci_high=_r2(hi),
                p=p, lead_days=lead, lead_n=lead_n)
     return out
@@ -442,6 +446,25 @@ def build_dataset(days: dict[str, dict], series: list[dict], activities: list[di
         notes.append("novelty")
     notes.append("single_person")
 
+    # What counts as one observation. With a rating scale it is ONE RATING: the
+    # measure is averaged over the week that ends on the rating day. Days between
+    # ratings are not treated as separate observations (they are not independent,
+    # and the rating says nothing about them). With a proxy it is one day.
+    if kind == "rating":
+        win = th.assoc_occasion_days
+        stat_ref = {d: v for d, v in ref_vals.items()
+                    if any(r.get("scale") == ref_key and r["date"] == d.isoformat() for r in ratings)}
+        stat_measures = {}
+        for k, m in per_day.items():
+            occ = {}
+            for rd in stat_ref:
+                vals = [v for d, v in m.items() if 0 <= (rd - d).days < win]
+                if vals:
+                    occ[rd] = fmean(vals)
+            stat_measures[k] = occ
+        unit = "rating"
+    else:
+        stat_ref, stat_measures, unit = ref_vals, per_day, "day"
     if kind == "rating":
         ref_points = sorted((date.fromisoformat(r["date"]), float(r["score"])) for r in ratings
                             if r.get("scale") == ref_key
@@ -452,6 +475,8 @@ def build_dataset(days: dict[str, dict], series: list[dict], activities: list[di
             "quality": {k: (round(u / of, 2) if of else None) for k, (u, of) in usable.items()},
             "reference": {"key": ref_key, "kind": kind, "n_ratings": n_ratings},
             "ref_values": ref_vals, "held": _held_days(items, today, tz),
+            "stat_ref": stat_ref, "stat_measures": stat_measures, "unit": unit,
+            "n_obs": len(stat_ref),
             "n_days": len(covered), "n_sessions": len(acts), "notes": notes}
 
 
@@ -468,8 +493,11 @@ def compute_rows(ds: dict, th: Thresholds = T) -> list[dict]:
                          "rho": None, "ci_low": None, "ci_high": None, "p": None,
                          "lead_days": None, "lead_n": None, "contrast": None})
             continue
-        rows.append({**base, **row_stats(f["key"], f["expected"], ds["measures"][f["key"]],
-                                         ds["ref_values"], ds["held"], th)})
+        stat_m = ds.get("stat_measures", ds["measures"])[f["key"]]
+        rows.append({**base, **row_stats(f["key"], f["expected"], stat_m,
+                                         ds.get("stat_ref", ds["ref_values"]), ds["held"], th,
+                                         daily=ds["measures"][f["key"]],
+                                         find_lag=ds.get("unit", "day") == "day")})
     tested = [r for r in rows if r["status"] == "tested" and r["p"] is not None]
     for r, pa in zip(tested, bh_adjust([r["p"] for r in tested])):
         r["p_adj"] = _r2(pa)
@@ -837,7 +865,8 @@ def assemble(ds: dict, rows: list[dict], overall: dict, corrections: list[dict],
         "generated_at": now.isoformat(),
         "design": {"type": DESIGN_TYPE, "days": ds["n_days"], "sessions": ds["n_sessions"],
                    "first_day": ds["start"].isoformat(), "last_day": ds["end"].isoformat(),
-                   "rows_tested": tested, "min_n": T.assoc_min_n},
+                   "rows_tested": tested, "min_n": T.assoc_min_n,
+                   "unit": ds.get("unit", "day"), "observations": ds.get("n_obs")},
         "reference": {"key": ref["key"], "label": ref_info["label"], "kind": ref["kind"],
                       "worse_is": ref_info["worse_is"], "ratings": ref["n_ratings"]},
         "rows": out_rows,

@@ -106,7 +106,8 @@ class Thresholds:
     # output: none of these values touches attention, suggestions or lessons.
     assoc_window_days: int = 90  # days looked at, ending today
     assoc_min_n: int = 8  # paired days below which a row is "insufficient" (no rho)
-    assoc_min_ratings: int = 4  # ratings of one scale before it is the reference
+    assoc_min_ratings: int = 8  # ratings of one scale before it is the reference (= assoc_min_n)
+    assoc_occasion_days: int = 7  # a rating is paired with the measure's mean over this many days up to it
     assoc_rating_carry_days: int = 3  # a rating stands for the days this close to it
     assoc_max_lag: int = 3  # lead_days is looked for in -3..+3
     assoc_bootstrap: int = 1000  # bootstrap resamples for the 95% interval

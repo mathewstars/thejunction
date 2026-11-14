@@ -651,7 +651,7 @@ class AssocRowOut(BaseModel):
     status: Literal["tested", "insufficient", "no_variation", "is_reference"] = Field(
         description="insufficient: fewer paired days than design.min_n, no statistics. "
                     "is_reference: this measure is the proxy reference itself.")
-    n: int = Field(description="Paired days.")
+    n: int = Field(description="Paired observations: ratings (design.unit rating) or days.")
     rho: Optional[float] = Field(None, description="Spearman rho, oriented: positive = moves in "
                                  "the expected direction when symptoms are worse. For 'mixed' "
                                  "positive = higher when the reference is worse.")
@@ -695,6 +695,10 @@ class AssocDesignOut(BaseModel):
     last_day: str
     rows_tested: int
     min_n: int
+    unit: Optional[Literal["rating", "day"]] = Field(None, description="What one observation is: "
+                                                     "a rating (the measure is averaged over the week "
+                                                     "up to it) or a day (proxy reference).")
+    observations: Optional[int] = None
 
 
 class AssocReferenceOut(BaseModel):

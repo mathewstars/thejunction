@@ -290,3 +290,26 @@ select.pick { width: auto; max-width: 220px; appearance: none; padding-right: 26
 .dotk.k-inc { background: transparent; border: 2px solid var(--muted); box-sizing: border-box; }
 details.more.panel > summary { font-size: 14px; color: var(--ink); }
 details.more.panel[open] > summary { margin-bottom: 10px; }
+.spark .line.low { stroke: var(--ember); }
+.attlist { list-style: none; margin: 10px 0 0; padding: 0; }
+.attlist li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.attlist .dotk { align-self: center; background: var(--muted); }
+.attlist .dotk.l-attention { background: var(--amber); }
+.attlist .dotk.l-urgent { background: var(--ember); }
+.attlist .ack { margin-left: auto; color: var(--muted); text-decoration: underline; }
+details.more > summary .count { color: var(--muted); font-weight: 600; margin-left: 8px; }
+table.assoc td.num, table.assoc td.r { white-space: nowrap; }
+.tg-worse { fill: var(--ember); opacity: 0.06; }
+.tg-m { fill: none; stroke: var(--muted); stroke-width: 1.3; opacity: 0.75; stroke-linejoin: round; }
+.tg-avg { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; }
+.tg-ref { fill: none; stroke: var(--amber); stroke-width: 3; stroke-linejoin: round; }
+.tg-refpt { fill: var(--amber); stroke: var(--panel); stroke-width: 2; }
+.key { display: inline-block; width: 22px; height: 0; border-top: 3px solid var(--ink); margin-right: 7px; vertical-align: 4px; }
+.key.k-ref { border-color: var(--amber); }
+.key.k-m { border-top: 1.5px solid var(--muted); }
+.fp-g { fill: var(--ink); font-size: 14px; font-weight: 700; }
+.fp-more { fill: var(--muted); font-size: 12px; text-decoration: underline; }
+.fp-head.can { cursor: pointer; }
+.fp-head .fp-hit { fill: transparent; }
+.fp-ci.dim { stroke: var(--muted); stroke-width: 1.5; }
+.fp-v.dim { fill: var(--muted); font-weight: 400; }

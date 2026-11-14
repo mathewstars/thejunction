@@ -336,6 +336,18 @@
       pen = true;
     });
     if (d) s.appendChild(svg("path", { class: "line", d }));
+    // the stretch below the person's usual range, drawn again in the warning colour
+    let low = "", on = false;
+    values.forEach((z, i) => {
+      const below = z !== null && z !== undefined && z < -1.5;
+      const prev = i > 0 ? values[i - 1] : null;
+      if (!below) { on = false; return; }
+      const px = (k) => (k * (W - 4) / Math.max(1, n - 1) + 2).toFixed(1);
+      if (!on && prev !== null && prev !== undefined) low += "M" + px(i - 1) + " " + y(prev).toFixed(1) + "L" + px(i) + " " + y(z).toFixed(1);
+      else low += (on ? "L" : "M") + px(i) + " " + y(z).toFixed(1);
+      on = true;
+    });
+    if (low) s.appendChild(svg("path", { class: "line low", d: low }));
     return s;
   }
   function viewPatients() {
@@ -352,7 +364,7 @@
     if (!S.list) { wrap.appendChild(empty("Loading…")); return wrap; }
     if (!list.length) { wrap.appendChild(empty("No patients yet.")); return wrap; }
     const hasSpark = list.some((p) => Array.isArray(p.spark));
-    const heads = ["Status", "Patient", "Why", "Held", hasSpark ? "28 days" : null, "Last data"].filter(Boolean);
+    const heads = ["Status", "Patient", "Why", "Flagged for", hasSpark ? "Movement vs own normal, 28 d" : null, "Last data"].filter(Boolean);
     const rowOf = (p) => {
       const href = "#/p/" + encodeURIComponent(p.patient_id);
       const since = oldestSince(p);
@@ -423,7 +435,8 @@
     });
     $("subnav").replaceChildren(tabs);  // the patient's sections live in the top bar
     const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, talk: tabTalk, research: tabResearch, mind: tabMind, log: tabLog }[S.route.tab](d, today);
-    if (S.route.tab === "overview" && d.summary) wrap.appendChild(el("p", { class: "lead" }, d.summary));
+    if (S.route.tab === "overview" && d.summary) wrap.appendChild(el("p", { class: "lead" },
+      String(d.summary).replace(/\s*Last suggestion:[^.]*\.?/, "").replace(/\b\d{4}-\d{2}-\d{2}\b/g, (m) => dayShort(m))));
     wrap.appendChild(el("div", { id: "tabpanel", role: "tabpanel", "aria-labelledby": "tab-" + S.route.tab }, body));
     return wrap;
   }
@@ -594,12 +607,29 @@
 
     const items = (d.attention_items || []).filter((i) => i.state === "open" || !i.closed_at)
       .sort((a, b) => (LEVEL_ORDER[a.level] ?? 9) - (LEVEL_ORDER[b.level] ?? 9));
-    const att = panel("Needs attention", items.length || "", items.length ? el("div", { class: "rows" }, items.map((i) =>
-      el("div", { class: "row" },
-        el("div", { class: "top" }, levelChip(i.level), el("span", { class: "t" }, kind(i.kind)), el("span", { class: "muted small num" }, held(i.since, today))),
-        ackButton(i),
-        detailText(i.detail) ? el("div", { class: "d" }, detailText(i.detail)) : null,
-        i.kind === "asked_for_help" ? helpQuote(d) : null))) : empty("Nothing held."));
+    const plain = (i) => {
+      const x = i.detail || {};
+      if (i.kind === "deviation") return "movement below own normal on " + x.low_days + " recent days";
+      if (i.kind === "slower_reactions") return "slower than usual in " + x.slower_sessions + " of the last " + x.of_last + " focus games";
+      if (i.kind === "face_flat") return "less facial movement in " + x.flat_sessions + " of the last " + x.of_last + " sessions";
+      if (i.kind === "plans_not_done") return x.in_a_row + " plans in a row not carried out";
+      if (i.kind === "low_notes") return x.low_notes + " notes labelled low";
+      if (i.kind === "weak_rounds") return x.rounds + " weak sessions in a row";
+      if (i.kind === "novelty") return words(x.metric || "a measure").toLowerCase() + " far " + (x.direction === "down" ? "below" : "above") + " usual today";
+      if (i.kind === "silence") return "no data for " + x.days_silent + " days";
+      if (i.kind === "ignored") return x.unanswered + " offers left unanswered";
+      return detailText(i.detail) || "";
+    };
+    const ackLink = (i) => el("button", { type: "button", class: "linklike small ack", "data-key": "ack-" + i.id, "aria-label": "Acknowledge " + kind(i.kind),
+      on: { click: async () => { try { await api("POST", "/v1/clinic/attention/" + encodeURIComponent(i.id) + "/ack"); await refresh(); } catch (e) { flash(e.message); } } } }, "Acknowledge");
+    const helpItem = items.find((i) => i.kind === "asked_for_help");
+    const others = items.filter((i) => i !== helpItem);
+    const att = panel("Needs attention", items.length || "", items.length ? el("div", { class: "rows" },
+      helpItem ? el("div", { class: "row" },
+        el("div", { class: "top" }, levelChip(helpItem.level), el("span", { class: "t" }, kind(helpItem.kind)), el("span", { class: "muted small num" }, held(helpItem.since, today))),
+        ackButton(helpItem), helpQuote(d)) : null,
+      others.length ? el("ul", { class: "attlist" }, others.map((i) => el("li", null,
+        el("span", { class: "dotk l-" + i.level }), el("b", null, kind(i.kind)), el("span", { class: "muted" }, " · " + plain(i) + " · " + held(i.since, today)), ackLink(i)))) : null) : empty("Nothing held."));
 
     const sug = (d.suggestions || []).slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
     const offer = panel("Last offer", null, sug ? el("div", { class: "row" },
@@ -655,7 +685,7 @@
       el("td", null, words(e.code)),
       el("td", null, pairs.length ? el("div", { class: "kv" }, pairs.map(([k, v]) => el("span", null, el("b", null, k), String(v)))) : null));
   }
-  const TL_COLS = [["watchers", "Watchers"], ["attention", "Attention"], ["response", "Response"], ["level1", "Model 1"], ["level2", "Model 2"], ["notifier", "Alert"], ["learning", "Learning"]];
+  const TL_COLS = [["watchers", "Watchers"], ["attention", "Attention"], ["response", "Response"], ["level1", "Local model"], ["level2", "Second model"], ["notifier", "Alert"], ["learning", "Learning"]];
   const PAGE = 15;
   const PATIENTS_PAGE = 10;
   // Why the system made no offer at a check.
@@ -700,7 +730,7 @@
     const key = "ex-" + x.id, open = !!S.open[key];
     const head = el("button", { type: "button", class: "linklike", "aria-expanded": open ? "true" : "false", "data-key": key,
       on: { click: (ev) => { ev.stopPropagation(); S.open[key] = !open; render(); } } },
-      (open ? "▾ " : "▸ ") + "Model " + x.level + " · " + (TASK[x.task] || words(x.task)) + " · " + x.model + " · " + (x.ms / 1000).toFixed(1) + " s" + (x.reply === null ? " · no reply" : ""));
+      (open ? "▾ " : "▸ ") + (x.level === 2 ? "Second model" : "Local model") + " (" + modelName(x.model) + ") · " + (TASK[x.task] || words(x.task)) + " · " + (x.ms / 1000).toFixed(1) + " s" + (x.reply === null ? " · no reply" : ""));
     const box = el("div", { class: "exch", on: { click: (ev) => ev.stopPropagation() } }, head);
     if (open) {
       (x.messages || []).forEach((m) => box.appendChild(el("div", null,
@@ -795,7 +825,7 @@
         ["Offer", { t: "Offered", r: 1 }, { t: "Done", r: 1 }, { t: "Not today", r: 1 }, { t: "No answer", r: 1 }, "Days after"],
         used.map((a) => el("tr", null, el("td", null, action(a)), el("td", { class: "r num" }, acts[a].offered), el("td", { class: "r num" }, acts[a].done),
           el("td", { class: "r num" }, acts[a].not_today), el("td", { class: "r num" }, (acts[a].no_answer || 0) + (acts[a].open || 0)),
-          el("td", null, outcomeWord(acts[a].mean_outcome_change))))) : empty("Nothing offered yet.")));
+          el("td", null, acts[a].done < 5 ? el("span", { class: "muted" }, "too few to say (" + acts[a].done + " done)") : outcomeWord(acts[a].mean_outcome_change))))) : empty("Nothing offered yet.")));
     }
     if (sub === "focus") wrap.appendChild(panel("Focus game", A.focus.sessions.length, table(["Date", "Finished", { t: "Reaction", r: 1 }, "Against own normal", { t: "Errors", r: 1 }, "Face", "Model reading"],
       recent(A.focus).map((x) => el("tr", null, el("td", { class: "num" }, dayShort(x.date)), el("td", null, yes(x.completed)),
@@ -813,7 +843,7 @@
         el("td", null, x.plan_done === "yes" ? "yes" : x.plan_done === "no" ? "no" : "–"),
         el("td", null, x.asked_for_help ? el("span", { class: "chip l-urgent" }, icon("dot"), "Yes") : "No"))), null, { filter: 3 })));
     if (sub === "offers") wrap.appendChild(panel("Offers and answers", offers.length || "", table(["Date", "Offer", "Because of", "Answer", "Felt"],
-      offers.map((o) => el("tr", null, el("td", { class: "num" }, dayShort(o.date)), el("td", null, action(o.action)), el("td", null, kind(o.attention_kind)),
+      offers.map((o) => el("tr", null, el("td", { class: "num" }, dayShort(o.date)), el("td", null, action(o.action)), el("td", null, o.attention_kind === "example" ? "–" : kind(o.attention_kind)),
         el("td", null, el("span", { class: "chip " + (o.answer === "did_it" ? "good" : o.answer ? "" : "bad") }, ANSWER[o.answer] || "No answer")),
         el("td", null, o.felt ? words(o.felt) : "–"))), null, { filter: 3 })));
     if (sub === "earlier") wrap.appendChild(panel("Earlier sessions", rounds.length,
@@ -863,6 +893,9 @@
     (d.suggestions || []).forEach((s) => { if (s.created_at && s.attention_kind !== "example") ev.push({ at: s.created_at, kind: "offer", s }); });
     (d.notify_log || []).forEach((a) => ev.push({ at: a.at, kind: "alert", a }));
     ev.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+    const firstSaid = ev.findIndex((e) => e.kind !== "alert");
+    if (firstSaid > 0) ev.splice(0, firstSaid);
+    const localDay = (iso) => { const t = new Date(iso); return new Date(t.getTime() - t.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
     wrap.appendChild(el("p", { class: "muted small" }, d.share_notes
       ? "The patient agreed to share the words they write. Lanvi answers only with lines from a fixed set; a model labels the words and does not write to the patient."
       : "This patient has not shared the words they write, so only the labels are shown. Lanvi answers only with lines from a fixed set."));
@@ -871,8 +904,8 @@
     const who = d.display_name || d.label;
     let day = "";
     ev.forEach((e) => {
-      const dd = String(e.at).slice(0, 10);
-      if (dd !== day) { day = dd; chat.appendChild(el("div", { class: "chat-day" }, dd)); }
+      const dd = localDay(e.at);
+      if (dd !== day) { day = dd; chat.appendChild(el("div", { class: "chat-day" }, dayShort(dd))); }
       if (e.kind === "note") {
         const c = e.n.classification || {};
         chat.appendChild(el("div", { class: "msg from-patient" + (c.asks_for_help ? " help" : "") },
@@ -955,7 +988,8 @@
     discuss_with_patient: "Discuss with the patient", none: "None" };
   const R_STATUS = { insufficient: "too few days", no_variation: "did not vary", is_reference: "is the reference" };
   const SRC = { model: "model", code: "code", code_corrected: "model, corrected by code" };
-  function f2(v) { return v === null || v === undefined ? "–" : (v > 0 ? "+" : "") + Number(v).toFixed(2); }
+  function f2(v) { return v === null || v === undefined ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Number(v)).toFixed(2); }
+  function modelName(m) { m = String(m || ""); return /gemini/i.test(m) ? "Gemini" : /stand-in/i.test(m) ? "local model, standing in" : m === "code" || !m ? "code" : "local model"; }
   function rhoBar(r) {
     // Interval and point on a fixed -1..+1 scale; right of the middle = as expected.
     const W = 120, H = 16, x = (v) => (W / 2) + Math.max(-1, Math.min(1, v)) * (W / 2 - 2);
@@ -1028,61 +1062,68 @@
     if (/_deg$/.test(key)) return Number(v).toFixed(1) + "°";
     return Number(v).toFixed(2);
   }
-  // Small multiples on one time axis: the reference on top, then the measures that followed it.
-  function togetherChart(a) {
-    const sr = a.series;
-    if (!sr || !(sr.reference || []).length) return null;
-    const ref = a.reference || {}, rows = a.rows || [];
-    const t0 = Date.parse(sr.first_day + "T00:00:00Z");
-    const N = Math.max(2, Math.round((Date.parse(sr.last_day + "T00:00:00Z") - t0) / 864e5) + 1);
-    const usable = rows.filter((r) => r.status === "tested" && ((sr.measures || {})[r.key] || []).length >= 5);
+  // Which measures stand for the pattern: the best of each kind first, then the next best.
+  function pickMeasures(a) {
+    const sr = a.series || {}, rows = a.rows || [];
+    const usable = rows.filter((r) => r.status === "tested" && r.expected !== "mixed" && ((sr.measures || {})[r.key] || []).length >= 5);
     const cons = usable.filter((r) => r.agreement === "consistent").sort((x, y) => y.rho - x.rho);
     const pick = [];
     const add = (r) => { if (r && pick.indexOf(r) < 0 && pick.length < 4) pick.push(r); };
     ["face", "activity", "daily"].forEach((g) => add(cons.find((r) => r.group === g)));
     cons.forEach(add);
     if (!pick.length) usable.slice().sort((x, y) => Math.abs(y.rho) - Math.abs(x.rho)).slice(0, 3).forEach(add);
-    const W = 1000, PL = 6, PR = 6, LBL = 22, RH = 62, GAP = 16, AX = 22;
-    const H = (LBL + 76) + pick.length * (GAP + LBL + RH) + AX;
-    const x = (day) => PL + (Math.max(0, Math.min(N - 1, day)) / (N - 1)) * (W - PL - PR);
-    const sv = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "tg", role: "img",
-      "aria-label": "The " + (ref.label || ref.key) + " over " + N + " days, and below it " + pick.map((r) => r.label).join(", ") + " on the same time axis." });
-    // bands: where the reference was in its worse half
-    const rp = sr.reference.slice().sort((p, q) => p[0] - q[0]);
-    const vals = rp.map((p) => p[1]), lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), mid = (lo + hi) / 2;
-    const worse = (v) => (ref.worse_is === "lower" ? v <= mid : v >= mid);
-    if (hi > lo) rp.forEach((p, i) => {
-      if (!worse(p[1])) return;
-      const xa = i === 0 ? x(p[0] - 3) : (x(rp[i - 1][0]) + x(p[0])) / 2, xb = i === rp.length - 1 ? x(p[0] + 3) : (x(p[0]) + x(rp[i + 1][0])) / 2;
-      sv.appendChild(svg("rect", { x: xa, y: 0, width: Math.max(1, xb - xa), height: H - AX, class: "tg-band" }));
-    });
-    const lanes = [];
-    let y0 = 0;
-    const lane = (title, sub, pts, h, isRef, key) => {
-      sv.appendChild(svg("text", { x: PL, y: y0 + 15, class: "tg-t" }, title, sub ? svg("tspan", { class: "tg-s" }, "   " + sub) : null));
-      const top = y0 + LBL, v = pts.map((p) => p[1]), mn = Math.min.apply(null, v), mx = Math.max.apply(null, v), span = mx - mn || 1;
-      const y = (val) => top + 5 + (1 - (val - mn) / span) * (h - 10);
-      sv.appendChild(svg("line", { x1: PL, y1: top + h, x2: W - PR, y2: top + h, class: "tg-base" }));
-      if (isRef) {
-        sv.appendChild(svg("polyline", { points: pts.map((p) => x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(" "), class: "tg-line" }));
-        pts.forEach((p) => sv.appendChild(svg("circle", { cx: x(p[0]), cy: y(p[1]), r: 4.5, class: "tg-pt" })));
-        const lab = (p) => sv.appendChild(svg("text", { x: x(p[0]), y: y(p[1]) - 9, class: "tg-v", "text-anchor": p[0] > N - 6 ? "end" : p[0] < 5 ? "start" : "middle" }, String(Math.round(p[1] * 10) / 10)));
-        const imax = v.indexOf(mx), imin = v.indexOf(mn);
-        Array.from(new Set([imin, imax, pts.length - 1])).forEach((i) => lab(pts[i]));
-      } else {
-        pts.forEach((p) => sv.appendChild(svg("circle", { cx: x(p[0]), cy: y(p[1]), r: 1.7, class: "tg-dot" })));
-        const sm = pts.map((p) => { const near = pts.filter((q) => Math.abs(q[0] - p[0]) <= 3); return [p[0], near.reduce((t, q) => t + q[1], 0) / near.length]; });
-        sv.appendChild(svg("polyline", { points: sm.map((p) => x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(" "), class: "tg-line" }));
-      }
-      lanes.push({ title, pts, key, isRef, top, h });
-      y0 = top + h + GAP;
+    return pick;
+  }
+  // One panel, one direction: every series is put in the person's own spread units and turned so
+  // that up means worse. The rating is the amber line; the measures are grey, their average white.
+  function togetherChart(a) {
+    const sr = a.series;
+    if (!sr || !(sr.reference || []).length) return null;
+    const ref = a.reference || {}, pick = pickMeasures(a);
+    if (!pick.length) return null;
+    const t0 = Date.parse(sr.first_day + "T00:00:00Z");
+    const N = Math.max(2, Math.round((Date.parse(sr.last_day + "T00:00:00Z") - t0) / 864e5) + 1);
+    const std = (pts, flip) => {
+      const v = pts.map((p) => p[1]), m = v.reduce((t, q) => t + q, 0) / v.length;
+      const sd = Math.sqrt(v.reduce((t, q) => t + (q - m) * (q - m), 0) / Math.max(1, v.length - 1)) || 1;
+      return pts.map((p) => [p[0], ((p[1] - m) / sd) * (flip ? -1 : 1), p[1]]);
     };
-    lane(ref.label || ref.key, ref.worse_is === "lower" ? "lower is worse" : "higher is worse", rp, 76, true, ref.key);
-    pick.forEach((r) => lane(r.label, r.expected + " when worse · rho " + f2(r.rho), sr.measures[r.key], RH, false, r.key));
-    const axisY = H - 6;
-    for (let dday = 0; dday < N; dday += 14) sv.appendChild(svg("text", { x: x(dday), y: axisY, class: "tg-ax", "text-anchor": dday === 0 ? "start" : "middle" }, dayShort(new Date(t0 + dday * 864e5).toISOString().slice(0, 10))));
-    sv.appendChild(svg("text", { x: W - PR, y: axisY, class: "tg-ax", "text-anchor": "end" }, "today"));
-    const cross = svg("line", { x1: 0, y1: 0, x2: 0, y2: H - AX, class: "tg-cross" });
+    const smooth = (pts) => pts.map((p) => { const near = pts.filter((q) => Math.abs(q[0] - p[0]) <= 3); return [p[0], near.reduce((t, q) => t + q[1], 0) / near.length, p[2]]; });
+    const rp = std(sr.reference.slice().sort((p, q) => p[0] - q[0]), ref.worse_is === "lower");
+    const ms = pick.map((r) => ({ r, pts: smooth(std(sr.measures[r.key], r.expected === "lower")) }));
+    // the average of the measures, per day, where at least two of them have a value
+    const avg = [];
+    for (let day = 0; day < N; day += 1) {
+      const vs = ms.map((m) => { const p = m.pts.find((q) => q[0] === day); return p ? p[1] : null; }).filter((v) => v !== null);
+      if (vs.length >= Math.min(2, ms.length)) avg.push([day, vs.reduce((t, q) => t + q, 0) / vs.length]);
+    }
+    const avgS = avg.map((p) => { const near = avg.filter((q) => Math.abs(q[0] - p[0]) <= 3); return [p[0], near.reduce((t, q) => t + q[1], 0) / near.length]; });
+    const W = 1000, H = 330, PL = 70, PR = 14, PT = 26, PB = 30;
+    const all = rp.map((p) => p[1]).concat(avgS.map((p) => p[1]));
+    const yMax = Math.min(3.2, Math.max(2.2, Math.max.apply(null, all) + 0.5)), yMin = Math.max(-3.2, Math.min(-2.2, Math.min.apply(null, all) - 0.4));
+    const x = (day) => PL + (Math.max(0, Math.min(N - 1, day)) / (N - 1)) * (W - PL - PR);
+    const y = (z) => PT + (1 - (Math.max(yMin, Math.min(yMax, z)) - yMin) / (yMax - yMin)) * (H - PT - PB);
+    const sv = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "tg", role: "img",
+      "aria-label": "The " + (ref.label || ref.key) + " and the average of " + pick.map((r) => r.label).join(", ") + " over " + N + " days, all drawn so that up means worse." });
+    sv.appendChild(svg("rect", { x: PL, y: y(yMax), width: W - PL - PR, height: y(0) - y(yMax), class: "tg-worse" }));
+    [[2, "worse"], [0, "own usual"], [-2, "better"]].forEach(([g, word]) => {
+      if (g > yMax || g < yMin) return;
+      sv.appendChild(svg("line", { x1: PL, y1: y(g), x2: W - PR, y2: y(g), class: g === 0 ? "fp-zero" : "fp-grid" }));
+      sv.appendChild(svg("text", { x: PL - 8, y: y(g) + 4, class: "tg-ax", "text-anchor": "end" }, word));
+    });
+    const line = (pts, cls) => sv.appendChild(svg("polyline", { points: pts.map((p) => x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(" "), class: cls }));
+    ms.forEach((m) => line(m.pts, "tg-m"));
+    if (avgS.length > 1) line(avgS, "tg-avg");
+    line(rp, "tg-ref");
+    rp.forEach((p, i) => {
+      sv.appendChild(svg("circle", { cx: x(p[0]), cy: y(p[1]), r: 5, class: "tg-refpt" }));
+      const prev = i > 0 ? rp[i - 1][1] : null, next = i < rp.length - 1 ? rp[i + 1][1] : null;
+      const peak = (prev === null || p[1] >= prev) && (next === null || p[1] >= next);
+      sv.appendChild(svg("text", { x: x(p[0]), y: peak ? y(p[1]) - 10 : y(p[1]) + 19, class: "tg-v", "text-anchor": "middle" }, String(Math.round(p[2] * 10) / 10)));
+    });
+    for (let dday = 0; dday < N - 9; dday += 14) sv.appendChild(svg("text", { x: x(dday), y: H - 8, class: "tg-ax", "text-anchor": dday === 0 ? "start" : "middle" }, dayShort(new Date(t0 + dday * 864e5).toISOString().slice(0, 10))));
+    sv.appendChild(svg("text", { x: W - PR, y: H - 8, class: "tg-ax", "text-anchor": "end" }, "today"));
+    const cross = svg("line", { x1: 0, y1: PT, x2: 0, y2: H - PB, class: "tg-cross" });
     cross.setAttribute("visibility", "hidden");
     sv.appendChild(cross);
     const host = el("div", { class: "viz" }, sv);
@@ -1094,51 +1135,85 @@
       if (day < 0 || day > N - 1) { cross.setAttribute("visibility", "hidden"); tip.hide(); return; }
       cross.setAttribute("x1", x(day)); cross.setAttribute("x2", x(day)); cross.setAttribute("visibility", "visible");
       const lines = [el("div", { class: "tip-h" }, dayShort(new Date(t0 + day * 864e5).toISOString().slice(0, 10)))];
-      lanes.forEach((ln) => { const p = near(ln.pts, day, ln.isRef ? 4 : 2); lines.push(el("div", { class: "tip-r" }, el("span", null, ln.title), el("b", null, p ? (ln.isRef ? String(p[1]) : fmtMeasure(ln.key, p[1])) : "–"))); });
+      const rpt = near(rp, day, 4);
+      lines.push(el("div", { class: "tip-r" }, el("span", null, ref.label || ref.key), el("b", null, rpt ? String(rpt[2]) : "no rating")));
+      ms.forEach((m) => { const p = near(sr.measures[m.r.key], day, 2); lines.push(el("div", { class: "tip-r" }, el("span", null, m.r.label), el("b", null, p ? fmtMeasure(m.r.key, p[1]) : "–"))); });
       tip.show(ev.clientX - box.left, ev.clientY - box.top - 20, lines);
     });
     sv.addEventListener("mouseleave", () => { cross.setAttribute("visibility", "hidden"); tip.hide(); });
-    return host;
+    return el("div", null,
+      el("ul", { class: "legend" },
+        el("li", null, el("span", { class: "key k-ref" }), (ref.label || ref.key) + " (the number is the score)"),
+        el("li", null, el("span", { class: "key k-avg" }), "average of the " + pick.length + " measures"),
+        el("li", null, el("span", { class: "key k-m" }), pick.map((r) => r.label.charAt(0).toLowerCase() + r.label.slice(1)).join(" · "))),
+      host,
+      el("p", { class: "muted small" }, "Every line is in this person’s own spread units and turned so that up means worse: fewer smiles, slower reactions and fewer steps all point up. Measures are 7-day averages."));
   }
-  // One row per measure: the estimate and its range, sorted, on one scale.
+  // One row per measure, grouped by kind: the estimate and its range on one scale.
   function forestChart(a) {
-    const rows = (a.rows || []).filter((r) => r.status === "tested").sort((p, q) => q.rho - p.rho);
-    if (!rows.length) return null;
-    const W = 1000, LX = 330, RX = 760, RHt = 26, TOP = 34, H = TOP + rows.length * RHt + 6;
-    const x = (v) => LX + ((Math.max(-1, Math.min(1, v)) + 1) / 2) * (RX - LX);
-    const sv = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "fp", role: "img", "aria-label": "Each measure’s correlation with the reference and its interval, sorted from strongest." });
-    [-1, -0.5, 0, 0.5, 1].forEach((g) => {
-      sv.appendChild(svg("line", { x1: x(g), y1: TOP - 6, x2: x(g), y2: H - 4, class: g === 0 ? "fp-zero" : "fp-grid" }));
-      sv.appendChild(svg("text", { x: x(g), y: TOP - 12, class: "tg-ax", "text-anchor": "middle" }, g === 0 ? "0" : (g > 0 ? "+" : "−") + Math.abs(g)));
+    const des = a.design || {};
+    const tested = (a.rows || []).filter((r) => r.status === "tested");
+    if (!tested.length) return null;
+    const GROUPS = [["face", "Face"], ["activity", "Activities"], ["daily", "Daily data"]];
+    const layout = [];
+    GROUPS.forEach(([g, name]) => {
+      const rs = tested.filter((r) => r.group === g).sort((p, q) => q.rho - p.rho);
+      if (!rs.length) return;
+      const openAll = !!S.open["fp-" + g], shown = rs.length > 5 && !openAll ? rs.slice(0, 4) : rs;
+      layout.push({ head: name, n: rs.length, cons: rs.filter((r) => r.agreement === "consistent").length, g, more: rs.length - shown.length, canFold: rs.length > 5 });
+      shown.forEach((r) => layout.push({ r }));
     });
-    sv.appendChild(svg("text", { x: LX, y: 11, class: "tg-ax", "text-anchor": "start" }, "← opposite"));
-    sv.appendChild(svg("text", { x: RX, y: 11, class: "tg-ax", "text-anchor": "end" }, "as expected when worse →"));
-    const GROUP = { face: "face", activity: "activity", daily: "daily" };
+    const minCi = Math.min.apply(null, tested.map((r) => r.ci_low));
+    const X0 = Math.min(-0.2, Math.floor(minCi * 5) / 5);
+    const W = 1000, LX = 330, RX = 800, RHt = 26, HH = 34, TOP = 30;
+    const H = TOP + layout.reduce((t, it) => t + (it.r ? RHt : HH), 0) + 8;
+    const x = (v) => LX + ((Math.max(X0, Math.min(1, v)) - X0) / (1 - X0)) * (RX - LX);
+    const sv = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "fp", role: "img", "aria-label": "Each measure’s correlation with the reference and its range, grouped by kind and sorted from strongest." });
+    const ticks = [0, 0.5, 1].concat(X0 <= -0.5 ? [-0.5] : []);
+    ticks.forEach((g) => {
+      sv.appendChild(svg("line", { x1: x(g), y1: TOP - 4, x2: x(g), y2: H - 4, class: g === 0 ? "fp-zero" : "fp-grid" }));
+      sv.appendChild(svg("text", { x: x(g), y: TOP - 10, class: "tg-ax", "text-anchor": "middle" }, g === 0 ? "0" : f2(g).replace(".00", "").replace(".50", ".5")));
+    });
+    sv.appendChild(svg("text", { x: RX, y: 10, class: "tg-ax", "text-anchor": "end" }, "moves as expected when worse →"));
     const host = el("div", { class: "viz" }, sv);
     const tip = vizTip(host);
-    rows.forEach((r, i) => {
-      const cy = TOP + i * RHt + RHt / 2;
+    let cy = TOP;
+    layout.forEach((it) => {
+      if (!it.r) {
+        const g = svg("g", { class: it.canFold ? "fp-head can" : "fp-head" });
+        g.appendChild(svg("rect", { x: 0, y: cy + 4, width: W, height: HH - 6, class: "fp-hit" }));
+        g.appendChild(svg("text", { x: 4, y: cy + 24, class: "fp-g" }, it.head, svg("tspan", { class: "tg-s" }, "   " + it.cons + " of " + it.n + " as expected" +
+          (it.g === "face" && it.n > 5 ? " · closely related, read them as one signal" : ""))));
+        if (it.canFold) {
+          g.appendChild(svg("text", { x: W - 4, y: cy + 24, class: "fp-more", "text-anchor": "end" }, it.more ? "show all " + it.n + " ▾" : "show fewer ▴"));
+          g.addEventListener("click", () => { S.open["fp-" + it.g] = !S.open["fp-" + it.g]; render(); });
+        }
+        sv.appendChild(g);
+        cy += HH;
+        return;
+      }
+      const r = it.r, my = cy + RHt / 2, ok = r.agreement === "consistent";
       const g = svg("g", { class: "fp-row" });
-      g.appendChild(svg("rect", { x: 0, y: cy - RHt / 2, width: W, height: RHt, class: "fp-hit" }));
-      g.appendChild(svg("text", { x: LX - 14, y: cy + 4, class: "fp-l", "text-anchor": "end" }, r.label));
-      g.appendChild(svg("line", { x1: x(r.ci_low), y1: cy, x2: x(r.ci_high), y2: cy, class: "fp-ci" }));
-      g.appendChild(svg("circle", { cx: x(r.rho), cy, r: 5.5, class: "fp-pt " + (r.agreement === "consistent" ? "k-cons" : r.agreement === "opposite" ? "k-opp" : "k-inc") }));
-      g.appendChild(svg("text", { x: RX + 16, y: cy + 4, class: "fp-v" }, f2(r.rho)));
-      g.appendChild(svg("text", { x: RX + 70, y: cy + 4, class: "tg-ax" }, r.agreement === "consistent" ? r.strength : words(r.agreement).toLowerCase()));
-      g.appendChild(svg("text", { x: W - 4, y: cy + 4, class: "tg-ax", "text-anchor": "end" }, GROUP[r.group] + " · " + r.n + " d"));
+      g.appendChild(svg("rect", { x: 0, y: cy, width: W, height: RHt, class: "fp-hit" }));
+      g.appendChild(svg("text", { x: LX - 14, y: my + 4, class: "fp-l", "text-anchor": "end" }, r.label));
+      g.appendChild(svg("line", { x1: x(r.ci_low), y1: my, x2: x(r.ci_high), y2: my, class: ok ? "fp-ci" : "fp-ci dim" }));
+      g.appendChild(svg("circle", { cx: x(r.rho), cy: my, r: 5.5, class: "fp-pt " + (ok ? "k-cons" : r.agreement === "opposite" ? "k-opp" : "k-inc") }));
+      g.appendChild(svg("text", { x: RX + 18, y: my + 4, class: ok ? "fp-v" : "fp-v dim" }, f2(r.rho)));
+      g.appendChild(svg("text", { x: W - 4, y: my + 4, class: "tg-ax", "text-anchor": "end" }, f2(r.ci_low) + " to " + f2(r.ci_high) + " · n " + r.n));
       g.addEventListener("mousemove", (ev) => {
         const box = sv.getBoundingClientRect();
         tip.show(ev.clientX - box.left, ev.clientY - box.top + 14, [
           el("div", { class: "tip-h" }, r.label),
           el("div", { class: "tip-p" }, r.why),
           el("div", { class: "tip-r" }, el("span", null, "expected when worse"), el("b", null, r.expected)),
-          el("div", { class: "tip-r" }, el("span", null, "rho and range"), el("b", null, f2(r.rho) + " [" + f2(r.ci_low) + ", " + f2(r.ci_high) + "]")),
-          el("div", { class: "tip-r" }, el("span", null, "days · p adjusted"), el("b", null, r.n + " · " + (r.p_adj < 0.001 ? "< 0.001" : Number(r.p_adj).toFixed(3)))),
-          el("div", { class: "tip-r" }, el("span", null, "judged by"), el("b", null, SRC[r.agreement_source] || "–")),
+          el("div", { class: "tip-r" }, el("span", null, "correlation and range"), el("b", null, f2(r.rho) + " [" + f2(r.ci_low) + ", " + f2(r.ci_high) + "]")),
+          el("div", { class: "tip-r" }, el("span", null, (des.unit === "rating" ? "ratings" : "days") + " · p corrected"), el("b", null, r.n + " · " + (r.p_adj < 0.001 ? "< 0.001" : Number(r.p_adj).toFixed(2)))),
+          el("div", { class: "tip-r" }, el("span", null, "judgement"), el("b", null, ok ? "as expected" : words(r.agreement).toLowerCase())),
           (r.caveats || []).length ? el("div", { class: "tip-p" }, "Caveats: " + r.caveats.map((c) => words(c.code).toLowerCase()).join(", ")) : null].filter(Boolean));
       });
       g.addEventListener("mouseleave", () => tip.hide());
       sv.appendChild(g);
+      cy += RHt;
     });
     return host;
   }
@@ -1171,39 +1246,41 @@
     const o = a.overall || {}, ref = a.reference || {}, des = a.design || {}, src = o.sources || {};
     const cor = a.corrections || [], notes = a.data_notes || [];
     const refName = ref.label || ref.key;
+    const refShort = String(refName).replace(/ total$/i, "");
+    const unitWord = des.unit === "rating" ? "ratings" : "days";
     const consRows = (a.rows || []).filter((r) => r.agreement === "consistent");
-    const kinds = ["face", "activity", "daily"].filter((g) => consRows.some((r) => r.group === g))
-      .map((g) => ({ face: "face measures", activity: "the focus game and check-in", daily: "daily movement" })[g]);
-    const list = kinds.length > 1 ? kinds.slice(0, -1).join(", ") + " and " + kinds[kinds.length - 1] : kinds[0] || "";
+    const kindsN = ["face", "activity", "daily"].filter((g) => consRows.some((r) => r.group === g)).length;
     const who = String(d.display_name || d.label).split(" ")[0];
-    const headline = o.pattern === "consistent_with_worse_state" ? "Over " + des.days + " days, " + who + "’s " + list + " moved with the " + refName + "."
-      : o.pattern === "partly_consistent" ? "Over " + des.days + " days, some of " + who + "’s measures moved with the " + refName + (list ? ": " + list + "." : ".")
-      : o.pattern === "opposite_to_expectation" ? "Over " + des.days + " days, " + who + "’s measures moved against what was expected."
-      : o.pattern === "no_clear_relation" ? "Over " + des.days + " days, " + who + "’s measures did not clearly move with the " + refName + "."
-      : "Not enough data yet to say whether " + who + "’s measures move with the " + refName + ".";
+    const picked = pickMeasures(a);
+    const refVals = ((a.series || {}).reference || []).map((p) => p[1]);
+    const lo = refVals.length ? Math.min.apply(null, refVals) : null, hi = refVals.length ? Math.max.apply(null, refVals) : null;
+    const names = picked.filter((r) => r.agreement === "consistent").slice(0, 3).map((r) => r.label.charAt(0).toLowerCase() + r.label.slice(1));
+    const nameList = names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] : names[0] || "";
+    const good = o.pattern === "consistent_with_worse_state" || o.pattern === "partly_consistent";
+    const headline = good && nameList && lo !== null
+      ? "As " + who + "’s " + refShort + " moved between " + lo + " and " + hi + ", " + nameList + " moved with it."
+      : o.pattern === "opposite_to_expectation" ? who + "’s measures moved against what was expected."
+      : o.pattern === "no_clear_relation" ? who + "’s measures did not clearly move with the " + refShort + "."
+      : "Not enough data yet to say whether " + who + "’s measures move with the " + refShort + ".";
     wrap.appendChild(el("section", { class: "panel hero" },
       el("p", { class: "hero-k" }, "What the data shows"),
       el("p", { class: "hero-t" }, headline),
       el("div", { class: "hero-facts" },
-        el("span", { class: "chip" }, words(o.confidence) + " confidence"),
-        el("span", { class: "chip" }, o.independent_lines + (o.independent_lines === 1 ? " kind" : " kinds") + " of measure agree"),
-        el("span", { class: "chip" }, consRows.length + " of " + des.rows_tested + " measures as expected"),
-        o.leads_reference ? el("span", { class: "chip" }, "some move before the rating") : null,
-        el("span", { class: "chip" }, "next: " + (R_NEXT[o.next_step] || words(o.next_step)).toLowerCase())),
-      el("p", { class: "small" }, "It could also be: ", (o.main_alternative_text || words(o.main_alternative))),
-      el("p", { class: "muted small" },
-        (a.appraised_by === "model" ? "Judged by the local model (" + ((a.inputs || {}).model || "") + ") from the statistics; code checked every judgement and corrected " + cor.length + "." : "Judged by code only; no model took part.") +
-        " " + (ref.kind === "proxy" ? "Reference is a proxy, not a clinical rating." : (ref.ratings || 0) + " ratings, ") + des.sessions + " sessions." +
-        (d.example ? " Example data: it shows what this page looks like, not a finding." : ""))));
+        good ? el("span", { class: "chip" }, kindsN + (kindsN === 1 ? " kind" : " kinds") + " of measure agree: " + ["face", "activity", "daily"].filter((g) => consRows.some((r) => r.group === g)).map((g) => ({ face: "face", activity: "activities", daily: "daily movement" })[g]).join(", ")) : null,
+        el("span", { class: "chip" }, (des.observations || des.days) + " " + unitWord + " over " + des.days + " days"),
+        el("span", { class: "chip" }, "one person"),
+        el("span", { class: "chip" }, words(o.confidence).toLowerCase() + " confidence"),
+        d.example ? el("span", { class: "chip tag" }, "example data, not a finding") : null)));
     const together = togetherChart(a);
     if (together) wrap.appendChild(el("section", { class: "panel" }, el("h2", null, "Moving together, day by day"),
-      el("p", { class: "muted small" }, "Top: the " + refName + ". Below: the measures that followed it most closely. Shaded: when the " + refName + " was in the " + (ref.worse_is === "lower" ? "lower" : "upper") + " half of its range for this person."), together));
+      together));
     else if (!a.series) wrap.appendChild(empty("Select “Recalculate” to draw the charts."));
     const fp = forestChart(a);
     if (fp) wrap.appendChild(el("section", { class: "panel" }, el("h2", null, "Every measure", el("span", { class: "count" }, des.rows_tested)),
-      el("p", { class: "muted small" }, "How closely each measure followed the " + refName + ". Right of the middle: it moved the way research leads us to expect when symptoms are worse. The bar is the range the true value plausibly lies in; a bar that crosses the middle settles nothing."),
+      el("p", { class: "muted small" }, "How closely each measure followed the " + refName + " across " + (des.observations || "") + " " + unitWord + ". Further right: it moved the way research leads us to expect when symptoms are worse. The bar is the range the true value plausibly lies in; a bar that reaches zero settles nothing."),
       fp,
-      el("ul", { class: "legend" }, el("li", null, el("span", { class: "dotk k-cons" }), "as expected"), el("li", null, el("span", { class: "dotk k-inc" }), "inconclusive"), el("li", null, el("span", { class: "dotk k-opp" }), "opposite"))));
+      el("ul", { class: "legend" }, el("li", null, el("span", { class: "dotk k-cons" }), "as expected: range clear of zero"), el("li", null, el("span", { class: "dotk k-inc" }), "inconclusive"),
+        (a.rows || []).some((r) => r.agreement === "opposite") ? el("li", null, el("span", { class: "dotk k-opp" }), "opposite") : null)));
     const tablesBox = el("div", { class: "stack" });
     const strongest = new Set(o.strongest || []);
     const GROUP = { face: "Face", activity: "Activities", daily: "Daily data" };
@@ -1211,7 +1288,7 @@
       const rows = (a.rows || []).filter((r) => r.group === g);
       if (!rows.length) return;
       tablesBox.appendChild(panel(GROUP[g], rows.length, table(
-        ["Measure", "Expected when worse", { t: "Days", r: 1 }, "Opposite ← rho → as expected", { t: "p adj.", r: 1 }, { t: "Lead", r: 1 }, "Judgement", "Caveats"],
+        ["Measure", "Expected when worse", { t: des.unit === "rating" ? "Ratings" : "Days", r: 1 }, "Opposite ← rho → as expected", { t: "p adj.", r: 1 }, "Judgement", "Caveats"],
         rows.map((r) => {
           const tested = r.status === "tested";
           return el("tr", { class: strongest.has(r.key) ? "changed" : "" },
@@ -1220,31 +1297,39 @@
             el("td", { class: "r num" }, r.n),
             el("td", null, tested ? el("div", { class: "rhocell" }, rhoBar(r), el("span", { class: "num small" }, f2(r.rho) + " [" + f2(r.ci_low) + ", " + f2(r.ci_high) + "]")) : el("span", { class: "muted" }, R_STATUS[r.status] || words(r.status))),
             el("td", { class: "r num" }, tested && r.p_adj !== null ? (r.p_adj < 0.001 ? "< 0.001" : Number(r.p_adj).toFixed(3)) : "–"),
-            el("td", { class: "r num" }, tested && r.lead_days !== null && r.lead_days !== undefined ? (r.lead_days > 0 ? "+" : "") + r.lead_days + " d" : "–"),
-            el("td", null, tested ? [el("span", { class: "chip " + (r.agreement === "consistent" ? "good" : r.agreement === "opposite" ? "bad" : "") }, words(r.agreement).toLowerCase() + (r.strength ? ", " + r.strength : "")),
+            el("td", null, tested ? [el("span", { class: "chip " + (r.agreement === "consistent" ? "good" : r.agreement === "opposite" ? "bad" : "") }, r.agreement === "consistent" ? "as expected" : words(r.agreement).toLowerCase()),
               el("span", { class: "sub" }, SRC[r.agreement_source] || "")] : "–"),
             caveatCell(r));
-        }), "assoc", { id: "assoc-" + g, filter: 6 })));
+        }), "assoc", { id: "assoc-" + g, filter: 5 })));
     });
     wrap.appendChild(fold("r-tables", "The same numbers as tables", des.rows_tested, tablesBox));
     wrap.appendChild(fold("r-samples", "Sessions collected from the phone", null, samplesPanel(d)));
-    wrap.appendChild(fold("r-cor", "What code corrected in the model’s answer", cor.length, cor.length ? table(["Where", "Field", "Model said", "Code set", "Why"],
-      cor.map((c) => el("tr", null, el("td", null, c.where === "row" ? c.key : "overall"), el("td", null, words(c.field)),
-        el("td", null, c.model === null || c.model === undefined ? "–" : String(c.model)), el("td", null, c.code === null || c.code === undefined ? "–" : String(c.code)),
-        el("td", null, words(c.reason).toLowerCase()))), null, { filter: 1 }) : empty(a.appraised_by === "model" ? "Nothing: the model’s judgements matched the numbers." : "No model took part in this appraisal.")));
-    if (notes.length) wrap.appendChild(fold("r-notes", "Notes on the data", notes.length, el("ul", { class: "plain" }, notes.map((n) => el("li", null, n.text)))));
+    const labelOf = {}; (a.rows || []).forEach((r) => { labelOf[r.key] = r.label; });
+    wrap.appendChild(fold("r-how", "How this was judged, and what limits it", null, el("div", { class: "stack" },
+      el("ul", { class: "plain" },
+        el("li", null, "One observation is one " + (des.unit === "rating" ? "rating: each measure is averaged over the week up to the rating day. Days between ratings are not counted as separate observations." : "day. Days are not independent of each other, so the ranges are descriptive.")),
+        el("li", null, "Each measure gets a rank correlation with the " + refName + ", a 95 % range from resampling, and a p-value corrected for the number of measures tested. All of that is done by code."),
+        el("li", null, a.appraised_by === "model" ? "The " + modelName((a.inputs || {}).model) + " read only that table of statistics and judged it. Code then checked each judgement against the numbers and changed " + cor.length + " of them, mostly labels that claimed more than the range supports." : "No model took part; the judgement is code’s own."),
+        el("li", null, "“As expected” needs a range clear of zero and a corrected p-value of at most 0.10."),
+        el("li", null, "Most plausible other explanation named: " + (o.main_alternative_text || words(o.main_alternative))),
+        notes.map((n) => el("li", null, n.text)),
+        a.hypotheses_reviewed_by_clinician ? null : el("li", null, "The list of expected directions has not yet been reviewed by a clinician.")),
+      cor.length ? table(["Where", "Field", "Model said", "Code set", "Why"],
+        cor.map((c) => el("tr", null, el("td", null, c.where === "row" ? labelOf[c.key] || c.key : "overall"), el("td", null, words(c.field)),
+          el("td", null, c.model === null || c.model === undefined ? "–" : words(String(c.model)).toLowerCase()), el("td", null, c.code === null || c.code === undefined ? "–" : words(String(c.code)).toLowerCase()),
+          el("td", null, words(c.reason).toLowerCase()))), null, { filter: 1 }) : null)));
     return wrap;
   }
   function tabLog(d) {
     const wrap = el("div", { class: "stack" });
     const ref = d.refusal_log || [];
     wrap.appendChild(panel("Model answers refused by the gates", ref.length || "", ref.length ? table(["When", "Step", "Reason", "Used instead"],
-      ref.map((r) => el("tr", null, el("td", { class: "num" }, stamp(r.at)), el("td", null, words(r.task || r.gate || r.layer || "")),
-        el("td", null, words(r.reason || r.code || "")), el("td", null, words(r.fallback || r.used || "–"))))) : empty("No refusals.")));
+      ref.map((r) => el("tr", null, el("td", { class: "num" }, stamp(r.at)), el("td", null, TASK[(r.detail || {}).task] || words((r.detail || {}).task || r.action || "")),
+        el("td", null, words(r.reason || r.code || "")), el("td", null, words((r.detail || {}).fallback || (r.detail || {}).used || "code’s own answer")))), null, { filter: 2 }) : empty("No refusals.")));
     const nl = d.notify_log || [];
     wrap.appendChild(panel("Alerts to the clinic", nl.length || "", nl.length ? table(["When", "Level", "Result", "Why"],
-      nl.map((n) => el("tr", null, el("td", { class: "num" }, stamp(n.at)), el("td", null, levelChip(n.level) || "–"),
-        el("td", null, words(n.result || n.event || n.code || "")), el("td", null, words(n.reason || kind(n.kind) || "–"))))) : empty("No alerts.")));
+      nl.map((n) => el("tr", null, el("td", { class: "num" }, stamp(n.at)), el("td", null, levelChip((n.detail || {}).level) || "–"),
+        el("td", null, n.outcome === "ok" ? "Sent" : "Not sent"), el("td", null, n.outcome === "ok" ? "needs review" : words(n.reason || "–").toLowerCase())))) : empty("No alerts.")));
     const notes = d.notes || [];
     wrap.appendChild(panel("Notes from the patient", notes.length || "", notes.length ? table(["When", "Mood", "Asked for help", "Text"],
       notes.map((n) => { const c = n.classification || n.labels || n; return el("tr", null, el("td", { class: "num" }, stamp(n.at || n.created_at)),
@@ -1284,7 +1369,7 @@
   }
 
   // ---------------------------------------------------------------- start
-  window.addEventListener("hashchange", onRoute);
+  window.addEventListener("hashchange", () => { window.scrollTo(0, 0); onRoute(); });
   S.timer = setInterval(() => { if (S.token && !document.hidden) refresh(); }, 60000);
   onRoute();
 })();

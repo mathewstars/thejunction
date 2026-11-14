@@ -490,9 +490,11 @@ def test_the_response_has_the_fields_the_page_needs(env):
 def test_the_seed_produces_an_appraisal_for_the_demo_patient(env):
     env.run(seed.settle(env.mind, env.demo["clinic_id"], env.demo["patient_id"], appraise=True))
     doc = env.repo().get("research/associations.json")
-    assert doc["reference"]["key"] == "phq9"
-    assert sum(1 for r in doc["rows"] if r["status"] not in ("insufficient",)) >= 3
-    assert sum(1 for r in doc["rows"] if r["status"] == "tested") >= 3
+    # Five example ratings are too few to be the reference: the proxy is used, per day.
+    assert doc["reference"]["key"] == "movement_z" and doc["design"]["unit"] == "day"
+    # Two weeks of sessions are too few to test much; the rows say so and nothing is invented.
+    assert sum(1 for r in doc["rows"] if r["status"] not in ("insufficient",)) >= 2
+    assert all(r["rho"] is None for r in doc["rows"] if r["status"] != "tested")
     # The example sessions carry the newer face fields, and they move in the dip.
     acts = [a for a in env.repo().activities() if a.get("face")]
     assert all(a["face"].get("smile_time_share") is not None for a in acts)
@@ -613,7 +615,10 @@ def test_simulated_study_gives_enough_days_and_finds_the_built_in_relation(env):
     out = env.run(env.mind.run_appraisal(repo, "test"))
     assert out["reference"]["key"] == "phq9" and out["design"]["days"] >= 80
     rows = {r["key"]: r for r in out["rows"]}
-    assert rows["face.facial_activity"]["n"] >= 20
+    # One observation is one rating, never one day: n cannot exceed the number of ratings.
+    assert out["design"]["unit"] == "rating" and out["design"]["observations"] == 12
+    assert 8 <= rows["face.facial_activity"]["n"] <= 12
+    assert all(r["lead_days"] is None for r in out["rows"])
     consistent = [k for k, r in rows.items() if r["agreement"] == "consistent"]
     assert len(consistent) >= 5 and out["overall"]["independent_lines"] >= 2
     assert seed_research.level(0) == 0.45
@@ -638,5 +643,6 @@ def test_earlier_weeks_for_the_demo_patient_leave_the_mind_as_it_was(env):
            [(i["kind"], i["state"], i["level"]) for i in before["attention_items"]]
     out = env.run(env.mind.run_appraisal(env.mind.repo(d["clinic_id"], d["patient_id"]), "test"))
     rows = {r["key"]: r for r in out["rows"]}
-    assert out["design"]["days"] >= 80 and rows["face.facial_activity"]["n"] >= 30
+    assert out["design"]["days"] >= 80 and out["design"]["unit"] == "rating"
+    assert 8 <= rows["face.facial_activity"]["n"] <= out["design"]["observations"] <= 14
     assert len([r for r in out["rows"] if r["agreement"] == "consistent"]) >= 5
