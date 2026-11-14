@@ -76,6 +76,10 @@ struct HomeChatScreen: View {
         .padding(.horizontal, 20)
         .padding(.top, 6)
         .padding(.bottom, 8)
+        // The scene around Lanvi at the top: a tap there puts the keyboard away too
+        // (X and Help are buttons and keep their own taps).
+        .contentShape(Rectangle())
+        .onTapGesture { focused = false }
     }
 
     // MARK: The thread
@@ -103,7 +107,13 @@ struct HomeChatScreen: View {
                 .padding(.top, 8)
             }
             .scrollIndicators(.hidden)
+            // Drag the list down to put the keyboard away, following the finger.
             .scrollDismissesKeyboard(.interactively)
+            .scrollBounceBehavior(.always)
+            // A tap on the list (not on a bubble's button) puts the keyboard away.
+            // Buttons inside win over this parent tap, so they still work.
+            .contentShape(Rectangle())
+            .onTapGesture { focused = false }
             .onChange(of: store.chat.messages.count) { _, _ in settleDown(proxy) }
             .onChange(of: store.chatWaiting) { _, _ in settleDown(proxy) }
             .onChange(of: focused) { _, _ in settleDown(proxy, first: 0.35) }
@@ -250,10 +260,15 @@ struct HomeChatScreen: View {
                     .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.white))
                     .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.line).offset(y: 3))
                     .onChange(of: draft) { _, v in
-                        // Return sends (a multi-line field turns it into a newline).
+                        // Return sends (a multi-line field turns it into a newline);
+                        // Return on an empty field puts the keyboard away.
                         if v.contains("\n") {
                             draft = v.replacingOccurrences(of: "\n", with: "")
-                            send()
+                            if draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                focused = false
+                            } else {
+                                send()
+                            }
                             return
                         }
                         if v.count > limit { draft = String(v.prefix(limit)) }
@@ -266,6 +281,7 @@ struct HomeChatScreen: View {
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.chatWaiting)
                 .opacity(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
                 .accessibilityLabel("Send")
+                .accessibilityIdentifier("chat.send")
             }
         }
         .padding(.horizontal, 16)
