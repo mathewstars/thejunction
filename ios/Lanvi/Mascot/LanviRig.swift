@@ -161,6 +161,33 @@ extension Rig {
     /// head's width sideways and 0.04 up or down: the face never slides off the head.
     static let maxYaw = 0.15
     static let maxPitch = 0.11
+    /// The whole head's perspective turn at a head direction of 1 (degrees), and how
+    /// strong the perspective is (SwiftUI's relative vanishing point). Chosen so the head's
+    /// outline moves at most 0.03 of its width.
+    static let turnYaw = 10.0
+    static let turnPitch = 6.0
+    static let turnPerspective: CGFloat = 0.7
+    /// On top of it, the far half of the head tucks in and the near half grows (shares of
+    /// its width, at a full turn).
+    static let farCheekTuck: CGFloat = 0.02
+    static let nearCheekGrow: CGFloat = 0.01
+
+    /// How far the head's left and right edges move at a head direction `dirX` (shares of
+    /// the head's width; + = to the viewer's right): the perspective turn (SwiftUI's
+    /// `rotation3DEffect` projects x to x cos a / (1 + x sin a m), m = perspective / the
+    /// frame's longer side, as measured), the cheek halves and the head's shift.
+    static func headEdges(dirX: Double) -> (left: CGFloat, right: CGFloat) {
+        let w = head.size.width
+        let a = turnYaw * dirX * .pi / 180
+        let m = Double(turnPerspective / max(canvas.width, canvas.height))
+        func project(_ x: Double) -> Double { x * cos(a) / (1 + x * sin(a) * m) }
+        let half = Double(w / 2)
+        let shift = dirX * 5 * Double(unit)               // `sample`: headX += dirX * 5
+        let tuck = Double(farCheekTuck), grow = Double(nearCheekGrow)
+        let l = project(-half) + half + (dirX > 0 ? -grow : tuck) * abs(dirX) * half + shift
+        let r = project(half) - half + (dirX > 0 ? -tuck : grow) * abs(dirX) * half + shift
+        return (CGFloat(l) / w, CGFloat(r) / w)
+    }
 
     /// The most a look shifts each eye on its white patch (head pixels), on top of the
     /// patch's own move. The pupils carry the look now, so the eyes themselves stay put.

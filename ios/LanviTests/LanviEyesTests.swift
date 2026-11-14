@@ -192,5 +192,40 @@ final class LanviEyesTests: XCTestCase {
         }
         assertOnlyQuickBlinks(make, from: 2.0, to: 7.6, "after petting")
     }
+
+    // MARK: The head turn
+
+    func testTheHeadOutlineMovesAtMostThreePercentOfItsWidth() {
+        for dirX in stride(from: -1.0, through: 1.0, by: 0.05) {
+            let e = Rig.headEdges(dirX: dirX)
+            XCTAssertLessThanOrEqual(abs(e.left), 0.031, "left edge at dirX \(dirX)")
+            XCTAssertLessThanOrEqual(abs(e.right), 0.031, "right edge at dirX \(dirX)")
+        }
+        // and the turn is real: at a full turn the far edge tucks in by more than 2 %
+        XCTAssertLessThan(Rig.headEdges(dirX: 1).right, -0.02)
+        XCTAssertGreaterThan(Rig.headEdges(dirX: -1).left, 0.02)
+    }
+
+    func testADragNeverWobblesTheHead() {
+        // a slow circle fed by touch events at uneven times (a real finger): the head's
+        // turn speed changes smoothly, at most two small wobbles in 5 s
+        var r: UInt64 = 12345
+        func rnd() -> Double { r = r &* 6364136223846793005 &+ 1442695040888963407; return Double(r >> 11) / Double(1 << 53) }
+        var steps = [LookStep(at: -100, target: nil)]
+        var t = 0.0
+        while t < 6 {
+            let a = 2 * Double.pi * t / 6
+            steps.append(LookStep(at: clock + t, target: CGPoint(x: 1085 + 900 * cos(a), y: 600 + 650 * sin(a))))
+            t += (1.0 / 60) * (0.6 + 0.8 * rnd()) * (rnd() < 0.05 ? 2 : 1)
+        }
+        var xs: [Double] = []
+        for i in 0..<(60 * 6) { xs.append(motion(steps, at: clock + Double(i) / 60).frame().pose.dirX) }
+        var wobbles = 0
+        for i in 60..<(xs.count - 2) {
+            let a0 = (xs[i + 1] - xs[i]) - (xs[i] - xs[i - 1]), a1 = (xs[i + 2] - xs[i + 1]) - (xs[i + 1] - xs[i])
+            if a0 * a1 < 0, abs(a0 - a1) > 0.0004 { wobbles += 1 }
+        }
+        XCTAssertLessThanOrEqual(wobbles, 2)
+    }
 }
 
