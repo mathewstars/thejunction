@@ -192,6 +192,19 @@ enum API {
         var tracked: [Int]?
         var momentsMs: [Int]?
     }
+}
+
+extension API.ActivityIn {
+    /// The same record without the face frames: what goes out when the server refused
+    /// the record with them, so the game itself is never lost (`LanviClient.send`).
+    var withoutFaceRaw: API.ActivityIn {
+        var plain = self
+        plain.faceRaw = nil
+        return plain
+    }
+}
+
+extension API {
 
     /// Either a catalog id or a few typed words, never both.
     struct CheckinItem: Codable, Equatable {
