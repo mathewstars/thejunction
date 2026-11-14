@@ -2112,8 +2112,8 @@
     const ya = (v) => AT + (1 - (v - aLo) / ((aHi - aLo) || 1)) * AH;
     const yb = (z) => BT + (1 - (Math.max(zMin, Math.min(zMax, z)) - zMin) / (zMax - zMin)) * BH;
     const sv = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "tg", role: "img",
-      "aria-label": (a._example ? "Generated example. The link was built in. " : "") + "Above, the " + (ref.label || ref.key) + " over " + N + " days. Below, on the same time axis, " + pick.map((r) => r.label).join(", ") + " and their average, drawn so that up means worse." });
-    if (a._example) sv.appendChild(svg("text", { x: W - PR, y: 14, class: "tg-ax", "text-anchor": "end" }, "Generated example. The link was built in."));
+      "aria-label": (a._example ? a._mark + " " : "") + "Above, the " + (ref.label || ref.key) + " over " + N + " days. Below, on the same time axis, " + pick.map((r) => r.label).join(", ") + " and their average, drawn so that up means worse." });
+    if (a._example) sv.appendChild(svg("text", { x: PL + 6, y: AT + AH - 7, class: "tg-ax" }, a._mark));   // bottom left of the upper panel: clear of the score labels, and still in view on a phone
     // columns where the rating is at or over the cut-off (or, without a cut-off, in its worse half)
     const mid = (Math.min.apply(null, rv) + Math.max.apply(null, rv)) / 2;
     const high = (v) => (isPhq ? v >= CUT : (ref.worse_is === "lower" ? v <= mid : v >= mid) && Math.max.apply(null, rv) > Math.min.apply(null, rv));
@@ -2204,8 +2204,8 @@
     const W = 1000, LX = 330, RX = hasChange ? 700 : 800, RHt = 26, HH = 34, TOP = a._example ? 62 : 30;
     const H = TOP + layout.reduce((t, it) => t + (it.r ? RHt : HH), 0) + 8;
     const x = (v) => LX + ((Math.max(X0, Math.min(1, v)) - X0) / (1 - X0)) * (RX - LX);
-    const sv = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "fp", role: "img", "aria-label": (a._example ? "Generated example. The link was built in. " : "") + "Each measure’s correlation with the reference and its range, grouped by kind and sorted from strongest." });
-    if (a._example) sv.appendChild(svg("text", { x: 4, y: 12, class: "tg-ax" }, "Generated example. The link was built in."));
+    const sv = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "fp", role: "img", "aria-label": (a._example ? a._mark + " " : "") + "Each measure’s correlation with the reference and its range, grouped by kind and sorted from strongest." });
+    if (a._example) sv.appendChild(svg("text", { x: 4, y: 12, class: "tg-ax" }, a._mark));
     const ticks = [-1, -0.5, 0, 0.5, 1];
     ticks.forEach((g) => {
       sv.appendChild(svg("line", { x1: x(g), y1: TOP - 4, x2: x(g), y2: H - 4, class: g === 0 ? "fp-zero" : "fp-grid" }));
@@ -2238,7 +2238,7 @@
       g.appendChild(svg("circle", { cx: x(r.rho), cy: my, r: 5.5, class: "fp-pt " + (ok ? "k-cons" : r.agreement === "opposite" ? "k-opp" : "k-inc") }));
       g.appendChild(svg("text", { x: RX + 18, y: my + 4, class: ok ? "fp-v" : "fp-v dim" }, f2(r.rho)));
       g.appendChild(svg("text", { x: hasChange ? W - 86 : W - 4, y: my + 4, class: "tg-ax", "text-anchor": "end" }, f2(r.ci_low) + " to " + f2(r.ci_high) + " · n " + r.n));
-      if (hasChange) g.appendChild(svg("text", { x: W - 4, y: my + 4, class: ok ? "fp-v" : "fp-v dim", "text-anchor": "end" }, f2(r.change_rho)));
+      if (hasChange) g.appendChild(svg("text", { x: W - 4, y: my + 4, class: "fp-v dim", "text-anchor": "end" }, f2(r.change_rho)));   // never bold: with a dozen changes most of these are within chance
       g.addEventListener("mousemove", (ev) => {
         const box = sv.getBoundingClientRect();
         tip.show(ev.clientX - box.left, ev.clientY - box.top + 14, [
@@ -2247,7 +2247,7 @@
           el("div", { class: "tip-r" }, el("span", null, "expected when worse"), el("b", null, r.expected)),
           el("div", { class: "tip-r" }, el("span", null, "correlation and range"), el("b", null, f2(r.rho) + " [" + f2(r.ci_low) + ", " + f2(r.ci_high) + "]")),
           el("div", { class: "tip-r" }, el("span", null, (des.unit === "rating" ? "ratings" : "days") + " · p corrected"), el("b", null, r.n + " · " + (r.p_adj < 0.001 ? "< 0.001" : Number(r.p_adj).toFixed(2)))),
-          r.change_rho !== null && r.change_rho !== undefined ? el("div", { class: "tip-r" }, el("span", null, "week-to-week change"), el("b", null, f2(r.change_rho))) : null,
+          r.change_rho !== null && r.change_rho !== undefined ? el("div", { class: "tip-r" }, el("span", null, "week-to-week change (below about 0.6 could be chance)"), el("span", null, f2(r.change_rho))) : null,
           el("div", { class: "tip-r" }, el("span", null, "judgement"), el("b", null, ok ? "as expected" : words(r.agreement).toLowerCase())),
           (r.caveats || []).length ? el("div", { class: "tip-p" }, "Caveats: " + r.caveats.map((c) => words(c.code).toLowerCase()).join(", ")) : null].filter(Boolean));
       });
@@ -2284,6 +2284,7 @@
       el("span", { class: "muted small" }, a.disclaimer || ""), el("div", { class: "push" }, run)));
     if (a.status !== "ready") { wrap.appendChild(empty("Not computed yet. Select “Recalculate”.")); return wrap; }
     a._example = !!d.example;   // the charts mark themselves, so a screenshot of one still says what it is
+    a._mark = !d.example ? "" : /consistent/.test(((a.overall || {}).pattern) || "") ? "Generated example. The link was built in." : "Generated example.";
     const o = a.overall || {}, ref = a.reference || {}, des = a.design || {}, src = o.sources || {};
     const cor = a.corrections || [], notes = a.data_notes || [];
     const refName = ref.label || ref.key;
@@ -2307,16 +2308,20 @@
     const kindsWord = kindsN === 3 ? "all three kinds" : kindsN === 2 ? "two of the three kinds" : kindsN === 1 ? "one of the three kinds" : "no kind";
     const capped = des.unit === "rating" && des.low_below_ratings && nObs < des.low_below_ratings;
     const NUM = ["No", "One", "Two", "Three"], lines = o.independent_lines || 0;
+    const directional = (a.rows || []).filter((r) => r.status === "tested" && r.expected !== "mixed").length;
+    const barely = consRows.filter((r) => r.strength === "negligible").length;
     wrap.appendChild(el("section", { class: "panel hero" },
       el("p", { class: "hero-k" }, d.example ? "What this generated example shows" : "What the data shows"),
       el("p", { class: "hero-t" }, headline),
-      d.example ? el("p", { class: "muted" }, who + " is not a real person. A program wrote " + who + "’s days, games and ratings, and it made the measures follow the score. This page shows what the tool would say if such a link existed. It does not show that one exists.") : null,
+      d.example ? el("p", { class: "muted" }, who + " is not a real person. A program wrote " + who + "’s days, games and ratings, " + (good && !flat
+        ? "and it made the measures follow the score. This page shows what the tool would say if such a link existed. It does not show that one exists."
+        : "and kept the score almost flat. This page shows what the tool says when there is too little change to tell.")) : null,
       good && !flat && lines >= 2 ? el("p", { class: "muted" }, NUM[Math.min(3, lines)] + " kinds of measure point the same way. They are not " + NUM[Math.min(3, lines)].toLowerCase() + " separate proofs: all of them drift slowly over the same weeks.") : null,
       el("div", { class: "hero-facts" },
-        el("span", { class: "chip" }, (R_PATTERN[o.pattern] || words(o.pattern)) + (good ? ": " + consRows.length + " of " + testedN + " measures, in " + kindsWord : "")),
+        el("span", { class: "chip" }, (R_PATTERN[o.pattern] || words(o.pattern)) + (good ? ": " + consRows.length + " of the " + directional + " measures with an expected direction, in " + kindsWord + (barely ? " (" + barely + " of them only just)" : "") : "")),
         el("span", { class: "chip" }, words(o.confidence) + " confidence" + (capped ? ": " + nObs + " ratings from one person cannot give more" : o.confidence !== "high" ? ": " + nObs + " " + unitWord + ", one person" : "")),
         el("span", { class: "chip" }, nObs + " " + unitWord + " over " + des.days + " days"),
-        d.example ? el("span", { class: "chip tag" }, "generated example: the link was built in") : null)));
+        d.example ? el("span", { class: "chip tag" }, good && !flat ? "generated example: the link was built in" : "generated example") : null)));
     const together = togetherChart(a);
     if (together) wrap.appendChild(el("section", { class: "panel" }, el("h2", null, (good && !flat ? refShort + " and the measures that followed it over " : refShort + " and the closest measures over ") + Math.round(des.days / 7) + " weeks"),
       together));
@@ -2357,11 +2362,11 @@
       el("ul", { class: "plain" },
         el("li", null, "One observation is one " + (des.unit === "rating" ? "rating: each measure is averaged over the week up to the rating day. Days between ratings are not counted as separate observations." : "day. Days are not independent of each other, so the ranges are descriptive.")),
         el("li", null, "Each measure gets a rank correlation with the " + refName + ", a 95 % range from resampling, and a p-value corrected for the number of measures tested. All of that is done by code."),
-        el("li", null, a.appraised_by === "model" ? "The " + modelName((a.inputs || {}).model) + " read only that table of statistics and judged it. A model may propose; code holds every label to what the range supports. Here code lowered " + cor.filter((c) => c.field === "strength").length + " strength labels and changed " + cor.filter((c) => c.field !== "strength").length + " other judgements." : "No model took part; the judgement is code’s own."),
+        el("li", null, a.appraised_by === "model" ? "The " + modelName((a.inputs || {}).model) + " read only that table of statistics. The pattern, the confidence and every strength label are set by code. The model adds caveats and names the most likely other explanation. Its answer differed from code’s in " + cor.length + (cor.length === 1 ? " place" : " places") + ", and code’s value stands in each." : "No model took part; the judgement is code’s own."),
         el("li", null, "“As expected” needs a range clear of zero and a corrected p-value of at most 0.10. That is a lenient bar, chosen for a first look at feasibility, not for a claim."),
         el("li", null, "Ratings a week apart are not independent of each other: weeks next to each other are alike, so the real ranges are wider than drawn and the p-values are too small."),
         des.unit === "rating" ? el("li", null, "The score asks about two weeks, so ratings a week apart partly describe the same days.") : null,
-        des.unit === "rating" ? el("li", null, "Week to week is the rank correlation of the changes from one rating to the next, measure against score. Where it is much lower than the bar, the measure and the score mostly share a slow drift.") : null,
+        des.unit === "rating" ? el("li", null, "Week to week is the rank correlation of the changes from one rating to the next, measure against score. Where it is much lower than the bar, the measure and the score mostly share a slow drift. With about a dozen changes, a week to week number below about 0.6 could be chance.") : null,
         el("li", null, "Confidence is set by code. " + (des.low_below_ratings ? "Fewer than " + des.low_below_ratings + " ratings always gives low, whatever the measures do. " : "") + "The pattern is called “moves as expected” only when, in every kind of measure that agrees, at least half of the measures with an expected direction came out as expected. Otherwise it is “partly as expected”."),
         el("li", null, "The evening check-in is the person’s own answers, like the score itself, so those two share a method."),
         el("li", null, "Reaction time comes from at most six taps a game. In the first real games most games had none."),

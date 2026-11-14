@@ -342,18 +342,20 @@ struct RevontuletPainter {
     /// shimmer travelling along it and the three knots of the combo pulsing in order.
     private func vein(_ ctx: inout GraphicsContext, _ f: RevontuletArt.Fault, glow: Double, sharp: GraphicsContext.ResolvedImage) {
         let pulse = glow * (0.82 + 0.18 * sin(now * 1.3 + 1))
+        // Each round's vein promises more: more light pouring out, a wider glow.
+        let grand = 1 + 0.25 * Double(min(e.round, 2))
         var g = ctx
         g.blendMode = .plusLighter
         // Light pouring up out of the vein: soft rays, teal into violet.
         for (i, p) in f.line.enumerated() where i % 3 == 1 {
             let sway = CGFloat(sin(now * 0.7 + Double(i))) * 4
-            let h = CGFloat(52 + 30 * sin(Double(i) * 1.7 + now * 0.5))
+            let h = CGFloat((52 + 30 * sin(Double(i) * 1.7 + now * 0.5)) * grand)
             let rect = CGRect(x: p.x - 13 + sway, y: p.y - h, width: 26, height: h)
             g.fill(Path(ellipseIn: rect), with: .linearGradient(
                 Gradient(colors: [.clear, RevontuletColor.violet.opacity(0.1 * pulse), RevontuletColor.teal.opacity(0.22 * pulse)]),
                 startPoint: CGPoint(x: rect.midX, y: rect.minY), endPoint: CGPoint(x: rect.midX, y: rect.maxY)))
         }
-        softEllipse(&g, f.center, rx: f.length * 0.62, ry: f.length * 0.36,
+        softEllipse(&g, f.center, rx: f.length * 0.62 * CGFloat(grand), ry: f.length * 0.36 * CGFloat(grand),
                     [RevontuletColor.teal.opacity(0.24 * pulse), RevontuletColor.violet.opacity(0.09 * pulse)])
         var w = ctx
         w.clip(to: f.window)

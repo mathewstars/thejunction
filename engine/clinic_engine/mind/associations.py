@@ -575,7 +575,9 @@ def code_caveats(row: dict, ref_kind: str, th: Thresholds = T) -> tuple[list[str
         req.append("mixed_literature")
     k = row["key"]
     if k in _TASK_CONFOUND:
-        sug.append("task_confound")
+        # Required: the page's headline passes over a measure the task itself
+        # moves (looking down at the phone), and must do so whatever a model says.
+        req.append("task_confound")
     if k in _MEDICATION:
         sug.append("medication")
     if k in _GLASSES:
@@ -735,11 +737,16 @@ def merge(reply: dict, code_rows: list[dict], code_ov: dict, ref_kind: str,
             fix("row", r["key"], "agreement", m["agreement"], cr["agreement"],
                 "agreement_not_supported_by_numbers")
             r.update(agreement=cr["agreement"], agreement_source="code_corrected")
-        if STRENGTHS.index(m["strength"]) <= STRENGTHS.index(cr["strength"]):
-            r.update(strength=m["strength"], strength_source="model")
+        # The strength label is code's, always: it decides which rows count as a
+        # line and which measure the page's headline names, so it must not change
+        # with what a model happens to answer. A differing answer is listed.
+        if m["strength"] == cr["strength"]:
+            r.update(strength=cr["strength"], strength_source="model")
         else:
             fix("row", r["key"], "strength", m["strength"], cr["strength"],
-                "stronger_than_interval_supports")
+                "stronger_than_interval_supports"
+                if STRENGTHS.index(m["strength"]) > STRENGTHS.index(cr["strength"])
+                else "strength_set_by_code")
             r.update(strength=cr["strength"], strength_source="code_corrected")
         req, _ = code_caveats(r, ref_kind, th)
         cav = [{"code": c, "by": "model"} for c in dict.fromkeys(m["caveats"])]
@@ -774,13 +781,17 @@ def merge(reply: dict, code_rows: list[dict], code_ov: dict, ref_kind: str,
         src["strongest"] = "model"
     ov["strongest"] = kept
 
-    # pattern: must fit the corrected rows.
-    if _pattern_allowed(mo["pattern"], tested, lines, len(tested), th):
-        ov["pattern"], src["pattern"] = mo["pattern"], "model"
+    # pattern: code's rule on the corrected rows, always. A model may not lower it
+    # either: "no clear relation" beside a forest of agreeing rows would contradict
+    # the page. A differing answer is listed as a correction.
+    if mo["pattern"] == code_ov["pattern"]:
+        ov["pattern"], src["pattern"] = code_ov["pattern"], "model"
     else:
         ov["pattern"], src["pattern"] = code_ov["pattern"], "code_corrected"
         fix("overall", None, "pattern", mo["pattern"], code_ov["pattern"],
-            "pattern_not_supported_by_rows")
+            "pattern_not_supported_by_rows"
+            if not _pattern_allowed(mo["pattern"], tested, lines, len(tested), th)
+            else "pattern_set_by_code")
 
     # confidence: capped by the reference kind, the lines and the observations.
     by_row = {r["key"]: r for r in tested}
