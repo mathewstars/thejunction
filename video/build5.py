@@ -18,14 +18,14 @@ INK, AMB, MUT, GLOW, DK = (243, 240, 234, 255), (240, 138, 28, 255), (157, 157, 
 text_png("cap_help.png", [("“I need help.”", 54, 560, (255, 255, 255, 255))])
 im_ = Image.new("RGBA", (1280, 720), (0, 0, 0, 0)); g_ = ImageDraw.Draw(im_); g_.text((34, 676), "The real app, simulator recording", font=ImageFont.truetype(F, 17), fill=MUT); im_.save("cap_app.png")
 text_png("tag_none.png", [])
-text_png("c_yes.png", [("She said yes to one more thing.", 46, 300, INK), ("While she cares for him, the phone keeps count.", 28, 372, GLOW)], bg=DK)
-text_png("c_num.png", [("Numbers only. Never pictures.", 60, 286, INK), ("How far each part of the face moved, thirty times a second. No photo or video leaves the phone.", 22, 378, GLOW)], bg=DK)
+text_png("c_yes.png", [("She said yes to one more thing.", 50, 292, INK), ("While she cares for him, the phone keeps count.", 30, 372, GLOW)])
+text_png("c_num.png", [("Numbers only. Never pictures.", 60, 286, INK), ("How far each part of the face moved, thirty times a second. No photo or video leaves the phone.", 22, 378, GLOW)], bg=(11, 19, 30, 150))
 text_png("c_gem.png", [("Gemini reads the raw numbers. Code checks its work.", 40, 150, INK),
     ("One real run on our server, 14 November", 22, 214, MUT),
     ("Smiles Gemini reported", 26, 300, MUT), ("3", 86, 336, INK),
     ("confirmed by code:  2          dropped by code:  1  (timing off by a second)", 26, 452, GLOW),
     ("Blinks: Gemini 6, code 6", 26, 510, INK),
-    ("Only confirmed items reach the clinician.", 22, 600, MUT)], bg=DK)
+    ("Only confirmed items reach the clinician.", 22, 600, MUT)], bg=(11, 19, 30, 185))
 text_png("c_study.png", [("Whether a phone can follow this is not yet shown.", 38, 236, INK), ("That is the study we want to run.", 38, 300, AMB),
     ("Pilot: 30 people after TMS, 12 weeks, each compared only with themselves.", 23, 410, MUT),
     ("Can people keep it up, and do the numbers move with their own questionnaire score?", 23, 448, MUT),
@@ -37,6 +37,31 @@ for (t, px, y, col) in [("The fox you rescue keeps the light on for you.", 32, 4
                         ("Anna is invented. Story footage is generated; the app, the charts and the numbers are from our system, with example data.", 16, 670, (120, 130, 150))]:
     f = ImageFont.truetype(F, px); w = g.textlength(t, font=f); g.text(((1280 - w) / 2, y), t, font=f, fill=col)
 bg.save("c_brand.png")
+import random
+CH = ["mouthSmileLeft", "mouthSmileRight", "cheekSquintLeft", "cheekSquintRight", "eyeBlinkLeft", "eyeBlinkRight", "browDownLeft", "browInnerUp",
+      "jawOpen", "eyeLookDownLeft", "mouthFrownLeft", "headPitch", "headYaw", "headRoll"]
+def numbers_wall(name, rows=70):
+    """A tall sheet of face-movement rows in the shape the phone sends (channel names from ARKit), to scroll behind a card."""
+    random.seed(7); M = ImageFont.truetype("/System/Library/Fonts/Menlo.ttc", 17)
+    im = Image.new("RGB", (1280, rows * 30 + 20), (11, 19, 30)); g = ImageDraw.Draw(im); v = {c: random.random() * 0.2 for c in CH}
+    for r in range(rows):
+        for c in CH: v[c] = max(0.0, min(1.0, v[c] + random.uniform(-0.05, 0.05)))
+        line = f'{{"t": {r/30:.3f}, ' + ", ".join(f'"{c}": {v[c]:.3f}' for c in random.sample(CH, 5)) + "}"
+        g.text((24, 10 + r * 30), line, font=M, fill=(46, 74, 96))
+    im.save(name)
+numbers_wall("wall.png")
+def card_wall(png, d, fade=0.3):
+    """A card whose text sits over the numbers scrolling upward."""
+    o = out(); H = Image.open("wall.png").size[1]
+    vf = (f"[0:v]fps=24,crop=1280:720:0:'min({H - 720},t*46)'[w];[1:v]format=rgba[c];[w][c]overlay=0:0,fade=t=in:d={fade}[v]")
+    run(["-loop", "1", "-i", "wall.png", "-loop", "1", "-i", png, "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
+def over(src, png, d, ss=0.0, speed=1.0):
+    """Words over darkened footage."""
+    o = out(); L = dur_of(src) - 0.1
+    if ss + d * speed > L: ss = max(0.0, L - d * speed)
+    if ss + d * speed > L: speed = (L - ss) / d
+    vf = f"[0:v]setpts=PTS/{speed},scale=1280:720,fps=24,eq=brightness=-0.22:saturation=0.8,gblur=sigma=3[b];[b][1:v]overlay=0:0[w];[w][2:v]overlay=0:0[v]"
+    run(["-ss", str(ss), "-i", src, "-i", png, "-i", f"{OLD}/tag_gen.png", "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
 n = [0]
 def out(): n[0] += 1; return f"seg5/{n[0]:03d}.mp4"
 def check(o, d):
@@ -93,12 +118,12 @@ at(25.3, lambda d: phone(A("checkin"), d, ss=2.0))
 at(27.2, lambda d: clip(G("g4"), d, ss=0.2))                          # "Some days, she would stay in bed."
 at(29.9, lambda d: still(S("s5"), d, z0=1.0, z1=1.14, fx=0.4, fy=0.7))   # "For him, she gets up."
 # 4 she said yes; every moment with him is a number
-at(33.3, lambda d: card("c_yes.png", d))
+at(33.3, lambda d: over(K("k6"), "c_yes.png", d, speed=0.6))
 at(41.0, lambda d: split(A("focus"), "single1.mp4", d, ss=3.5))
 at(43.6, lambda d: split(A("breathe"), "single0.mp4", d, ss=3.5))
-at(47.3, lambda d: card("c_num.png", d))
+at(47.3, lambda d: card_wall("c_num.png", d))
 at(50.8, lambda d: split(G("g6"), "single2.mp4", d, ss=0.5, app=False))
-at(53.6, lambda d: card("c_gem.png", d))
+at(53.6, lambda d: card_wall("c_gem.png", d))
 # 5 the questionnaire beside the lines
 at(59.7, lambda d: chart("chart_a.mp4", d))
 at(65.7, lambda d: chart("chart_b.mp4", d))
