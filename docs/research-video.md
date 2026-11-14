@@ -2,27 +2,26 @@
 
 A short second video that explains only the research idea: can a phone notice when someone is getting worse again? It is for the research track and for anyone who has never heard of a PHQ-9. The main two-minute pitch video is a different piece and is not covered here.
 
-Status on Sunday 15 November, early morning: there is ONE film now, the submission video (`lanvi-film-v5`, 1:57). The story of Anna and the fox carries it, and the real product sits inside the story. The older plan is kept below for its prompts and wording rules.
+Status on Sunday 15 November, 04:30: there is ONE film, the submission video, locked as v14 (1:43). The story of Anna and the fox carries it, and the product sits inside the story. The older plan is kept below for its prompts and wording rules; the research chart it describes is no longer in the film.
 
-## The submission film (v5)
+## The submission film (v14)
 
 | # | Voice | Picture |
 |---|---|---|
-| 1 | The clinic door closes behind Anna. Her treatment for depression is over. The next appointment is six weeks away. | Door, waiting room, calendar (generated) |
-| 2 | On the way home, she finds him. A fox cub, alone in the snow. She kneels. She takes him home. He lives in her phone now. | The cub, the rescue, the cub asleep (generated), then the real app |
-| 3 | Every day she does one small thing for him. A game. A minute of breathing. Three good things at night. Some days, she would stay in bed. For him, she gets up. | The real app after each activity; an unmade bed; the walk |
-| 4 | And she said yes to one more thing: while she cares for him, the phone keeps count. His game times her reactions. Breathing with him, it notes how her face moves. Numbers only, never pictures. All day, her steps. Gemini reads the numbers. Code checks its work. | Split screens: the app on the left, the line that moment feeds on the right; a card with one real Gemini run (3 smiles reported, 2 confirmed, 1 dropped by code) |
-| 5 | Every week, the clinic's questionnaire. Higher means worse. In this example, when her score climbs, the other lines fall. That is the pattern we would look for. | The chart drawing itself from the example data |
-| 6 | Then, November. Her boots stay by the door. At one a.m. she writes: I need help. Her words go straight to her clinic. | The boots alone; the night; a phone lighting up |
-| 6b | A woman's voice on the phone: "Anna? I read your note. I'm here." | Morning; she strokes the fox |
-| 7 | Anna is invented. Whether a phone can follow this after treatment is not yet shown. That is the study we want to run. | Anna's and Elina's research pages; the study card |
-| 8 | Lanvi. The fox you rescue keeps the light on for you. | The fox logo, then black |
+| 1 | Anna's treatment for depression is over. The next appointment is six weeks away. | She walks out of the clinic; gloved hands with the appointment card (generated) |
+| 2 | On the way home, she finds a fox cub, alone in the snow. She picks him up. And he steps into her phone. | One continuous shot of her finding and lifting the cub; the cub turns to light and flows into her phone (generated); then the real app |
+| 3 | Every day she does one small thing for him. Some days, she would stay in bed. For him, she gets up. | The real app; one continuous shot of her getting out of bed and opening the curtain (generated) |
+| 4 | This is not a habit tracker. She said yes. | Text card |
+| 5 | While she plays, the phone reads how her face moves, thirty times a second. Numbers only, never pictures. | Left: the real app in the focus game. Right: "What leaves the phone", ten face channels as live bars and the rows as sent |
+| 6 | At the clinic, rules notice a change. Two models weigh in. Code checks every claim, and drops what the numbers don't support. | "One game session, read": the trace of the mouth corners, the three steps, two reported smiles confirmed and one dropped, and the counts of one real run (3 reported, 2 confirmed, 1 dropped) |
+| 7 | In November, hard days return. At one a.m. she writes: I need help. | She sits on the bed edge; the phone at night (generated) |
+| 8 | Her words reach her clinic. Next morning, her nurse calls. Anna, I read your note. I'm here. | The nurse with the real Telegram alert over the shot; morning; the nurse on the phone with the real clinician page beside her; Anna on the phone (footage generated) |
+| 9 | This time, she doesn't wait six weeks. | She walks back to the clinic, the fox beside her (generated) |
+| 10 | Lanvi. The fox you rescue keeps the light on for you. | The fox logo and the motto, then black |
 
-Why it reads this way: seven reviewers went through the scenario before it was built (`video/scenario_v5.md` is what they read). All five who judged the feeling named the same gap, that nobody answered her, so the nurse's call was added. The two who judged the research asked for five changes, all made: she agrees to the counting; the chart is "in this example" and "the pattern we would look for"; her own words raise the alert, not the lines; the score is a questionnaire where higher means worse; steps are all-day steps and the face measure is movement, not emotion. The motto was chosen in three rounds by three reviewers.
+Every spoken line is subtitled. Generated footage carries the label "Illustrative footage, generated"; the two drawn screens say that they use an example session with generated numbers.
 
-How it is built (`video/`): `audio5.py` joins the narrator takes, the nurse's line and a phone buzz into one soundtrack; `build5.py` holds the shot list keyed to that soundtrack, moves cuts onto beats, adds the corner logo and the fade; `chart.py` draws the chart and the three single lines from the example patient's series (`anna.json`); `beats.py` finds the beats. Not in the repository: the generated stills and clips (Higgsfield), the voice takes (Suno Speech, its own mix; its stem separation garbles the voice and is not used), and the simulator recordings of the app (`xcrun simctl io <device> recordVideo` with the launch arguments from `ios/README.md`).
-
-Still generated where a real recording would be better: the clinician's phone lighting up. The real Telegram alert and the clinician page with Anna on top would replace it.
+How it is built (`video/`): `build14.py` holds the shot list keyed to the soundtrack, the subtitles, the corner logo and the fade. It enforces two rules: a clip is shown once only, and every footage shot runs four seconds or more at natural speed. `anim.py` draws screens 5 and 6 from one session of the engine's reference generator (`clinic_engine.frames_reference.make_session(7)`). `script_v13.txt` is the narration as given to Suno: one paragraph per sentence, because a paragraph break is what Suno Speech pauses on. Not in the repository: the generated stills and clips (Higgsfield), the soundtrack (one Suno Speech take, with the last line re-read by Suno's Extend of the same recording), and the simulator recordings of the app.
 
 ## What it must do
 
