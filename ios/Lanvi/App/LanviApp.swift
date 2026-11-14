@@ -4,7 +4,11 @@ import SwiftUI
 struct LanviApp: App {
     var body: some Scene {
         WindowGroup {
-            RootView()
+            if UserDefaults.standard.string(forKey: "screen") == "puppet" {
+                LanviPuppetPreview()   // `-screen puppet`: judge the living fox
+            } else {
+                RootView()
+            }
         }
     }
 }
