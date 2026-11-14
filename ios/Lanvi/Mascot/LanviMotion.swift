@@ -476,7 +476,8 @@ struct LanviMotion {
         let sleepy = (start >= heldSince ? held : heldFrom) == .sleepy
         let kind = momentKind(k, evening: evening || sleepy)
         guard x >= start, x < start + kind.duration, start > appearAt + 3 else { return nil }
-        guard busy(start) < 0.01 else { return nil }   // never start on top of something else
+        // never start on top of something else, or while he looks at something (a finger)
+        guard busy(start) < 0.01, lookTarget(start) == nil else { return nil }
         let w = 1 - busy(x)
         guard w > 0.001 else { return nil }
         return (kind, x - start, Motion.rnd(k, seed &+ 43) < 0.5 ? -1 : 1, w)
