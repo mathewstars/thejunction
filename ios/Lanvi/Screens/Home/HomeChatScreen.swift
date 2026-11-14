@@ -28,10 +28,12 @@ struct HomeChatScreen: View {
 
             VStack(spacing: 0) {
                 header
+                // The composer is the list's own bottom inset, so the newest
+                // message always scrolls fully into view above it.
                 thread
+                    .safeAreaInset(edge: .bottom, spacing: 0) { composer }
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) { composer }
         .onAppear { store.openChat() }
         .onChange(of: draft.isEmpty) { _, empty in
             withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = empty ? .curious : .peek }
@@ -52,7 +54,7 @@ struct HomeChatScreen: View {
 
     private var header: some View {
         HStack(alignment: .center) {
-            HomeCloseButton(action: onClose)
+            HomeCloseButton(action: close)
             Spacer()
             VStack(spacing: 2) {
                 ZStack {
@@ -93,7 +95,8 @@ struct HomeChatScreen: View {
                             Spacer(minLength: 60)
                         }
                         .id("dots")
-                        .transition(.scale(scale: 0.8, anchor: .bottomLeading).combined(with: .opacity))
+                        .padding(.bottom, LanviBubbleShape.tailHeight)
+                        .transition(LanviTiming.arrive)
                     }
                     Color.clear.frame(height: 4).id("bottom")
                 }
@@ -102,21 +105,37 @@ struct HomeChatScreen: View {
             }
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
-            .onChange(of: store.chat.messages.count) { _, _ in scrollDown(proxy) }
-            .onChange(of: store.chatWaiting) { _, _ in scrollDown(proxy) }
-            .onChange(of: focused) { _, _ in
-                Task {
-                    try? await Task.sleep(for: .milliseconds(350))
-                    scrollDown(proxy)
-                }
-            }
+            .onChange(of: store.chat.messages.count) { _, _ in settleDown(proxy) }
+            .onChange(of: store.chatWaiting) { _, _ in settleDown(proxy) }
+            .onChange(of: focused) { _, _ in settleDown(proxy, first: 0.35) }
             .onAppear { scrollDown(proxy, animated: false) }
+        }
+    }
+
+    /// Scroll once the new row has its size, and again after it has finished
+    /// arriving, so the latest message ends fully in view.
+    private func settleDown(_ proxy: ScrollViewProxy, first: Double = 0.06) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(first))
+            scrollDown(proxy)
+            try? await Task.sleep(for: .milliseconds(380))
+            scrollDown(proxy)
+        }
+    }
+
+    /// Close: put the keyboard away first, so it never shrinks along with the screen.
+    private func close() {
+        guard focused else { onClose(); return }
+        focused = false
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(280))
+            onClose()
         }
     }
 
     private func scrollDown(_ proxy: ScrollViewProxy, animated: Bool = true) {
         if animated {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.9)) { proxy.scrollTo("bottom", anchor: .bottom) }
+            withAnimation(LanviTiming.screen) { proxy.scrollTo("bottom", anchor: .bottom) }
         } else {
             proxy.scrollTo("bottom", anchor: .bottom)
         }
@@ -128,14 +147,7 @@ struct HomeChatScreen: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .bottom, spacing: 8) {
                     foxFace
-                    Text(m.text)
-                        .font(Theme.rounded(17, .semibold))
-                        .foregroundStyle(Theme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 11)
-                        .background(ChatBubbleShape(mine: false).fill(.white))
-                        .background(ChatBubbleShape(mine: false).fill(Theme.line).offset(y: 3))
+                    ChatBubble(text: m.text, mine: false)
                     Spacer(minLength: 44)
                 }
                 if let s = m.suggestion, let kind = ActivityKind.allCases.first(where: { $0.suggestionAction == s.action }) {
@@ -143,21 +155,13 @@ struct HomeChatScreen: View {
                         .padding(.leading, 44)
                 }
             }
-            .transition(.asymmetric(insertion: .scale(scale: 0.85, anchor: .bottomLeading).combined(with: .opacity),
-                                    removal: .opacity))
+            .padding(.bottom, LanviBubbleShape.tailHeight)
+            .transition(LanviTiming.arrive)
         case .me:
             VStack(alignment: .trailing, spacing: 4) {
                 HStack {
                     Spacer(minLength: 56)
-                    Text(m.text)
-                        .font(Theme.rounded(17, .semibold))
-                        .foregroundStyle(.white)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 11)
-                        .background(ChatBubbleShape(mine: true).fill(
-                            LinearGradient(colors: [Color(hex: 0x5A7CF0), Theme.brand], startPoint: .top, endPoint: .bottom)))
-                        .background(ChatBubbleShape(mine: true).fill(Theme.brandEdge).offset(y: 3))
+                    ChatBubble(text: m.text, mine: true)
                         .opacity(m.status == .failed ? 0.6 : 1)
                 }
                 if m.status == .failed {
@@ -174,8 +178,8 @@ struct HomeChatScreen: View {
                     .buttonStyle(.plain)
                 }
             }
-            .transition(.asymmetric(insertion: .scale(scale: 0.85, anchor: .bottomTrailing).combined(with: .opacity),
-                                    removal: .opacity))
+            .padding(.bottom, LanviBubbleShape.tailHeight)
+            .transition(LanviTiming.arrive)
         }
     }
 
@@ -321,17 +325,33 @@ struct HomeChatScreen: View {
     }
 }
 
-/// A soft rounded bubble; the corner nearest the speaker is tucked in a little
-/// instead of a tail.
-private struct ChatBubbleShape: Shape {
+/// One chat message: the same single-shape bubble as Lanvi's speech, with a
+/// smooth tail toward the speaker. Lanvi's are white with the soft outline;
+/// the person's are brand blue with white text.
+private struct ChatBubble: View {
+    var text: String
     var mine: Bool
-    func path(in rect: CGRect) -> Path {
-        UnevenRoundedRectangle(topLeadingRadius: 20,
-                               bottomLeadingRadius: mine ? 20 : 6,
-                               bottomTrailingRadius: mine ? 6 : 20,
-                               topTrailingRadius: 20,
-                               style: .continuous)
-            .path(in: rect)
+
+    var body: some View {
+        Text(text)
+            .font(Theme.rounded(17, .semibold))
+            .foregroundStyle(mine ? .white : Theme.ink)
+            .lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(GeometryReader { g in
+                if mine {
+                    let shape = LanviBubbleShape(tailX: g.size.width - 22, lean: 1, radius: 20)
+                    ZStack {
+                        shape.fill(Theme.brandEdge).offset(y: 3)
+                        shape.fill(LinearGradient(colors: [Color(hex: 0x5A7CF0), Theme.brand],
+                                                  startPoint: .top, endPoint: .bottom))
+                    }
+                } else {
+                    LanviBubbleBackground(tailX: 22, lean: -1)
+                }
+            })
     }
 }
 
@@ -351,8 +371,7 @@ private struct ChatDots: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 15)
-            .background(ChatBubbleShape(mine: false).fill(.white))
-            .background(ChatBubbleShape(mine: false).fill(Theme.line).offset(y: 3))
+            .background(GeometryReader { _ in LanviBubbleBackground(tailX: 22, lean: -1) })
         }
         .accessibilityLabel("Lanvi is answering")
     }

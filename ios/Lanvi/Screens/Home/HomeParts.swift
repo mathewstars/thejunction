@@ -46,8 +46,12 @@ struct HomeSpeechBubble: View {
     var pointAt: CGFloat = 0.5
     var size: CGFloat = 17
 
+    @State private var shown: String?
+    @State private var visible = true
+
     var body: some View {
-        Text(text)
+        let text = shown ?? self.text
+        return Text(text)
             .font(Theme.rounded(text.count > 64 ? size - 2 : size, .bold))
             .foregroundStyle(Theme.ink)
             .lineSpacing(2)
@@ -62,9 +66,17 @@ struct HomeSpeechBubble: View {
                                       lean: pointAt > 0.6 ? 1 : (pointAt < 0.4 ? -1 : 0))
             })
             .padding(.bottom, LanviBubbleShape.tailHeight)
-            .id(text)
-            .transition(.asymmetric(insertion: .scale(scale: 0.8, anchor: .bottom).combined(with: .opacity),
-                                    removal: .opacity))
+            .scaleEffect(visible ? 1 : 0.85, anchor: .bottom)
+            .opacity(visible ? 1 : 0)
+            .onChange(of: self.text) { _, new in
+                // The old line leaves first, then the new one pops in.
+                withAnimation(.easeIn(duration: 0.12)) { visible = false }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(130))
+                    shown = new
+                    withAnimation(LanviTiming.pop) { visible = true }
+                }
+            }
     }
 }
 

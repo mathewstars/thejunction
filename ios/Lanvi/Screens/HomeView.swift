@@ -86,6 +86,10 @@ struct HomeView: View {
     @State private var look: UnitPoint?
     /// The mouth Lanvi shows while saying a new line (nil = the puppet decides).
     @State private var mouth: MouthShape?
+    /// What the chat grows out of: the bubble or the round chat button.
+    @State private var chatFrom: String? = "speech"
+    /// A screen to open once the sheet on top has gone.
+    @State private var pendingCover: Cover?
 
     var body: some View {
         #if DEBUG
@@ -105,14 +109,18 @@ struct HomeView: View {
                         .lanviMood(restingMood)
                         .lanviLookAt(look)
                         .lanviMouth(mouth)
-                        .onTapGesture { tapFox() }
+                        // Alongside the puppet's own tap reaction (a child's tap would otherwise win).
+                        .simultaneousGesture(TapGesture().onEnded { tapFox() })
                 }
                 .frame(width: L.fox * 2, height: L.fox * 2)
                 .position(x: L.foxCenter.x + entrance, y: L.foxCenter.y)
                 // Only moves when Lanvi sets off wandering or comes home; never every frame.
                 .animation(.spring(response: 0.7, dampingFraction: 0.8), value: away)
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Lanvi")
                 .accessibilityHint("Shows how Lanvi is growing")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityIdentifier("home.fox")
 
                 // What Lanvi says, in one soft bubble above it. Tap to talk.
                 speech(L)
@@ -141,6 +149,7 @@ struct HomeView: View {
                     Spacer()
                     Button { sheet = .growth } label: { dayPill }
                         .buttonStyle(SpeechPressStyle())
+                        .accessibilityIdentifier("home.day")
                         .accessibilityLabel("Day \(store.daysTogether) together. Shows how Lanvi is growing.")
                 }
                 .padding(.horizontal, 24)
@@ -156,9 +165,15 @@ struct HomeView: View {
                 // One action, pinned above the home bar.
                 // The zoom source is the whole action area, which is always there:
                 // closing a screen must never zoom back into a button that is gone.
-                actions
-                    .animation(.spring(response: 0.55, dampingFraction: 0.8), value: store.todayThing)
-                    .frame(width: w - 48)
+                // When today's thing changes, the row swaps by fading at a fixed size,
+                // so no button ever animates its width.
+                ZStack {
+                    actions
+                        .id(actionsKey)
+                        .transition(.opacity)
+                }
+                .frame(width: w - 48, height: 60)
+                .animation(LanviTiming.swap, value: actionsKey)
                     .homeZoomSource("today", in: zoom)
                     .position(x: w / 2, y: L.buttonY)
                     .opacity(arrived && !showGrowth ? 1 : 0)
@@ -175,11 +190,25 @@ struct HomeView: View {
             .onChange(of: geo.size) { _, s in size = s; insets = geo.safeAreaInsets }
         }
         .sensoryFeedback(.success, trigger: haptic)
+        // The chat's keyboard must never reach Home underneath it.
+        .ignoresSafeArea(.keyboard)
         .fullScreenCover(item: $cover) { c in
-            coverContent(c)
-                .homeZoomTarget(zoomSource(for: c), in: zoom)
+            // Screens grow out of what was tapped; Help and notes slide up plainly
+            // (a tiny icon ballooning into a whole screen looks broken).
+            if let source = zoomSource(for: c) {
+                coverContent(c).homeZoomTarget(source, in: zoom)
+            } else {
+                coverContent(c)
+            }
         }
-        .sheet(item: $sheet) { s in
+        .sheet(item: $sheet, onDismiss: {
+            // A screen picked in a sheet opens only once the sheet has fully gone,
+            // so the two never fight.
+            if let next = pendingCover {
+                pendingCover = nil
+                cover = next
+            }
+        }) { s in
             switch s {
             case .more:
                 HomeMoreSheet { k in openAfterSheet(.activity(k)) }
@@ -224,7 +253,7 @@ struct HomeView: View {
             FrameMeter.shared.start()
             #endif
             if store.wandering?.state == .back { runIn() } else { settle() }
-            withAnimation(.spring(response: 0.7, dampingFraction: 0.82).delay(0.25)) { arrived = true }
+            withAnimation(LanviTiming.screen.delay(0.2)) { arrived = true }
         }
         .task { await runDemo() }
     }
@@ -239,8 +268,11 @@ struct HomeView: View {
         let target = away
             ? CGPoint(x: L.foxCenter.x - L.fox * 0.1, y: L.foxCenter.y - L.fox * 0.55)
             : CGPoint(x: L.foxCenter.x + L.fox * 0.10, y: L.foxTop + L.fox * 0.04)
-        return HomeSpeech(text: bubbleText, target: target, width: L.size.width, mouth: $mouth) { open(.chat) }
-            .homeZoomSource("speech", in: zoom)
+        return HomeSpeech(text: bubbleText, target: target, width: L.size.width, mouth: $mouth, zoom: zoom) {
+            chatFrom = "speech"
+            open(.chat)
+        }
+            .accessibilityIdentifier("home.speech")
             .offset(y: -lift)
             .opacity(arrived ? 1 : 0)
     }
@@ -290,6 +322,7 @@ struct HomeView: View {
                 moreButton
                 Button(TodayCopy.button(k)) { open(.activity(k)) }
                     .buttonStyle(HomePrimaryStyle())
+                    .accessibilityIdentifier("home.primary")
                 chatButton
             }
         case .story:
@@ -297,6 +330,7 @@ struct HomeView: View {
                 moreButton
                 Button("Hear my story") { openStory() }
                     .buttonStyle(HomePrimaryStyle())
+                    .accessibilityIdentifier("home.primary")
                 chatButton
             }
         case .realWorld(let s):
@@ -326,7 +360,10 @@ struct HomeView: View {
     }
 
     private var chatButton: some View {
-        Button { open(.chat) } label: { Image(systemName: "bubble.left.fill") }
+        Button {
+            chatFrom = nil          // from the small button: a plain slide, no ballooning icon
+            open(.chat)
+        } label: { Image(systemName: "bubble.left.fill") }
             .buttonStyle(HomeQuietRoundStyle())
             .accessibilityLabel("Talk to Lanvi")
     }
@@ -389,14 +426,24 @@ struct HomeView: View {
     }
     private var isDoneToday: Bool { if case .done = store.todayThing { return true } else { return false } }
 
-    private func zoomSource(for c: Cover) -> String {
+    private func zoomSource(for c: Cover) -> String? {
         switch c {
         case .activity(let k):
             if case .game(let g) = store.todayThing, g == k { return "today" }
-            return "speech"
+            return nil                     // opened from the more sheet: slides up
         case .story: return "today"
-        case .help: return "help"
-        case .mind, .chat: return "speech"
+        case .chat: return chatFrom        // the bubble or the chat button, whichever was tapped
+        case .help, .mind: return nil
+        }
+    }
+
+    /// Which view the current row of actions is, so it swaps as a whole.
+    private var actionsKey: String {
+        switch store.todayThing {
+        case .game(let k): return "game-\(k.rawValue)"
+        case .story: return "story"
+        case .realWorld(let s): return "real-\(s.id)"
+        case .done: return "done"
         }
     }
 
@@ -428,11 +475,8 @@ struct HomeView: View {
     }
 
     private func openAfterSheet(_ c: Cover) {
+        pendingCover = c
         sheet = nil
-        Task {
-            try? await Task.sleep(for: .milliseconds(380))
-            cover = c
-        }
     }
 
     /// The resting pose for the state Lanvi is in and the time of day. Pose, mood and
@@ -460,11 +504,11 @@ struct HomeView: View {
     }
 
     /// Tapping Lanvi: a happy hop, then how it is growing.
+    /// Tapping Lanvi: the puppet reacts by itself; then how it is growing.
     private func tapFox() {
-        bounce &+= 1
         Task {
-            try? await Task.sleep(for: .milliseconds(350))
-            sheet = .growth
+            try? await Task.sleep(for: .milliseconds(450))
+            if cover == nil, sheet == nil { sheet = .growth }
         }
     }
 
