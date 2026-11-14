@@ -20,3 +20,17 @@ A clinic rule ("Planned two-week rest after knee surgery. Less movement is expec
 | One paragraph changed (it names the flag kind a rule about movement is about); this is live | 6 of 6, and 3 of 3 with the rule written in Slovak | 0 | 0 |
 
 An unrelated rule ("She is allergic to penicillin.") changed nothing in 3 of 3 runs. These probe counts were read off the terminal that evening; only the script is kept here, not its output.
+
+## The movement rule on real recordings (Depresjon)
+
+`depresjon-check-2026-11-14.json` is the output of `python -m clinic_engine.depresjon_check <data folder>` on the public Depresjon dataset (Garcia-Ceja et al., MMSys 2018, https://datasets.simula.no/depresjon/): wrist-worn movement counts of 23 patients in a depressive episode and 32 healthy controls, with a MADRS rating at the start and end of each patient's recording. The dataset is free for research and education and is not in this repository. Wrist counts stand in for steps; nobody in the recordings is known to relapse.
+
+| Question | Result |
+|---|---|
+| Can the rule be scored as it runs on the server (own normal from 14 or more days that end 5 days back)? | No. The dataset counts at most 18 measured days for a patient and 20 for a control, so not one day can be scored. |
+| With a shorter history (7 or more days, ending 2 days back; this check only), how often is a real day "clearly low"? | 9 of 89 scored days in controls (10%) and 4 of 52 in patients (8%). A bell curve would give about 7%. |
+| Does that version raise a movement flag (3 of the last 5 scored days clearly low) on people who are not known to be changing? | On none of 27 controls and on 1 of 15 patients. Each person has only about three scored days, so the rule had little room to fire. |
+| Our hypothesis fixed in advance, less movement when symptoms are worse: within a patient, did movement rise when the rating fell? | Not shown: rank correlation -0.04 (95% interval -0.55 to 0.53, 19 patients); of the 15 whose rating changed, 11 moved in the expected direction. Two ratings and two weeks are too little to tell. |
+| Do the patients move less than the controls? | Yes, as the dataset's authors report: a median of about 256,000 counts a day against 397,000, about a third less (permutation p about 0.0003). This is a difference between people, not the within-person change our rule looks for. |
+
+One thing the check found about the data and not about the rule: many files run on for days or weeks after the device came off. Counted as days, those rows made more than half of the controls' days look like a collapse. The check uses only the number of days the dataset itself gives for each person.
