@@ -70,7 +70,8 @@ Matthew judges every UI change from a screenshot or a screen recording before it
 | `Screens/Focus/` | Sparks and snow |
 | `Screens/Breathe/` | Breathe with Lanvi |
 | `Screens/Checkin/` | Evening check-in |
-| `Screens/ActivityRouter.swift` | The one place that opens an activity and takes its result |
+| `Screens/ActivityRouter.swift` | The one place that opens an activity and takes its result; wraps it in the sensor session (`ios/WATCH.md`) |
+| `Sense/`, `Sense/Watch/`, `../LanviWatch/`, `../Shared/` | Apple Health and the face (`ios/SENSORS.md`); the Apple Watch heart data with the game moments (`ios/WATCH.md`) |
 | `Screens/WelcomeView.swift`, `WhatHelpsView.swift` | First run |
 | `State/AppStore.swift` | The app's state: today, XP, stage, suggestion |
 | `Net/` | `LanviClient.swift` (all server calls), `APIModels.swift`, `ActivityOutbox.swift` (unsent activities retried later), `ChatLink.swift`, `DemoBackend.swift` (offline sample data), `ServerConfig.swift`, `TokenKeychain.swift` |
@@ -115,7 +116,8 @@ Matthew's Mac (18 GB) froze twice from simulators. These are not optional.
 |---|---|
 | `fm/lanvi-puppet` | Making the fox's motion smooth and its idle calm (Matthew rejected it twice as shaky and choppy) |
 | `fm/lanvi-server` | Home in the painted world, the chat screen, the short demo video |
-| `fm/lanvi-sense` | Plugging in Peter's Apple Health reader and the face frames |
+| `fm/lanvi-sense` | Plugging in Peter's Apple Health reader and the face frames (PR #9) |
+| `fm/lanvi-watch` | Apple Watch heart rate and HRV during the games, lined up with the game moments and the face frames; the server's `sensors` field and sensor reading (stacked on PR #9) |
 | `fm/lanvi-chat` | Gemini-written chat replies on the server, as a pull request for dad |
 
 Not started: making the games look and feel great, the pitch video, TestFlight.

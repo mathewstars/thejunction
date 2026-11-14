@@ -6,6 +6,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - iOS project is generated: edit `ios/project.yml`, run `xcodegen generate` in `ios/`, commit the regenerated `Lanvi.xcodeproj`. On a project-file merge conflict take one side and regenerate; never hand-merge it.
 - iOS server address and pairing code live only in git-ignored `ios/Config.xcconfig` (template `ios/Config.example.xcconfig`); without it the app runs an offline demo. Public repo: never commit keys, tokens, codes or server addresses.
 - Sensors (Apple Health, raw face frames): `ios/SENSORS.md`. Peter's harness files live unchanged in `ios/Lanvi/Sense/Peter/`, built as the separate `Harness` framework target; change them only in step with his `harness/`.
+- Apple Watch (heart rate and HRV during the games, lined up with `GameMoments` and the face frames): `ios/WATCH.md`; the server's `sensors` field and sensor reading: `docs/sensors.md`. The watch target is `LanviWatch` in `ios/project.yml`; `ios/Shared/` is compiled into both apps.
 - iOS screenshots headless: `xcodebuild ... -derivedDataPath build/dd`, then `xcrun simctl launch <device> app.lanvi.Lanvi -screen <name>` and `xcrun simctl io <device> screenshot`; launch arguments are listed in `ios/README.md`.
 
 ## Maintaining this file

@@ -2,6 +2,8 @@
 
 For Peter and the captain. Apple Health (how much the person moves and sleeps) and the face during the two games. Both are asked for once, in Lanvi's voice, both can be skipped, and the app works the same without them.
 
+A third sensor, the Apple Watch's heart during the games, has its own page: `ios/WATCH.md` (server side: `docs/sensors.md`).
+
 ## What came from Peter's harness
 
 From `harness/HKGeminiHarness/` on branch `finalish-testing-app`, copied as he wrote it into `ios/Lanvi/Sense/Peter/` (only a credit line added at the top of each file):
