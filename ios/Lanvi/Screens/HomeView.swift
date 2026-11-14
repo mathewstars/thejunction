@@ -269,7 +269,15 @@ struct HomeView: View {
         case .game(let k):
             HStack(spacing: 12) {
                 moreButton
-                Button(TodayCopy.button(k)) { open(.activity(k)) }
+                Button { open(.activity(k)) } label: {
+                    // The full words when they fit; a shorter form on narrow phones,
+                    // never a label cut off with "…".
+                    ViewThatFits(in: .horizontal) {
+                        Text(TodayCopy.button(k)).fixedSize()
+                        Text(TodayCopy.shortButton(k)).fixedSize()
+                        Text(TodayCopy.shortButton(k))
+                    }
+                }
                     .buttonStyle(HomePrimaryStyle())
                     .accessibilityIdentifier("home.primary")
                 chatButton

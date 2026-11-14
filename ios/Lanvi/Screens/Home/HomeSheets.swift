@@ -19,6 +19,15 @@ enum TodayCopy {
         }
     }
 
+    /// The button's words on a narrow phone.
+    static func shortButton(_ k: ActivityKind) -> String {
+        switch k {
+        case .breathing: return "Sit with me · 1 min"
+        case .focus: return "Break the ice · 90 sec"
+        case .checkin: return "Three good things · 1 min"
+        }
+    }
+
     static func title(_ k: ActivityKind) -> String {
         switch k {
         case .breathing: return "Sit with me a minute"

@@ -103,7 +103,7 @@ struct HomeSpeech: View {
                 .foregroundStyle(Theme.ink)
                 .lineSpacing(2)
                 .multilineTextAlignment(.leading)
-                .lineLimit(long ? 3 : 2)
+                .lineLimit(shown.count > 90 ? 4 : (long ? 3 : 2))
                 .minimumScaleFactor(0.9)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 16)
