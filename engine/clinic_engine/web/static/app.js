@@ -943,6 +943,9 @@
     // Games sit in the order played, evenly spaced: by the clock, seven games in one evening would pile up
     // at one end of a chart that also holds games from other weeks.
     g.sort((a, b) => a.t - b.t).forEach((p, i) => { p.i = i; });
+    // The same rule as the engine: no range and no yellow for a game whose earlier games fall on too few days.
+    const needDays = own0.needed_days || 5;
+    g.forEach((p, i) => { const s = {}; g.slice(Math.max(0, i - 20), i).forEach((q) => { s[String(q.date).slice(0, 10)] = 1; }); if (Object.keys(s).length < needDays) { p.u = {}; p.z = {}; } });
     const x = (p) => PL + (p.i / (g.length - 1)) * (W - PL - PR);
     const ya = (v) => AT + (1 - v / 3) * AH;
     const lo = lower ? Math.floor(Math.min.apply(null, sv) - 0.3) : 0, hi = lower ? Math.ceil(Math.max.apply(null, sv) + 0.3) : 1;
@@ -1036,13 +1039,17 @@
         strokes: strokes.length, stroke: speed(mean(vals(strokes, "mean_speed_pt_s")), rv), wall: wall };
     };
     const own0 = got[0].revontulet_own || {}, cut = own0.unusual_z || 2.5, needed = own0.needed || 8;
-    const zOf = (x, k) => { const o = x.revontulet_own; return o && o.z && typeof o.z[k] === "number" ? Math.round(o.z[k] * 10) / 10 : null; };
+    // A comparison counts only when the games it rests on fall on enough different days (the engine applies the same
+    // rule to new games; games stored before that rule are held to it here).
+    const needDays0 = own0.needed_days || 5, order = got.slice().reverse();
+    const spreadBefore = (x, from, to) => { const i = order.indexOf(x), s = {}; order.slice(from === null ? Math.max(0, i - 20) : from, to === null ? i : Math.min(to, i)).forEach((y) => { s[String(y.date).slice(0, 10)] = 1; }); return Object.keys(s).length >= needDays0; };
+    const zOf = (x, k) => { const o = x.revontulet_own; return o && o.z && typeof o.z[k] === "number" && spreadBefore(x, null, null) ? Math.round(o.z[k] * 10) / 10 : null; };
     // Only the two speeds are compared game by game. [word when higher, word when lower].
     const WORDS = { trace_speed_cm_s: ["faster", "slower"], stroke_speed_cm_s: ["faster", "slower"] };
     const far = (z) => (Math.abs(z) > 3 ? "more than 3" : signed(z));
     const against = (x, k) => { const z = zOf(x, k); return z === null ? null : Math.abs(z) >= cut ? WORDS[k][z > 0 ? 0 : 1] + " than recent" : "within recent range"; };
     // The fixed reference beside the moving one: far from the person's start, said in words only.
-    const fromStart = (x, k) => { const o = x.revontulet_own, z = o && o.start_z && typeof o.start_z[k] === "number" ? Math.round(o.start_z[k] * 10) / 10 : null;
+    const fromStart = (x, k) => { const o = x.revontulet_own, z = o && o.start_z && typeof o.start_z[k] === "number" && spreadBefore(x, 2, 12) ? Math.round(o.start_z[k] * 10) / 10 : null;
       return z !== null && Math.abs(z) >= cut ? WORDS[k][z > 0 ? 0 : 1] + " than start" : null; };
     const subOf = (x, k) => {
       const a = against(x, k), b = fromStart(x, k), z = zOf(x, k);
@@ -1134,7 +1141,7 @@
         el("td", { class: "r num" }, f.strokes ? plural(f.strokes, "stroke", "strokes") + (f.stroke ? ", " + f.stroke : f.strokeNoSize ? ", speed not known" : "") : dash(null), subOf(x, "stroke_speed_cm_s")));
     };
     const emb = got.reduce((s, x) => { (x.revontulet.rounds || []).forEach((r) => { s[0] += r.embers_shown || 0; s[1] += r.embers_hit || 0; }); return s; }, [0, 0]);
-    if (!got[0].example && emb[0] >= 8 && emb[1] / emb[0] < 0.15) lines.push(el("p", { class: "muted small" }, "Almost no ember taps were recorded in these games (" + emb[1] + " of " + emb[0] + "). Early builds of the app lost them, so read nothing into it."));
+    if (!got[0].example && emb[0] >= 8 && emb[1] / emb[0] < 0.25) lines.push(el("p", { class: "muted small" }, "Almost no ember taps were recorded in these games (" + emb[1] + " of " + emb[0] + "). Early builds of the app lost them, so read nothing into it."));
     const rc = revontuletChart(got);
     const fold = (title, ...paras) => el("details", { class: "more" }, el("summary", null, title), paras.map((p) => el("p", { class: "muted small" }, p)));
     return panel("Revontulet: choices and finger movement", got.length, lines, rc,
