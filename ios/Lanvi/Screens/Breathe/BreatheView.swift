@@ -231,6 +231,7 @@ struct BreatheView: View {
         }
         withAnimation(.easeOut(duration: 2.6)) { flare = 1 }
         bounce += 1
+        FaceSense.mark()
     }
 
     private func setPhase(_ next: BreathPhase) {
