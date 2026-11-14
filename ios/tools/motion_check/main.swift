@@ -124,6 +124,12 @@ write("talking", from: base - 0.5, seconds: 5.5) {
     $0.talkStart = base
 }
 // A speech bubble driving the mouth: open, closed, open... every 0.12 s for 2 s.
+// Saying a line (`.lanviSays`): the mouth follows its syllables.
+write("say", from: base - 0.5, seconds: LanviSpeech.length("That sounds like a long day. Want to break the ice with me?") + 1.8) {
+    $0.appearAt = .infinity
+    $0.speech = LanviSpeech.beats("That sounds like a long day. Want to break the ice with me?")
+    $0.speechAt = base
+}
 write("bubble", from: base - 0.5, seconds: 3.5) {
     $0.appearAt = .infinity
     let t = $0.t

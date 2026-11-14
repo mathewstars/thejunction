@@ -89,6 +89,8 @@ struct LanviMotion {
     var mouthFrom: MouthShape? = nil     // the driven mouth before its last change
     var mouthTickAt: Double = -100       // when that mouth last changed
     var drivenSince: Double = -100       // when a bubble started or stopped driving it
+    var speech: [LanviSpeech.Beat] = []  // `.lanviSays`: the line being said, beat by beat
+    var speechAt: Double = -100          // when he started saying it
     var moment: LanviMoment? = nil       // a moment asked for by hand (the preview screen)
     var momentAt: Double = -100
     var momentSide: Double = 1
@@ -453,6 +455,7 @@ struct LanviMotion {
         b = max(b, busyMood(heldFrom) * (1 - w) + busyMood(held) * w)
         let talkW = Motion.smooth(talkingSince, talkingSince + 0.3, x)
         b = max(b, talking ? talkW : 1 - talkW)
+        if let end = speech.last?.end { b = max(b, window(speechAt, end, x)) }
         let drivenW = Motion.smooth(drivenSince, drivenSince + 0.3, x)
         b = max(b, mouthOverride != nil ? drivenW : 1 - drivenW)
         return b
@@ -638,6 +641,7 @@ struct LanviMotion {
     // MARK: Talking
 
     private func talkLayer(_ x: Double, _ p: inout Pose, _ face: inout Face) {
+        if sayLayer(x, &p, &face) { return }
         // A speech bubble drives the mouth shape (before its last change it was
         // `mouthFrom`, so each swap cross-fades). No head bob per change: a bubble may
         // flip the mouth many times a second, and the head must never vibrate.
@@ -676,6 +680,40 @@ struct LanviMotion {
         let drift = Motion.rnd(word - 1, seed &+ 53) + (Motion.rnd(word, seed &+ 53) - Motion.rnd(word - 1, seed &+ 53)) * wp
         p.dirX += 0.12 * (drift - 0.5) * on
         p.earL -= 2 * on; p.earR -= 2 * on
+    }
+
+    /// Saying a line (`.lanviSays`): the mouth follows its syllables (round on o and u,
+    /// open on the other vowels, the lips meet on m, b and p, closed in the pauses), the
+    /// head nods a little on the stressed syllables and drifts per word, then a smile.
+    /// True while it plays (a bubble's own mouth waits).
+    private func sayLayer(_ x: Double, _ p: inout Pose, _ face: inout Face) -> Bool {
+        guard let end = speech.last?.end else { return false }
+        let lt = x - speechAt
+        guard lt >= -0.05, lt < end + 0.45 else { return false }
+        let on = Motion.smooth(-0.05, 0.1, lt) * (1 - Motion.smooth(end, end + 0.45, lt))
+        if lt >= 0, lt < end, let i = speech.lastIndex(where: { $0.at <= lt }) {
+            let b = speech[i]
+            let ph = min(max((lt - b.at) / max(b.end - b.at, 0.01), 0), 1)
+            let open = sin(.pi * ph) * b.open
+            face.mouth = b.shape
+            switch b.shape {
+            case .o: p.mouthScale += -0.4 + 0.5 * open
+            case .happy: p.mouthScale += -0.5 + 0.4 * open
+            default: break
+            }
+        }
+        // a small nod on the stressed syllables, and the head drifts a touch per word
+        var bob = 0.0
+        for b in speech where b.stress && lt > b.at - 0.02 && lt < b.at + 0.3 {
+            bob += Motion.bump(lt, b.at - 0.02, b.at + 0.3)
+        }
+        p.headY += 1.8 * bob * on; p.dirY += 0.05 * bob * on
+        let word = Int(floor(max(lt, 0) / 0.9))
+        let wp = Motion.smooth(0, 0.35, max(lt, 0) - Double(word) * 0.9)
+        let drift = Motion.rnd(word - 1, seed &+ 53) + (Motion.rnd(word, seed &+ 53) - Motion.rnd(word - 1, seed &+ 53)) * wp
+        p.dirX += 0.12 * (drift - 0.5) * on
+        p.earL -= 2 * on; p.earR -= 2 * on
+        return true
     }
 
     // MARK: Reactions
@@ -863,3 +901,75 @@ struct LanviMotion {
         p.dirY += 0.015 * dip
     }
 }
+
+// MARK: - Saying a line
+
+/// A line of text as mouth beats, so the mouth moves with the words (no sound). About
+/// 13 letters a second: a syllable per vowel group, a short close between words, a
+/// pause at commas and a longer one at the end of a sentence.
+enum LanviSpeech {
+    struct Beat: Equatable {
+        var at: Double          // seconds after the start
+        var end: Double
+        var shape: MouthShape
+        var open: Double        // how wide (0...1)
+        var stress: Bool        // a small nod
+    }
+
+    private static let vowels: Set<Character> = Set("aeiouyáéíóúýäôěůàèìòùâêîûëïöü")
+
+    static func beats(_ text: String) -> [Beat] {
+        var out: [Beat] = []
+        var t = 0.0
+        let words = text.lowercased().split(whereSeparator: { $0.isWhitespace })
+        for (wi, raw) in words.enumerated() {
+            let word = Array(raw)
+            let letters = word.filter { $0.isLetter || $0.isNumber }
+            // split the letters into syllables: each vowel group with the consonants before it
+            var syllables: [[Character]] = []
+            var cur: [Character] = []
+            var sawVowel = false
+            for c in letters {
+                let v = vowels.contains(c)
+                if !v, sawVowel { syllables.append(cur); cur = []; sawVowel = false }
+                cur.append(c)
+                if v { sawVowel = true }
+            }
+            if !cur.isEmpty {
+                if sawVowel || syllables.isEmpty { syllables.append(cur) } else { syllables[syllables.count - 1] += cur }
+            }
+            for (si, syl) in syllables.enumerated() {
+                let len = min(max(0.06 + 0.032 * Double(syl.count), 0.12), 0.28)
+                // the lips meet first on m, b, p
+                if let first = syl.first, "mbp".contains(first) {
+                    out.append(Beat(at: t, end: t + 0.05, shape: .flat, open: 0, stress: false))
+                    t += 0.05
+                }
+                let vs = syl.filter { vowels.contains($0) }
+                let round = vs.contains { "oóôòöuúůùûü".contains($0) } && !vs.contains { "aáäàâ".contains($0) }
+                let wide = vs.contains { "aáäàâ".contains($0) } ? 1.0 : 0.75
+                let stress = si == 0 && (syllables.count > 1 || wi % 3 == 0)
+                out.append(Beat(at: t, end: t + len, shape: round ? .o : .happy, open: round ? 0.85 : wide, stress: stress))
+                t += len
+            }
+            // between words, a short close; at commas and sentence ends, a pause
+            let pause: Double
+            switch raw.last {
+            case ",", ";", ":": pause = 0.22
+            case ".", "!", "?", "…": pause = 0.38
+            default: pause = 0.05
+            }
+            if wi < words.count - 1 || pause > 0.05 {
+                out.append(Beat(at: t, end: t + pause, shape: .smile, open: 0, stress: false))
+                t += pause
+            }
+        }
+        // the last pause is not part of saying it
+        while let last = out.last, last.shape == .smile { out.removeLast() }
+        return out
+    }
+
+    /// How long Lanvi takes to say `text` (seconds).
+    static func length(_ text: String) -> Double { beats(text).last?.end ?? 0 }
+}
+
