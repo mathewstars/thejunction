@@ -212,6 +212,9 @@ struct HomeGrowthCard: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .black))
+                .foregroundStyle(Theme.brand.opacity(0.7))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 13)

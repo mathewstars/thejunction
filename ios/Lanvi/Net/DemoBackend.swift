@@ -17,6 +17,15 @@ actor DemoBackend: LanviBackend {
     private var awardsToday: [API.ActivityType: Int] = [:]
     private var seen: [String: API.ActivityOut] = [:]
     private var storyIndex = 0
+    private var lessons: [API.Lesson] = [
+        API.Lesson(id: "les_demo_breathing", text: "Breathe with Lanvi seemed to suit you, so it comes first now.",
+                   action: "breathing", evidenceCount: 4),
+        API.Lesson(id: "les_demo_evening", text: "Evenings seem to be a good time for a check-in.",
+                   action: "checkin", evidenceCount: 3),
+    ]
+    private var questions: [API.Question] = [
+        API.Question(id: "q_demo_walk", text: "Was a short walk too much on some days?", answers: ["yes", "no", "not_sure"]),
+    ]
 
     /// XP that fills the glow (as on the server).
     private let glowCapacity = 50.0
@@ -26,8 +35,11 @@ actor DemoBackend: LanviBackend {
             guard let i = arguments.firstIndex(of: key), i + 1 < arguments.count else { return nil }
             return arguments[i + 1]
         }
-        xp = value("-demoXP").flatMap(Int.init) ?? 230
-        glow = value("-demoGlow").flatMap(Double.init).map { min(max($0, 0), 1) } ?? 0.45
+        // The -demo walk-through starts just short of grown fox with a nearly full
+        // glow, so one activity shows growing up and Lanvi running off to wander.
+        let walkthrough = arguments.contains("-demo")
+        xp = value("-demoXP").flatMap(Int.init) ?? (walkthrough ? 290 : 230)
+        glow = value("-demoGlow").flatMap(Double.init).map { min(max($0, 0), 1) } ?? (walkthrough ? 0.8 : 0.45)
         line = API.LineOut(templateId: "hello.2", text: "Good to see you. My tail is a little brighter now.")
         wandering = API.WanderingOut(state: .home, id: nil, returnsAt: nil, story: nil)
 
@@ -149,6 +161,30 @@ actor DemoBackend: LanviBackend {
         return API.WanderingAnswerOut(id: id, answer: answer, wandering: wandering)
     }
 
+    func mind() async throws -> API.MindOut {
+        try await Task.sleep(for: .milliseconds(250))
+        return API.MindOut(rules: [], lessons: lessons, questions: questions)
+    }
+
+    func rejectLesson(id: String) async throws -> API.StatusOut {
+        guard lessons.contains(where: { $0.id == id }) else { throw APIError.notFound }
+        lessons.removeAll { $0.id == id }
+        return API.StatusOut(id: id, status: "rejected")
+    }
+
+    func answerQuestion(id: String, answer: String) async throws -> API.StatusOut {
+        guard questions.contains(where: { $0.id == id }) else { throw APIError.notFound }
+        questions.removeAll { $0.id == id }
+        return API.StatusOut(id: id, status: "answered")
+    }
+
+    /// Demo only: Lanvi comes back from the wandering now, with a story.
+    func comeBack() {
+        let story = Self.stories[storyIndex % Self.stories.count]
+        wandering = API.WanderingOut(state: .back, id: "wander-0007", returnsAt: nil, story: story)
+        line = API.LineOut(templateId: "back.1", text: "I'm back. I have a little story for you.")
+    }
+
     // MARK: Sample data
 
     static func stage(for xp: Int) -> (API.Stage, Int?) {
@@ -176,6 +212,10 @@ actor DemoBackend: LanviBackend {
                      text: "I met a reindeer by a frozen lake. She was counting stars and kept losing her place.",
                      question: "Should I help her count tomorrow?",
                      answers: [.init(id: "a", text: "Yes, help her"), .init(id: "b", text: "Let her count alone")]),
+        API.StoryOut(id: "story.owl",
+                     text: "A snowy owl asked me why my tail glows. I told her it is because of you.",
+                     question: "What colour should I glow next time?",
+                     answers: [.init(id: "a", text: "Green"), .init(id: "b", text: "Violet")]),
     ]
 
     static let crisis = API.CrisisBlock(

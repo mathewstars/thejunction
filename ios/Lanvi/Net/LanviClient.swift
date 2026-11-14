@@ -30,6 +30,9 @@ protocol LanviBackend: Sendable {
     func checkinOptions() async throws -> API.CheckinOptionsOut
     func setPreferences(_ helps: [String]) async throws -> API.PreferencesOut
     func answerWandering(id: String, answer: String) async throws -> API.WanderingAnswerOut
+    func mind() async throws -> API.MindOut
+    func rejectLesson(id: String) async throws -> API.StatusOut
+    func answerQuestion(id: String, answer: String) async throws -> API.StatusOut
 }
 
 /// The real server. Pairs once with the configured code, keeps the token in
@@ -86,6 +89,22 @@ actor LanviClient: LanviBackend {
         let safe = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
         return try await call("POST", "/v1/lanvi/wanderings/\(safe)/answer",
                               body: API.WanderingAnswerIn(answer: answer))
+    }
+
+    func mind() async throws -> API.MindOut {
+        try await call("GET", "/v1/mind", body: Optional<API.PairIn>.none)
+    }
+
+    func rejectLesson(id: String) async throws -> API.StatusOut {
+        try await call("POST", "/v1/mind/lessons/\(Self.pathSafe(id))/reject", body: Optional<API.PairIn>.none)
+    }
+
+    func answerQuestion(id: String, answer: String) async throws -> API.StatusOut {
+        try await call("POST", "/v1/mind/questions/\(Self.pathSafe(id))/answer", body: API.AnswerIn(answer: answer))
+    }
+
+    private static func pathSafe(_ id: String) -> String {
+        id.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? id
     }
 
     // MARK: Plumbing

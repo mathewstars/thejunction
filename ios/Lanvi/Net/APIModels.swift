@@ -249,6 +249,44 @@ enum API {
         var wandering: WanderingOut?
     }
 
+    // MARK: What Lanvi has learned (GET /v1/mind and its answers)
+    // The contract leaves these bodies open; the shapes below are what the engine sends
+    // (`engine/clinic_engine/mind/views.py`, `mind_view`).
+
+    struct MindOut: Codable, Equatable {
+        var rules: [JSONValue]
+        var lessons: [Lesson]
+        var questions: [Question]
+    }
+
+    struct Lesson: Codable, Equatable, Identifiable {
+        var id: String
+        var text: String
+        var action: String?
+        var effect: JSONValue?
+        var context: JSONValue?
+        var configId: String?
+        var evidenceCount: Int?
+        var createdAt: String?
+    }
+
+    struct Question: Codable, Equatable, Identifiable {
+        var id: String
+        var text: String
+        var answers: [String]   // yes, no, not_sure
+    }
+
+    /// `AnswerIn`: yes, no or not_sure.
+    struct AnswerIn: Codable {
+        var answer: String
+    }
+
+    /// Reply to a lesson reject or a question answer: `{id, status}`.
+    struct StatusOut: Codable, Equatable {
+        var id: String?
+        var status: String?
+    }
+
     // MARK: Errors
 
     struct ErrorResponse: Codable {

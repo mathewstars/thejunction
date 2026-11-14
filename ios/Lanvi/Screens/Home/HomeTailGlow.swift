@@ -48,7 +48,7 @@ struct HomeTailGlow: View, Animatable {
         halo.addFilter(.blur(radius: foxSize * 0.08))
         let r0 = reach * 1.15 * breathe
         halo.fill(Path(ellipseIn: CGRect(x: tail.x - r0, y: tail.y - r0 * 0.85, width: r0 * 2, height: r0 * 1.7)),
-                  with: .radialGradient(Gradient(colors: [Self.green.opacity(0.55 * strength),
+                  with: .radialGradient(Gradient(colors: [Self.green.opacity(0.68 * strength),
                                                           Self.cyan.opacity(0.28 * strength),
                                                           .clear]),
                                         center: tail, startRadius: 0, endRadius: r0))
@@ -124,8 +124,14 @@ struct HomeTailGlow: View, Animatable {
                                        center: p, startRadius: 0, endRadius: r))
     }
 
-    /// Where the tail is in each pose's art, as a share of the picture.
     private func tailPoint(in canvas: CGSize) -> CGPoint {
+        let o = Self.tailOffset(pose: pose, foxSize: foxSize)
+        return CGPoint(x: canvas.width / 2 + o.x, y: canvas.height / 2 + o.y)
+    }
+
+    /// Where the tail is, from the centre of the fox's square frame. The share
+    /// of the picture comes from each pose's art.
+    static func tailOffset(pose: LanviPose, foxSize s: CGFloat) -> CGPoint {
         let (fx, fy, aspect): (CGFloat, CGFloat, CGFloat) = {
             switch pose {
             case .cheer: return (0.14, 0.78, 322.0 / 373)
@@ -138,12 +144,9 @@ struct HomeTailGlow: View, Animatable {
             case .peek: return (0.50, 0.86, 308.0 / 194)
             }
         }()
-        let s = foxSize
         let (rw, rh) = aspect < 1 ? (s * aspect, s) : (s, s / aspect)
         let x0 = (s - rw) / 2, y0 = s - rh
-        // The fox's frame sits in the middle of this double-size canvas.
-        let ox = (canvas.width - s) / 2, oy = (canvas.height - s) / 2
-        return CGPoint(x: ox + x0 + fx * rw, y: oy + y0 + fy * rh)
+        return CGPoint(x: x0 + fx * rw - s / 2, y: y0 + fy * rh - s / 2)
     }
 
     private func frac(_ v: Double) -> Double { v - floor(v) }

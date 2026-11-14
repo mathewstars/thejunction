@@ -13,8 +13,8 @@ struct HomeHelpScreen: View {
     var body: some View {
         GeometryReader { geo in
             let compact = geo.size.height < 700
-            let hill = geo.size.height * (compact ? 0.50 : 0.56)
-            let fox: CGFloat = compact ? 150 : 200
+            let hill = geo.size.height * (compact ? 0.55 : 0.62)
+            let fox: CGFloat = compact ? 160 : 220
             ZStack(alignment: .top) {
                 SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: hill)
 
@@ -87,10 +87,14 @@ struct HomeHelpScreen: View {
 /// Lanvi came back from Lapland with a tiny story and a question.
 struct HomeStoryScreen: View {
     var story: API.StoryOut
+    /// Demo only: answer by itself after a moment.
+    var autoAnswer: String? = nil
     var onAnswer: (String) async -> Bool
     var onClose: () -> Void
 
-    @State private var pose: LanviPose = .cheer
+    @State private var pose: LanviPose = .run
+    @State private var runX: CGFloat = -500
+    @State private var arrived = false
     @State private var bounce = 0
     @State private var chosen: String?
     @State private var thanks = false
@@ -104,10 +108,12 @@ struct HomeStoryScreen: View {
             ZStack(alignment: .top) {
                 SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: hill)
 
-                HomeTailGlow(pose: pose, glow: 0.8, foxSize: fox)
-                    .position(x: geo.size.width / 2, y: hill - fox / 2 + 12)
-                LanviView(pose: pose, size: fox, bounceTrigger: bounce)
-                    .position(x: geo.size.width / 2, y: hill - fox / 2 + 12)
+                ZStack {
+                    HomeTailGlow(pose: pose, glow: 0.8, foxSize: fox)
+                    LanviView(pose: pose, size: fox, bounceTrigger: bounce)
+                }
+                .frame(width: fox * 2, height: fox * 2)
+                .position(x: geo.size.width / 2 + runX, y: hill - fox / 2 + 12)
 
                 VStack(spacing: 0) {
                     Text(thanks ? "Thank you. I'll remember that on my next trip." : story.text)
@@ -123,6 +129,8 @@ struct HomeStoryScreen: View {
                         .id(thanks)
                         .transition(.scale(scale: 0.85).combined(with: .opacity))
                 }
+                .opacity(arrived ? 1 : 0)
+                .scaleEffect(arrived ? 1 : 0.8, anchor: .bottom)
                 .padding(.horizontal, 24)
                 .padding(.top, compact ? 62 : 74)
 
@@ -152,6 +160,8 @@ struct HomeStoryScreen: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, hill + 24)
+                .opacity(arrived ? 1 : 0)
+                .offset(y: arrived ? 0 : 40)
 
                 HStack {
                     HomeCloseButton(action: onClose)
@@ -162,8 +172,18 @@ struct HomeStoryScreen: View {
             }
         }
         .task {
-            try? await Task.sleep(for: .milliseconds(300))
+            // Lanvi runs in from the side, stops, cheers; then the story appears.
+            try? await Task.sleep(for: .milliseconds(250))
+            withAnimation(.easeOut(duration: 1.0)) { runX = 0 }
+            try? await Task.sleep(for: .milliseconds(1000))
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .cheer }
             bounce += 1
+            try? await Task.sleep(for: .milliseconds(350))
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { arrived = true }
+            if let autoAnswer {
+                try? await Task.sleep(for: .seconds(4.5))
+                answer(autoAnswer)
+            }
         }
     }
 

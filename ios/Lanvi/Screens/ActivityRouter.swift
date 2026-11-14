@@ -14,12 +14,32 @@ struct ActivityRouter: View {
     var body: some View {
         switch kind {
         case .focus:
-            StandInActivity(kind: .focus, onDone: onDone)
+            FocusGameView { result in onDone(result.map(Self.record)) }
         case .breathing:
-            StandInActivity(kind: .breathing, onDone: onDone)
+            BreatheView { result in onDone(result.map(Self.record)) }
         case .checkin:
             StandInActivity(kind: .checkin, onDone: onDone)
         }
+    }
+
+    // MARK: Screen results into server records
+
+    static func record(_ r: FocusResult) -> API.ActivityIn {
+        let duration = max(0, r.endedAt.timeIntervalSince(r.startedAt))
+        let taps = r.correctTaps + r.wrongTaps
+        return API.ActivityIn(id: API.ActivityIn.newId(), type: .focus,
+                              startedAt: API.isoString(r.startedAt), durationS: (duration * 10).rounded() / 10,
+                              completed: r.completed, endedBy: r.completed ? .finished : .userStopped,
+                              correctTaps: r.correctTaps, wrongTaps: r.wrongTaps, misses: r.misses,
+                              reactionMs: Array(r.reactionMs.prefix(min(200, taps))).map { min(max($0, 0), 10_000) })
+    }
+
+    static func record(_ r: BreatheResult) -> API.ActivityIn {
+        let duration = max(0, r.endedAt.timeIntervalSince(r.startedAt))
+        return API.ActivityIn(id: API.ActivityIn.newId(), type: .breathing,
+                              startedAt: API.isoString(r.startedAt), durationS: (duration * 10).rounded() / 10,
+                              completed: r.completed, endedBy: r.completed ? .finished : .userStopped,
+                              timePlayedS: min(r.timePlayedS, duration), breathsCompleted: r.breathsCompleted)
     }
 }
 

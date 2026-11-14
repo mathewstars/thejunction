@@ -48,12 +48,17 @@ final class AppStore {
     var celebration: HomeCelebration?
     /// Set when the server says typed words asked for help: Home opens Help at once.
     var crisisNow: API.CrisisBlock?
-    private(set) var storyThanks: String?
+    /// Set when the stage went up with the last activity: Home celebrates it.
+    var grewUp: API.Stage?
+    /// What Lanvi has learned (GET /v1/mind), loaded when that screen opens.
+    private(set) var mind: API.MindOut?
+    private(set) var mindFailed = false
     private var suggestionsPlayed: Set<String> = []
 
     init(arguments: [String] = ProcessInfo.processInfo.arguments) {
         let config = ServerConfig.current
-        if config.isLive, let url = config.serverURL {
+        // The -demo walk-through always uses the offline demo, so the video is the same every time.
+        if config.isLive, !arguments.contains("-demo"), let url = config.serverURL {
             mode = .live
             backend = LanviClient(base: url, pairingCode: config.pairingCode)
             // Last known state, so an offline start still shows Lanvi as it was.
@@ -169,11 +174,12 @@ final class AppStore {
 
     private func celebrate(_ out: API.ActivityOut, kind: ActivityKind) async {
         guard var t = today else { return }
+        let oldStage = t.lanvi.stage
         line = out.line.text
         celebration = HomeCelebration(kind: kind, xpGained: out.xpGained, line: out.line.text,
                                   startedWandering: out.wandering == .away && t.lanvi.wandering.state != .away)
-        // Let Home show the cheer before the numbers move.
-        try? await Task.sleep(for: .milliseconds(650))
+        // Let the light flow from the card into the tail before the numbers move.
+        try? await Task.sleep(for: .milliseconds(out.xpGained > 0 ? 950 : 300))
         withAnimation(.spring(response: 1.1, dampingFraction: 0.82)) {
             t.lanvi.xp = out.xpTotal
             t.lanvi.stage = out.stage
@@ -183,6 +189,10 @@ final class AppStore {
             today = t
         }
         if out.crisis == true, let block = out.crisisBlock { crisisNow = block }
+        if out.stage != oldStage, out.xpTotal > 0 {
+            try? await Task.sleep(for: .milliseconds(1400))
+            grewUp = out.stage
+        }
         if mode == .live { LanviDisk.save(t, "today.json") }
     }
 
@@ -226,6 +236,54 @@ final class AppStore {
             link = .offline
             return false
         }
+    }
+
+    // MARK: What Lanvi has learned
+
+    func loadMind() async {
+        do {
+            mind = try await backend.mind()
+            mindFailed = false
+        } catch {
+            mindFailed = mind == nil
+        }
+    }
+
+    /// "Not true": the lesson goes away and does not come back from the same evidence.
+    func rejectLesson(_ id: String) async -> Bool {
+        do {
+            _ = try await backend.rejectLesson(id: id)
+        } catch APIError.notFound {
+            // Already gone: fine.
+        } catch {
+            return false
+        }
+        if var m = mind {
+            m.lessons.removeAll { $0.id == id }
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { mind = m }
+        }
+        return true
+    }
+
+    func answerQuestion(_ id: String, answer: String) async -> Bool {
+        do {
+            _ = try await backend.answerQuestion(id: id, answer: answer)
+        } catch APIError.notFound {
+        } catch {
+            return false
+        }
+        if var m = mind {
+            m.questions.removeAll { $0.id == id }
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { mind = m }
+        }
+        return true
+    }
+
+    /// Demo walk-through only: Lanvi comes back from the wandering now.
+    func demoComeBack() async {
+        guard let demo = backend as? DemoBackend else { return }
+        await demo.comeBack()
+        await refresh()
     }
 
     @discardableResult
