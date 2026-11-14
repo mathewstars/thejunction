@@ -5294,6 +5294,34 @@
             "title": "Smile Asymmetry",
             "description": "Left-right difference of smiles, 0 (even) to 1."
           },
+          "lip_down_share": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lip Down Share",
+            "description": "Share of the time with the lip corners pulled down, 0 to 1."
+          },
+          "lip_press_share": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lip Press Share",
+            "description": "Share of the time with the lips pressed together, 0 to 1."
+          },
           "tracking_quality": {
             "type": "number",
             "maximum": 1.0,
