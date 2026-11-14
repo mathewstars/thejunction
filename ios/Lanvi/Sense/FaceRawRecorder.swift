@@ -153,13 +153,19 @@ struct FaceRawRecorder {
 /// in the face anchor's own coordinates, so the head's movement is out.
 ///
 /// How it works:
-/// - The first `restFrames` tracked frames give the resting shape (per vertex, the
-///   median position). It stays in memory for this one game and is then forgotten.
+/// - The resting shape (per vertex, the median position) comes from the first QUIET
+///   stretch of `restFrames` tracked frames, not simply from the first frames: at the
+///   start ARKit is still fitting the face and the person is still settling, and a rest
+///   learned there put every later number 1 to 3 mm off on the first real games. Up to
+///   `maxRestWindows` stretches are tried; if none is quiet the quietest is taken.
+///   The shape stays in memory for this one game and is then forgotten.
 /// - Regions are found on that resting shape by where they lie on the face, as
 ///   fractions of its width and height (`boxes`), not by fixed vertex numbers.
 /// - Each later frame: per region, the mean distance of its vertices from rest.
 /// - `noiseMm`: how much those numbers jump from frame to frame over the resting
 ///   frames (their standard deviation, averaged over the regions).
+/// - After tracking was lost, the first `regainFrames` frames are sent as untracked:
+///   the mesh jumps while ARKit finds the face again, and that is not a movement.
 ///
 /// The region boxes are a first guess and have not been checked on a device. In a
 /// DEBUG build `FaceSense` prints how many vertices each region caught.
@@ -199,6 +205,15 @@ struct FaceFineRecorder {
 
     /// 1.5 seconds at 30 Hz to learn the resting shape.
     static let restFrames = 45
+    /// A stretch is quiet when no region's number spreads more than this over it
+    /// (standard deviation, mm). A first guess, not set on recordings.
+    static let quietMm = 0.15
+    /// Stretches tried before the quietest is taken anyway (9 seconds).
+    static let maxRestWindows = 6
+    /// Frames left out after tracking comes back (a third of a second at 30 Hz).
+    static let regainFrames = 10
+    /// A hole in time at least this long counts as tracking lost (0.2 s at 30 Hz).
+    static let lostSlots = 6
     /// A region needs at least this many vertices to be sent.
     static let minVertices = 3
     /// Same limits as the raw frames (`FaceRawRecorder`).
@@ -216,6 +231,9 @@ struct FaceFineRecorder {
     private var firstTime: Double?
     private var early: [(slot: Int, vertices: [SIMD3<Float>])] = []
     private var rest: [SIMD3<Float>]?
+    private var windowsTried = 0
+    private var best: (shape: [SIMD3<Float>], members: [[Int]], noise: Double?, worst: Double)?
+    private var skipLeft = 0
     private var members: [[Int]] = []          // per box: vertex indices
     private(set) var noiseMm: Double?
 
@@ -245,22 +263,24 @@ struct FaceFineRecorder {
             if missing > Self.maxGapSlots {
                 firstTime = time - Double(rows.count) / Double(rateHz)
             }
+            if missing >= Self.lostSlots { skipLeft = Self.regainFrames }
         }
         guard !isFull else { return }
-        guard isTracked else { appendEmpty(); return }
+        guard isTracked else { skipLeft = Self.regainFrames; appendEmpty(); return }
+        if skipLeft > 0 { skipLeft -= 1; appendEmpty(); return }
         let v = vertices()
         guard !v.isEmpty else { appendEmpty(); return }
 
         if let rest {
             guard v.count == rest.count else { appendEmpty(); return }
-            rows.append(measure(v, against: rest))
+            rows.append(Self.measure(v, against: rest, members: members))
             tracked.append(1)
         } else {
             // Not yet known where the face rests: keep the frame until it is.
             early.append((rows.count, v))
             rows.append([Double](repeating: 0, count: Self.boxes.count))
             tracked.append(1)
-            if early.count >= Self.restFrames { settle() }
+            if early.count % Self.restFrames == 0 { tryWindow() }
         }
     }
 
@@ -268,6 +288,12 @@ struct FaceFineRecorder {
     /// tracked frames) or the mouth regions caught no vertices.
     /// `lastSeconds` keeps only the end, as for the raw frames.
     func faceFine(lastSeconds: Double? = nil) -> API.FaceFine? {
+        if rest == nil, best != nil {
+            // The game ended while a quieter stretch was still looked for: take the best.
+            var done = self
+            done.settle()
+            return done.faceFine(lastSeconds: lastSeconds)
+        }
         guard rest != nil, !rows.isEmpty else { return nil }
         let active = Self.boxes.indices.filter { members[$0].count >= Self.minVertices }
         let names = active.map { Self.boxes[$0].name }
@@ -287,11 +313,12 @@ struct FaceFineRecorder {
 
     // MARK: The resting shape
 
-    /// Enough frames: learn the resting shape, find the regions on it, and measure the
-    /// frames that were waiting. The waiting vertices are then let go.
-    private mutating func settle() {
-        guard let n = early.first?.vertices.count, n > 0 else { early = []; return }
-        let frames = early.filter { $0.vertices.count == n }
+    /// A full stretch of frames is waiting: learn a resting shape from it and see how
+    /// quiet it was. Quiet enough, or enough stretches tried: settle on the best so far.
+    private mutating func tryWindow() {
+        let frames = Array(early.suffix(Self.restFrames))
+        guard let n = frames.first?.vertices.count, n > 0,
+              frames.allSatisfy({ $0.vertices.count == n }) else { early = []; best = nil; return }
         var shape = [SIMD3<Float>](repeating: .zero, count: n)
         var xs = [Float](repeating: 0, count: frames.count)
         var ys = xs, zs = xs
@@ -301,25 +328,41 @@ struct FaceFineRecorder {
             }
             shape[i] = SIMD3(Self.median(xs), Self.median(ys), Self.median(zs))
         }
-        rest = shape
-        members = Self.assign(shape)
-
+        let members = Self.assign(shape)
         var columns = [[Double]](repeating: [], count: Self.boxes.count)
         for f in frames {
-            let row = measure(f.vertices, against: shape)
-            rows[f.slot] = row
-            for (j, value) in row.enumerated() { columns[j].append(value) }
+            for (j, value) in Self.measure(f.vertices, against: shape, members: members).enumerated() {
+                columns[j].append(value)
+            }
         }
-        // The spread of each region's number over the still frames (standard deviation),
-        // averaged over the regions sent. Not its level: the rule on the server compares
-        // a movement with how much the number jumps, not with where it sits.
+        // The spread of each region's number over the stretch (standard deviation). Its
+        // average over the regions sent is the noise; its largest decides how quiet the
+        // stretch was, so one moving region is not averaged away. Not the level: the rule
+        // on the server compares a movement with how much the number jumps.
         let spreads = columns.enumerated().compactMap { j, v -> Double? in
             guard members[j].count >= Self.minVertices, v.count > 1 else { return nil }
             let mean = v.reduce(0, +) / Double(v.count)
             return (v.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Double(v.count - 1)).squareRoot()
         }
-        noiseMm = spreads.isEmpty ? nil : Self.round2(min(spreads.reduce(0, +) / Double(spreads.count), 5))
+        let noise = spreads.isEmpty ? nil : Self.round2(min(spreads.reduce(0, +) / Double(spreads.count), 5))
+        let worst = spreads.max() ?? .infinity
+        if best == nil || worst < best!.worst { best = (shape, members, noise, worst) }
+        windowsTried += 1
+        if worst <= Self.quietMm || windowsTried >= Self.maxRestWindows { settle() }
+    }
+
+    /// Take the best resting shape found and measure the frames that were waiting.
+    /// The waiting vertices are then let go.
+    private mutating func settle() {
+        guard let b = best else { return }
+        rest = b.shape
+        members = b.members
+        noiseMm = b.noise
+        for f in early where f.vertices.count == b.shape.count {
+            rows[f.slot] = Self.measure(f.vertices, against: b.shape, members: b.members)
+        }
         early = []
+        best = nil
     }
 
     /// Which vertices lie in which box of the resting face.
@@ -340,13 +383,13 @@ struct FaceFineRecorder {
         return out
     }
 
-    private func measure(_ v: [SIMD3<Float>], against shape: [SIMD3<Float>]) -> [Double] {
+    static func measure(_ v: [SIMD3<Float>], against shape: [SIMD3<Float>], members: [[Int]]) -> [Double] {
         members.map { ids in
             guard !ids.isEmpty else { return 0 }
             var sum: Float = 0
             for i in ids { sum += simd_distance(v[i], shape[i]) }
             let mm = Double(sum / Float(ids.count)) * 1000
-            return mm.isFinite ? Self.round2(min(max(mm, 0), Self.maxMm)) : 0
+            return mm.isFinite ? round2(min(max(mm, 0), maxMm)) : 0
         }
     }
 
