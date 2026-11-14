@@ -326,6 +326,8 @@
     if (!items.length) return p.status === "no_baseline" ? "Not enough history" : "–";
     return kind(items[0].kind) + (items.length > 1 ? " +" + (items.length - 1) : "");
   }
+  // A flag held lower by a clinic rule is marked in the list, so a lowered person is never silent.
+  const ruleMark = (p) => p.lowered_by_clinic_rule ? el("span", { class: "muted small rule-mark", title: "A clinic rule holds " + p.lowered_by_clinic_rule + (p.lowered_by_clinic_rule === 1 ? " flag" : " flags") + " below the fixed rules' level" }, " · lowered by clinic rule") : null;
   function oldestSince(p) {
     if (p.since) return p.since;
     const s = (p.attention || []).map((a) => a.since).filter(Boolean).sort();
@@ -379,7 +381,7 @@
         el("td", null, statusChip(p.status)),
         el("td", null, el("a", { href }, p.display_name || p.label),
           el("span", { class: "sub" }, [p.display_name ? p.label : null, p.example ? "example data" : null].filter(Boolean).join(" · "))),
-        el("td", null, reasonShort(p), " ", levelChip(p.level)),
+        el("td", null, reasonShort(p), " ", levelChip(p.level), ruleMark(p)),
         el("td", { class: "num" }, since ? held(since, today) : "–"),
         hasSpark ? el("td", null, Array.isArray(p.spark) ? spark(p.spark) : "–") : null,
         el("td", { class: "num" }, ago(p.last_data_day, today)));
@@ -614,12 +616,12 @@
     } } }, "Add rule");
     const list = rules.length ? el("ul", { class: "attlist" }, rules.map((r) => el("li", null,
       el("span", { class: "what" }, "“" + r.text + "”"),
-      el("span", { class: "muted since" }, dayShort(r.at) + (used[r.id] ? " · sets " + used[r.id] + (used[r.id] === 1 ? " level now" : " levels now") : on ? " · applies to nothing now" : "")),
+      el("span", { class: "muted since" }, dayShort(r.at) + (r.by ? ", " + r.by : "") + (r.expires_at ? " · until " + dayShort(r.expires_at) : "") + (used[r.id] ? " · sets " + used[r.id] + (used[r.id] === 1 ? " level now" : " levels now") : on ? " · applies to nothing now" : "")),
       el("button", { type: "button", class: "linklike small ack", "aria-label": "Remove this rule", on: { click: async () => {
         try { await api("DELETE", base + "/" + encodeURIComponent(r.id)); S.detail = null; await refresh(); } catch (e) { flash(e.message); } } } }, "Remove")))) : empty("No rule written for this person.");
     return panel("The clinic's rules for this person", rules.length || "", list, el("div", { class: "rule-add" }, input, add),
       el("p", { class: "muted small tri-note" }, on
-        ? "Written in your own words. The local model reads the rules when the levels above are set, and a level that follows a rule is not moved by the second model. The words stay on the clinic's server. A rule can change levels only: it cannot lower a request for help, and it never reaches the patient."
+        ? "Written in your own words. A rule applies for 14 days. The local model reads the rules when the levels above are set and decides which flag a rule applies to; that level is then not moved by the second model, and the flag shows the rule. The words stay on the clinic's server. A rule changes levels, and with them the order of the list and whether a message is sent. It cannot lower a request for help, and it never reaches the patient."
         : "Rules are stored, but nothing reads them while the levels are set by the fixed rules (model triage is off on this server)."));
   }
 
@@ -745,10 +747,12 @@
       const t = triLevels[i.id];
       if (tri.mode !== "models" || !t) return null;
       const rule = t.clinic_rule_id ? (d.clinic_rules || []).find((r) => r.id === t.clinic_rule_id) : null;
-      if (rule) return el("span", { class: "sub tri" }, "Level set to " + LV[t.level] + " by the clinic's rule: “" + rule.text + "”. The fixed rules alone would say " + LV[t.rules_level] + ".");
+      if (rule) return el("span", { class: "sub tri" }, "Level set to " + LV[t.level] + " by the local model reading the clinic's rule: “" + rule.text + "” (" + (rule.by || "a clinician") + ", " + dayShort(rule.at) + (rule.expires_at ? ", applies until " + dayShort(rule.expires_at) : "") + "). The fixed rules alone would say " + LV[t.rules_level] + "."
+        + (t.verdict2 === "raise" ? " Gemini, which does not see the rule, would raise it." : ""));
       const one = t.level1 ? "the local model set " + LV[t.level1] + " (" + (RS[t.reason1] || words(t.reason1).toLowerCase()) + ")" : "the local model did not answer";
       const two = t.verdict2 ? "Gemini " + ({ agree: "agreed", raise: "raised it", lower: "lowered it" }[t.verdict2]) + " (" + (RS[t.reason2] || words(t.reason2).toLowerCase()) + ")" : "Gemini was not asked or did not answer";
-      return el("span", { class: "sub tri" }, "Level set by the two models: " + one + "; " + two + ". The fixed rules alone would say " + LV[t.rules_level] + ".");
+      return el("span", { class: "sub tri" }, "Level set by the two models: " + one + "; " + two + ". The fixed rules alone would say " + LV[t.rules_level] + "."
+        + (t.held_by_floor ? " The models asked for less; code kept it at " + LV[t.level] + " (a model cannot go below needs review today set by the fixed rules, or more than one step below them)." : ""));
     };
     const triageNote = tri.mode === "models" ? el("p", { class: "muted small tri-note" }, "The watchers decide what is on this list. The two models decide how much each item matters; when neither answers, the fixed rules' level stands. A request for help is given to both models as part of the picture, without the person's words; its own level is fixed by rule and no model can change it.") : null;
     const att = panel("Needs attention", items.length || "", items.length ? el("div", { class: "rows" },
