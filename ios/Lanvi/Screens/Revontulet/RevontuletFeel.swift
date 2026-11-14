@@ -61,6 +61,9 @@ enum RevontuletTune {
     // Snow leaving the fur: a few grainy ticks.
     static let snowTicks: [Double] = [0, 0.035, 0.08, 0.11], snowTickI = 0.18, snowTickS = 1.0
 
+    // Fur under a stroke: faint soft ticks by distance (one per furStep points).
+    static let furI = 0.1, furS = 0.2, furStep = 18.0
+
     // A first-time coach appearing: a soft double tick.
     static let coachI = 0.22, coachS = 0.45, coachGap = 0.09
 
@@ -84,7 +87,7 @@ final class RevontuletFeel {
     private typealias T = RevontuletTune
     private enum Key: Hashable {
         case choose(Bool), bead, charged, click, snap(Int), emberShown(Int), emberHit
-        case whoosh(Int), thud(Int), crackle(Int), ribbon, burstCrack, burstTicks, burstSwell, celebrate, snow, sleep, coach
+        case whoosh(Int), thud(Int), crackle(Int), ribbon, burstCrack, burstTicks, burstSwell, celebrate, snow, sleep, coach, fur
     }
 
     private let supported = CHHapticEngine.capabilitiesForHardware().supportsHaptics
@@ -245,6 +248,9 @@ final class RevontuletFeel {
     /// Snow leaving the fur.
     func snowOff() { fire(.snow) }
 
+    /// Fur under the finger: a faint soft tick every few points stroked.
+    func furTick() { fire(.fur) }
+
     /// A first-time coach appears: one soft double tick.
     func coachTick() { fire(.coach) }
 
@@ -275,9 +281,14 @@ final class RevontuletFeel {
 
     func celebrate() { fire(.celebrate) }
 
-    /// Falling asleep: the purr falls asleep too, then one slow fading pulse.
+    /// Falling asleep: the purr falls asleep too (slower, softer, one last long out-breath),
+    /// then one slow fading pulse.
     func sleep() {
-        purrEnded()
+        if purrOn, let purr, let engine {
+            purrOn = false
+            try? purr.scheduleParameterCurve(curve(.hapticIntensityControl, from: sentPurr.i, to: 0, over: 1.2), atTime: CHHapticTimeImmediate)
+            try? purr.stop(atTime: engine.currentTime + 1.25)
+        }
         pullEnded()
         fire(.sleep)
     }
@@ -334,6 +345,7 @@ final class RevontuletFeel {
                                   [bell(.hapticIntensityControl, start: T.sweepSwell.delay, length: T.sweepSwell.t)])
         built[.celebrate] = make(T.celebrate.map { tap($0.t, $0.i, T.celebrateS) })
         built[.coach] = make([tap(0, T.coachI, T.coachS), tap(T.coachGap, T.coachI * 0.7, T.coachS)])
+        built[.fur] = make([tap(0, T.furI, T.furS)])
         built[.snow] = make(T.snowTicks.enumerated().map { tap($0.element, T.snowTickI * (1 - 0.15 * Double($0.offset)), T.snowTickS) })
         built[.sleep] = make([hum(0, T.sleepSwell.t + T.sleepFade, T.sleepSwell.i, T.sleepS)],
                              [CHHapticParameterCurve(parameterID: .hapticIntensityControl, controlPoints: [

@@ -54,11 +54,17 @@ Everything else rides in one optional object, `revontulet`, fixed by the contrac
 
 **Safe fallback.** The live server refuses unknown fields until dad's change goes live. If a record carrying `revontulet` is refused, `LanviClient.send` sends the same record (same id) once more without it, and the rest of that app run sends records plain straight away; the next launch tries again (`RevontuletSendGate`). The outbox sends through the same function, so a refused record never gets stuck. Tests: `LanviTests/RevontuletMeasuresTests.swift` (the JSON matches the contract's example key for key; the fallback). Lines touched in `Net/`: one optional property on `API.ActivityIn` (`APIModels.swift`) and the body of `LanviClient.send`.
 
+## First-time coach
+
+The first time a player meets a move (start, choice, trace, sling, the first embers, the first stroke) the scene sinks under a soft veil except a pool that lifts it around the thing to touch, a ghost fingertip of light performs the move in a slow loop, and one short line sits in a small frosted bubble beside it. The first touch melts it away in 0.2 s; it never stops anyone. On the first hard shot time holds almost still while the first ember waits in the spotlight, and runs again when it is tapped (or after 2.5 s). Each move is coached once ever per player (`UserDefaults`, `lanvi.revontulet.learned.<move>`); afterwards the game is wordless and only a ghost finger comes back after 4 s of nothing. A coached trace leaves `trace_start_ms` out; coached ember taps stay out of `reaction_ms`. Code: `RevontuletCoach.swift`, drawing in `RevontuletPainter.coachLayer`.
+
 ## Testing without a finger (launch arguments)
 
-- `-screen revontulet` opens the game directly (one line in `App/LanviApp.swift`). Always add `-offline`.
-- `-revontuletAuto` plays itself from Start to sleep through the engine's own inputs, with a soft finger dot. `-revontuletAuto hard`: the vein every round, every ember lit. `-revontuletAuto easy`: the crack twice, then the vein with both embers missed. `-revontuletAuto idle`: Start, then nothing (the clock breaks the wall, the fox finishes it, it falls asleep).
-- `-revontuletFreeze <beat>`: opens frozen on one beat for stills: `intro`, `choice`, `trace`, `sling`, `flight`, `impact`, `burst`, `celebrate`, `warmth`, `sleep`.
+- `-screen revontulet` opens the game directly, through the same router as Home, and lands on Home afterwards (one line in `App/LanviApp.swift`). Always add `-offline` in automated runs.
+- `-revontuletAuto` plays itself from start to sleep through the engine's own inputs, with a soft finger dot. `hard`: the vein every round, every ember lit. `easy`: the crack twice, then the vein with both embers missed. `idle`: nothing after the start (the clock breaks the wall, the fox finishes it, it falls asleep). `close`: closes the game in the middle of the burst.
+- `-revontuletCoach` forces the first-time coach on (once per run; with `-revontuletAuto` the pretend finger waits so it can be seen), `-revontuletNoCoach` turns it off.
+- `-revontuletFreeze <beat>`: opens frozen on one beat for stills: `intro`, `choice`, `trace`, `sling`, `flight`, `impact`, `burst`, `celebrate`, `warmth`, `sleep` (with `-revontuletCoach`, the coach of that beat).
+- `-revontuletSelfTest`: 400 randomised sessions through the engine (fast, slow, idle, lifting mid-trace, closing early, a second finger, taps during the burst, leaving the app); prints `revontulet selftest: ...`.
 
 ## Feel
 
