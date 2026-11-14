@@ -6,7 +6,7 @@ The jury are researchers. So: every claim can be checked, the demo is the real a
 
 ## The stage page
 
-The three-minute stage pitch is also an animated page: https://lanvi.app/pitch (eight scenes, 172 seconds planned, the clock starts on the first click; the page counts the speaker's words per scene and warns when they run longer than the planned time). The words, the order, the seconds per scene and the speaker's lines are all in one file, `engine/clinic_engine/web/static/pitch/index.html`; the comment at its top says how to edit it. Double-click the file to see a change at once. It reaches lanvi.app with the next deploy of the engine.
+The three-minute stage pitch is also an animated page: https://lanvi.app/pitch (eight scenes, 175 seconds planned, the clock starts on the first click; the page counts the speaker's words per scene and warns when they run longer than the planned time). The words, the order, the seconds per scene and the speaker's lines are all in one file, `engine/clinic_engine/web/static/pitch/index.html`; the comment at its top says how to edit it. Double-click the file to see a change at once. It reaches lanvi.app with the next deploy of the engine.
 
 Keys: right arrow or space for the next step, left arrow back, N for the speaker's lines, T for the clock, A to let it play by itself, R to restart, F for full screen.
 

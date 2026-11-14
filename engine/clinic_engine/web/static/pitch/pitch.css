@@ -297,6 +297,37 @@ span[data-step] { display: block; }
 .endcard { align-items: flex-start; gap: 22px; margin-top: 0; }
 .endcard .brand { font-size: 170px; }
 
+/* ---------- third pass ---------- */
+.realrow { display: grid; grid-template-columns: 980px 1fr; gap: 44px; align-items: center; }
+.realshot { margin: 0; display: flex; flex-direction: column; gap: 14px; }
+.realshot img { width: 100%; height: auto; border-radius: 20px; border: 2px solid var(--line); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55); display: block; }
+.realshot figcaption { font-size: 26px; color: var(--dim); }
+.realcols { display: flex; flex-direction: column; gap: 22px; }
+.realcol { padding: 24px 30px; gap: 14px; }
+.realcol ul { font-size: 31px; gap: 10px; padding-left: 28px; }
+.real-scene { gap: 46px; }
+.study { font-size: 52px; }
+.keptline { font-style: italic; text-shadow: 0 0 70px rgba(126, 240, 180, 0.55); transition-duration: 2s; }
+.returnphone .fox.inphone { width: 320px; margin: 150px auto 0; }
+.layer p { font-size: 30px; }
+.stat { align-items: flex-start; }
+.stat b { line-height: 1; }
+.stat span { font-size: 32px; padding-top: 12px; }
+.then.s { font-size: 28px; font-weight: 500; margin-top: 26px; }
+.notif-app { font-size: 18px; }
+
+.real-scene { gap: 34px; }
+.realshot figcaption { font-size: 28px; }
+.real-scene .twocol { gap: 34px; }
+.real-scene .realcol ul { font-size: 32px; }
+.study { font-size: 50px; }
+.layer p { font-size: 34px; }
+
+.real-scene { gap: 26px; padding-top: 70px; padding-bottom: 90px; }
+.study { font-size: 46px; line-height: 1.22; }
+.study .dim { font-size: 34px; }
+.real-scene .realcol { padding: 20px 28px; }
+
 @keyframes draw { to { stroke-dashoffset: 0; } }
 @keyframes appear { to { opacity: 1; } }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }

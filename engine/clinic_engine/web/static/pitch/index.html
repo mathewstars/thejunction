@@ -17,7 +17,7 @@
  TEXT        Change any words between the tags. Nothing else depends on them.
  TIME        data-seconds="24" is the time planned for the scene.
              All scenes together must stay at or under 180 (the microphone
-             is cut at 3:00). Today they add up to 172, so there are 8
+             is cut at 3:00). Today they add up to 175, so there are 5
              seconds of air. The page shows the sum and warns when it is over.
  CLICKS      data-step="1", "2", "3" ... is the click on which a thing appears.
              Things without data-step are there when the scene opens.
@@ -124,11 +124,11 @@
     <div class="signals" aria-hidden="true">
       <div class="signal" data-step="1">
         <span class="sig-name">How far she walks</span><span class="sig-src">Apple Health</span>
-        <svg viewBox="0 0 600 80" class="spark"><path class="spark-line" d="M0 30 C40 22 60 38 100 30 S160 24 200 32 260 26 300 34 360 30 400 44 460 50 500 58 560 60 600 64"/></svg>
+        <svg viewBox="0 0 600 80" class="spark"><path class="spark-line" d="M0 40 C40 30 60 48 100 40 S160 32 200 42 260 34 300 44 360 36 400 42 460 34 500 44 560 38 600 40"/></svg>
       </div>
       <div class="signal" data-step="1">
         <span class="sig-name">How fast she reacts</span><span class="sig-src">the game</span>
-        <svg viewBox="0 0 600 80" class="spark"><path class="spark-line" d="M0 52 C40 56 60 46 100 50 S160 54 200 48 260 52 300 44 360 46 400 36 460 30 500 26 560 22 600 18"/></svg>
+        <svg viewBox="0 0 600 80" class="spark"><path class="spark-line" d="M0 44 C30 50 70 34 110 42 S170 48 210 38 270 46 310 36 370 44 410 40 470 46 510 36 570 42 600 38"/></svg>
       </div>
       <div class="signal" data-step="1">
         <span class="sig-name">How her face moves</span><span class="sig-src">30 times a second</span>
@@ -173,7 +173,7 @@
         <p class="chart-note">about half as far as usual</p>
       </div>
       <ul class="plist" data-step="5">
-        <li class="p anna"><b>Anna K.</b><span class="lvl urgent">needs review today</span></li>
+        <li class="p anna"><b>Anna K.</b><span class="lvl urgent">outside her normal</span></li>
         <li class="p"><b>Mikko L.</b><span class="lvl">near own normal</span></li>
         <li class="p"><b>Elina P.</b><span class="lvl">near own normal</span></li>
       </ul>
@@ -189,7 +189,7 @@
   </section>
 
   <!-- ============ 5 · THE NIGHT ============ -->
-  <section class="scene night-scene" data-title="The night" data-seconds="28" data-aurora="0.06">
+  <section class="scene night-scene" data-title="The night" data-seconds="26" data-aurora="0.06">
     <div class="phone hers" aria-hidden="true">
       <div class="screen">
         <p class="phone-head">Tell Lanvi</p>
@@ -204,13 +204,13 @@
     <div class="col mid swap">
       <p class="l" data-gone="2">November.<br>One night,<br>she opens it.</p>
       <p class="l" data-step="2" data-gone="3">The help numbers<br>open at once.</p>
-      <p class="l" data-step="3" data-gone="4">Her clinic knows<br>by morning.<br><span class="dim">Not at her next appointment.</span></p>
-      <p class="l" data-step="4">Next morning,<br>her nurse calls.<br><span class="quote">“Anna, I read your note.<br>I'm here.”</span><span class="accent then" data-step="5">This time, she doesn't<br>wait six weeks.</span></p>
+      <p class="l" data-step="3" data-gone="4">By morning,<br>her clinic knows.<br><span class="dim">Not at her next appointment.</span></p>
+      <p class="l" data-step="4">Next morning,<br>her nurse calls.<br><span class="quote">“Anna, I read your note.<br>I'm here.”</span><span class="accent then" data-step="5">This time, she doesn't<br>wait six weeks.</span><span class="s dim then">One way it can go. What happens next is the clinic's decision.</span></p>
     </div>
     <div class="phone clinicphone" data-step="3" aria-hidden="true">
       <div class="screen">
         <div class="notif">
-          <p class="notif-app">Lanvi · clinic</p>
+          <p class="notif-app">Lanvi · clinic · next morning</p>
           <p class="notif-text">Needs review today</p>
           <p class="notif-sub">case label and a link · no health data</p>
         </div>
@@ -220,7 +220,7 @@
       One night she does open it. [pause]
       This is what a bad night can look like. [let it type; say nothing]
       The help numbers open at once. [the clinic's phone buzzes; three seconds]
-      Her clinic knows by morning, not at her next appointment.
+      By morning, her clinic knows.
       Next morning, her nurse calls. "Anna, I read your note. I'm here."
       This time, she doesn't wait six weeks.
       (If asked: what the clinic does after the message is the clinic's decision. The call is our story, not a feature.)
@@ -228,7 +228,7 @@
   </section>
 
   <!-- ============ 6 · THE MIND (the proof comes after the story) ============ -->
-  <section class="scene mind-scene" data-title="The mind" data-seconds="23" data-aurora="0.3">
+  <section class="scene mind-scene" data-title="The mind" data-seconds="29" data-aurora="0.3">
     <h2 class="l center">Behind the fox: what we call the mind.</h2>
     <div class="layers">
       <div class="layer code" data-step="1">
@@ -240,7 +240,7 @@
       <div class="layer model" data-step="2">
         <span class="tag">2 · two models</span>
         <h3>Two models weigh.</h3>
-        <p>The clinic's own, and Gemini.</p>
+        <p>The clinic's own model, and Gemini, which also reads the face numbers.</p>
       </div>
       <div class="arrow" data-step="3" aria-hidden="true"></div>
       <div class="layer code" data-step="3">
@@ -251,39 +251,42 @@
     </div>
     <div class="stats" data-step="4">
       <div class="stat"><b>0 of 107</b><span>flags ended lower when the case got worse</span></div>
-      <div class="stat honest"><b>6 of 107</b><span>changed when the same case was read twice</span></div>
+      <div class="stat honest"><b>6 of 107</b><span>changed when the same case was read twice. So no model may lower what the rules call urgent.</span></div>
       <p class="s dim">40 generated cases, read by the real models.</p>
     </div>
     <aside>
-      Behind the fox is what we call the mind.
+      Behind the fox, the mind.
       Rules we can explain raise the flag.
-      Two models weigh it: the clinic's own, and Gemini.
+      Two models weigh it: the clinic's own, and Gemini, which also reads the face numbers.
       Code guards both.
       On forty generated cases, a worse case never got a lower level.
-      The same case, read twice, changed six times in a hundred and seven.
+      But the same case, read twice, changed six times in a hundred and seven, so no model may lower what the rules call urgent.
     </aside>
   </section>
 
   <!-- ============ 7 · WHAT IS REAL ============ -->
-  <section class="scene real-scene" data-title="What is real" data-seconds="14" data-aurora="0.25">
+  <section class="scene real-scene" data-title="What is real" data-seconds="13" data-aurora="0.25">
+    <figure class="realshot">
+      <img src="img/clinician-page.webp" alt="The clinician page: Anna Korhonen outside her normal, movement down five days">
+      <figcaption>The clinician page itself, with example data. Open it now: lanvi.app</figcaption>
+    </figure>
     <div class="twocol">
-      <div class="realcol" data-step="1">
+      <div class="realcol">
         <span class="tag good">real today</span>
         <ul>
-          <li>Live at <b>lanvi.app</b>: the server, the clinician page, both models, the alert.</li>
-          <li>A real iPhone sent games, face numbers and Apple Health days through the whole path.</li>
+          <li>Server, clinician page, both models and the alert are live.</li>
+          <li>A real iPhone sent games, face numbers and health days.</li>
         </ul>
       </div>
-      <div class="realcol" data-step="1">
+      <div class="realcol">
         <span class="tag warn">not yet</span>
         <ul>
           <li>Anna is example data.</li>
           <li>Nothing is tested with patients.</li>
-          <li>Nothing here shows these numbers follow depression.</li>
         </ul>
       </div>
     </div>
-    <p class="l center study" data-step="2">That is the study we want to run with you.<br><span class="dim">30 people after TMS · 12 weeks · each compared only with themselves</span></p>
+    <p class="l center study" data-step="1">Whether these numbers follow depression<br>is the study we want to run with you.<br><span class="dim">30 people after TMS · 12 weeks · each compared only with themselves</span></p>
     <aside>
       It runs: you can open it now.
       Anna is invented, and nothing is tested with patients.
@@ -295,12 +298,12 @@
   <section class="scene close-scene" data-title="The light" data-seconds="14" data-aurora="1">
     <div class="phone returnphone" aria-hidden="true">
       <div class="screen">
-        <img class="fox inphone" src="img/fox-cheer.webp" alt="">
-        <p class="kept">I kept the light on for you.</p>
+        <img class="fox inphone" src="img/fox-love.webp" alt="">
       </div>
     </div>
     <div class="col mid swap">
-      <p class="l" data-gone="2">Days later,<br>she opens it again.</p>
+      <p class="l" data-gone="1">Days later,<br>she opens it again.</p>
+      <p class="xl keptline" data-step="1" data-gone="2">“I kept the light<br>on for you.”</p>
       <div class="endcard" data-step="2">
         <h1 class="brand">Lanvi</h1>
         <p class="l">The fox you rescue keeps<br>the light on for you.</p>
