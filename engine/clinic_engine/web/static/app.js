@@ -769,7 +769,7 @@
       const said = [rd.reactions, rd.expression, rd.eyes].filter((v) => v && !/^(steady|as_usual|unclear)$/.test(v)).map((v) => words(v).toLowerCase());
       const dropped = (r.dropped || []).length;
       return el("td", null, said.length ? said.join(" · ") : "as usual",
-        el("span", { class: "sub" }, (r.read_by === "level1" ? "local model" : "outside model") + ", checked by code" + (dropped ? " · " + dropped + " claim" + (dropped > 1 ? "s" : "") + " dropped" : "")));
+        el("span", { class: "sub" }, (r.read_by === "level1" ? "model 1" : "model 2") + ", checked by code" + (dropped ? " · " + dropped + " claim" + (dropped > 1 ? "s" : "") + " dropped" : "")));
     };
     const yes = (b) => (b ? "yes" : "no");
     const recent = (g) => ((g && g.sessions) || []).slice().reverse();
