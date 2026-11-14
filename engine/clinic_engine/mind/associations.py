@@ -442,7 +442,13 @@ def build_dataset(days: dict[str, dict], series: list[dict], activities: list[di
         notes.append("novelty")
     notes.append("single_person")
 
-    return {"start": first, "end": today, "measures": per_day,
+    if kind == "rating":
+        ref_points = sorted((date.fromisoformat(r["date"]), float(r["score"])) for r in ratings
+                            if r.get("scale") == ref_key
+                            and first <= date.fromisoformat(r["date"]) <= today)
+    else:
+        ref_points = sorted(ref_vals.items())
+    return {"start": first, "end": today, "measures": per_day, "ref_points": ref_points,
             "quality": {k: (round(u / of, 2) if of else None) for k, (u, of) in usable.items()},
             "reference": {"key": ref_key, "kind": kind, "n_ratings": n_ratings},
             "ref_values": ref_vals, "held": _held_days(items, today, tz),
@@ -840,6 +846,13 @@ def assemble(ds: dict, rows: list[dict], overall: dict, corrections: list[dict],
         "corrections": corrections,
         "hypotheses_reviewed_by_clinician": bool(h.get("reviewed_by_clinician")),
         "disclaimer": DISCLAIMER,
+        # For the clinician's charts only: day by day, what was measured. Never sent to a model.
+        "series": {
+            "first_day": ds["start"].isoformat(), "last_day": ds["end"].isoformat(),
+            "reference": [[(d - ds["start"]).days, round(v, 2)] for d, v in ds.get("ref_points", [])],
+            "measures": {r["key"]: [[(d - ds["start"]).days, round(v, 3)]
+                                    for d, v in sorted(ds["measures"].get(r["key"], {}).items())]
+                         for r in rows if r["status"] == "tested"}},
         "inputs": {"reference": ref["key"], "n_days": ds["n_days"],
                    "n_sessions": ds["n_sessions"], "generated_at": now.isoformat(),
                    "model": model_name},

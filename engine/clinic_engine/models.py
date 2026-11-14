@@ -741,4 +741,7 @@ class AssociationsOut(BaseModel):
     corrections: list[AssocCorrectionOut] = Field(default_factory=list)
     hypotheses_reviewed_by_clinician: bool = False
     disclaimer: str
+    series: Optional[dict] = Field(None, description="Day-by-day values behind the statistics, "
+                                   "for charts: first_day, last_day, reference [[day, value]] and "
+                                   "measures {key: [[day, value]]}; day counts from first_day.")
     inputs: Optional[AssocInputsOut] = None

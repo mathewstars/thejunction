@@ -29,7 +29,8 @@ def build_request(settings: Settings, pack: Pack) -> tuple[str, dict, dict]:
         "systemInstruction": {"parts": [{"text": system}]},
         "contents": [{"role": "user", "parts": parts}],
         "generationConfig": {"temperature": 0, "responseMimeType": "application/json",
-                             "maxOutputTokens": 800},
+                             # the model thinks before it answers and that counts here
+                             "maxOutputTokens": 4000},
     }
     headers = {"x-goog-api-key": settings.gemini_api_key}
     return url, headers, body
