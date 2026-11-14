@@ -151,6 +151,14 @@ struct WhatHelpsView: View {
     }
 
     private func runDemo() async {
+        // `-chipsTest`: select every chip, then clear each one (recordings of the chips).
+        if ProcessInfo.processInfo.arguments.contains("-chipsTest") {
+            for id in ["music", "moving", "people", "quiet", "music", "moving", "people", "quiet"] {
+                try? await Task.sleep(for: .seconds(0.8))
+                toggle(id)
+            }
+            return
+        }
         guard demo else { return }
         try? await Task.sleep(for: .seconds(1.6))
         toggle("quiet")
