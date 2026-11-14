@@ -356,3 +356,17 @@ def test_a_clinic_rule_ends_by_itself():
     # After its time the rule is no longer read, and nothing has to be removed by hand.
     assert env.mind.clinic_rules(env.repo(), env.clock.now() + timedelta(days=3, minutes=1)) == []
     assert len(env.mind.clinic_rules(env.repo(), env.clock.now() + timedelta(days=2))) == 1
+
+
+def test_a_made_up_rule_name_keeps_the_item_and_drops_the_rule():
+    """A model that writes a word instead of a rule's ref ("clinic_rules") does not cost the
+    whole answer: the item is kept, judged as without a rule, and the slip is recorded."""
+    from clinic_engine.mind.gates import INPUT_GATE, OUTPUT_GATE
+    payload = {"items": [{"ref": "a1", "kind": "deviation", "held_days": 3, "rules_level": "attention",
+                          "facts": {}}]}
+    pack = type("P", (), {"level": 1, "ref_map": {"a1": "x"}, "payload": payload})()
+    raw = '{"items":[{"ref":"a1","level":"attention","reason":"clinic_rule","rule":"clinic_rules"}]}'
+    res = OUTPUT_GATE.triage(raw, pack)
+    assert res.ok and res.value["a1"]["rule"] is None and res.value["a1"]["reason"] == "as_the_rules"
+    assert [r.reason for r in res.refusals] == ["unknown_clinic_rule"]
+    assert "never write \"rule\"" in INPUT_GATE.SYSTEM_TRIAGE
