@@ -37,7 +37,6 @@ struct WhatHelpsView: View {
                 PaintedWorld(scene: store.worldScene)
 
                 ZStack {
-                    HomeTailGlow(pose: pose, glow: 0.35 + 0.15 * Double(chosen.count), foxSize: fox)
                     LanviView(pose: pose, size: fox, bounceTrigger: bounce)
                 }
                 .frame(width: fox * 2, height: fox * 2)

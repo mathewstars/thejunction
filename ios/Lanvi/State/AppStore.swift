@@ -415,8 +415,8 @@ final class AppStore {
         line = out.line.text
         celebration = HomeCelebration(kind: kind, xpGained: out.xpGained, line: out.line.text,
                                   startedWandering: out.wandering == .away && t.lanvi.wandering.state != .away)
-        // Let the light flow from the card into the tail before the numbers move.
-        try? await Task.sleep(for: .milliseconds(out.xpGained > 0 ? 950 : 300))
+        // Let Lanvi's happy hop start, then the numbers move.
+        try? await Task.sleep(for: .milliseconds(out.xpGained > 0 ? 500 : 300))
         withAnimation(.spring(response: 1.1, dampingFraction: 0.82)) {
             t.lanvi.xp = out.xpTotal
             t.lanvi.stage = out.stage

@@ -104,7 +104,7 @@ actor DemoBackend: LanviBackend {
         switch (a.type, a.completed) {
         case (.focus, true): lineText = "Thanks for playing with me. The sparks liked that."
         case (.focus, false): lineText = "Thanks for playing. Every spark counts."
-        case (.breathing, true): lineText = "Nice."
+        case (.breathing, true): lineText = "That was calm and lovely. Thank you for breathing with me."
         case (.breathing, false): lineText = "Thank you for breathing with me."
         case (.checkin, _):
             lineText = a.plan != nil ? "Sounds nice. I will ask you about it tomorrow."

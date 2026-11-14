@@ -1,61 +1,5 @@
 import SwiftUI
 
-// MARK: - Light flowing into the tail
-
-/// After an activity: one soft comet of light rises from the button along a
-/// gentle arc into Lanvi's tail, where the glow then grows.
-struct HomeLightStream: View {
-    var from: CGPoint
-    var to: CGPoint
-    var start: Date
-    static let duration: Double = 1.05
-
-    var body: some View {
-        TimelineView(.animation) { context in
-            Canvas { ctx, _ in
-                let age = context.date.timeIntervalSince(start)
-                guard age >= 0, age < Self.duration + 0.2 else { return }
-                let p = min(age / Self.duration, 1)
-                let head = easeInOut(p)
-                let control = CGPoint(x: (from.x + to.x) / 2 + (to.x > from.x ? -70 : 70),
-                                      y: min(from.y, to.y) - 60)
-                let fadeOut = p > 0.9 ? (1 - p) / 0.1 : 1
-                var g = ctx
-                g.blendMode = .plusLighter
-                // The tail: many overlapping soft discs, so it reads as one ribbon of light.
-                let steps = 28
-                for k in stride(from: steps, through: 0, by: -1) {
-                    let lag = Double(k) / Double(steps) * 0.22
-                    let q = max(0, head - lag)
-                    let pt = bezier(from, control, to, q)
-                    let w = 1 - Double(k) / Double(steps)          // 1 at the head, 0 at the end
-                    let r = CGFloat(3 + 9 * w)
-                    let a = 0.10 + 0.35 * w * w
-                    let mint = Color(hex: 0x7CF5C4), violet = Color(hex: 0xA98BFF)
-                    let c = k < steps / 2 ? mint : violet
-                    g.fill(Path(ellipseIn: CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2)),
-                           with: .radialGradient(Gradient(colors: [c.opacity(a * fadeOut), c.opacity(0)]),
-                                                 center: pt, startRadius: 0, endRadius: r))
-                }
-                // The head: a small bright heart of light.
-                let hp = bezier(from, control, to, head)
-                g.fill(Path(ellipseIn: CGRect(x: hp.x - 7, y: hp.y - 7, width: 14, height: 14)),
-                       with: .radialGradient(Gradient(colors: [.white.opacity(0.9 * fadeOut), Color(hex: 0x7CF5C4).opacity(0)]),
-                                             center: hp, startRadius: 0, endRadius: 7))
-            }
-        }
-        .allowsHitTesting(false)
-    }
-
-    private func bezier(_ a: CGPoint, _ c: CGPoint, _ b: CGPoint, _ t: Double) -> CGPoint {
-        let t = CGFloat(t), u = 1 - t
-        return CGPoint(x: u * u * a.x + 2 * u * t * c.x + t * t * b.x,
-                       y: u * u * a.y + 2 * u * t * c.y + t * t * b.y)
-    }
-
-    private func easeInOut(_ p: Double) -> Double { p < 0.5 ? 4 * p * p * p : 1 - pow(-2 * p + 2, 3) / 2 }
-}
-
 // MARK: - Growing up
 
 /// A short celebration when Lanvi reaches a new stage. Growth never goes back.
@@ -126,7 +70,6 @@ struct HomeGrowUpMoment: View {
                 VStack(spacing: 14) {
                     Spacer()
                     ZStack {
-                        HomeTailGlow(pose: .cheer, glow: 1, foxSize: fox)
                         LanviView(pose: .cheer, size: fox, bounceTrigger: bounce)
                     }
                     .frame(width: w, height: fox * 1.3)

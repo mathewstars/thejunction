@@ -26,7 +26,6 @@ struct HomeMindScreen: View {
                         .padding(.bottom, fox * 0.55)
                         .animation(.spring(response: 0.45, dampingFraction: 0.7), value: say)
                     ZStack {
-                        HomeTailGlow(pose: pose, glow: 0.5, foxSize: fox)
                         LanviView(pose: pose, size: fox, bounceTrigger: bounce)
                     }
                     .frame(width: fox, height: fox)

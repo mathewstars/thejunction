@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		053EBA860422BF2F170DD9E5 /* APIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D93B9957583CC3DB996A3C8 /* APIModels.swift */; };
 		09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB97273333C0DBAE7FC11418 /* FocusEngine.swift */; };
-		0BEDEA33963AF45C85B22E0B /* HomeTailGlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 752F0D6EA04E94F9779AC997 /* HomeTailGlow.swift */; };
 		14D52ABE9497798035286052 /* LanviArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B5136458E518ED70EBBEF0 /* LanviArt.swift */; };
 		151BF5444E01D40CF03FB960 /* ChatLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84158FA0F8C7B4E9A416B47C /* ChatLink.swift */; };
 		1D2F0537C7AAB50875AA6F3B /* ActivityRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F685787902006429E41D5A7 /* ActivityRouter.swift */; };
@@ -77,7 +76,6 @@
 		60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Nunito-OFL.txt"; sourceTree = "<group>"; };
 		607DA0BDB68AC9211EAADA43 /* HomeParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeParts.swift; sourceTree = "<group>"; };
 		743C0B865552B2E8824FA20B /* LanviRig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviRig.swift; sourceTree = "<group>"; };
-		752F0D6EA04E94F9779AC997 /* HomeTailGlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeTailGlow.swift; sourceTree = "<group>"; };
 		7726B251A5F3DA944BA275A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfig.swift; sourceTree = "<group>"; };
 		7D93B9957583CC3DB996A3C8 /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
@@ -255,7 +253,6 @@
 				15B8C888729DE19EB41449A4 /* HomeOverlays.swift */,
 				607DA0BDB68AC9211EAADA43 /* HomeParts.swift */,
 				166A2EF8FECA301AACE53B2A /* HomeSheets.swift */,
-				752F0D6EA04E94F9779AC997 /* HomeTailGlow.swift */,
 				CD8451A836E61C66138838EE /* PaintedWorld.swift */,
 			);
 			path = Home;
@@ -371,7 +368,6 @@
 				B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */,
 				922984AB73EB11C13340245F /* HomeParts.swift in Sources */,
 				5049EED66C9F32131E68F66D /* HomeSheets.swift in Sources */,
-				0BEDEA33963AF45C85B22E0B /* HomeTailGlow.swift in Sources */,
 				471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */,
 				A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */,
 				14D52ABE9497798035286052 /* LanviArt.swift in Sources */,

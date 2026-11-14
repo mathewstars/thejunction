@@ -70,12 +70,10 @@ struct HomeView: View {
     @State private var sheet: Sheet?
     @State private var pose: LanviPose = .curious
     @State private var bounce = 0
-    @State private var burst: Date?
     @State private var pop: HomeCelebration?
     @State private var celebrating = false
     @State private var showGrowth = false
     @State private var helpBlock: API.CrisisBlock?
-    @State private var stream: (from: CGPoint, to: CGPoint, start: Date)?
     @State private var size: CGSize = .zero
     @State private var insets = EdgeInsets()
     @State private var entrance: CGFloat = 0
@@ -97,13 +95,11 @@ struct HomeView: View {
 
                 // Lanvi, large on the snow, with the fox fire behind the tail.
                 ZStack {
-                    HomeTailGlow(pose: pose, glow: store.glow, foxSize: L.fox, burst: burst, layer: .back)
                     LanviView(pose: pose, size: L.fox, bounceTrigger: bounce)
                         .lanviReaction(reaction, trigger: reactTick)
                         .lanviMood(restingMood)
                         .lanviLookAt(look)
                         .onTapGesture { tapFox() }
-                    HomeTailGlow(pose: pose, glow: store.glow, foxSize: L.fox, burst: burst, layer: .front)
                 }
                 .frame(width: L.fox * 2, height: L.fox * 2)
                 .position(x: L.foxCenter.x + entrance, y: L.foxCenter.y)
@@ -158,11 +154,6 @@ struct HomeView: View {
                     .opacity(arrived && !showGrowth ? 1 : 0)
                     .offset(y: arrived ? 0 : 24)
 
-                if let stream {
-                    HomeLightStream(from: stream.from, to: stream.to, start: stream.start)
-                        .ignoresSafeArea()
-                }
-
                 if let stage = store.grewUp {
                     HomeGrowUpMoment(stage: stage) { store.grewUp = nil }
                         .transition(.opacity)
@@ -208,7 +199,6 @@ struct HomeView: View {
         .onChange(of: store.cheerTick) { _, _ in
             withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .cheer }
             react(.happy)
-            burst = Date()
             haptic &+= 1
             Task {
                 try? await Task.sleep(for: .seconds(2.2))
@@ -492,33 +482,24 @@ struct HomeView: View {
         }
     }
 
+    /// The reward: the growth bar slides up, Lanvi hops for joy, "+10 XP" pops,
+    /// the bar fills and the day count ticks. No light effects on the fox.
     private func celebrate(_ c: HomeCelebration) {
         celebrating = true
-        let L = Layout(size: size, insets: insets, away: false)
-        let tail = HomeTailGlow.tailOffset(pose: .cheer, foxSize: L.fox)
-        let to = CGPoint(x: L.foxCenter.x + tail.x, y: L.foxCenter.y + tail.y)
         if c.xpGained > 0 {
-            // Eyes lead: Lanvi looks down at the light coming up from the button.
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { look = UnitPoint(x: 0.45, y: 1.25) }
-            stream = (CGPoint(x: size.width / 2, y: L.buttonY), to, Date())
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { showGrowth = true }
         }
         Task {
-            if c.xpGained > 0 { try? await Task.sleep(for: .seconds(HomeLightStream.duration - 0.1)) }
-            // The light arrives: a happy hop, the light opens, +XP, the bar fills.
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { look = nil }
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = c.xpGained > 0 ? .cheer : .love }
+            try? await Task.sleep(for: .milliseconds(c.xpGained > 0 ? 350 : 150))
             react(.happy)
-            burst = Date()
             haptic &+= 1
-            if c.xpGained > 0 { pop = c }
-            try? await Task.sleep(for: .milliseconds(800))
-            stream = nil
-            try? await Task.sleep(for: .seconds(2.2))
+            if c.xpGained > 0 {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) { pop = c }
+            }
+            try? await Task.sleep(for: .seconds(2.8))
             withAnimation(.easeOut(duration: 0.3)) { pop = nil }
             withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { showGrowth = false }
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .love }
-            try? await Task.sleep(for: .seconds(1.2))
+            try? await Task.sleep(for: .seconds(0.8))
             while store.grewUp != nil { try? await Task.sleep(for: .milliseconds(200)) }
             celebrating = false
             store.celebration = nil
@@ -528,9 +509,9 @@ struct HomeView: View {
 
     // MARK: Demo and screenshots
 
-    /// `-demo` walk-through (Home part): today's thing, Breathe with Lanvi, the light
-    /// flows into the tail, Lanvi grows up, today is done, Lanvi runs off to wander
-    /// and comes back with a story. `-demoPlay <focus|breathing|checkin>` sends one
+    /// `-demo` walk-through (Home part): today's thing, Breathe with Lanvi, the
+    /// reward, Lanvi grows up, today is done, Lanvi runs off to wander and comes
+    /// back with a story, then a word in the chat. `-demoPlay <focus|breathing|checkin>` sends one
     /// activity at once; `-demoOpen <help|story|mind|chat|more|growth|focus|breathing|checkin>`
     /// opens that screen; `-demoAnswer a|b` answers the waiting story.
     private func runDemo() async {

@@ -20,8 +20,6 @@ struct HomeHelpScreen: View {
             ZStack(alignment: .top) {
                 PaintedWorld(scene: store.worldScene)
 
-                HomeTailGlow(pose: .love, glow: 0.55, foxSize: fox)
-                    .position(x: geo.size.width / 2, y: hill - fox / 2 + 12)
                 LanviView(pose: .love, size: fox, bounceTrigger: bounce)
                     .position(x: geo.size.width / 2, y: hill - fox / 2 + 12)
 
@@ -113,7 +111,6 @@ struct HomeStoryScreen: View {
                 PaintedWorld(scene: store.worldScene)
 
                 ZStack {
-                    HomeTailGlow(pose: pose, glow: 0.8, foxSize: fox)
                     LanviView(pose: pose, size: fox, bounceTrigger: bounce)
                 }
                 .frame(width: fox * 2, height: fox * 2)
