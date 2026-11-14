@@ -131,7 +131,8 @@ at(65.7, lambda d: chart("chart_b.mp4", d))
 at(76.3, lambda d: still("chart_end.png", d, z0=1.0, z1=1.07, fx=1.0, fy=0.5, tag="tag_ex.png"))
 at(78.0, lambda d: clip(K("k5"), d, ss=0.2, zoom=1.9, fx=0.12, fy=0.8))    # the boots alone
 at(80.4, lambda d: clip(K("k4"), d, ss=0.4, cap=("cap_help.png", 1.3)))
-at(84.1, lambda d: clip(K("k7"), d, ss=0.6))
+at(84.1, lambda d: clip(K("k7"), d, ss=1.8))
+at(85.5, lambda d: still("c_tg.png", d, z0=1.0, z1=1.05, fx=0.3, fy=1.0, tag="tag_none.png"))   # the real alert
 at(87.9, lambda d: still(S("morning"), d, z0=1.0, z1=1.05, fx=0.6, fy=0.5))  # the phone buzzes
 at(89.3, lambda d: clip(K("k8"), d, speed=0.78))                            # "Anna? I read your note. I'm here."
 # 7 honest
