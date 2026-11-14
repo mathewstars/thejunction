@@ -42,6 +42,7 @@
   const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   function parseDay(s) { const p = String(s).slice(0, 10).split("-"); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
   function dayShort(s) { if (!s) return "–"; const d = parseDay(s); return d.getUTCDate() + " " + MONTHS[d.getUTCMonth()]; }
+  function clock(iso) { const d = new Date(iso); return isNaN(d) ? "" : String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
   function dayLong(s) { const d = parseDay(s); return DAYS[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS[d.getUTCMonth()]; }
   function daysBetween(a, b) { return Math.round((parseDay(b) - parseDay(a)) / 86400000); }
   function ago(day, today) {
@@ -926,9 +927,10 @@
     const g = games.slice().reverse().map((x) => {
       const rv = x.revontulet, rounds = rv.rounds || [], own = x.revontulet_own || {};
       const sp = rounds.map((r) => r.trace_mean_speed_pt_s).filter((v) => typeof v === "number");
-      const day = String(x.date).slice(0, 10), k = seen[day] = (seen[day] || 0) + 1;   // a second game on a day sits a little later
+      const day = String(x.date).slice(0, 10), k = seen[day] = (seen[day] || 0) + 1;
+      const at = Date.parse(x.started_at);   // the real start time; without one, a second game on a day sits a little later
       if (rv.pt_per_cm) { if (dens !== null && Math.abs(rv.pt_per_cm - dens) > 0.5) phone += 1; dens = rv.pt_per_cm; }
-      return { t: Date.parse(day + "T00:00:00Z") + (k - 1) * 4 * 36e5, date: x.date, phone: phone,
+      return { t: isNaN(at) ? Date.parse(day + "T00:00:00Z") + (k - 1) * 4 * 36e5 : at, date: x.date, at: x.started_at, phone: phone,
         hard: rounds.length >= 3 ? rounds.filter((r) => r.effort === "hard").length : null,  // a game cut short has too few choices
         z: own.z || {}, u: own.usual || {},
         speed: sp.length && rv.pt_per_cm ? sp.reduce((s, v) => s + v, 0) / sp.length / rv.pt_per_cm : null };
@@ -938,8 +940,10 @@
     const narrow = window.innerWidth < 640;
     const W = narrow ? 430 : 1000, PL = narrow ? 44 : 64, PR = 12, AT = 26, AH = 62, BT = AT + AH + 50, BH = narrow ? 96 : 116;
     const H = (lower ? BT + BH : AT + AH) + 26;
-    const t0 = g[0].t, span = Math.max(1, g[g.length - 1].t - t0);
-    const x = (p) => PL + ((p.t - t0) / span) * (W - PL - PR);
+    // Games sit in the order played, evenly spaced: by the clock, seven games in one evening would pile up
+    // at one end of a chart that also holds games from other weeks.
+    g.sort((a, b) => a.t - b.t).forEach((p, i) => { p.i = i; });
+    const x = (p) => PL + (p.i / (g.length - 1)) * (W - PL - PR);
     const ya = (v) => AT + (1 - v / 3) * AH;
     const lo = lower ? Math.floor(Math.min.apply(null, sv) - 0.3) : 0, hi = lower ? Math.ceil(Math.max.apply(null, sv) + 0.3) : 1;
     const yb = (v) => BT + (1 - (Math.max(lo, Math.min(hi, v)) - lo) / ((hi - lo) || 1)) * BH;
@@ -992,9 +996,10 @@
       g.forEach((p) => { if (p.speed !== null) s.appendChild(svg("circle", { class: off(p.z.trace_speed_cm_s) ? "pt pt-high" : "pt", cx: x(p), cy: yb(p.speed), r: narrow ? 3 : 4 },
         svg("title", null, dayShort(p.date) + ": " + num(p.speed, 1) + " cm/s"))); });
     }
+    const oneDay = String(g[0].date).slice(0, 10) === String(g[g.length - 1].date).slice(0, 10) && clock(g[0].at) !== "";
     const ticks = narrow ? [0, g.length - 1] : [0, Math.round((g.length - 1) / 3), Math.round(2 * (g.length - 1) / 3), g.length - 1];
     ticks.filter((v, i, a) => a.indexOf(v) === i).forEach((i, k, a) => s.appendChild(svg("text", { x: x(g[i]), y: H - 6,
-      "text-anchor": k === 0 ? "start" : k === a.length - 1 ? "end" : "middle" }, dayShort(g[i].date))));
+      "text-anchor": k === 0 ? "start" : k === a.length - 1 ? "end" : "middle" }, oneDay ? (k === 0 ? dayShort(g[i].date) + " " : "") + clock(g[i].at) : dayShort(g[i].date))));
     return s;
   }
   // Revontulet's own measures (docs/revontulet-measures.md): stored and shown, not used to judge a day.
@@ -1016,7 +1021,7 @@
       const traced = rounds.filter((r) => typeof r.trace_mean_speed_pt_s === "number" || typeof r.trace_ms === "number");
       const wall = rv.fox_finished === true ? "by the game, time ran out"
         : rv.broke_through_s != null ? (rv.fox_finished === false ? "by the person, " : "") + "after " + num(rv.broke_through_s) + " s"
-        : rv.fox_finished === false || x.completed === false ? "not broken" : null;
+        : rv.fox_finished === false || x.completed === false ? "not broken" : null;   // no burst time and not finished by the game
       return { rounds: rounds.length, hard: rounds.filter((r) => r.effort === "hard").length,
         choose: choose === null ? null : num(choose / 1000, 1) + " s",
         trace: speed(mean(vals(rounds, "trace_mean_speed_pt_s")), rv), traced: traced.length, lifts: sum(traced, "trace_lifts"),
@@ -1094,10 +1099,15 @@
     const newPhone = {};
     let known = null;
     chrono.forEach((x) => { const b = x.revontulet.pt_per_cm; if (!b) return; if (known !== null && Math.abs(known - b) > 0.5) newPhone[x.id] = true; known = b; });
+    const perDay = {};
+    got.forEach((x) => { const d = String(x.date).slice(0, 10); perDay[d] = (perDay[d] || 0) + 1; });
+    const whenOf = (x) => dayShort(x.date) + (perDay[String(x.date).slice(0, 10)] > 1 && clock(x.started_at) ? " " + clock(x.started_at) : "");
+    // A game whose wall was broken was played to the end, also when the person left during the strokes.
+    const cutShort = (x) => x.completed === false && x.revontulet.broke_through_s == null && x.revontulet.fox_finished !== true;
     const row = (x) => {
       const f = facts(x);
       return el("tr", null,
-        el("td", { class: "num nowrap" }, dayShort(x.date), x.completed === false ? el("span", { class: "sub" }, "not finished") : null,
+        el("td", { class: "num nowrap" }, whenOf(x), cutShort(x) ? el("span", { class: "sub" }, "not finished") : null,
           newPhone[x.id] ? el("span", { class: "sub" }, "new phone") : null),
         el("td", null, dash(f.wall)),
         el("td", { class: "r num" }, f.rounds ? f.hard + " of " + f.rounds : dash(null)),
@@ -1110,7 +1120,7 @@
     const rc = revontuletChart(got);
     const fold = (title, ...paras) => el("details", { class: "more" }, el("summary", null, title), paras.map((p) => el("p", { class: "muted small" }, p)));
     return panel("Revontulet: choices and finger movement", got.length, lines, rc,
-      rc ? el("p", { class: "muted small" }, "One point is one game. Shaded: the range of this person’s games before each one (up to 20). Dashed: the middle of their start, games 3 to 12" + (mine.length < got.length ? " on the newest phone" : "") + ". Yellow means different from the recent games, faster or slower. It does not mean worse.") : null,
+      rc ? el("p", { class: "muted small" }, "One point is one game, in the order played. Shaded: the range of this person’s games before each one (up to 20). Dashed: the middle of their start, games 3 to 12" + (mine.length < got.length ? " on the newest phone" : "") + ". Yellow means different from the recent games, faster or slower. It does not mean worse.") : null,
       table(["Date", "Wall broken", { t: "Harder crack", r: 1 }, { t: "Time to choose", r: 1 }, { t: "Tracing speed", r: 1 },
         { t: "Finger lifts", r: 1 }, { t: "Embers tapped", r: 1 }, { t: "Fox strokes", r: 1 }], got.map(row), null, { id: "revontulet" }),
       el("p", { class: "muted small" }, "A record, not a result. A change here is a reason to ask the person, not a sign of relapse. Getting used to the game changes these numbers too. They do not change how the day is judged and have not been tested as a measure of mood."),
