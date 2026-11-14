@@ -163,3 +163,40 @@ def test_fine_and_raw_can_come_together(env):
     assert post(env, rec).status_code == 200
     stored = env.repo().get("activities/act-fine-000008.json")
     assert stored["face_source"] == "raw" and stored["face_fine"]["quality"] == "good"
+
+
+# ---- the workbench for the detection work (fine_reference) ---------------------------------
+
+def test_code_finds_the_planted_movements_and_reports_nothing_else():
+    from clinic_engine import fine_reference as R
+    res = R.run(sessions=10)
+    assert res["clean"]["missed"] == 0 and res["clean"]["extra"] == 0
+    # Slow expressions and a higher noise floor do not become brief movements.
+    assert res["expression"]["extra"] == 0 and res["noisy"]["extra"] == 0
+    # Known weakness, kept visible: after the phone shifts, the usual level is
+    # judged over the whole session and some movements are missed.
+    assert res["step"]["extra"] == 0 and res["step"]["missed"] > 0
+
+
+def test_a_models_reply_is_checked_item_by_item():
+    from clinic_engine import fine_reference as R
+    raw, truth = R.make_session(1003)
+    said = [{"region": t["region"], "start_s": t["start_s"], "end_s": t["end_s"]} for t in truth]
+    reply = {"twitches": said + [{"region": "brow_left", "start_s": 40.0, "end_s": 40.2},
+                                 {"region": "brow_left", "start_s": 90.0, "end_s": 90.2},
+                                 {"region": "ear", "start_s": 1.0, "end_s": 1.1}]}
+    v = R.verify(reply, raw)
+    assert v["ok"] and v["confirmed"] == said and v["code_only"] == []
+    assert [d["reason"] for d in v["dropped"]] == ["not_in_the_numbers", "outside_the_recording",
+                                                   "not_the_asked_shape"]
+    assert R.verify({"twitches": "none"}, raw)["ok"] is False
+    assert R.verify({"twitches": []}, raw)["code_only"] == face_fine.twitches(raw)
+
+
+def test_the_payload_holds_numbers_and_fixed_names_only():
+    from clinic_engine import fine_reference as R
+    raw, _ = R.make_session(1001)
+    p = R.payload(raw)
+    assert set(p) == {"rate_hz", "regions", "noise_mm", "frames"} and p["regions"] == raw["regions"]
+    assert len(p["frames"]) == 900 and all(len(r) == 1 + len(raw["regions"]) for r in p["frames"])
+    assert R.PROMPT.read_text("utf-8").startswith("DRAFT")

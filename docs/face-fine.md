@@ -115,6 +115,25 @@ These thresholds are first guesses. They are not set on recordings of people. Be
 
 `GET /v1/clinic/patients/{id}/activities/{activity_id}/face-fine` (clinician session): `summary`, `info` and `stream`. 404 when the activity was sent without `face_fine`. Each download is written to the audit log with the activity id and no values.
 
+## For the detection work: a workbench that already runs
+
+Ready before any real recording, in `engine/`. Nothing in it is used by the running server.
+
+```
+python -m clinic_engine.fine_reference                     # the code rule on generated sessions
+python -m clinic_engine.fine_reference --payload 1003      # instruction + object for a model
+python -m clinic_engine.fine_reference --reply 1003 reply.json    # check a model's answer
+python -m clinic_engine.fine_reference --stream stream.json       # the same on a stored stream
+```
+
+- **Generated sessions** with brief movements planted at known places, plus three kinds that must not be reported: slow expressions, a step (the phone moved) and a higher noise floor.
+- **The code rule** (`face_fine.twitches`) scored against the planted places. On 14 November: clean 196 of 196 found and nothing else reported; expressions and noise the same; **after a step it missed 9 of 28**, because the usual level is taken over the whole session. That is the first thing to improve, and a test keeps it visible.
+- **A draft instruction** for a model, `engine/clinic_engine/data/fine_prompt.txt`, and `payload()`, which builds what the model would be given (numbers and fixed names only, about 40 KB for 45 seconds).
+- **`verify()`**: every item a model reports is checked against the numbers. An item that code also finds is confirmed; every other item is dropped with its reason. Paste a reply from any model into a file and run `--reply` to see it work.
+- **With real data**: save the `stream` from the download below and run `--stream`.
+
+Not done on purpose: sending the stream to the server's level 2. That needs its own input and output gate in `mind/gates.py`, as the frame reading has, and it should be written once real streams show what the payload has to carry.
+
 ## What it is not
 
 It does not describe mood, symptoms or risk, and nothing on the server treats it as if it did. It is a measurement to compare with the blend shapes and, later and only with consent, with the weekly questionnaire.

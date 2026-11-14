@@ -113,20 +113,47 @@ def _runs(mask: list[bool]) -> list[tuple[int, int]]:
     return runs
 
 
+def _twitch_runs(y: list[float], rate: float, noise: float) -> tuple[float, list[tuple[int, int]]]:
+    """The region's usual level and its brief excursions as (first frame, frames)."""
+    level = _pct(sorted(y), 0.5)
+    floor = max(TWITCH_FLOOR_MM, TWITCH_NOISE_FACTOR * noise)
+    max_frames = max(2, int(round(TWITCH_MAX_S * rate)))
+    return level, [r for r in _runs([v > level + floor for v in y]) if 2 <= r[1] <= max_frames]
+
+
 def _region(x: list[float], rate: float, noise: float) -> dict:
     y = _median3(x)
     s = sorted(y)
-    level = _pct(s, 0.5)
+    level, twitches = _twitch_runs(y, rate, noise)
     reach = _pct(s, 0.95) - level
     steps = sorted(abs(b - a) * rate for a, b in zip(y, y[1:])) or [0.0]
-    floor = max(TWITCH_FLOOR_MM, TWITCH_NOISE_FACTOR * noise)
-    max_frames = max(2, int(round(TWITCH_MAX_S * rate)))
-    twitches = [r for r in _runs([v > level + floor for v in y]) if 2 <= r[1] <= max_frames]
     minutes = len(y) / rate / 60.0
     return {"level_mm": round(level, 3),          # where the region usually sits in this session
             "reach_mm": round(reach, 3),          # how far above that it goes (95th percentile)
             "speed_mm_s": round(_pct(steps, 0.95), 2),   # how fast it moves at its fastest
             "twitches_per_min": round(len(twitches) / minutes, 2) if minutes > 0 else None}
+
+
+def twitches(raw: dict) -> list[dict]:
+    """Every brief movement code finds, with its place in time: what a second
+    reader (a model, or a person marking a plot) is compared with. Times are
+    seconds from the first frame. Untracked frames are skipped by leaving the
+    rows out, as in the summary, so use it on streams that were tracked
+    throughout when exact times matter."""
+    rate = float(raw["rate_hz"])
+    tracked = raw.get("tracked")
+    keep = [i for i in range(len(raw["samples"])) if tracked is None or tracked[i]]
+    stated = raw.get("noise_mm")
+    noise = DEFAULT_NOISE_MM if stated is None else float(stated)
+    out = []
+    for j, name in enumerate(raw["regions"]):
+        y = _median3([raw["samples"][i][j] for i in keep])
+        level, runs = _twitch_runs(y, rate, noise)
+        for first, n in runs:
+            out.append({"region": name, "start_s": round(keep[first] / rate, 2),
+                        "end_s": round((keep[first + n - 1] + 1) / rate, 2),
+                        "peak_mm": round(max(y[first:first + n]) - level, 2)})
+    return sorted(out, key=lambda t: (t["start_s"], t["region"]))
 
 
 def summarize(raw: dict) -> dict:
