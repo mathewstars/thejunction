@@ -212,7 +212,7 @@ struct HomeStoryScreen: View {
             sending = false
             guard ok else {
                 withAnimation(LanviTiming.pop) { chosen = nil }
-                pose = .meh
+                pose = .curious
                 return
             }
             pose = .love

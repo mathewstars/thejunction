@@ -41,12 +41,10 @@ struct WhatHelpsView: View {
                 }
                 .frame(width: fox * 2, height: fox * 2)
                 .position(x: geo.size.width / 2, y: hill - fox / 2 + 14)
-                .animation(.spring(response: 0.8, dampingFraction: 0.8), value: chosen.count)
 
                 VStack {
                     Spacer(minLength: 0)
                     HomeSpeechBubble(text: say)
-                        .animation(.spring(response: 0.45, dampingFraction: 0.7), value: say)
                 }
                 .frame(width: geo.size.width - 40, height: max(hill + 14 - fox - 30, 60))
                 .padding(.top, 20)
@@ -69,7 +67,7 @@ struct WhatHelpsView: View {
                             }
                         }
                         .disabled(sending)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: chosen.isEmpty)
+                        .animation(LanviTiming.swap, value: chosen.isEmpty)
                 }
                 .padding(.horizontal, 24)   // the same margins as Welcome, so the button never moves
                 .padding(.top, hill + (compact ? 26 : 36))
@@ -114,11 +112,11 @@ struct WhatHelpsView: View {
     }
 
     private func toggle(_ id: String) {
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.65)) {
+        // The chips animate; Lanvi's pose is set plainly (the puppet eases it itself).
+        withAnimation(LanviTiming.pop) {
             if let i = chosen.firstIndex(of: id) { chosen.remove(at: i) } else if chosen.count < 4 { chosen.append(id) }
-            pose = chosen.isEmpty ? .curious : .love
         }
-        bounce += 1
+        pose = chosen.isEmpty ? .curious : .love
     }
 
     private func finish() {
@@ -127,11 +125,8 @@ struct WhatHelpsView: View {
         sending = true
         Task {
             let line = await store.setPreferences(chosen)
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) {
-                say = line ?? "Got it. Thank you for telling me."
-                pose = .cheer
-            }
-            bounce += 1
+            say = line ?? "Got it. Thank you for telling me."
+            pose = .cheer
             try? await Task.sleep(for: .seconds(demo ? 2.6 : 1.9))
             onDone()
         }

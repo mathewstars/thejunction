@@ -36,15 +36,14 @@ struct HomeChatScreen: View {
         }
         .onAppear { store.openChat() }
         .onChange(of: draft.isEmpty) { _, empty in
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = empty ? .curious : .peek }
+            pose = .curious   // typing: the listening mood carries it (peek is not a puppet pose)
         }
         .onChange(of: store.chat.messages.count) { old, new in
             guard new > old, store.chat.messages.last?.from == .lanvi else { return }
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .love }
-            bounce += 1
+            pose = .love
             Task {
                 try? await Task.sleep(for: .seconds(2))
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = draft.isEmpty ? .curious : .peek }
+                pose = .curious
             }
         }
         .task { await runDemo() }
@@ -270,7 +269,7 @@ struct HomeChatScreen: View {
                            startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
         )
-        .animation(.easeOut(duration: 0.2), value: left <= 40)
+        .animation(LanviTiming.swap, value: left <= 40)
     }
 
     private func send() {

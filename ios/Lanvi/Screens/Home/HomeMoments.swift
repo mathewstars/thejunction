@@ -104,7 +104,7 @@ struct HomeGrowUpMoment: View {
         .sensoryFeedback(.success, trigger: shown)
         .onAppear {
             start = Date()
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.7)) { shown = true }
+            withAnimation(LanviTiming.screen) { shown = true }
             Task {
                 try? await Task.sleep(for: .milliseconds(450))
                 bounce += 1
@@ -122,7 +122,7 @@ struct HomeGrowUpMoment: View {
 
     private func close() {
         guard shown else { return }
-        withAnimation(.easeOut(duration: 0.35)) { shown = false }
+        withAnimation(LanviTiming.swap) { shown = false }
         Task {
             try? await Task.sleep(for: .milliseconds(380))
             onDone()
