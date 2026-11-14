@@ -13,7 +13,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -50,7 +50,7 @@ WEB_DIR = Path(__file__).resolve().parent / "web"
 
 
 def _is_page(path: str) -> bool:
-    return path == "/" or path.startswith("/static/")
+    return path in ("/", "/pitch") or path.startswith("/static/")
 
 
 def _json_bytes(status: int, code: str, message: str, rid: str) -> bytes:
@@ -247,6 +247,12 @@ def create_app(settings: Optional[Settings] = None, store: Optional[Store] = Non
     @app.get("/", include_in_schema=False)
     async def clinician_page():
         return FileResponse(WEB_DIR / "index.html", media_type="text/html; charset=utf-8")
+
+    # The stage pitch: a page of its own, edited in web/static/pitch/index.html. It uses
+    # relative paths so the same file also opens straight from disk; hence the redirect.
+    @app.get("/pitch", include_in_schema=False)
+    async def pitch_page():
+        return RedirectResponse("/static/pitch/index.html", status_code=307)
 
     app.mount("/static", StaticFiles(directory=WEB_DIR / "static"), name="static")
 
