@@ -269,8 +269,8 @@ def test_the_rules_behave_as_the_page_says_on_generated_games():
     out = run(runs=300)                       # game-to-game variation as in the first real games
     assert out["unchanged_any_label"] < 0.20
     assert out["unchanged_pooled_label"] < 0.06          # counting gives 2.8% exactly
-    assert out["slide_end_pooled_slower"] > 0.80
-    # the same three games for both rules: three together see more than one game does
-    assert out["slide_end_pooled_slower"] > out["slide_last_two_weeks_tracing_slower_start"]
+    assert out["slide_last_three_together_slower"] > 0.80
+    # at the end of the slide three games together see more than one game does
+    assert out["slide_last_three_together_slower"] > out["slide_last_three_tracing_slower_start"]
     steady = run(runs=300, spread=0.5)
-    assert steady["slide_last_two_weeks_tracing_slower_start"] > 0.90
+    assert steady["slide_last_three_tracing_slower_start"] > 0.90

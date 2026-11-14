@@ -18,7 +18,8 @@ Three rules are measured, all on the two speeds the clinician page compares
 
 For each: how often a person who does not change still gets a label, and how
 often the example's slide (speeds falling by over a third from week five) is
-labelled in its last three games, the same three games for every rule.
+labelled at its end: the single-game rules on its last three games, the
+three-together rule on the three looks that end in those games.
 """
 
 from __future__ import annotations
@@ -61,8 +62,8 @@ def _three_together(games: list[dict], k: int, name: str = "trace_speed_cm_s") -
     and games are independent, either happens in 8 of 286 looks (2.8%)."""
     start = sorted(g[name] for g in games[START] if g.get(name) is not None)
     last = [g[name] for g in games[k - 2:k + 1] if g.get(name) is not None]
-    if k - 2 < START.stop or len(start) < NEED or len(last) < 3:
-        return 0
+    if k - 2 < START.stop or len(start) < START.stop - START.start or len(last) < 3:
+        return 0   # all ten start games must have a speed: with fewer the chance figure is higher
     if all(v < start[1] for v in last):
         return -1
     if all(v > start[-2] for v in last):
@@ -114,7 +115,7 @@ def run(runs: int = 3000, seed: int = 7, spread: float = 1.0) -> dict:
         recent_runs += _run_of_three(r_flags)
         start_runs += _run_of_three(s_flags)
         g = _series(rng, slide, spread)
-        for k in late:   # the same three games for all three rules, so they compare like with like
+        for k in late:   # single games: the last three; three together: the looks ending in them
             late_games += 1
             zm, zf = _moving_z(g, k, "trace_speed_cm_s"), _start_z(g, k, "trace_speed_cm_s")
             mov += zm is not None and round(zm, 1) <= -CUT
@@ -128,9 +129,9 @@ def run(runs: int = 3000, seed: int = 7, spread: float = 1.0) -> dict:
             "unchanged_people_three_in_a_row_start": round(start_runs / runs, 3),
             "unchanged_pooled_label": round(pooled / pooled_looks, 3),
             "unchanged_people_pooled_ever": round(pooled_people / runs, 3),
-            "slide_last_two_weeks_tracing_slower_moving": round(mov / late_games, 3),
-            "slide_last_two_weeks_tracing_slower_start": round(fix / late_games, 3),
-            "slide_end_pooled_slower": round(pooled_caught / late_games, 3)}
+            "slide_last_three_tracing_slower_recent": round(mov / late_games, 3),
+            "slide_last_three_tracing_slower_start": round(fix / late_games, 3),
+            "slide_last_three_together_slower": round(pooled_caught / late_games, 3)}
 
 
 def main() -> None:
@@ -148,8 +149,8 @@ def main() -> None:
         print(f"{spread:>6.1f} | {'':17}{o['unchanged_recent_label']:>6.0%} {o['unchanged_start_label']:>6.0%} "
               f"{o['unchanged_any_label']:>6.0%} | {'':12}{o['unchanged_people_three_in_a_row_recent']:>6.0%} "
               f"{o['unchanged_people_three_in_a_row_start']:>6.0%} | {'':21}{o['unchanged_pooled_label']:>6.0%} "
-              f"{o['unchanged_people_pooled_ever']:>6.0%} | {'':7}{o['slide_last_two_weeks_tracing_slower_moving']:>6.0%} "
-              f"{o['slide_last_two_weeks_tracing_slower_start']:>6.0%} {o['slide_end_pooled_slower']:>6.0%}")
+              f"{o['unchanged_people_pooled_ever']:>6.0%} | {'':7}{o['slide_last_three_tracing_slower_recent']:>6.0%} "
+              f"{o['slide_last_three_tracing_slower_start']:>6.0%} {o['slide_last_three_together_slower']:>6.0%}")
 
 
 if __name__ == "__main__":
