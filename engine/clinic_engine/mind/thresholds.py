@@ -61,18 +61,12 @@ class Thresholds:
     activity_baseline_max: int = 20
     # Revontulet's own normal (shown to the clinician only). Stricter than the
     # other games because a game gives few numbers: 8 earlier games before any
-    # comparison, and 2.5 either way before the page calls a game unusual. Set
-    # with revontulet_check on generated games, at up to three times the
-    # example's game-to-game spread: with 2.5 an unchanged person gets a label on
-    # 0 to 10% of games against one reference, 0 to 13% against either (it was
-    # 15 to 17% against one at 2.0 once games vary twice as much,
-    # and 37% with 5 games, 1.5 and a label on time to choose as well).
+    # comparison, and 2.5 either way before the page calls a game unusual. How
+    # often that is wrong is measured by revontulet_check on generated games set
+    # from the first real ones (docs/revontulet-measures.md): about 11% of
+    # unchanged games get a label per reference, whatever the game-to-game spread.
     revontulet_baseline_min: int = 8
     revontulet_unusual_z: float = 2.5
-    # The last three games taken together against the start: their mean, in
-    # units of the start's spread divided by root three. One game varies a lot
-    # (about 13% in tracing speed in the first real games), three together less.
-    revontulet_pooled_z: float = 3.0
     # The fixed reference: the person's start, games 3 to 12 (the first two are practice).
     revontulet_start_from: int = 2
     revontulet_start_to: int = 12

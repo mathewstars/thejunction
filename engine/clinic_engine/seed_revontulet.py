@@ -80,7 +80,14 @@ def _game(rng: random.Random, slide: float, spread: float = 1.0) -> dict:
             "touch_radius_var": round(rng.uniform(3, 6), 1)}
 
 
-def create(store: Store, clinic_id: str, tz_name: str, now: datetime, seed: int = 47) -> str:
+# The example's draw. Chosen so the page shows the common case: on generated runs
+# like this one the last three games read "slower than the start" in about 92 of
+# 100 (revontulet_check); in the others the line reads "not clearly different".
+EXAMPLE_SEED = 43
+
+
+def create(store: Store, clinic_id: str, tz_name: str, now: datetime,
+           seed: int = EXAMPLE_SEED) -> str:
     """Create the example person, or write their games and ratings again in place."""
     from .mind.activities import process_activity
     pid = None

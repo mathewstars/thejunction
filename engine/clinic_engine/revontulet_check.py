@@ -13,11 +13,12 @@ Three rules are measured, all on the two speeds the clinician page compares
 
 1. One game against the games just before it (the moving reference).
 2. One game against the person's start, games 3 to 12 (the fixed reference).
-3. The last three games together against the start (the page's headline).
+3. The last three games together against the start (the page's headline): a
+   counting rule with no tuned number, see _three_together.
 
 For each: how often a person who does not change still gets a label, and how
 often the example's slide (speeds falling by over a third from week five) is
-labelled at its end.
+labelled in its last three games, the same three games for every rule.
 """
 
 from __future__ import annotations
@@ -53,18 +54,20 @@ def _start_z(games: list[dict], k: int, name: str) -> float | None:
     return _z(games[k].get(name), _stats(vals, name, T))
 
 
-POOL = 3
-POOL_CUT = T.revontulet_pooled_z
-
-
-def _pooled_z(games: list[dict], k: int, name: str = "trace_speed_cm_s") -> float | None:
-    """The last three games' mean against the start, as the page's headline judges it."""
-    start = [g[name] for g in games[START] if g.get(name) is not None]
-    last = [g[name] for g in games[k - POOL + 1:k + 1] if g.get(name) is not None]
-    if k - POOL + 1 < START.stop or len(start) < NEED or len(last) < POOL:
-        return None
-    b = _stats(start, name, T)
-    return (sum(last) / POOL - b["median"]) / (b["scale"] / POOL ** 0.5)
+def _three_together(games: list[dict], k: int, name: str = "trace_speed_cm_s") -> int:
+    """The page's headline rule, by counting and with no tuned number: -1 when
+    each of the last three games is slower than all start games but at most one,
+    +1 when each is faster than all but at most one, else 0. If nothing changes
+    and games are independent, either happens in 8 of 286 looks (2.8%)."""
+    start = sorted(g[name] for g in games[START] if g.get(name) is not None)
+    last = [g[name] for g in games[k - 2:k + 1] if g.get(name) is not None]
+    if k - 2 < START.stop or len(start) < NEED or len(last) < 3:
+        return 0
+    if all(v < start[1] for v in last):
+        return -1
+    if all(v > start[-2] for v in last):
+        return 1
+    return 0
 
 
 def _run_of_three(flags: list[bool]) -> bool:
@@ -80,7 +83,7 @@ def run(runs: int = 3000, seed: int = 7, spread: float = 1.0) -> dict:
     n = WEEKS * len(PER_WEEK)
     flat = [0.0] * n
     slide = [SLIDE[w] for w in range(WEEKS) for _ in PER_WEEK]
-    late = range(n - 2 * len(PER_WEEK), n)
+    late = range(n - 3, n)   # the last three games, at the bottom of the slide
     recent = games = start = start_games = either = 0
     recent_runs = start_runs = 0
     pooled = pooled_looks = pooled_people = pooled_caught = 0
@@ -102,23 +105,21 @@ def run(runs: int = 3000, seed: int = 7, spread: float = 1.0) -> dict:
                 start_games += 1
                 start += s_hit
                 s_flags.append(s_hit)
-            pz = _pooled_z(g, k)
-            if pz is not None:
+            if k - 2 >= START.stop:
                 pooled_looks += 1
-                if abs(pz) >= POOL_CUT:
+                if _three_together(g, k):
                     pooled += 1
                     ever = True
         pooled_people += ever
         recent_runs += _run_of_three(r_flags)
         start_runs += _run_of_three(s_flags)
         g = _series(rng, slide, spread)
-        for k in late:
+        for k in late:   # the same three games for all three rules, so they compare like with like
             late_games += 1
             zm, zf = _moving_z(g, k, "trace_speed_cm_s"), _start_z(g, k, "trace_speed_cm_s")
             mov += zm is not None and round(zm, 1) <= -CUT
             fix += zf is not None and round(zf, 1) <= -CUT
-        pz = _pooled_z(g, n - 1)
-        pooled_caught += pz is not None and pz <= -POOL_CUT
+            pooled_caught += _three_together(g, k) == -1
     return {"runs": runs, "unchanged_recent_label": round(recent / games, 3),
             "unchanged_per_measure": {k: round(v / games, 3) for k, v in per.items()},
             "unchanged_start_label": round(start / start_games, 3),
@@ -129,7 +130,7 @@ def run(runs: int = 3000, seed: int = 7, spread: float = 1.0) -> dict:
             "unchanged_people_pooled_ever": round(pooled_people / runs, 3),
             "slide_last_two_weeks_tracing_slower_moving": round(mov / late_games, 3),
             "slide_last_two_weeks_tracing_slower_start": round(fix / late_games, 3),
-            "slide_end_pooled_slower": round(pooled_caught / runs, 3)}
+            "slide_end_pooled_slower": round(pooled_caught / late_games, 3)}
 
 
 def main() -> None:
@@ -138,11 +139,11 @@ def main() -> None:
     args = ap.parse_args()
     print(f"Generated data, {args.runs} runs of 24 games per row. Spread 1 is the game-to-game variation of")
     print("the first real games. 'Unchanged': shares that carry a label when nothing changes. 'Slide': how")
-    print("often the example's slide is labelled slower in tracing at its end.")
+    print("often the example's slide is labelled slower in tracing in its last three games.")
     print(f"{'spread':>6} | unchanged games: {'recent':>6} {'start':>6} {'either':>6} | 3 in a row: {'recent':>6} "
           f"{'start':>6} | last three together: {'looks':>6} {'people':>6} | slide: {'recent':>6} {'start':>6} "
           f"{'three':>6}")
-    for spread in (0.5, 1.0, 1.5):
+    for spread in (0.5, 1.0, 1.5, 2.0):
         o = run(args.runs, spread=spread)
         print(f"{spread:>6.1f} | {'':17}{o['unchanged_recent_label']:>6.0%} {o['unchanged_start_label']:>6.0%} "
               f"{o['unchanged_any_label']:>6.0%} | {'':12}{o['unchanged_people_three_in_a_row_recent']:>6.0%} "

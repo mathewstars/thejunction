@@ -1043,7 +1043,7 @@
     const dash = (v, why) => (v === null || v === undefined ? el("span", { class: "muted", title: why || null }, why ? "not known" : "–") : v);
     const lines = [];
     if (got[0].example) lines.push(el("p", { class: "readout muted" }, el("b", null, "Generated example. "),
-      "No person played these games. The fall in harder choices and tracing speed from week five was written into the generator, together with a rising questionnaire score. It is not a sign that such a link exists. The speeds and how much they vary from game to game are copied from six real games; the fall is invented."));
+      "No person played these games. The fall in harder choices and tracing speed from week five was written into the generator, together with a rising questionnaire score. It is not a sign that such a link exists. The speeds and how much they vary are set to match six real games a team member played in one evening. The fall is invented and large, and the example has no odd games and no learning, which real play would."));
     // The finding, if there is one: the last three games against the person's start (or, with fewer games, against all before).
     const pool = (list) => {
       const rs = [].concat.apply([], list.map((x) => ((x.revontulet.rounds || []).length >= 3 ? x.revontulet.rounds : [])));
@@ -1063,14 +1063,16 @@
       const now = pool(mine.slice(0, ref.n)), was = pool(ref.list), parts = [];
       if (ref.n >= 3 && now.rounds && was.rounds) parts.push("harder crack in " + now.hard + " of " + plural(now.rounds, "round", "rounds") + " (" + ref.word + ": " + was.hard + " of " + was.rounds + ")");
       if (now.speed !== null && was.speed !== null) parts.push("tracing at " + num(now.speed, 1) + "\u00a0cm/s (" + ref.word + ": " + num(was.speed, 1) + "\u00a0cm/s)");
-      // The last three games together against the start: steadier than one game (docs/revontulet-measures.md).
+      // The last three games together against the start, by counting (docs/revontulet-measures.md): slower when each
+      // of the three is slower than all start games but at most one; faster the same way. No spread and no cut.
       let together = "";
-      const st = (own0.start || {}).trace_speed_cm_s, pz = own0.pooled_z || 3;
-      if (ref.word === "start" && ref.n === 3 && st && st.scale) {
-        const sp3 = mine.slice(0, 3).map((x) => { const rv = x.revontulet, v = vals(rv.rounds || [], "trace_mean_speed_pt_s"); return v.length && rv.pt_per_cm ? mean(v) / rv.pt_per_cm : null; });
-        if (sp3.every((v) => v !== null)) {
-          const z3 = (mean(sp3) - st.median) / (st.scale / Math.sqrt(3));
-          together = Math.abs(z3) >= pz ? " Taken together, these three games are " + (z3 < 0 ? "slower" : "faster") + " in tracing than the start." : " Taken together, their tracing is within the range of the start.";
+      const cm = (x) => { const rv = x.revontulet, v = vals(rv.rounds || [], "trace_mean_speed_pt_s"); return v.length && rv.pt_per_cm ? mean(v) / rv.pt_per_cm : null; };
+      if (ref.word === "start" && ref.n === 3) {
+        const st = ref.list.map(cm).filter((v) => v !== null).sort((a, b) => a - b), sp3 = mine.slice(0, 3).map(cm);
+        if (st.length >= needed && sp3.every((v) => v !== null)) {
+          const dir = sp3.every((v) => v < st[1]) ? "slower" : sp3.every((v) => v > st[st.length - 2]) ? "faster" : null;
+          together = dir ? " Taken together, these three games are " + dir + " in tracing than the start, by more than chance usually gives. On generated games about 1 unchanged person in 6 saw this line at least once in ten games."
+            : " Taken together, their tracing is not clearly different from the start. That does not rule out a change.";
         }
       }
       if (parts.length) lines.push(el("p", { class: "readout" }, el("b", null, ref.lead), parts.join(", ") + "." + together));
@@ -1114,8 +1116,10 @@
       el("p", { class: "muted small" }, "A record, not a result. A change here is a reason to ask the person, not a sign of relapse. Getting used to the game changes these numbers too. They do not change how the day is judged and have not been tested as a measure of mood."),
       fold("How to read these numbers",
         "Tracing and stroke speed are compared, game by game, with this person’s own Revontulet games just before (at least " + needed + ", at most 20) and with their start. A game " + cut + " or more of the usual spread away from the middle of those games, faster or slower, gets a label. The line above the chart also judges the last three games together against the start, which is steadier than one game.",
-        "How often these rules are wrong was measured on generated games. Their speeds and game-to-game variation are copied from the first real games we have: six games from one person on one evening, where tracing speed varied by about 13% from game to game and stroke speed by about 29%. When nothing changes, about 11 games in 100 still get a label against each reference and 15 in 100 against one or the other, and about 5 unchanged people in 100 get three in a row within 24 games. The last three games together are labelled in about 7 looks in 100, so over ten looks about 1 unchanged person in 4 sees that label at least once. Real play also has odd games and slow drifts from day to day, which the generated games do not; both add labels. One yellow point means little.",
-        "What each rule sees of the slide written into the example, where the speeds fall by over a third: one game against the recent games is labelled in about 1 of its last 8 games, because the recent games slide along; one game against the start in about 6 of 10; the last three together against the start in about 9 of 10. If play varied half as much again, these would be under 1 in 10, 1 in 3 and 2 in 3. A smaller change would be caught less often, and we have not measured how often. The numbers " + needed + ", " + cut + " and " + (own0.pooled_z || 3) + " were picked on generated games, not on people.",
+        "How often these rules are wrong was measured on generated games. Their speeds and game-to-game variation are set to match the first real games we have, where tracing speed varied by about 13% from game to game (six games) and stroke speed by about 29% (five games). Those games were played in ten minutes by a team member. How much a patient varies from day to day over weeks may be more or less, and nobody has measured it.",
+        "When nothing changes, about 11 games in 100 still get a label against each reference and 15 in 100 against one or the other, and 4 to 6 unchanged people in 100 get three in a row within 24 games. The line about the last three games together says “slower” or “faster” in about 3 looks in 100, and about 1 unchanged person in 6 sees it at least once in ten looks. Real play also has odd games and slow drifts from day to day, which the generated games do not; both add labels. One yellow point means little.",
+        "The line about three games together works by counting: it says slower only when each of the last three games is slower than all of the start games but at most one. It needs no tuned number.",
+        "What each rule sees of the slide written into the example, where the speeds fall by over a third, counted on its last three games: one game against the recent games is labelled about 1 time in 12, because the recent games slide along; one game against the start about 7 times in 10; the last three together about 9 times in 10. If play varied half as much again, these would be 1 in 20, 4 in 10 and 6 in 10; at twice the variation, 1 in 25, 2 in 10 and 4 in 10. A smaller change would be caught less often, and we have not measured how often. The numbers " + needed + " and " + cut + " were picked on generated games, not on people.",
         "No yellow does not mean all is well. After a slow change the lower values count as recent, which is why the start (games 3 to 12; the first two are practice) is shown as a second reference that does not move. The start is only where this person began. It is not a healthy level: for someone who started just after treatment, the start may be their worst weeks. People keep getting faster for many games as they learn the game, so faster than start is expected. A run of labels against the start can also come from an odd start alone.",
         "The harder crack is chosen three times a game, so one game says nothing; it is only compared over several games, in the line above the chart. With 9 choices, two or three more or fewer can be chance. Time to choose is the middle value of the rounds, and speeds are averages over the rounds that were traced. A stroke speed is compared only when there were at least two strokes.",
         "Slower tracing can also mean more careful tracing: the game does not yet measure how closely the line was followed. The game asks for slow strokes, so slower stroking may only mean the person did as asked.",
