@@ -758,16 +758,22 @@ struct LanviPuppet: View {
                 return CGRect(x: (c0.x - c.x) * s, y: (c0.y - c.y) * s + (shape.dropY - EyeShape.open.dropY) * hs,
                               width: px.width * s, height: px.height * s)
             }
-            let half = frameOf(.half), shut = frameOf(.closed)
+            let half = frameOf(.half), lashes = frameOf(.closed)
             let lidBox = LanviArt.layer["eye-halflid-" + side] ?? CGRect(x: 0, y: 0, width: 1, height: 0.5)
             let white = LanviArt.layer["eye-white-" + side] ?? CGRect(x: 0, y: 0, width: 1, height: 1)
             let lidTop = half.minY + lidBox.minY * half.height
             let lidH = lidBox.height * half.height
             // down to half: the lid slides in from above; past half: it stretches from the
-            // top of the eye until it covers it to the bottom
+            // top of the eye (and widens, so it fills the eye's round sides) until it
+            // covers it to the bottom, already at 85 % (a quick blink is shut for only a
+            // few frames, and a pupil looking down must never peek out under it)
             let slide = d < 0.5 ? -(1 - d / 0.5) * lidH : 0
-            let full = max((white.maxY * h - lidTop) / lidH, 1)
-            let stretch = d > 0.5 ? 1 + (d - 0.5) / 0.5 * (full - 1) : 1
+            // (stretched just past the bottom, so its own lid line is clipped away under
+            // the lashes)
+            let full = max((white.maxY * h - lidTop) / lidH, 1) * 1.14
+            let shut = min(max((d - 0.5) / 0.35, 0), 1)
+            let stretch = 1 + shut * (full - 1)
+            let widen = 1 + 0.2 * shut
             ZStack(alignment: .topLeading) {
                 piece("eye-white-" + side, w, h)
                 ZStack(alignment: .topLeading) {
@@ -787,7 +793,7 @@ struct LanviPuppet: View {
                     ZStack(alignment: .topLeading) {
                         ZStack(alignment: .topLeading) { piece("eye-halflid-" + side, half.width, half.height) }
                             .frame(width: half.width, height: half.height, alignment: .topLeading)
-                            .scaleEffect(x: 1, y: stretch, anchor: UnitPoint(x: 0.5, y: lidBox.minY))
+                            .scaleEffect(x: widen, y: stretch, anchor: UnitPoint(x: lidBox.midX, y: lidBox.minY))
                             .transformEffect(CGAffineTransform(translationX: half.minX, y: half.minY + slide))
                     }
                     .frame(width: w, height: h, alignment: .topLeading)
@@ -798,9 +804,9 @@ struct LanviPuppet: View {
                     Image("puppet-eyes-closed-" + side)
                         .resizable()
                         .interpolation(.high)
-                        .frame(width: shut.width, height: shut.height)
-                        .opacity(Motion.smooth(0.7, 1, d))
-                        .transformEffect(CGAffineTransform(translationX: shut.minX, y: shut.minY))
+                        .frame(width: lashes.width, height: lashes.height)
+                        .opacity(Motion.smooth(0.75, 0.9, d))
+                        .transformEffect(CGAffineTransform(translationX: lashes.minX, y: lashes.minY))
                 }
             }
             .frame(width: w, height: h, alignment: .topLeading)
