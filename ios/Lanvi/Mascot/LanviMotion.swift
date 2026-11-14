@@ -71,6 +71,7 @@ struct LanviMotion {
     var lookSteps: [LookStep] = [LookStep(at: -100, target: nil)]
     var follow: Int? = nil               // preview: a scripted finger path (`followPoint`)
     var followAt: Double = -100
+    var touchTimeline: [LanviTapper.Entry] = []  // taps from a finger (`LanviTapper`), oldest first
     var touch: LanviTouchAct? = nil      // the touch reaction playing
     var touchAt: Double = -100
     var touchSide: Double = 1            // -1 the viewer's left, +1 right
@@ -135,6 +136,7 @@ struct LanviMotion {
         // the newest picture fades in over the one before it (drawn first, fading out).
         let faces = [now.face] + past.prefix(3).map(\.face)
         f.eyes = Self.fade(faces.map(\.eyes))
+        f.eyeDraw = Self.eyeDraw([now.face.eyes] + past.map(\.face.eyes))
         f.mouths = Self.fade(faces.map(\.mouth))
         // A talking mouth changes shape many times a second: it swaps at once (the swaps
         // fall where it is smallest), so it is never left half see-through between two.
@@ -174,6 +176,47 @@ struct LanviMotion {
         f.headSY = 1 + sq
         f.headSX = 1 - sq * 0.6
         return f
+    }
+
+    /// The one decision on how the eyes are drawn, from the eye shape now and at the past
+    /// taps (`e[0]` now, `e[i]` at `taps[i - 1]` ago).
+    /// - Lidded shapes (open, half, shut): one eye, the lid at the blended amount of the
+    ///   last four frames, so a blink slides.
+    /// - Happy: the lid shuts first (three frames), then the arcs; going back, the arcs give
+    ///   way to the shut lid, which opens over five frames.
+    /// - Wide: at once, a touch big, settling in 0.16 s.
+    static func eyeDraw(_ e: [EyeShape]) -> EyeDraw {
+        var d = EyeDraw()
+        let now = e[0]
+        /// How long ago the eyes last were not `inSet` (seconds; 1 = long ago).
+        func since(_ inSet: (EyeShape) -> Bool) -> Double {
+            for i in 1..<e.count where !inSet(e[i]) { return taps[i - 1] }
+            return 1
+        }
+        if now == .wide {
+            d.kind = .wide
+            d.pop = 0.08 * (1 - Motion.smooth(0, 0.16, since { $0 == .wide }))
+            return d
+        }
+        if now == .happy {
+            let s = since { $0 == .happy }
+            if s >= 4.0 / 60 { d.kind = .happy; return d }
+            d.down = s < 1.5 / 60 ? 0.6 : (s < 2.5 / 60 ? 0.9 : 1)
+            return d
+        }
+        // the lid as blended over the last four frames (a blink slides)
+        var w = 0.0, sum = 0.0
+        for (shape, b) in zip(e.prefix(4), faceBlend) where shape.isLidded {
+            w += b; sum += b * shape.lidDown
+        }
+        d.down = w > 0 ? sum / w : now.lidDown
+        // just back from the happy arcs: the lid opens from shut
+        let back = since { $0 != .happy }
+        if back < 0.2 {
+            let open = back < 1.5 / 60 ? 1 : (back < 2.5 / 60 ? 0.85 : (back < 3.5 / 60 ? 0.6 : (back < 5.5 / 60 ? 0.3 : 0)))
+            d.down = max(d.down, open)
+        }
+        return d
     }
 
     /// The pictures to draw for a face part, oldest first, from its last four frames (now
@@ -500,7 +543,9 @@ struct LanviMotion {
     func busy(_ x: Double) -> Double {
         var b = 0.0
         if let r = reaction { b = max(b, window(reactionAt, r.reactionLength, x)) }
-        if let a = touch { b = max(b, window(touchAt, a.duration, x)) }
+        if !touchTimeline.isEmpty {
+            if let now = touchAt(x), let a = now.act { b = max(b, window(now.at, a.duration, x)) }
+        } else if let a = touch { b = max(b, window(touchAt, a.duration, x)) }
         b = max(b, petting ? Motion.smooth(pettingSince, pettingSince + 0.2, x) : window(pettingSince - 1.2, 1.2, x))
         b = max(b, window(hopAt, 1.3, x))
         if let k = follow, x >= followAt - 0.05, x < followAt + Self.followLength(k) + 1 { b = 1 }
@@ -929,10 +974,37 @@ struct LanviMotion {
 
     // MARK: Blink
 
-    /// Blinks: every 3 to 6 s (times fixed per slot): the lid slides down and up. Mostly
-    /// quick (150 ms), sometimes slow, sometimes double; only quick ones while he looks at
+    /// Blinks: every 3 to 6 s (times fixed per slot): the lid slides down and up. Quick
+    /// (150 ms), sometimes double; slow only when sleepy; only quick ones while he looks at
     /// something (a finger). Never starting on an eye-set swap. Decided only from the
     /// moments up to its start, so a touch that comes later never cuts one off.
+    /// A reaction, a touch reaction or petting owns the eyes at `x` (from its start until
+    /// 0.3 s after it ends). Only what had started by `x` counts, so a touch that comes
+    /// later never cuts off a blink already under way.
+    func reactionOwnsEyes(_ x: Double) -> Bool {
+        if !touchTimeline.isEmpty {
+            if let now = touchAt(x) {
+                if let a = now.act, x < now.at + a.duration + 0.3 { return true }
+                if now.prev != nil, x < now.at + 0.3 { return true }
+            }
+        } else {
+            if let a = touch, x >= touchAt, x < touchAt + a.duration + 0.3 { return true }
+            if prevTouch != nil, x >= prevTouchAt, x < touchAt + 0.3 { return true }
+        }
+        if let r = reaction, x >= reactionAt, x < reactionAt + r.reactionLength + 0.3 { return true }
+        if let r = prevReaction, x >= prevReactionAt, x < reactionAt + 0.3, r.reactionLength > 0 { return true }
+        if petting ? x >= pettingSince : (x >= pettingSince - 0.05 && x < pettingSince + 1.5) { return true }
+        return false
+    }
+
+    /// Debug (frame log): the blink's eye shape at `x` over plain open eyes, if one runs.
+    func blinkShape(_ x: Double) -> EyeShape? {
+        var p = Pose(), f = Face()
+        f.eyes = .open
+        blink(x, &p, &f)
+        return f.eyes == .open ? nil : f.eyes
+    }
+
     private func blink(_ x: Double, _ p: inout Pose, _ face: inout Face) {
         let sleepy = held == .sleepy
         var bt: Double
@@ -946,13 +1018,17 @@ struct LanviMotion {
             let k = Int(floor((x + off) / slot))
             start = Double(k) * slot + 1.4 * Motion.rnd(k, seed &+ 31) - off
             let r = Motion.rnd(k, seed &+ 32)
-            kind = sleepy ? 1 : (r < 0.16 ? 2 : (r < 0.3 ? 1 : 0))
+            // (slow ones only when sleepy; the contented slow blink is its own idle moment)
+            kind = sleepy ? 1 : (r < 0.16 ? 2 : 0)
             if lookTarget(start) != nil { kind = 0 }
             bt = x - start
         }
-        let len = [0.15, 0.42, 0.38][kind]
+        let len = [0.15, 0.42, 0.42][kind]
         guard bt >= 0, bt < len else { return }
-        guard [.open, .wide, .left, .right, .up, .half].contains(face.eyes) else { return }
+        // never started while a reaction or a touch owns the eyes
+        if freezeBlink == nil, reactionOwnsEyes(start) { return }
+        // only ever the lid over the normal eye (never over wide or happy eyes)
+        guard [.open, .left, .right, .up, .half].contains(face.eyes) else { return }
         if freezeBlink == nil {
             // the same eyes just before it and at its start (no swap)
             let e = face.eyes
@@ -962,8 +1038,8 @@ struct LanviMotion {
         switch kind {
         case 1: shut = bt >= 0.1 && bt < 0.3
         case 2:
-            if bt >= 0.15 && bt < 0.23 { return }       // open between the two blinks
-            let b = bt < 0.15 ? bt : bt - 0.23
+            if bt >= 0.15 && bt < 0.27 { return }       // fully open between the two blinks
+            let b = bt < 0.15 ? bt : bt - 0.27
             shut = b >= 0.033 && b < 0.1
         default: shut = bt >= 0.033 && bt < 0.1
         }

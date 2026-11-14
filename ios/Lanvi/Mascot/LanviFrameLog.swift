@@ -39,7 +39,7 @@ final class LanviFrameLog {
 
     private func write() {
         written = true
-        let header = "now,date,rootX,rootY,rootSX,rootSY,rootTilt,headX,headY,headTilt,bodySY,chest,dirX,dirY,earL,earR,earLBend,earRBend,tail,tailBend,headSY,eyeX,eyeY,eyes,mouth,eyeCount,eyeLayers,petting,finger,touch,moment,lookSteps,clockLag\n"
+        let header = "now,date,rootX,rootY,rootSX,rootSY,rootTilt,headX,headY,headTilt,bodySY,chest,dirX,dirY,earL,earR,earLBend,earRBend,tail,tailBend,headSY,eyeX,eyeY,eyes,mouth,eyeCount,eyeLayers,petting,finger,touch,moment,lookSteps,clockLag,held,reaction,prevTouch,fingerLook,lookX,lookY,eyeCross,eyeSet,lidDown,eyeOpacity,lashOpacity,blink,mouths\n"
         let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("puppet-frames.csv")
         try? (header + lines.joined(separator: "\n")).write(to: url, atomically: true, encoding: .utf8)
     }

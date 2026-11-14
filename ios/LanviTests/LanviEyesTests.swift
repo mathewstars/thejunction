@@ -149,8 +149,8 @@ final class LanviEyesTests: XCTestCase {
         var t = from
         while t <= to {
             let m = make(t)
-            let lid = m.frame().lid
-            XCTAssertEqual(lid.weight, 1, accuracy: 1e-9, "\(what): eye picture swapped at \(t) s", file: file, line: line)
+            let lid = m.frame().eyeDraw
+            XCTAssertEqual(lid.kind, .lidded, "\(what): eye picture swapped at \(t) s", file: file, line: line)
             if lid.down > 0.01 {
                 if downSince == nil { downSince = t; closings.append(t) }
                 XCTAssertLessThan(t - downSince!, 0.2, "\(what): lid down longer than a quick blink at \(t) s", file: file, line: line)
@@ -268,6 +268,83 @@ final class LanviEyesTests: XCTestCase {
             if shapes.last != mouth { shapes.append(mouth) }
         }
         XCTAssertGreaterThan(shapes.count, 10)
+    }
+
+    // MARK: The captain's spam test: rapid taps all over him
+
+    /// Plays taps through `LanviTapper` (the one owner of the touch reactions) and the eyes
+    /// following the finger like the puppet does, frame by frame at 60 fps.
+    private struct Spam {
+        var tapper = LanviTapper()
+        var steps = [LookStep(at: -100, target: nil)]
+        var backAt = -100.0
+
+        /// The taps of a burst: 25 in 4 s on the head, cheeks, nose, ears and belly.
+        static func burst(from t0: Double) -> [(Double, CGPoint)] {
+            let zones: [(LanviTouchZone, Double)] = [(.head, -1), (.cheek, 1), (.belly, -1), (.head, 1), (.cheek, -1),
+                                                     (.nose, 1), (.belly, 1), (.ear, -1), (.head, -1), (.cheek, 1)]
+            return (0..<25).map { i in
+                let (z, side) = zones[i % zones.count]
+                return (t0 + Double(i) * 0.16, LanviTouchZone.point(z, side: side))
+            }
+        }
+
+        mutating func tap(_ t: Double, _ p: CGPoint) {
+            let act = tapper.tap(at: p, time: t)
+            if act == nil || !LanviTapper.aims.contains(act!) {
+                steps.append(LookStep(at: t, target: p))
+                backAt = t + max(1.1, (act?.duration ?? 1.2) - 0.5)
+            }
+        }
+
+        func motion(at t: Double, seed: Int) -> LanviMotion {
+            var m = LanviMotion(t: t, seed: seed, held: .calm, heldFrom: .calm, heldSince: -100,
+                                reaction: nil, reactionAt: -100, hopAt: -100, reduceMotion: false)
+            m.appearAt = .infinity
+            var s = steps
+            if t >= backAt { s.append(LookStep(at: backAt, target: nil)) }
+            m.lookSteps = s
+            m.touchTimeline = tapper.timeline
+            m.touch = tapper.touch; m.touchAt = tapper.touchAt; m.touchSide = tapper.touchSide
+            m.prevTouch = tapper.prevTouch; m.prevTouchAt = tapper.prevTouchAt
+            m.hops = false
+            return m
+        }
+    }
+
+    func testRapidTapsNeverLeaveTheEyesBroken() {
+        for seed in [0, 123, 909] {
+            var spam = Spam()
+            let first = Spam.burst(from: clock), second = Spam.burst(from: clock + 13)
+            var taps = first + second
+            var frames: [(Double, EyeDraw)] = []
+            for i in 0..<(60 * 22) {
+                let t = clock + Double(i) / 60
+                while let next = taps.first, next.0 <= t { spam.tap(next.0, next.1); taps.removeFirst() }
+                frames.append((t - clock, spam.motion(at: t, seed: seed).frame().eyeDraw))
+            }
+            // never two eye sets, ever (by construction one kind per frame); wide and happy
+            // only while a reaction plays; after each burst settles (0.6 s after its last
+            // tap): the normal open eyes, lids open except single blinks of 0.12 to 0.3 s
+            for (start, end) in [(4.0 + 0.6, 13.0), (17.0 + 0.6, 22.0)] {
+                var closing: Double?
+                for (t, e) in frames where t >= start && t < end {
+                    XCTAssertEqual(e.kind, .lidded, "seed \(seed): not the normal eye set at \(t) s")
+                    if e.down > 0.001 {
+                        if closing == nil { closing = t }
+                    } else if let c = closing {
+                        let length = t - c
+                        XCTAssertGreaterThanOrEqual(length, 0.12, "seed \(seed): a blink of \(length) s at \(c) s")
+                        XCTAssertLessThanOrEqual(length, 0.3, "seed \(seed): the lid stayed down \(length) s from \(c) s")
+                        closing = nil
+                    } else {
+                        XCTAssertEqual(e.eyeOpacity, 1, accuracy: 1e-9, "seed \(seed): eye faded at \(t) s")
+                        XCTAssertEqual(e.lashOpacity, 0, accuracy: 1e-9, "seed \(seed): lashes on an open eye at \(t) s")
+                    }
+                }
+                if let c = closing { XCTAssertGreaterThan(c, end - 0.3, "seed \(seed): the lid never opened again after \(c) s") }
+            }
+        }
     }
 }
 
