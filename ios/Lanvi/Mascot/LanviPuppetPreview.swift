@@ -4,7 +4,7 @@ import SwiftUI
 /// reaction. Launch with `-screen puppet`.
 /// For proof stills: `-puppetFreeze happy:0.32` holds a reaction at that second,
 /// `-puppetFreeze blink:0.08` holds a blink, `-puppetFreeze rest:0` holds the rest pose.
-/// `-puppetDemo YES` plays idle for 7 s, then happy, then surprised (for the video).
+/// `-puppetDemo YES` plays idle for 7 s (or `-puppetDemoDelay 11`), then happy, then surprised (for the video).
 struct LanviPuppetPreview: View {
     @State private var trigger = 0
     @State private var mood: LanviMood = .happy
@@ -71,7 +71,8 @@ struct LanviPuppetPreview: View {
         }
         .task {
             guard demo else { return }
-            try? await Task.sleep(for: .seconds(7))
+            let wait = UserDefaults.standard.double(forKey: "puppetDemoDelay")
+            try? await Task.sleep(for: .seconds(wait > 0 ? wait : 7))
             play(.happy)
             try? await Task.sleep(for: .seconds(2.6))
             play(.surprised)
