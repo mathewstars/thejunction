@@ -59,6 +59,67 @@ Keep every shot 3 to 5 seconds, no faces in close-up, no text in the image, natu
 
 Do not generate: the app, the fox, the clinic page, any chart, any doctor looking at a screen with data, any face presented as a patient.
 
+## Generating the shots on higgsfield.ai (copy and paste)
+
+Use the website, not the command-line tool. Higgsfield's own page says unlimited access and free generations apply only on higgsfield.ai; anything made through the CLI is charged in credits.
+
+Two steps per shot: first a still image, then that image turned into a 5-second clip. Making the still first lets you reject a bad frame before spending time on video.
+
+**Settings for every shot**
+
+| Setting | Value |
+|---|---|
+| Aspect ratio | 16:9 |
+| Still image model | the photo-realistic image model (Higgsfield's page names Nano Banana Pro) |
+| Video model | image to video with a start image (their page names Seedance 2.5) |
+| Clip length | 5 seconds |
+| Resolution | 1080p |
+| Camera | static or one slow move; no cuts inside a clip |
+
+Model names are as given on Higgsfield's page on 14 Nov 2026; use whatever the site offers under those roles.
+
+**Add this line to the end of every still prompt:**
+
+> documentary photograph, natural window light, muted colours, shallow depth of field, 35mm lens, no text, no logos, no watermark
+
+**G1. The door closes**
+
+- Still: `A woman in a dark winter coat seen from behind, walking out through the glass door of a small modern clinic in a Nordic town, late autumn afternoon, wet pavement, bare birch trees, the door half open behind her.`
+- Motion: `She walks away from the camera; the glass door swings slowly shut behind her. Static camera.`
+
+**G2. Nobody there**
+
+- Still: `An empty clinic waiting room with four simple chairs and one green plant, late afternoon light through half-closed blinds drawing stripes on the floor, nobody in the room.`
+- Motion: `Almost still. Dust drifts in the light; the stripes of light move very slightly. Static camera.`
+
+**G3. Weeks until the next visit**
+
+- Still: `A paper wall calendar in a hallway at home, one date several weeks ahead circled by hand in pen, soft daylight from the side, a coat hook at the edge of the frame.`
+- Motion: `Very slow push in towards the circled date.`
+
+**G4. The phone is there**
+
+- Still: `A phone lying face up on a wooden bedside table beside a glass of water, early morning, grey-blue light, bed linen out of focus behind it, the phone screen dark.`
+- Motion: `The phone screen lights up softly and lights the table. Static camera.`
+
+**G5. One small thing a day**
+
+- Still: `Close view of two hands holding a phone above a kitchen table, a mug beside them, morning light, the person's face out of frame, the phone screen turned away from the camera.`
+- Motion: `One thumb taps the screen in a calm, slow rhythm. Static camera.`
+
+**G6. Walking again**
+
+- Still: `A woman in a dark winter coat seen from behind at a distance, walking along a snowy path between birch trees in daylight, soft overcast sky.`
+- Motion: `She walks steadily away; the camera follows slowly at the same distance. Light snow falls.`
+
+**Check each result before keeping it**
+
+- No face in close-up, and nobody who could be taken for a real patient.
+- No readable text, signs or logos anywhere in the frame. Generated text is always wrong and gives the clip away.
+- The phone screen never shows an app. Our real screens are recorded, never generated.
+- Hands have five fingers. Reject and regenerate if not.
+- The same coat in G1 and G6, so it reads as the same person. If the site lets you reuse a character or a reference image, use the G1 still for G6.
+
 ## Shots to record from the real system
 
 | # | Used in | What to record |
