@@ -859,6 +859,28 @@ class AnalyzeIn(Strict):
 _Date = date
 
 
+class ClinicRuleIn(Strict):
+    text: str = Field(min_length=3, max_length=300,
+                      description="The rule in the clinician's own words, for this one person.")
+
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [
+        {"text": "She visits her mother on Sundays and walks less; a low Sunday needs no attention."}]})
+
+
+class ClinicRuleOut(BaseModel):
+    id: str
+    text: str
+    at: str
+    by: Optional[str] = None
+
+
+class ClinicRulesOut(BaseModel):
+    rules: list[ClinicRuleOut]
+    applies: bool = Field(description="True when the two model levels set the levels "
+                                      "(TRIAGE_MODE=models); otherwise the rules are stored "
+                                      "but nothing reads them.")
+
+
 class RatingIn(Strict):
     date: _Date = Field(description="The day the rating describes (clinic local).")
     scale: Literal["phq9", "phq2", "clinician_global"]

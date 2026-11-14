@@ -12,7 +12,17 @@ def x(day): return PL + day / (N - 1) * (W - PL - PR)
 def zs(pts, flip):
     v = [p[1] for p in pts]; m = sum(v) / len(v); sd = (sum((q - m) ** 2 for q in v) / max(1, len(v) - 1)) ** 0.5 or 1
     z = [[p[0], ((p[1] - m) / sd) * (-1 if flip else 1)] for p in pts]
-    return [[p[0], sum(q[1] for q in z if abs(q[0] - p[0]) <= 3) / len([q for q in z if abs(q[0] - p[0]) <= 3])] for p in z]
+    sm = [[p[0], sum(q[1] for q in z if abs(q[0] - p[0]) <= 3) / len([q for q in z if abs(q[0] - p[0]) <= 3])] for p in z]
+    # Days without a value are bridged, so the line is one continuous stroke and its tip can only glide, never jump.
+    sm.sort(); dense = []
+    for a, b in zip(sm, sm[1:]):
+        n = int(round(b[0] - a[0]))
+        for k in range(max(1, n)): dense.append([a[0] + k, a[1] + (b[1] - a[1]) * k / max(1, n)])
+    dense.append(sm[-1])
+    # and it starts at the first day and runs to the last, held level at the ends
+    first, last = dense[0], dense[-1]
+    dense = [[d, first[1]] for d in range(0, int(first[0]))] + dense + [[d, last[1]] for d in range(int(last[0]) + 1, N)]
+    return dense
 rows = [("Smile movements", zs(d["m"]["face.smile_rate_per_min"], False)), ("Reaction speed", zs(d["m"]["focus.median_reaction_ms"], True)), ("Steps per day", zs(d["m"]["daily.steps"], False))]
 AT, AH = 120 * S, 190 * S
 def ya(v): return AT + (1 - v / 20) * AH

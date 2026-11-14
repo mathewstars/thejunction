@@ -59,30 +59,29 @@ def card_wall(png, d, fade=0.3):
     run(["-loop", "1", "-i", "wall.png", "-loop", "1", "-i", png, "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
 def over(src, png, d, ss=0.0, speed=1.0):
     """Words over darkened footage."""
-    o = out(); L = dur_of(src) - 0.1
-    if ss + d * speed > L: ss = max(0.0, L - d * speed)
-    if ss + d * speed > L: speed = (L - ss) / d
-    vf = f"[0:v]setpts=PTS/{speed},scale=1280:720,fps=24,eq=brightness=-0.22:saturation=0.8,gblur=sigma=3[b];[b][1:v]overlay=0:0[w];[w][2:v]overlay=0:0[v]"
+    o = out(); L = dur_of(src) - 0.1; speed = min(1.0, (L - ss) / d)
+    slow = ",minterpolate=fps=24:mi_mode=mci:mc_mode=aobmc:vsbmc=1" if speed < 0.985 else ""
+    vf = f"[0:v]setpts=PTS/{speed}{slow},scale=1280:720,fps=24,eq=brightness=-0.22:saturation=0.8,gblur=sigma=3[b];[b][1:v]overlay=0:0[w];[w][2:v]overlay=0:0[v]"
     run(["-ss", str(ss), "-i", src, "-i", png, "-i", f"{OLD}/tag_gen.png", "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
-def windows(src, d, wins, ss=0.0, tag=None, dim=-0.10, fin=0.0, fout=0.0):
-    """The clip (or still) stays as it was; framed windows come up over it."""
+MCI = ",minterpolate=fps=24:mi_mode=mci:mc_mode=aobmc:vsbmc=1"      # slow motion from computed in-between frames, never repeated ones
+def windows(src, d, wins, ss=0.0, tag=None, dim=-0.10, fin=0.0, fout=0.0, wfade=0.3):
+    """The clip (or still) stays as it was; framed windows come up over it and fade out again before the cut."""
     o = out(); img = src.endswith(".png")
     if img:
         ins = ["-loop", "1", "-t", str(d), "-i", src]; vf = f"[0:v]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,fps=24,eq=brightness={dim}[b0];"
     else:
         L = dur_of(src) - 0.1; speed = min(1.0, (L - ss) / d); ins = ["-ss", str(ss), "-i", src]
-        slow = ",minterpolate=fps=24:mi_mode=mci:mc_mode=aobmc:vsbmc=1" if speed < 0.985 else ""
-        vf = f"[0:v]setpts=PTS/{speed}{slow},scale=1280:720,fps=24,eq=brightness={dim}[b0];"
+        vf = f"[0:v]setpts=PTS/{speed}{MCI if speed < 0.985 else ''},scale=1280:720,fps=24,eq=brightness={dim}[b0];"
     cur = "[b0]"
     for i, (png, a, b) in enumerate(wins):
-        ins += ["-loop", "1", "-t", str(d), "-i", png]
-        vf += f"[{i+1}:v]format=rgba,fade=t=in:st={a}:d=0.3:alpha=1,fade=t=out:st={b-0.3}:d=0.3:alpha=1[w{i}];{cur}[w{i}]overlay=0:0:enable='between(t,{a},{b})'[b{i+1}];"; cur = f"[b{i+1}]"
+        oe = min(b, d); ins += ["-loop", "1", "-t", str(d), "-i", png]
+        vf += f"[{i+1}:v]format=rgba,fade=t=in:st={a}:d={wfade}:alpha=1,fade=t=out:st={oe - wfade - 0.02:.3f}:d={wfade}:alpha=1[w{i}];{cur}[w{i}]overlay=0:0:enable='between(t,{a},{oe})'[b{i+1}];"; cur = f"[b{i+1}]"
     fades = (f",fade=t=in:d={fin}" if fin else "") + (f",fade=t=out:st={d - fout:.3f}:d={fout}" if fout else "")
     ins += ["-i", tag or f"{OLD}/tag_gen.png"]; vf += f"{cur}[{len(wins)+1}:v]overlay=0:0{fades}[v]"
     run(ins + ["-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
 AURORA = "0x8CF0C8"
 def into_phone(src, d, fx=0.42, fy=0.74):
-    """Our own version of the reveal: the camera dives into the glowing phone and the picture floods with aurora light."""
+    """Our own version of the reveal, used only if the generated one is missing."""
     o = out(); N = int(round(d * 24))
     vf = (f"[0:v]scale=3840:2160:force_original_aspect_ratio=increase,crop=3840:2160,"
           f"zoompan=z='1+pow(on/{N},2.2)*5.0':x='(iw-iw/zoom)*{fx}':y='(ih-ih/zoom)*{fy}':d={N}:s=1280x720:fps=24,"
@@ -90,8 +89,8 @@ def into_phone(src, d, fx=0.42, fy=0.74):
     run(["-loop", "1", "-i", src, "-i", f"{OLD}/tag_gen.png", "-filter_complex", vf, "-map", "[w]", "-frames:v", str(N)] + V + [o]); check(o, N / 24)
 def from_light(fn_out, d, fin=0.7):
     """The next shot comes up out of the same light."""
-    tmp = fn_out; o2 = tmp.replace(".mp4", "_f.mp4")
-    run(["-i", tmp, "-vf", f"fade=t=in:d={fin}:color={AURORA}", "-t", str(d)] + V + [o2]); os.replace(o2, tmp)
+    o2 = fn_out.replace(".mp4", "_f.mp4")
+    run(["-i", fn_out, "-vf", f"fade=t=in:d={fin}:color={AURORA}", "-t", str(d)] + V + [o2]); os.replace(o2, fn_out)
 def measure_screen(app_src, panel, d, ss=1.0):
     """One calm screen for the three measures: the app on the left, the three lines arriving on the right."""
     o = out()
@@ -145,45 +144,60 @@ def at(t, fn): T.append((t, fn))
 # v8: new, brighter footage; one untouched Suno take (v8/track8.m4a); the same data on screen as v6.
 C = lambda k: f"v8/clips/{k}.mp4"; N8 = lambda k: f"v8/stills/{k}.png"
 def have(k): return os.path.exists(C(k))
-# 1 she leaves the clinic; the next appointment
-at(0.0,  lambda d: clip(C("exit"), d, ss=0.2) if have("exit") else clip(C("door"), d, zoom=1.12, fx=0.6, fy=1.0))
-at(4.3,  lambda d: clip(C("card"), d, ss=0.4) if have("card") else clip(C("door"), d, ss=2.4))
-# 2 she finds him
-at(8.0,  lambda d: clip(C("cub"), d))
-at(12.6, lambda d: clip(C("cub"), d, ss=3.0, zoom=1.2, fx=0.5, fy=0.3))
-at(15.0, lambda d: clip(C("hold"), d, ss=1.0))
-# the wow: he turns to light and goes into her phone; the next thing we see is the real app
+# RULES (14 Nov): a clip is shown once only, and every footage shot runs 4 s or more at natural speed.
+USED = {}
+def rule(k, d, ss=0.0, **kw):
+    """One footage shot: checks the two rules, then cuts it."""
+    assert k not in USED, f"clip {k} used twice"; USED[k] = d
+    L = dur_of(C(k)) - 0.1; assert d >= 3.99, f"{k}: shot of {d} s is under 4 s"; assert d <= L + 0.02, f"{k}: shot of {d} s is longer than the clip ({L:.2f})"
+    return min(ss, max(0.0, L - d)), kw
+def fclip(k, d, ss=0.0, **kw):
+    ss, kw = rule(k, d, ss, **kw); clip(C(k), d, ss=ss, **kw)
+def over_once(k, png, d, ss=0.0):
+    """Words over darkened footage at natural speed; when the clip ends the backdrop has already faded to the dark ground."""
+    USED[k] = d if k not in USED else 1 / 0
+    o = out(); L = dur_of(C(k)) - 0.1 - ss; fo = min(d, L) - 0.9
+    vf = (f"[0:v]scale=1280:720,fps=24,eq=brightness=-0.22:saturation=0.8,gblur=sigma=3,tpad=stop_mode=clone:stop_duration=9,fade=t=out:st={fo:.3f}:d=0.8:color=0x0b131e[b];"
+          f"[b][1:v]overlay=0:0[w];[w][2:v]overlay=0:0[v]")
+    run(["-ss", str(ss), "-i", C(k), "-i", png, "-i", f"{OLD}/tag_gen.png", "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
 def reveal(d):
-    if have("reveal"):
-        clip(C("reveal"), d, ss=1.35); o = f"seg8/{n[0]:03d}.mp4"
-        run(["-i", o, "-vf", f"fade=t=out:st={d - 0.45:.3f}:d=0.45:color={AURORA}", "-t", str(d)] + V + [o.replace(".mp4", "_f.mp4")]); os.replace(o.replace(".mp4", "_f.mp4"), o)
-    else: into_phone(N8("n04"), d)
+    ss, _ = rule("reveal", d, 0.85); clip(C("reveal"), d, ss=ss); o = f"seg8/{n[0]:03d}.mp4"
+    run(["-i", o, "-vf", f"fade=t=out:st={d - 0.45:.3f}:d=0.45:color={AURORA}", "-t", str(d)] + V + [o.replace(".mp4", "_f.mp4")]); os.replace(o.replace(".mp4", "_f.mp4"), o)
 def app_from_light(d):
     phone(A("home"), d, ss=1.0); from_light(f"seg8/{n[0]:03d}.mp4", d)
-at(17.0, reveal)
+def nurse_shot(d):
+    ss, _ = rule("nurse", d, 0.0)
+    windows(C("nurse"), d, [("w_tg.png", 0.3, 2.7), ("w_anna.png", 2.5, d + 0.3)], ss=ss, wfade=0.5)
+# 1 she leaves the clinic; the next appointment
+at(0.0,  lambda d: fclip("exit", d, ss=0.2))
+at(4.0,  lambda d: fclip("card", d, ss=0.4))
+# 2 she finds him, she picks him up
+at(8.0,  lambda d: fclip("cub", d))
+at(12.5, lambda d: fclip("hold", d, ss=0.6, zoom=1.4, fx=0.05, fy=0.75))
+# the wow: he turns to light and goes into her phone; the next thing we see is the real app
+at(16.5, reveal)
 at(20.6, app_from_light)
-at(22.4, lambda d: clip(C("sofa"), d, ss=0.8))
 # 3 for him, she gets up
-at(24.3, lambda d: clip(C("grey"), d, ss=0.2))
-at(26.8, lambda d: clip(C("curtains"), d, ss=0.6) if have("curtains") else still(N8("n06"), d, z0=1.0, z1=1.12, fx=0.6, fy=0.4))
+at(22.6, lambda d: fclip("grey", d, ss=0.2))
+at(26.7, lambda d: fclip("curtains", d, ss=0.6))
 # 4 she said yes; every moment with him is a number
-at(30.7, lambda d: over(C("sofa"), "c_yes.png", d, ss=1.5, speed=0.5))
-at(37.0, lambda d: measure_screen(A("home"), "v8/triple.mp4", d))                 # one screen: the app, and the three lines arriving
-at(44.3, lambda d: two_step_card("c8_num.png", "c8_gem.png", d, at2=2.2))            # one card: numbers only; then Gemini and the check
+at(30.7, lambda d: over_once("sofa", "c_yes.png", d))
+at(37.0, lambda d: measure_screen(A("home"), "v8/triple.mp4", d))
+at(44.3, lambda d: two_step_card("c8_num.png", "c8_gem.png", d, at2=2.2))
 # 5 the questionnaire beside the lines, one continuous shot
 at(53.2, lambda d: chart("v8/chart_full.mp4", d))
 # 6 November
-at(61.1, lambda d: clip(C("grey"), d, ss=2.2, zoom=1.15, fx=0.7, fy=0.6))
-at(64.5, lambda d: clip(C("night"), d, ss=0.2, cap=("cap_help.png", 2.8)))
-at(70.2, lambda d: windows(C("nurse"), d, [("w_tg.png", 0.3, d + 0.3)], ss=0.2))                      # the clinic: the nurse reads the real alert
-at(73.5, lambda d: windows(C("nurse"), d, [("w_anna.png", 0.3, d - 0.05)], ss=2.6))                   # she opens Anna's page and picks up the phone
-at(77.6, lambda d: clip(C("call"), d, speed=0.72))                                                    # "I read your note. I'm here."
+at(61.1, lambda d: fclip("november", d, ss=0.3))
+at(65.3, lambda d: fclip("night", d, cap=("cap_help.png", 2.0)))
+at(70.2, nurse_shot)                                        # the alert, then her page, staying on and fading out by the cut
+at(75.1, lambda d: fclip("nurse2", d, ss=0.2))              # "Anna, I read your note."
+at(79.6, lambda d: fclip("call", d))                        # "I'm here."
 # 7 this time
-at(84.5, lambda d: clip(C("return"), d, ss=0.3))
+at(84.5, lambda d: fclip("return", d, ss=0.3))
 # 8 the name and the motto
 at(89.1, lambda d: card("c_brand6.png", d, fade=0.8))
 END = 99.4
-FIXED = {0.0, 8.0, 17.0, 20.6, 37.0, 44.3, 53.2, 89.1}
+FIXED = {t for t, _ in T}                                   # every cut is placed by hand; none is moved onto a beat
 B = json.load(open("v8/beats8.json"))
 def snap(t, prev):
     best, bs = t, -9
@@ -200,12 +214,12 @@ for i, (t, fn) in enumerate(T):
     fn(round(round((nxt - t) * 24) / 24, 4))
 open("list8.txt", "w").write("".join(f"file 'seg8/{i:03d}.mp4'\n" for i in range(1, n[0] + 1)))
 run(["-f", "concat", "-safe", "0", "-i", "list8.txt", "-c", "copy", "silent8.mp4"])
-FOX, BRAND = T[5][0], T[-1][0]
+FOX, BRAND = T[4][0], T[-1][0]
 # Subtitles: every spoken line, at the times of the take itself. Lines that a card already shows in full, the big
 # "I need help." caption and the closing frame (which carries the motto) are not doubled.
 SUBS = [
  (1.2, 3.8, "Anna\u2019s treatment for depression is over."), (4.5, 7.4, "The next appointment is six weeks away."),
- (9.8, 14.2, "On the way home, she finds a fox cub, alone in the snow."), (15.2, 16.9, "She picks him up."), (17.2, 19.4, "And he steps into her phone."),
+ (9.8, 14.2, "On the way home, she finds a fox cub, alone in the snow."), (15.2, 16.4, "She picks him up."), (17.2, 19.4, "And he steps into her phone."),
  (20.8, 23.5, "Every day she does one small thing for him."), (24.3, 26.7, "Some days, she would stay in bed."), (26.9, 29.6, "For him, she gets up."),
  (37.1, 39.3, "Her reactions in his game."), (39.5, 42.1, "Her face as they breathe."), (43.1, 44.2, "Her steps."),
  (53.4, 60.0, "In this example, when her weekly clinic score climbs, the other lines fall."),
