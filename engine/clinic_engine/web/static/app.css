@@ -413,3 +413,5 @@ ul.plain.big li, .d.big { font-size: 14.5px; line-height: 1.45; }
 .rule-add { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; }
 .rule-input { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 13px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; resize: vertical; }
 .rule-input:focus { outline: none; border-color: var(--muted); }
+
+.bp-say.wide, .bp-say.wide p, .bp-say.wide ul { max-width: none; }

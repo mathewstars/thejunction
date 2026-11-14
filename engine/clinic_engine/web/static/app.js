@@ -1549,7 +1549,7 @@
 
   // ---- blueprint: the mind (what decides whether the clinic should look at someone)
   // BP_TRIAGE_CHECK is filled from clinic_engine/triage_check.py (generated pictures, real models).
-  const BP_TRIAGE_CHECK = { pairs: 40, flags: 107, lowerAsked: 0, lowerAfter: 0, differs: 12, rulePictures: 20, ruleFollowed: 20, otherFlags: 31, otherMoved: 5 };
+  // Numbers from docs/checks/triage-check-2026-11-14.json.
   function bpMind(wrap) {
     wrap.appendChild(el("p", { class: "lead" }, "The mind is the part of the server that decides whether the clinic should look at someone, and how soon. It has three layers. Fixed rules notice that something changed and open a flag. Two models weigh how much it matters. Plain code guards both: it decides what a model may see, what a model may decide, and what a model cannot undo."));
     wrap.appendChild(el("p", { class: "lead" }, "What a model cannot undo: a request for help, and a flag the fixed rules hold at “needs review today”. Neither model can lower those, and no model can put any flag more than one step below the fixed rules. Only a rule written by a clinician can go lower, and the flag then shows the rule, who wrote it and until when."));
@@ -1573,14 +1573,14 @@
       }
     });
     wrap.appendChild(el("section", { class: "panel" }, el("figure", { class: "bp-fig" }, s,
-      el("figcaption", { class: "bp-cap" }, "The amber box is the two models; the others are plain code. The models never start anything: they are asked only after the fixed rules have opened a flag, and again when the picture changes. A flag the fixed rules open at “needs review today” is reported at once, before any model is asked. Messages go out in clinic hours and only where the clinic has switched them on."))));
+      el("figcaption", { class: "bp-cap" }, "The amber box is the two models; the others are plain code. The models never start anything: they are asked only after the fixed rules have opened a flag, and again when the picture changes. "))));
 
     const cellRow = (r) => el("tr", null, r.map((v) => el("td", null, v)));
     wrap.appendChild(panel("Who may do what", null, table(["Layer", "Decides", "Cannot"], [
       ["Fixed rules (the watchers)", "Which flags exist, and each flag's own level, which is always kept and shown. A flag closes when the change is gone or a clinician acknowledges it; a request for help closes only by a clinician.", "Be overruled downwards from “needs review today” by a model."],
       ["The local model (on this server it runs on our own machine; in a clinic, on the clinic's hardware)", "The level of every open flag: watch, attention, or needs review today, with one of ten fixed reasons. It reads the clinic's own rules for this person and says which flag a rule applies to.", "Open or close a flag, write any text, change a request for help, or by itself go below the two floors."],
       ["Gemini, outside, only when the patient's record allows it", "Agree, raise or lower each level by one step.", "See a name, a date or any words; move a level that follows a clinic rule; change a request for help; go below the floors."],
-      ["Guarding code", "What each model is sent, the form of its answer, the two floors, and what happens when no model answers for the current picture: the fixed rules' level applies at the next pass, within five minutes, up or down.", "Be argued with: an answer outside the form is refused and written to the log."]
+      ["Guarding code", "What each model is sent, the form of its answer, the two floors, and what happens when no model answers for the current picture: the fixed rules' level applies at the next pass, within five minutes, up or down. A flag the fixed rules put at “needs review today” is reported at once, before any model is asked; messages go out in clinic hours, where the clinic has switched them on.", "Be argued with: an answer outside the form is refused and written to the log."]
     ].map(cellRow), "bp-table", { plain: true })));
 
     // What the two models decided for the example patient, read live from the server.
@@ -1594,9 +1594,9 @@
       table(["Flag", "Fixed rules alone", "Local model", "Gemini", "Level shown to the clinic"], open.map((i) => { const t = lv[i.id]; return el("tr", null,
         el("td", null, kind(i.kind)), el("td", null, LV[t.rules_level] || "–"),
         el("td", null, t.level1 ? LV[t.level1] + " (" + (RS[t.reason1] || t.reason1) + ")" : "no answer"),
-        el("td", null, t.verdict2 ? ({ agree: "agrees", raise: "raises", lower: "lowers" }[t.verdict2]) + " (" + (RS[t.reason2] || t.reason2) + ")" : "not asked"),
+        el("td", null, t.verdict2 ? ({ agree: "agrees", raise: "raises", lower: "lowers" }[t.verdict2]) + (t.reason2 && t.reason2 !== t.reason1 ? " (" + (RS[t.reason2] || t.reason2) + ")" : "") : "not asked"),
         el("td", null, t.level !== t.rules_level ? el("b", null, LV[t.level] + " ≠ rules") : LV[t.level], t.fixed_by_rule ? " (fixed by rule)" : t.held_by_floor ? " (held by the floor)" : "")); }), "bp-table", { plain: true }),
-      el("p", { class: "bp-cap" }, "Read from the server as this page loaded; example data. Both models are shown the fixed rules' level, and Gemini is shown the local model's answer, so agreement here is expected and is not evidence that the levels are right. Across all example patients on 14 November 2026 the models set 1 of 13 flags differently from the fixed rules (a movement drop raised to needs review today); one more was lowered by a clinic rule."))
+      el("p", null, "Read from the server as this page loaded; example data. Both models are shown the fixed rules' level, and Gemini is shown the local model's answer, so agreement here is expected and is not evidence that the levels are right. Across all example patients on 14 November 2026 the models set 1 of 13 flags differently from the fixed rules (a movement drop raised to needs review today); one more was lowered by a clinic rule."))
       : el("p", { class: "muted small" }, tri.mode === "models" ? "No open flags on the example patient right now." : "On this server the levels are set by the fixed rules alone (model triage is switched off).");
     wrap.appendChild(panel("How the two models weigh a flag", null, el("div", { class: "bp-say" },
       el("p", null, "Both models get the same picture of one person: every open flag (its kind, the days it has been held, the level the fixed rules give it, and the flag's own numbers), the last 14 days of movement against own normal, and three counts. Numbers and fixed codes only."),
@@ -1606,13 +1606,13 @@
       el("p", null, "A clinician can write a rule for one person the way they would say it to a colleague, for example: “She is on a planned two-week rest after knee surgery. Lower movement is expected and only needs watching.”"),
       el("ul", { class: "plain" },
         el("li", null, "The local model decides which flag a rule applies to; when it says so, Gemini cannot move that level. Code checks that the rule exists, not that it was read the way its author meant. So the flag shows the rule's words, its author and date, the level the fixed rules alone would give, and whether Gemini, which does not see the rule, would raise it."),
-        el("li", null, "A rule ends by itself after 14 days. While a rule holds a flag below the fixed rules' level, the patient list marks that person “lowered by clinic rule”, so a lowered flag is never silent."),
+        el("li", null, "A rule ends by itself after 14 days. While a rule holds a flag below the fixed rules' level, the patient list marks that person “lowered by clinic rule”, so a lowered flag is marked in the list."),
         el("li", null, "The words stay on the clinic's server. Gemini is told only that a level follows a clinic rule."),
-        el("li", null, "A rule changes levels, and with them the order of the list and whether a message is sent. It cannot open or close a flag, cannot lower a request for help, and nothing of it reaches the patient."),
+        el("li", null, "A rule changes levels, and with them the order of the list and whether a message is sent. One exception, on the safe side: if the fixed rules later raise a rule-lowered flag to “needs review today”, the message goes out once before the rule is applied again. A rule cannot open or close a flag, cannot lower a request for help, and nothing of it reaches the patient."),
         el("li", null, "It is written on the patient's Overview page, under “The clinic's rules for this person”.")))));
 
     wrap.appendChild(panel("What the fixed rules notice", null, el("div", { class: "bp-say" },
-      el("p", null, "Seventeen kinds of flag, each opened and closed by code. Everything is compared with the person's own normal: the median and usual spread of their last 28 days, leaving out the newest five so that a drop does not move the yardstick it is measured with. Three of them (slowing down, slower reactions, less facial movement) also count a model's reading of a recording once code has confirmed it in the numbers."),
+      el("p", null, "Seventeen kinds of flag, grouped below, each opened and closed by code. Everything is compared with the person's own normal: the median and usual spread of their last 28 days, leaving out the newest five so that a drop does not move the yardstick it is measured with. Three of them (slowing down, slower reactions, less facial movement) also count a model's reading of a recording once code has confirmed it in the numbers."),
       table(["Flag", "Opens when"], [
         [kind("deviation"), "at least 3 of the last 5 days are clearly below own normal in steps and walking speed (2 are enough when reactions, the face or the sessions also changed)"],
         [kind("novelty"), "a single day very far from normal, either way"],
@@ -1627,19 +1627,25 @@
         [kind("model_noticed"), "Gemini found a slow decline or fading smiles that the rules above missed, and code confirmed it in the numbers"]
       ].map(cellRow), "bp-table", { plain: true }))));
 
-    const C = BP_TRIAGE_CHECK;
-    wrap.appendChild(el("div", { class: "grid even" },
-      panel("What we checked", null, el("ul", { class: "plain" },
+    wrap.appendChild(panel("What we checked", null, el("div", { class: "bp-say wide" },
+      el("p", null, "A check on 40 generated pictures, read by the real models on 14 November 2026. Each picture was read as it is, read a second time, and read strictly worse: the same flags, the movement drop deeper and longer, more low notes. 107 flags in all. No patient data; the pictures have the form the server sends and carry the level the fixed rules would give."),
+      table(["Question", "Result"], [
+        ["Does worse ever mean lower?", "No: 0 of 107 flags ended lower in the worse picture, as the models asked and after the floors."],
+        ["Do the models respond to severity, or repeat the level they are shown?", "They respond. For 88 flags the fixed rules give the same level in both pictures, so the models decide alone: they set 38 of them higher in the worse picture and none lower. For the other 19 the fixed rules themselves rise; the models went up with 17."],
+        ["How do the models differ from the fixed rules?", "In the pictures as they are, on 18 of 107 flags: 5 raised (3 movement drops, 2 unusual days), 13 lowered by one step (9 weak sessions, 2 less facial movement, 1 low notes, 1 slower reactions). Lowering a supporting signal while a movement drop is held is the opposite of what the fixed rules do. We do not know which is right."],
+        ["Does the second reader change anything?", "Not here: Gemini agreed with the local model on all 107 flags. On these pictures it is a second signature, not a second opinion."],
+        ["Is the same picture read the same way twice?", "Mostly: 6 of 107 flags got a different level on the second read, each by one step, although the local model runs at temperature 0."],
+        ["Is a clinic rule followed, and only where it applies?", "One rule about the movement drop, on 20 pictures: the local model named it on the movement drop 20 times, set that flag to watch 20 times, and never named it on another flag. Of 31 other flags, 4 changed level (2 up, 2 down). Repeat reads alone move about 6 in 100, so 4 of 31 is more than we can call noise and less than we can call an effect."]
+      ].map((r) => el("tr", null, r.map((v) => el("td", null, v)))), "bp-table", { plain: true }),
+      el("ul", { class: "plain" },
+        el("li", null, "The script is clinic_engine/triage_check.py; every reading is in docs/checks/triage-check-2026-11-14.json in the repository."),
         el("li", null, "The automatic tests cover the guard: the form of every answer, the request for help staying urgent whatever a model or a rule says, the two floors, the fixed rules' level coming back when no model answers, a rule ending by itself, and the clinician's words never leaving the server."),
-        C ? el("li", null, "Worse must not mean lower. " + C.pairs + " generated pictures were each read twice by the real models: as they are, and strictly worse (the movement drop deeper and longer, more low notes). Of " + C.flags + " flags, the models asked for a lower level in the worse picture " + C.lowerAsked + " times; after the floors, " + C.lowerAfter + " ended lower. The models set " + C.differs + " of the " + C.flags + " differently from the fixed rules.") : null,
-        C ? el("li", null, "A rule about one flag must not move another. " + C.rulePictures + " of those pictures were read again with one rule about the movement drop. The local model applied the rule to the movement drop in " + C.ruleFollowed + " of them; of " + C.otherFlags + " other flags, " + C.otherMoved + " changed level, each by one step and each ending at the fixed rules' own level. We did not measure how much two reads of the same picture differ, so we cannot say how much of that is the rule.") : null,
-        C ? el("li", null, "The script is clinic_engine/triage_check.py and its full output is docs/checks/triage-check-2026-11-14.json in the repository; the pictures are generated, with the same form the server sends.") : null,
-        el("li", null, "By hand on this server, 14 November 2026, not kept as a script: a rule in English and the same rule in Slovak each lowered one flag for one example patient; a rule about something she does not have changed nothing; removing it restored the level."))),
-      panel("What we did not check", null, el("ul", { class: "plain" },
-        el("li", null, "Whether the levels the models set are the ones a clinician would set. Nobody has compared them; that needs clinicians and is part of the proposed study."),
-        el("li", null, "Whether a model reads every rule the way its author meant it. One rule on generated pictures and three on one example patient is not a test of that, and 5 of 31 other flags moved when a rule was present."),
-        el("li", null, "Whether a model adds anything over the fixed rules. On the example patients it differs from them on 1 flag of 13."),
-        el("li", null, "A rule that is wrong or written to silence someone. The system limits it (14 days, a mark in the list, never a request for help) and shows it; it does not judge it.")))));
+        el("li", null, "By hand on this server, 14 November 2026, not kept as a script: a rule in English and the same rule in Slovak each lowered one flag for one example patient; a rule about something she does not have changed nothing; removing it restored the level.")))));
+    wrap.appendChild(panel("What we did not check", null, el("div", { class: "bp-say wide" }, el("ul", { class: "plain" },
+      el("li", null, "Whether the levels the models set are the ones a clinician would set. Nobody has compared them; that needs clinicians and is part of the proposed study."),
+      el("li", null, "Whether a model reads every rule the way its author meant it. One rule on generated pictures and three on one example patient is not a test of that."),
+      el("li", null, "Whether Gemini as second reader ever disagrees usefully. On 107 generated flags and on the example patients it agreed every time."),
+      el("li", null, "A rule that is wrong or written to silence someone. The system limits it (14 days, a mark in the list, never a request for help) and shows it; it does not judge it.")))));
     wrap.appendChild(panel("See it", null, el("p", null, "Open a patient: under “Needs attention” each flag shows what the local model said, what Gemini said, and what the fixed rules alone would say. The Timeline shows each call to a model with what was sent and what came back. One setting on the server puts all levels back on the fixed rules alone.")));
   }
 
