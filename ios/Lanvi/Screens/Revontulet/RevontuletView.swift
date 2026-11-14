@@ -50,6 +50,36 @@ struct RevontuletView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.displayScale) private var displayScale
 
+    /// Debug and auto-play only: when each beat began and what one frame of drawing costs.
+    final class Trace {
+        static let shared = Trace()
+        let on = ProcessInfo.processInfo.arguments.contains("-revontuletAuto")
+        var lastBeat: RevontuletBeat?
+        var beatAt = 0.0
+        var start = 0.0
+        var frames = 0, total = 0.0, worst = 0.0
+
+        func beat(_ b: RevontuletBeat, at now: Double, start t0: Double?) {
+            guard on, b != lastBeat else { return }
+            if let last = lastBeat {
+                let avg = frames > 0 ? total / Double(frames) * 1000 : 0
+                print(String(format: "revontulet: trace %@ %.2f s, drawing %.1f ms average, %.1f ms worst over %d frames",
+                             last.rawValue, now - beatAt, avg, worst * 1000, frames))
+            }
+            if let t0 { start = t0 }
+            lastBeat = b
+            beatAt = now
+            frames = 0; total = 0; worst = 0
+        }
+
+        func frame(_ seconds: Double) {
+            guard on else { return }
+            frames += 1
+            total += seconds
+            worst = max(worst, seconds)
+        }
+    }
+
     /// Not drawn from: the pretend finger and a frame counter, kept out of SwiftUI's sight.
     private final class Box {
         var auto: RevontuletAutoPlay?
@@ -132,8 +162,10 @@ struct RevontuletView: View {
                 let painter = RevontuletPainter(e: e, art: art, now: frozenAt ?? CACurrentMediaTime(), coach: coach, reduceMotion: reduceMotion)
                 ZStack {
                     Canvas { ctx, size in
+                        let t = CACurrentMediaTime()
                         painter.sky(&ctx, size: size)
                         painter.ice(&ctx, size: size)
+                        Trace.shared.frame(CACurrentMediaTime() - t)
                     }
                     // Lower-left and smaller while playing; at the burst it springs to the centre.
                     RevontuletFox(act: act(e), size: L.foxSize, reaction: reaction, reactionTick: reactionTick,
@@ -142,7 +174,7 @@ struct RevontuletView: View {
                         .frame(width: L.foxSize, height: L.foxSize)
                         .scaleEffect(Self.foxScale(e))
                         .position(Self.foxPoint(e))
-                        .animation(.spring(response: 0.5, dampingFraction: 0.72), value: Self.foxPlace(e))
+                        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: Self.foxPlace(e))
                         .animation(.spring(response: 1.1, dampingFraction: 0.9), value: e.beat == .warmth)
                     Canvas { ctx, size in
                         painter.front(&ctx, size: size)
@@ -401,6 +433,7 @@ struct RevontuletView: View {
         events += e.tick(now)
         if e != engine { engine = e }
         if !events.isEmpty { react(events, e, now: now) }
+        Trace.shared.beat(e.beat, at: now, start: e.startUptime)
         tendCoach(now: now)
         steerFox(e, now: now)
         // The purr follows the hand: a finger resting still lets it fade; moving brings it back.
