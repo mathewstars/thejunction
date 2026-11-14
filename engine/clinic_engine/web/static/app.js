@@ -1574,7 +1574,8 @@
   }
   // Every session the phone sent, one row each: the raw sample behind the statistics.
   const SAMPLE_COLS = [["smile_time_share", "Smiling", 100, "%"], ["eye_smile_share", "Reach eyes", 100, "%"], ["smile_response_share", "Smiled at moment", 100, "%"],
-    ["facial_activity", "Face movement", 1, ""], ["blink_rate_per_min", "Blinks/min", 1, ""], ["look_down_share", "Looking down", 100, "%"], ["head_movement", "Head movement", 1, ""]];
+    ["facial_activity", "Face movement", 1, ""], ["blink_rate_per_min", "Blinks/min", 1, ""], ["look_down_share", "Looking down", 100, "%"], ["head_movement", "Head movement", 1, ""],
+    ["lip_down_share", "Mouth down", 100, "%"], ["lip_press_share", "Lips pressed", 100, "%"]];
   function sampleCell(v, z, mult, unit) {
     if (v === null || v === undefined) return el("td", { class: "r num muted" }, "–");
     const shown = mult === 100 ? Math.round(v * 100) + unit : (Math.abs(v) >= 10 ? Math.round(v) : Number(v).toFixed(2));
