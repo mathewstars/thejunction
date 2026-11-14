@@ -605,23 +605,25 @@ def test_the_rest_of_the_mind_behaves_identically_with_it_on_and_off():
     assert snaps[True]["items"]  # the dip did open attention: the comparison is not empty
 
 
-def test_simulated_study_gives_enough_days_and_finds_the_built_in_relation(env):
-    """The 12-week example is related to its ratings by construction; the code-only
-    appraisal must see that. This checks the pipeline, not any real effect."""
+def test_simulated_study_of_a_stable_person_concludes_nothing(env):
+    """The study example stays well and its ratings hardly move. The appraisal must not
+    find a relation in that: this is the case that shows the tool declining to conclude."""
     from clinic_engine import seed_research
     d = env.demo
     pid = seed_research.create(env.store, d["clinic_id"], "Europe/Helsinki", env.clock.now())
     repo = env.mind.repo(d["clinic_id"], pid)
     out = env.run(env.mind.run_appraisal(repo, "test"))
     assert out["reference"]["key"] == "phq9" and out["design"]["days"] >= 80
-    rows = {r["key"]: r for r in out["rows"]}
     # One observation is one rating, never one day: n cannot exceed the number of ratings.
     assert out["design"]["unit"] == "rating" and out["design"]["observations"] == 12
+    rows = {r["key"]: r for r in out["rows"]}
     assert 8 <= rows["face.facial_activity"]["n"] <= 12
     assert all(r["lead_days"] is None for r in out["rows"])
-    consistent = [k for k, r in rows.items() if r["agreement"] == "consistent"]
-    assert len(consistent) >= 5 and out["overall"]["independent_lines"] >= 2
-    assert seed_research.level(0) == 0.45
+    scores = [p[1] for p in out["series"]["reference"]]
+    assert max(scores) - min(scores) < 5
+    assert len([r for r in out["rows"] if r["agreement"] == "consistent"]) <= 2
+    assert out["overall"]["pattern"] in ("no_clear_relation", "insufficient_data")
+    assert out["overall"]["confidence"] == "low"
 
 
 def test_earlier_weeks_for_the_demo_patient_leave_the_mind_as_it_was(env):

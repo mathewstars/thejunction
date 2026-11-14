@@ -313,3 +313,11 @@ table.assoc td.num, table.assoc td.r { white-space: nowrap; }
 .fp-head .fp-hit { fill: transparent; }
 .fp-ci.dim { stroke: var(--muted); stroke-width: 1.5; }
 .fp-v.dim { fill: var(--muted); font-weight: 400; }
+.attlist li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: baseline; column-gap: 8px; }
+.attlist .dotk { align-self: center; margin-right: 0; }
+.attlist .since { white-space: nowrap; font-size: 12px; }
+.attlist .ack { margin-left: 0; white-space: nowrap; }
+.bandkey { display: inline-block; width: 16px; height: 10px; margin-right: 6px; background: var(--panel-2); border: 1px solid var(--line); vertical-align: -1px; }
+.tg-v { paint-order: stroke; stroke: var(--panel); stroke-width: 4px; stroke-linejoin: round; }
+.tg-cut { stroke: var(--amber); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0.8; }
+.tg-cutl { fill: var(--muted); font-size: 11px; }
