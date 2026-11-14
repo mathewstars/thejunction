@@ -233,6 +233,70 @@ body.no-clock .clock { display: none; }
 .help .sum { margin-top: 8px; color: var(--aurora); }
 .help .sum.over { color: var(--ember); }
 
+/* ---------- second pass: bigger evidence, one thought on screen at a time ---------- */
+.swap { position: relative; }
+.swap > * { position: absolute; left: 0; top: 50%; width: 100%; }
+.swap > *, .swap > [data-step].on { transform: translateY(-50%); }
+.swap > [data-step]:not(.on) { transform: translateY(calc(-50% + 26px)); }
+.swap > .gone, .swap > [data-step].on.gone { transform: translateY(calc(-50% - 18px)); }
+.then { display: block; margin-top: 34px; }
+span[data-step] { display: block; }
+
+.doorway { border: 12px solid #223352; border-bottom: 0; right: 180px; }
+.leaf { position: absolute; top: 0; bottom: 0; right: 0; width: 14%; background: linear-gradient(90deg, #131f36 0%, #0a1222 100%);
+  border-left: 3px solid #2c4169; transition: width 2.4s cubic-bezier(0.6, 0, 0.3, 1); }
+.leaf::before { content: ""; position: absolute; left: 20px; top: 52%; width: 16px; height: 62px; border-radius: 8px; background: #6f86ad; }
+.doorlight, .door-scene[data-at="1"] .doorlight, .door-scene[data-at="2"] .doorlight { transform: none; }
+.door-scene[data-at="1"] .leaf { width: 30%; }
+.door-scene[data-at="2"] .leaf { width: 52%; }
+.door-scene[data-at="3"] .leaf, .door-scene[data-at="4"] .leaf { width: 100%; }
+.door-scene[data-at="3"] .doorlight, .door-scene[data-at="4"] .doorlight { transform: none; opacity: 0; }
+.spill { position: absolute; right: 120px; top: 930px; width: 570px; height: 90px; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 214, 150, 0.42), rgba(255, 214, 150, 0) 70%); transition: opacity 2.4s ease; }
+.door-scene[data-at="1"] .spill { opacity: 0.75; } .door-scene[data-at="2"] .spill { opacity: 0.5; }
+.door-scene[data-at="3"] .spill, .door-scene[data-at="4"] .spill { opacity: 0; }
+
+.sig-src { font-size: 28px; }
+.never { font-size: 34px; font-weight: 600; color: var(--ink); }
+
+.slide-scene { gap: 60px; }
+.slide-scene .col.mid { width: 520px; flex: none; height: 480px; }
+.slide-scene .phone { flex: none; }
+.clinic { width: 600px; flex: 1 1 auto; }
+.chart { padding: 30px 34px; }
+.chart-title { font-size: 30px; color: var(--ink); font-weight: 600; }
+.chart-line { stroke-width: 7; }
+.chart-note { font-size: 40px; }
+.p { font-size: 36px; padding: 20px 28px; }
+.lvl { font-size: 28px; }
+
+.layer { width: 480px; padding: 36px 38px 40px; gap: 14px; }
+.layer h3 { font-size: 52px; }
+.layer p { font-size: 34px; color: var(--ink); opacity: 0.85; }
+.stat span { font-size: 36px; }
+.stats { margin-top: 10px; }
+.mind-scene { justify-content: center; padding-top: 110px; }
+
+.night-scene .col.mid { width: 800px; height: 620px; flex: none; }
+.night-scene .phone { flex: none; }
+.night-scene .l { font-size: 66px; }
+
+.realcol ul { font-size: 38px; }
+
+.close-scene { flex-direction: row; gap: 120px; }
+.returnphone { width: 420px; height: 840px; flex: none; }
+.returnphone .screen { background: linear-gradient(180deg, #0b1838 0%, #17346c 60%, #2c5aa8 100%); padding-top: 90px; box-shadow: 0 0 140px rgba(126, 240, 180, 0.35); transition: background 1.6s ease, box-shadow 1.6s ease; }
+.returnphone .fox.inphone { width: 300px; margin: 0 auto; }
+.returnphone .kept { margin-top: 44px; font-size: 46px; font-weight: 650; font-style: italic; line-height: 1.2; text-align: center; color: var(--ink);
+  text-shadow: 0 0 40px rgba(126, 240, 180, 0.7); opacity: 1; }
+.returnphone .screen > * { transition: opacity 1.6s ease 0.4s; }
+.close-scene[data-at="0"] .returnphone .screen { background: #04070d; box-shadow: none; }
+.close-scene[data-at="0"] .returnphone .screen > * { opacity: 0; }
+.close-scene .col.mid { width: 820px; height: 520px; flex: none; }
+.close-scene[data-at="2"] .kept { opacity: 1; font-size: 46px; }
+.endcard { align-items: flex-start; gap: 22px; margin-top: 0; }
+.endcard .brand { font-size: 170px; }
+
 @keyframes draw { to { stroke-dashoffset: 0; } }
 @keyframes appear { to { opacity: 1; } }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }

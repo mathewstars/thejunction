@@ -14,6 +14,18 @@
     return max;
   });
   var planTotal = plan.reduce(function (a, b) { return a + b; }, 0);
+  // How long the speaker's lines take: about 2.3 words a second, plus the silences marked in [brackets].
+  var NUM = { one: 1, two: 2, three: 3, four: 4, five: 5 };
+  var says = scenes.map(function (s) {
+    var a = s.querySelector("aside"); if (!a) return 0;
+    var text = a.textContent, silence = 0;
+    (text.match(/\[[^\]]*\]/g) || []).forEach(function (cue) {
+      var m = /(one|two|three|four|five|\d+)\s+seconds?/.exec(cue);
+      silence += m ? (NUM[m[1]] || Number(m[1])) : 1;
+    });
+    var words = text.replace(/\[[^\]]*\]/g, " ").replace(/\([^)]*\)/g, " ").split(/\s+/).filter(function (w) { return /[A-Za-z0-9]/.test(w); }).length;
+    return Math.round(words / 2.3 + silence);
+  });
   var cur = 0, step = 0, startedAt = null, auto = null;
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -45,7 +57,7 @@
     target.snow = s.getAttribute("data-snow") === "1" ? 1 : 0;
     var aside = s.querySelector("aside");
     document.getElementById("notes-title").textContent = (cur ? cur + " · " : "") + (s.getAttribute("data-title") || "") +
-      (plan[cur] ? " · " + plan[cur] + " s planned" : "");
+      (plan[cur] ? " · " + plan[cur] + " s planned · your words take about " + says[cur] + " s" : "");
     document.getElementById("notes-body").textContent = aside ? aside.textContent.replace(/^\s+|\s+$/g, "").replace(/\n\s+/g, "\n") : "";
     drawBar();
   }
@@ -151,8 +163,12 @@
   var notes = document.getElementById("notes"), help = document.getElementById("help");
   var sum = document.getElementById("sum");
   sum.textContent = "Planned: " + fmt(planTotal) + " of " + fmt(LIMIT) + (planTotal > LIMIT ? " · OVER by " + (planTotal - LIMIT) + " s" : " · " + (LIMIT - planTotal) + " s of air");
-  sum.classList.toggle("over", planTotal > LIMIT);
+  var long = [];
+  scenes.forEach(function (s, i) { if (plan[i] && says[i] > plan[i] + 1) long.push((s.getAttribute("data-title") || i) + ": words " + says[i] + " s, planned " + plan[i] + " s"); });
+  if (long.length) sum.textContent += " · TOO MANY WORDS in " + long.join("; ");
+  sum.classList.toggle("over", planTotal > LIMIT || long.length > 0);
   if (planTotal > LIMIT) help.hidden = false;
+  window.lanviPitch = { plan: plan, says: says };
   document.addEventListener("keydown", function (ev) {
     var k = ev.key;
     if (k === "ArrowRight" || k === " " || k === "PageDown" || k === "Enter") { ev.preventDefault(); stopAuto(); next(); }
