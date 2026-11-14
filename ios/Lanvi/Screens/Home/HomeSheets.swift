@@ -6,7 +6,7 @@ enum TodayCopy {
         switch k {
         case .breathing: return "Sit with me a minute · 1 min"
         case .focus: return "Break the ice with me · 90 sec"
-        case .checkin: return "Tell me three good things · 1 min"
+        case .checkin: return "Three good things · 1 min"
         }
     }
 
