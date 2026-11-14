@@ -36,8 +36,13 @@ import SwiftUI
 //   is their only driver), so a spring on the screen never makes it stutter.
 // - Layout: the square is centred on the fox's head and body; the tail hangs out
 //   past the left edge, so centre the view and the fox looks centred.
-// - Tapping the fox: eyes jump to the finger, head turns and tilts toward it, happy
-//   squint, ear flick, a small hop. Works next to the screen's own `.onTapGesture`.
+// - Touching the fox depends on where (`LanviTouch.swift`): pet the head (he leans
+//   in), boop the nose (wide cross eyes, two blinks, a smile), an ear (it flicks, he
+//   looks up at it), cheeks (a giggle), belly (a wriggle and a laugh), tail (he looks
+//   back at it), a paw (he lifts it a few points). Never the same twice running, never
+//   a hop. Quick taps build up, then he calms. Long press = petting; a slow drag is
+//   followed by the eyes, then the head. A screen's own tap on the fox also fires, so
+//   do not open anything from a tap on him.
 // - Poses: curious, cheer, love and surprised are the puppet (cheer = happy face and
 //   a happy reaction, love = soft happy eyes, surprised = surprised face). Changing
 //   the pose or `bounceTrigger` makes it hop. run, peek, grumpy and meh are still the
@@ -181,7 +186,18 @@ struct LanviMomentRequest: Equatable {
     static func == (a: Self, b: Self) -> Bool { a.token == b.token }
 }
 
+/// A touch asked for by code (the preview's buttons, demos): a tap on a place, or a
+/// hold (petting) for `hold` seconds.
+struct LanviTouchRequest: Equatable {
+    var zone: LanviTouchZone
+    var side: Double = 1
+    var hold: Double? = nil
+    var token: AnyHashable
+    static func == (a: Self, b: Self) -> Bool { a.token == b.token }
+}
+
 private struct TalkingKey: EnvironmentKey { static let defaultValue = false }
+private struct TouchKey: EnvironmentKey { static let defaultValue: LanviTouchRequest? = nil }
 private struct MomentKey: EnvironmentKey { static let defaultValue: LanviMomentRequest? = nil }
 
 extension EnvironmentValues {
@@ -192,6 +208,10 @@ extension EnvironmentValues {
     var lanviMomentRequest: LanviMomentRequest? {
         get { self[MomentKey.self] }
         set { self[MomentKey.self] = newValue }
+    }
+    var lanviTouchRequest: LanviTouchRequest? {
+        get { self[TouchKey.self] }
+        set { self[TouchKey.self] = newValue }
     }
 }
 
@@ -206,6 +226,12 @@ extension View {
     /// the next one. The idle plays them by itself every 6 to 10 seconds.
     func lanviMoment<T: Hashable>(_ moment: LanviMoment, trigger: T) -> some View {
         environment(\.lanviMomentRequest, LanviMomentRequest(moment: moment, token: AnyHashable(trigger)))
+    }
+
+    /// Touch Lanvi from code (each time `trigger` changes) as if a finger tapped `zone`
+    /// (or rested on it for `hold` seconds). Real fingers work by themselves.
+    func lanviTouch<T: Hashable>(_ zone: LanviTouchZone, side: Double = 1, hold: Double? = nil, trigger: T) -> some View {
+        environment(\.lanviTouchRequest, LanviTouchRequest(zone: zone, side: side, hold: hold, token: AnyHashable(trigger)))
     }
 }
 

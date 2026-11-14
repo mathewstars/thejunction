@@ -18,6 +18,7 @@ struct LanviPuppet: View {
     @Environment(\.lanviTalking) private var talking
     @Environment(\.lanviMouth) private var mouthOverride
     @Environment(\.lanviMomentRequest) private var momentRequest
+    @Environment(\.lanviTouchRequest) private var touchRequest
     @Environment(\.lanviDebugFreeze) private var freeze
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -30,12 +31,25 @@ struct LanviPuppet: View {
     @State private var prevReaction: LanviMood?
     @State private var prevReactionAt: Double = -100
     @State private var hopAt: Double = -100
-    @State private var tapAt: Double = -100
-    @State private var tapSide: Double = 1
-    @State private var tapLook: CGPoint?
-    @State private var lookFrom: CGPoint?
-    @State private var lookTo: CGPoint?
-    @State private var lookAt: Double = -100
+    // Where the eyes look: every change, each springing from where they are.
+    @State private var lookSteps: [LookStep] = [LookStep(at: -100, target: nil)]
+    @State private var fingerLook = false      // the eyes are on a finger, not the screen's point
+    @State private var lookBack = 0            // the latest "look back after a finger" request
+    // Touch.
+    @State private var touch: LanviTouchAct?
+    @State private var touchAt: Double = -100
+    @State private var touchSide: Double = 1
+    @State private var prevTouch: LanviTouchAct?
+    @State private var prevTouchAt: Double = -100
+    @State private var lastAct: LanviTouchAct?
+    @State private var zoneTurns: [LanviTouchZone: Int] = [:]
+    @State private var streak = 0
+    @State private var lastTapAt: Double = -100
+    @State private var petting = false
+    @State private var pettingSince: Double = -100
+    @State private var finger: Finger?
+    @State private var lastFollowAt: Double = -100
+    @State private var contacts = 0            // a light haptic on each first contact
     @State private var talkingSince: Double = -100
     @State private var mouthTickAt: Double = -100
     @State private var mouthFrom: MouthShape?
@@ -82,7 +96,13 @@ struct LanviPuppet: View {
             .transaction { $0.animation = nil; $0.disablesAnimations = true }
         }
         .contentShape(Rectangle())
-        .simultaneousGesture(SpatialTapGesture().onEnded { tapped(at: $0.location) })
+        // One finger on him: a tap (by place), a long press (petting) or a slow drag
+        // (the eyes, then the head, follow it).
+        .simultaneousGesture(DragGesture(minimumDistance: 0)
+            .onChanged { fingerMoved($0.location) }
+            .onEnded { fingerUp($0.location) })
+        .sensoryFeedback(.impact(weight: .light, intensity: 0.6), trigger: contacts)
+        .onChange(of: touchRequest) { _, new in if let new { requested(new) } }
         .onChange(of: bounceTrigger) { hopAt = now }
         .onChange(of: pose) { _, new in
             // cheer and surprised bring their own jump; the rest hop
@@ -110,12 +130,12 @@ struct LanviPuppet: View {
             momentSide = -momentSide
         }
         .onChange(of: lookUnit) { _, new in
-            guard tapLook == nil else { return }
+            guard !fingerLook else { return }    // a finger has the eyes; look back later
             setLook(new.map(canvasPoint(unit:)))
         }
         .onAppear {
             appearAt = now
-            if let lookUnit { lookTo = canvasPoint(unit: lookUnit) }
+            lookSteps = [LookStep(at: -100, target: lookUnit.map(canvasPoint(unit:)))]
             let forced = UserDefaults.standard.string(forKey: "hour").flatMap { Int($0) }
             let hour = forced ?? Calendar.current.component(.hour, from: Date())
             lateHour = hour >= 20 || hour < 5
@@ -135,9 +155,15 @@ struct LanviPuppet: View {
 
     private func motion(at clock: Double) -> LanviMotion {
         var m = LanviMotion(t: clock, seed: seed, held: held, heldFrom: heldFrom, heldSince: heldSince,
-                            reaction: reaction, reactionAt: reactionAt, hopAt: hopAt, tapAt: tapAt,
-                            tapSide: tapSide, look: tapLook ?? lookTo, lookFrom: lookFrom, lookAt: lookAt,
-                            reduceMotion: reduceMotion)
+                            reaction: reaction, reactionAt: reactionAt, hopAt: hopAt, reduceMotion: reduceMotion)
+        m.lookSteps = lookSteps
+        m.touch = touch
+        m.touchAt = touchAt
+        m.touchSide = touchSide
+        m.prevTouch = prevTouch
+        m.prevTouchAt = prevTouchAt
+        m.petting = petting
+        m.pettingSince = pettingSince
         m.prevReaction = prevReaction
         m.prevReactionAt = prevReactionAt
         m.talking = talking
@@ -168,9 +194,12 @@ struct LanviPuppet: View {
             m.freezeBlink = freeze.blink
             m.heldSince = -100
             m.heldFrom = m.held
-            m.tapAt = -100
+            m.touch = nil
+            m.prevTouch = nil
+            m.petting = false
+            m.pettingSince = -100
             m.hopAt = -100
-            if let u = freeze.look { m.look = canvasPoint(unit: u); m.lookFrom = nil; m.lookAt = -100 }
+            m.lookSteps = [LookStep(at: -100, target: freeze.look.map(canvasPoint(unit:)))]
         }
         return m
     }
@@ -190,26 +219,154 @@ struct LanviPuppet: View {
         CGPoint(x: (u.x * size - canvasOrigin.x) / k, y: (u.y * size - canvasOrigin.y) / k)
     }
 
-    private func setLook(_ p: CGPoint?) {
-        lookFrom = tapLook ?? lookTo
-        lookTo = p
-        lookAt = now
+    private func viewPoint(canvas p: CGPoint) -> CGPoint {
+        CGPoint(x: canvasOrigin.x + p.x * k, y: canvasOrigin.y + p.y * k)
     }
 
-    private func tapped(at location: CGPoint) {
-        let p = CGPoint(x: (location.x - canvasOrigin.x) / k, y: (location.y - canvasOrigin.y) / k)
-        tapSide = p.x < LanviMotion.eyesCenter.x ? -1 : 1
-        lookFrom = tapLook ?? lookTo
-        tapLook = p
-        lookAt = now
-        tapAt = now
+    /// A new place to look, springing from wherever the eyes and head are right now.
+    /// Changes older than 2 s have settled and fold into the first one.
+    private func setLook(_ p: CGPoint?) {
+        var steps = lookSteps
+        steps.append(LookStep(at: now, target: p))
+        while steps.count > 2, now - steps[1].at > 2 || steps.count > 40 {
+            steps[0] = LookStep(at: -100, target: steps[1].target)
+            steps.remove(at: 1)
+        }
+        lookSteps = steps
+    }
+
+    /// The eyes go to a finger; after `after` seconds they go back to the screen's point.
+    private func lookAtFinger(_ p: CGPoint?, back after: Double?) {
+        fingerLook = true
+        setLook(p)
+        guard let after else { return }
+        lookBack += 1
+        let token = lookBack
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(1.3))
-            guard now - tapAt >= 1.25 else { return }
-            lookFrom = tapLook
-            tapLook = nil
-            lookTo = lookUnit.map(canvasPoint(unit:))
-            lookAt = now
+            try? await Task.sleep(for: .seconds(after))
+            guard token == lookBack, finger == nil else { return }
+            fingerLook = false
+            setLook(lookUnit.map(canvasPoint(unit:)))
+        }
+    }
+
+    // MARK: Touch
+
+    /// A finger on the fox: where it went down, where it is, and whether it is dragging.
+    private struct Finger {
+        var at: Double
+        var start: CGPoint
+        var dragging = false
+    }
+
+    private func canvas(_ location: CGPoint) -> CGPoint {
+        CGPoint(x: (location.x - canvasOrigin.x) / k, y: (location.y - canvasOrigin.y) / k)
+    }
+
+    private func fingerMoved(_ location: CGPoint) {
+        let t = now
+        guard var f = finger else {
+            finger = Finger(at: t, start: location)
+            contacts += 1
+            // held still for 0.4 s: petting
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(0.4))
+                guard let f = finger, f.at == t, !f.dragging else { return }
+                startPetting(at: canvas(f.start))
+            }
+            return
+        }
+        if !f.dragging, hypot(location.x - f.start.x, location.y - f.start.y) > 12 {
+            f.dragging = true
+            finger = f
+            if petting { stopPetting() }
+        }
+        // a slow drag: the eyes (then the head) follow the finger, a few times a second
+        if f.dragging, t - lastFollowAt > 0.08 {
+            lastFollowAt = t
+            lookAtFinger(canvas(location), back: nil)
+        }
+    }
+
+    private func fingerUp(_ location: CGPoint) {
+        guard let f = finger else { return }
+        finger = nil
+        if petting { stopPetting(); lookAtFinger(nil, back: 0.1); return }
+        if f.dragging { lookAtFinger(canvas(location), back: 0.7); return }
+        tapped(at: canvas(location))
+    }
+
+    private func startPetting(at p: CGPoint) {
+        touchSide = LanviTouchZone.at(p).side
+        petting = true
+        pettingSince = now
+    }
+
+    private func stopPetting() {
+        petting = false
+        pettingSince = now
+    }
+
+    /// A tap at a canvas point: a reaction for that place, never the same twice running.
+    /// Quick taps build up (a look, a giggle, a big wriggle, a contented sigh), then calm.
+    private func tapped(at p: CGPoint) {
+        let t = now
+        let (zone, side) = LanviTouchZone.at(p)
+        streak = t - lastTapAt < 1.4 ? streak + 1 : 1
+        lastTapAt = t
+        var act: LanviTouchAct?
+        switch streak {
+        case 1:
+            act = pick(zone)
+            if zone == .head, let last = lastAct, [.petLean, .petNuzzle].contains(last), t - touchAt < 3 {
+                act = .petWiggle                 // a second pet soon after: a happy wiggle
+            }
+        case 2: act = lastAct == .giggle ? .giggleSqueeze : .giggle
+        case 3: act = lastAct == .tickleBig ? .tickle : .tickleBig
+        case 4: act = .sigh
+        default: act = nil                     // calm now: the eyes only follow the finger
+        }
+        // The eyes go to the finger, unless the reaction aims them itself.
+        let aims: Set<LanviTouchAct> = [.boop, .boopGiggle, .boopSniff, .earFlick, .earTickle, .earDouble,
+                                        .tailLook, .tailSwish, .tailCurlLook, .pawLift, .pawPat, .pawHold]
+        if act == nil || !aims.contains(act!) {
+            lookAtFinger(p, back: max(1.1, (act?.duration ?? 1.2) - 0.5))
+        }
+        guard let act else { return }
+        if let a = touch, t - touchAt < a.duration {
+            prevTouch = a
+            prevTouchAt = touchAt
+        } else {
+            prevTouch = nil
+        }
+        touch = act
+        touchAt = t
+        touchSide = side
+        lastAct = act
+    }
+
+    /// The next reaction for a place: they take turns, and never repeat the last one.
+    private func pick(_ zone: LanviTouchZone) -> LanviTouchAct {
+        let acts = zone.acts
+        let turn = zoneTurns[zone, default: 0]
+        zoneTurns[zone] = turn + 1
+        var a = acts[turn % acts.count]
+        if a == lastAct { a = acts[(turn + 1) % acts.count] }
+        return a
+    }
+
+    /// The preview's touch buttons (and the touch demo): a tap at a place, or a hold.
+    private func requested(_ r: LanviTouchRequest) {
+        let p = LanviTouchZone.point(r.zone, side: r.side)
+        contacts += 1
+        if let hold = r.hold {
+            startPetting(at: p)
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(hold))
+                stopPetting()
+            }
+        } else {
+            tapped(at: p)
         }
     }
 
@@ -255,8 +412,8 @@ struct LanviPuppet: View {
                 ear(Rig.earR, left: false, f)
             }
             body(f)
-            leg(Rig.legL)
-            leg(Rig.legR)
+            leg(Rig.legL, lift: f.pose.pawL)
+            leg(Rig.legR, lift: f.pose.pawR)
             headTurn(f) {
                 head(f)
                 eyes(f)
@@ -358,10 +515,12 @@ struct LanviPuppet: View {
         .position(x: p.local.x * k, y: p.local.y * k)
     }
 
-    /// A front leg (its top fade is baked into the art). The paws stay planted: legs
-    /// only move with the whole fox.
-    private func leg(_ p: Rig.Part) -> some View {
-        image(p).position(x: p.local.x * k, y: p.local.y * k)
+    /// A front leg (its top fade is baked into the art). The paws stay planted and never
+    /// swing; a touched paw only lifts a few points straight up and sets down.
+    private func leg(_ p: Rig.Part, lift: Double) -> some View {
+        image(p)
+            .transformEffect(CGAffineTransform(translationX: 0, y: -lift * mu))
+            .position(x: p.local.x * k, y: p.local.y * k)
     }
 
     /// Everything that turns with the head (the ears behind the body, and the head,
@@ -458,7 +617,8 @@ struct LanviPuppet: View {
             .frame(width: px.width * s, height: px.height * s)
             .scaleEffect(x: 1 + (turn.sx - 1) * 0.8, y: 1 + (turn.sy - 1) * 0.8,
                          anchor: UnitPoint(x: centre.x / px.width, y: centre.y / px.height))
-            .transformEffect(CGAffineTransform(translationX: q.eyeX * hs + turn.dx, y: q.eyeY * hs + turn.dy))
+            .transformEffect(CGAffineTransform(translationX: (q.eyeX + (left ? q.eyeCross : -q.eyeCross)) * hs + turn.dx,
+                                               y: q.eyeY * hs + turn.dy))
             .position(x: c.x * k + (px.width / 2 - centre.x) * s, y: c.y * k + (px.height / 2 - centre.y) * s)
     }
 

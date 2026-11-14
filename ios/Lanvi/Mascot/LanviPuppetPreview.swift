@@ -4,7 +4,7 @@ import SwiftUI
 /// every idle moment, reaction and held mood. Launch with `-screen puppet`.
 ///
 /// - `-plain YES`: the fox alone on flat pure green (for measuring: track the pupils).
-/// - `-puppetDemo idle|reactions|moments`: plays a fixed script with a caption and no
+/// - `-puppetDemo idle|reactions|moments|touch`: plays a fixed script with a caption and no
 ///   buttons, for recordings. `reactions` plays each reaction once, `moments` each idle
 ///   moment once, `idle` nothing (the idle picks its own moments). `-puppetDemo YES`
 ///   is the old script: idle, then happy, then surprised.
@@ -24,6 +24,10 @@ struct LanviPuppetPreview: View {
     @State private var look: UnitPoint?
     @State private var lookStep = 0
     @State private var caption = ""
+    @State private var touchZone: LanviTouchZone = .head
+    @State private var touchSide: Double = 1
+    @State private var touchHold: Double?
+    @State private var touchTrigger = 0
 
     private let freeze: LanviDebugFreeze? = {
         guard let raw = UserDefaults.standard.string(forKey: "puppetFreeze") else { return nil }
@@ -51,6 +55,10 @@ struct LanviPuppetPreview: View {
         ("Tail curl", .tailCurl), ("Sniff", .sniff), ("Slow blink", .slowBlink), ("Invite", .invite),
         ("Evening", .yawn),
     ]
+    private let touches: [(String, LanviTouchZone)] = [
+        ("Head", .head), ("Nose", .nose), ("Ear", .ear), ("Cheek", .cheek), ("Belly", .belly),
+        ("Tail", .tail), ("Paw", .paw), ("Near him", .near),
+    ]
     private let held: [(String, LanviMood)] = [
         ("Listening", .listening), ("Thinking", .thinking), ("Sleepy", .sleepy),
     ]
@@ -69,6 +77,7 @@ struct LanviPuppetPreview: View {
             .lanviMood(heldMood)
             .lanviTalking(talking)
             .lanviLookAt(look)
+            .lanviTouch(touchZone, side: touchSide, hold: touchHold, trigger: touchTrigger)
             .environment(\.lanviDebugFreeze, freeze)
     }
 
@@ -116,6 +125,10 @@ struct LanviPuppetPreview: View {
     private var controls: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
+                section("Touch (or touch him yourself: by place, hold to pet, drag)")
+                grid(touches.map { t in (t.0, false, { touchIt(t.1, t.0) }) }
+                     + [("Pet (hold)", false, { touchIt(.head, "Petting", hold: 2) }),
+                        ("Quick taps", false, { quickTaps() })])
                 section("Reactions")
                 grid(reactions.map { r in (r.0, false, { play(r.1, r.0) }) })
                 section("Idle moments")
@@ -157,6 +170,25 @@ struct LanviPuppetPreview: View {
         moment = m
         momentTrigger += 1
         caption = label
+    }
+
+    /// Touch a place (the side alternates, so ears, cheeks and paws take turns).
+    private func touchIt(_ zone: LanviTouchZone, _ label: String, hold: Double? = nil) {
+        touchZone = zone
+        touchSide = -touchSide
+        touchHold = hold
+        touchTrigger += 1
+        caption = label
+    }
+
+    /// Four quick taps: they build up (a look, a giggle, a wriggle, a sigh) instead of repeating.
+    private func quickTaps() {
+        Task { @MainActor in
+            for (i, z) in [LanviTouchZone.cheek, .belly, .belly, .head].enumerated() {
+                touchIt(z, ["Quick tap: giggle", "Quick taps: giggle", "Quick taps: wriggle", "Quick taps: sigh"][i])
+                try? await Task.sleep(for: .seconds(0.45))
+            }
+        }
     }
 
     private func toggle(_ m: LanviMood, _ label: String) {
@@ -217,6 +249,21 @@ struct LanviPuppetPreview: View {
             caption = ""
         case "idle":
             caption = "Idle"
+        case "touch":
+            // Nine different touch reactions in about 20 s (the greeting plays first).
+            let script: [(Double, LanviTouchZone, String, Double?)] = [
+                (2.6, .head, "Pet his head", nil), (4.5, .nose, "Boop the nose", nil),
+                (6.3, .ear, "Touch an ear", nil), (7.9, .cheek, "Touch a cheek", nil),
+                (9.5, .belly, "Tickle the belly", nil), (11.3, .tail, "Touch the tail", nil),
+                (13.4, .paw, "Touch a paw", nil), (15.2, .near, "Tap near him", nil),
+                (16.5, .head, "Hold to pet", 1.6),
+            ]
+            for (at_, zone, label, hold) in script {
+                await at(at_)
+                touchIt(zone, label, hold: hold)
+            }
+            await at(18.2)
+            caption = "Let go: a slow blink"
         default:
             let wait = UserDefaults.standard.double(forKey: "puppetDemoDelay")
             await at(wait > 0 ? wait : 7)

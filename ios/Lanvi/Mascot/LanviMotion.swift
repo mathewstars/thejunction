@@ -52,7 +52,7 @@ extension LanviMood {
 ///
 /// The frame is built in layers that add up: the held mood, the idle (breath, tail
 /// drift, a slow drift of where the head faces), where the eyes look, the idle moment,
-/// talking, a reaction, a tap, a hop, then the blink. Follow-through (ear tips, tail
+/// talking, a reaction, a touch, petting, a hop, then the blink. Follow-through (ear tips, tail
 /// tip, the head settling) is worked out from the same maths a moment earlier.
 struct LanviMotion {
     var t: Double                        // the one clock, seconds
@@ -65,11 +65,17 @@ struct LanviMotion {
     var prevReaction: LanviMood? = nil   // the reaction it replaced (fades out)
     var prevReactionAt: Double = -100
     var hopAt: Double                    // last bounceTrigger hop
-    var tapAt: Double                    // last tap on the fox
-    var tapSide: Double                  // -1 tap on the left half, +1 right
-    var look: CGPoint?                   // where the eyes look now (canvas units)
-    var lookFrom: CGPoint?               // previous target
-    var lookAt: Double                   // when the target changed
+    /// Every change of where the eyes look, oldest first (the first one is settled).
+    /// Each change springs from wherever the eyes and head are at that moment, so a
+    /// new target mid-turn (or a finger being followed) never jumps.
+    var lookSteps: [LookStep] = [LookStep(at: -100, target: nil)]
+    var touch: LanviTouchAct? = nil      // the touch reaction playing
+    var touchAt: Double = -100
+    var touchSide: Double = 1            // -1 the viewer's left, +1 right
+    var prevTouch: LanviTouchAct? = nil  // the one it replaced (fades out)
+    var prevTouchAt: Double = -100
+    var petting = false                  // a finger resting on him (long press)
+    var pettingSince: Double = -100      // when petting started or stopped
     var talking = false                  // `.lanviTalking`
     var talkingSince: Double = -100      // when talking started or stopped
     var talkStart: Double = -100         // when the current (or last) talk began
@@ -143,7 +149,7 @@ struct LanviMotion {
 
         // The head stretches a hair as it rises and squashes as it settles.
         let settle = lag(Self.headKernel) { $0.rootY + $0.headY }
-        let sq = Self.soft(settle * 0.0011, 0.035)
+        let sq = Self.soft(settle * 0.0011, 0.035) - now.pose.headSquash
         f.headSY = 1 + sq
         f.headSX = 1 - sq * 0.6
         return f
@@ -190,7 +196,8 @@ struct LanviMotion {
         momentLayer(x, &p, &face)
         talkLayer(x, &p, &face)
         reactionLayer(x, &p, &face)
-        tapLayer(x, &p, &face)
+        touchLayer(x, &p, &face)
+        pettingLayer(x, &p, &face)
         hop(&p, x - hopAt, height: 120)
         if withBlink { blink(x, &p, &face) }
         if loving, face.eyes == .open { face.eyes = .happy }
@@ -323,18 +330,33 @@ struct LanviMotion {
         return (dirX, dirY, tilt, ex, ey + (shape == .open ? 5 : 0), shape)
     }
 
+    /// Where the eyes look at time `x` (the latest change by then), nil = ahead.
+    func lookTarget(_ x: Double) -> CGPoint? {
+        if let step = lookSteps.last(where: { $0.at <= x }) { return step.target }
+        return lookSteps.first?.target
+    }
+
     private func lookLayer(_ x: Double, _ p: inout Pose, _ face: inout Face) {
-        let to = Self.lookPose(look), from = Self.lookPose(lookFrom)
-        let lt = x - lookAt
-        // Eyes lead: they jump in 70 ms; the head turns after them 0.1 s later, on a spring.
-        let e = Motion.smooth(0, 0.08, lt)
-        let h = Motion.spring(lt - 0.1, response: 0.38, damping: 0.72)
-        if let shape = (lt >= 0.035 ? to.shape : from.shape), face.eyes == .open { face.eyes = shape }
-        p.eyeX += from.ex + (to.ex - from.ex) * e
-        p.eyeY += from.ey + (to.ey - from.ey) * e
-        p.dirX += from.dx + (to.dx - from.dx) * h
-        p.dirY += from.dy + (to.dy - from.dy) * h
-        p.headTilt += from.tilt + (to.tilt - from.tilt) * h
+        guard let first = lookSteps.first else { return }
+        // Each change adds its difference on its own spring (eyes in 80 ms; the head 0.1 s
+        // later), so the sum is continuous however often the target changes.
+        var prev = Self.lookPose(first.target)
+        var ex = prev.ex, ey = prev.ey, dx = prev.dx, dy = prev.dy, tilt = prev.tilt
+        var shape = prev.shape
+        for step in lookSteps.dropFirst() {
+            let lt = x - step.at
+            if lt < 0 { break }
+            let q = Self.lookPose(step.target)
+            let e = Motion.smooth(0, 0.08, lt)
+            let h = Motion.spring(lt - 0.1, response: 0.38, damping: 0.72)
+            ex += (q.ex - prev.ex) * e; ey += (q.ey - prev.ey) * e
+            dx += (q.dx - prev.dx) * h; dy += (q.dy - prev.dy) * h; tilt += (q.tilt - prev.tilt) * h
+            if lt >= 0.035 { shape = q.shape }
+            prev = q
+        }
+        if let shape, face.eyes == .open { face.eyes = shape }
+        p.eyeX += ex; p.eyeY += ey
+        p.dirX += dx; p.dirY += dy; p.headTilt += tilt
     }
 
     // MARK: Busy: when the fox is doing something, idle moments wait
@@ -348,10 +370,14 @@ struct LanviMotion {
     func busy(_ x: Double) -> Double {
         var b = 0.0
         if let r = reaction { b = max(b, window(reactionAt, r.reactionLength, x)) }
-        b = max(b, window(tapAt, 1.6, x))
+        if let a = touch { b = max(b, window(touchAt, a.duration, x)) }
+        b = max(b, petting ? Motion.smooth(pettingSince, pettingSince + 0.2, x) : window(pettingSince - 1.2, 1.2, x))
         b = max(b, window(hopAt, 1.3, x))
-        let l0 = lookFrom == nil ? 0.0 : 1, l1 = look == nil ? 0.0 : 1
-        b = max(b, l0 + (l1 - l0) * Motion.smooth(lookAt, lookAt + 0.3, x))
+        if let last = lookSteps.last {
+            let before = lookSteps.count > 1 ? lookSteps[lookSteps.count - 2].target : nil
+            let l0 = before == nil ? 0.0 : 1, l1 = last.target == nil ? 0.0 : 1
+            b = max(b, l0 + (l1 - l0) * Motion.smooth(last.at, last.at + 0.3, x))
+        }
         let busyMood: (LanviMood) -> Double = { [.listening, .thinking].contains($0) ? 1 : 0 }
         let w = Motion.smooth(heldSince, heldSince + 0.4, x)
         b = max(b, busyMood(heldFrom) * (1 - w) + busyMood(held) * w)
@@ -511,13 +537,13 @@ struct LanviMotion {
 
     /// A quick blink as the eyes swing back (animators hide a big eye move, and the eye
     /// picture changing back, inside a blink): half, shut, half, from `at`.
-    private func returnBlink(_ lt: Double, at a: Double, _ face: inout Face) {
+    func returnBlink(_ lt: Double, at a: Double, _ face: inout Face) {
         guard lt >= a, lt < a + 0.17, [.open, .left, .right, .up, .wide].contains(face.eyes) else { return }
         face.eyes = lt < a + 0.035 || lt >= a + 0.115 ? .half : .closed
     }
 
     /// An ear flick: out quickly, back with a small overshoot, exactly 0 after 3 x `d`.
-    private func flick(_ x: Double, _ d: Double) -> Double {
+    func flick(_ x: Double, _ d: Double) -> Double {
         Motion.bump(x, 0, 1.2 * d) - 0.25 * Motion.bump(x, 1.0 * d, 2.6 * d)
     }
 
@@ -632,7 +658,7 @@ struct LanviMotion {
             let tilt = Motion.pulse(rt, start: 0.05, end: 1.6, response: 0.4, damping: 0.55, settle: 0.65)
             p.headTilt += 9 * tilt; p.dirX += 0.2 * tilt; p.dirY -= 0.12 * tilt; p.headX += 4 * tilt
             p.earR -= 6 * tilt; p.earL += 3 * tilt; p.tail += 4 * tilt
-            if look == nil {
+            if lookTarget(rt + reactionAt) == nil {
                 p.eyeX += 4 * tilt; p.eyeY -= 3 * tilt
                 if Motion.inside(rt, 0.05, 1.7), face.eyes == .open { face.eyes = .up }
             }
@@ -690,27 +716,12 @@ struct LanviMotion {
         }
     }
 
-    /// Tap: eyes jump to the finger, the head turns and tilts toward it, a happy squint,
-    /// an ear flick, a small hop.
-    private func tapLayer(_ x: Double, _ p: inout Pose, _ face: inout Face) {
-        let rt = x - tapAt
-        guard rt >= 0, rt < 1.7 else { return }
-        if Motion.inside(rt, 0.36, 0.95) { face.eyes = .happy; face.mouth = face.mouth == .smile ? .happy : face.mouth }
-        let tilt = Motion.pulse(rt, start: 0.08, end: 0.95, response: 0.35, damping: 0.55, settle: 0.7)
-        p.headTilt += 7 * tapSide * tilt
-        p.dirX += 0.18 * tapSide * tilt
-        let fl = 11 * flick(rt - 0.05, 0.13)
-        if tapSide < 0 { p.earL += fl } else { p.earR += fl }
-        hop(&p, rt - 0.3, height: 45)
-        p.tail += 10 * Motion.bump(rt, 0.2, 0.6)
-    }
-
     // MARK: Hop
 
     /// A hop of the whole fox: crouch, stretch going up, squash on landing with the back
     /// feet spreading, two small settling bounces. The front paws stay planted on the body.
     /// `headLeads`: the joyful hop, where the head leads up and nods a beat after landing.
-    private func hop(_ p: inout Pose, _ ht: Double, height: Double, headLeads: Bool = false) {
+    func hop(_ p: inout Pose, _ ht: Double, height: Double, headLeads: Bool = false) {
         guard ht > -0.1, ht < 1.5 else { return }
         let h = Motion.hop(ht, height: height)
         p.rootY -= h.lift

@@ -48,8 +48,7 @@ func pupil(_ f: RigFrame) -> CGPoint {
 
 func motion(_ t: Double) -> LanviMotion {
     LanviMotion(t: t, seed: Int(foxSize * 13) % 997, held: .calm, heldFrom: .calm, heldSince: -100,
-                reaction: nil, reactionAt: -100, hopAt: -100, tapAt: -100, tapSide: 1,
-                look: nil, lookFrom: nil, lookAt: -100, reduceMotion: false)
+                reaction: nil, reactionAt: -100, hopAt: -100, reduceMotion: false)
 }
 
 func numbers(_ f: RigFrame) -> [Double] {
@@ -103,7 +102,18 @@ for r in LanviMood.allCases where r != .calm {
 }
 // The joyful hop from a bounce, and a tap on the right.
 write("hop", from: base - 0.5, seconds: 2.2) { $0.appearAt = .infinity; $0.hopAt = base }
-write("tap", from: base - 0.5, seconds: 2.4) { $0.appearAt = .infinity; $0.tapAt = base; $0.tapSide = 1 }
+// Each touch reaction (no hop in any of them), on the right side.
+for a in LanviTouchAct.allCases {
+    write("touch-\(a.rawValue)", from: base - 0.5, seconds: a.duration + 1.2) {
+        $0.appearAt = .infinity; $0.touch = a; $0.touchAt = base; $0.touchSide = 1
+    }
+}
+// Petting: a finger rests 2 s, then lifts.
+write("petting", from: base - 0.5, seconds: 4.5) {
+    $0.appearAt = .infinity
+    $0.petting = $0.t >= base && $0.t < base + 2
+    $0.pettingSince = $0.t < base ? -100 : ($0.t < base + 2 ? base : base + 2)
+}
 // Held: listening, thinking, sleepy (blending in at 0.5 s), and talking for 4 s.
 for h in [LanviMood.listening, .thinking, .sleepy] {
     write("held-\(h.rawValue)", from: base - 0.5, seconds: 8) {
@@ -130,11 +140,25 @@ write("bubble", from: base - 0.5, seconds: 3.5) {
         $0.mouthOverride = nil; $0.mouthFrom = shape(n); $0.mouthTickAt = base + 2; $0.drivenSince = base + 2
     }
 }
-// A look to the right and back.
+// A look to the right, changed mid-turn to the left, then back ahead.
 write("look", from: base - 0.5, seconds: 3.5) {
     $0.appearAt = .infinity
-    let right = CGPoint(x: 1700, y: 700)
-    if $0.t < base + 1.5 { $0.look = right; $0.lookFrom = nil; $0.lookAt = base }
-    else { $0.look = nil; $0.lookFrom = right; $0.lookAt = base + 1.5 }
+    var steps = [LookStep(at: -100, target: nil), LookStep(at: base, target: CGPoint(x: 1700, y: 700))]
+    if $0.t >= base + 0.3 { steps.append(LookStep(at: base + 0.3, target: CGPoint(x: -200, y: 800))) }
+    if $0.t >= base + 1.5 { steps.append(LookStep(at: base + 1.5, target: nil)) }
+    $0.lookSteps = steps
+}
+// A finger dragged slowly across, followed (a new target every 0.08 s).
+write("follow", from: base - 0.5, seconds: 3.5) {
+    $0.appearAt = .infinity
+    var steps = [LookStep(at: -100, target: nil)]
+    var u = base
+    while u <= min($0.t, base + 1.6) {
+        let k = (u - base) / 1.6
+        steps.append(LookStep(at: u, target: CGPoint(x: -200 + 2000 * k, y: 500 + 300 * sin(k * .pi))))
+        u += 0.08
+    }
+    if $0.t >= base + 2.2 { steps.append(LookStep(at: base + 2.2, target: nil)) }
+    $0.lookSteps = steps
 }
 print("wrote \(out)")

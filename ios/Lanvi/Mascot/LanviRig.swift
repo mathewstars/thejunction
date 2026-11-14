@@ -200,8 +200,11 @@ struct Pose {
     var earL = 0.0, earR = 0.0, earLS = 0.0, earRS = 0.0
     /// Tail: base angle (+ = clockwise, the tail lifts) and curl along its length.
     var tail = 0.0, tailCurl = 0.0
-    /// Eyes shift (head pixels), mouth size.
-    var eyeX = 0.0, eyeY = 0.0, mouthScale = 0.0
+    /// Eyes shift (head pixels), mouth size; `eyeCross` moves the two eyes toward each
+    /// other (looking at the nose).
+    var eyeX = 0.0, eyeY = 0.0, mouthScale = 0.0, eyeCross = 0.0
+    /// The head squashes (a boop); a front paw lifts a few points (motion units, never swings).
+    var headSquash = 0.0, pawL = 0.0, pawR = 0.0
 
     mutating func add(_ o: Pose, _ w: Double = 1) {
         rootX += o.rootX * w; rootY += o.rootY * w; rootSX += o.rootSX * w; rootSY += o.rootSY * w
@@ -211,7 +214,8 @@ struct Pose {
         dirX += o.dirX * w; dirY += o.dirY * w
         earL += o.earL * w; earR += o.earR * w; earLS += o.earLS * w; earRS += o.earRS * w
         tail += o.tail * w; tailCurl += o.tailCurl * w
-        eyeX += o.eyeX * w; eyeY += o.eyeY * w; mouthScale += o.mouthScale * w
+        eyeX += o.eyeX * w; eyeY += o.eyeY * w; mouthScale += o.mouthScale * w; eyeCross += o.eyeCross * w
+        headSquash += o.headSquash * w; pawL += o.pawL * w; pawR += o.pawR * w
     }
 }
 
