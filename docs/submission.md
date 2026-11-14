@@ -25,7 +25,7 @@ Still to do before Sunday 10:00:
 
 - The video. At most 2:00, and they are strict about it. Aim for 1:50. It must be public, for example on YouTube.
 - The pitch deck as a PDF.
-- The description below is the one version. Before the final submission, check every sentence in it is true of the demo (Gemini reading, camera numbers, the alert) and fill in what we measured.
+- The description below is the one version. "What is real and what is not" was filled in on Saturday evening from the server side. Still to check with Peter before the final submission: that the phone build really sends Apple Health days and the face numbers from a real iPhone, since the description says so.
 - The team is still named "coderama" on the platform's Team page. That is the name of an existing company; rename it.
 - Check the Gemini tech challenge is still true: it stays only if Gemini really runs in the demo.
 
@@ -89,7 +89,7 @@ Typed notes stay on the clinic's server. What goes to Gemini is numbers only, wi
 
 WHAT IS REAL AND WHAT IS NOT
 
-This is a weekend prototype, not a validated measure. Before the final submission we will say here what works live and what we measured ourselves. The demo runs on example data and says so.
+This is a weekend prototype, not a validated measure. What runs live at lanvi.app: the server and the clinician page, the mind with its step-by-step record of every decision, the small local model, Gemini reading the face numbers and comparing sessions, the statistics for each person, and the same-day alert to the clinic. The patients on the page are examples with invented names and simulated histories, and the page says so; the events of the demo day went through the same interface the app uses, and the model answers shown are real. Nothing has been tested with patients, and nothing here shows that these measures follow depression. That is the study we would like to run with Aalto: about thirty people after TMS, twelve weeks, each compared only with themselves.
 
 BUILT WITH
 
