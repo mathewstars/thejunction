@@ -89,7 +89,7 @@ Steps 1 to 5 are code. No model takes part.
 | Step | What happens |
 |---|---|
 | **1. Check** | A record that cannot be true is refused (422) and logged: in the future, longer than 30 minutes, more reaction times than taps, more than 10 taps a second, played longer than the activity lasted, frames that last much longer than the activity. |
-| **2. Face summary** | From `face_raw` the server computes 16 measures and the tracking quality: smiles (how often, how long, how strong, whether they reach the eyes, whether one follows a pleasant moment), blinks, looking down, brows, how much the face and the head moved. Rules and thresholds: `docs/face-raw.md`. The frames are kept as their own object, so the summary can be computed again when a rule changes. |
+| **2. Face summary** | From `face_raw` the server computes 18 measures and the tracking quality: smiles (how often, how long, how strong, whether they reach the eyes, whether one follows a pleasant moment), blinks, looking down, brows, the mouth (corners down, lips pressed), how much the face and the head moved. Rules and thresholds: `docs/face-raw.md`. The frames are kept as their own object, so the summary can be computed again when a rule changes. |
 | **3. Features** | Focus: median and spread of reaction time, error rate. Breathing: time played. Check-in: number of good things, plan made, yesterday's plan done. |
 | **4. Own normal** | Each feature and each face measure is compared with the same person's earlier sessions of the same type (the last 20 at most). At least 5 are needed. The result is a robust z-score. A face summary with tracking quality under 0.6 is stored and shown but never used. |
 | **5. Watchers** | See below. |

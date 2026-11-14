@@ -24,7 +24,7 @@ Second question: do any of them move before the symptom rating does?
 | Phone and watch | Steps, walking speed, sleep hours, heart-rate variability |
 | Reference | PHQ-9 every week, in the app or at the clinic. A clinician's global rating at visits. |
 
-No photo, video or face shape leaves the phone. The phone sends the raw numbers ARKit gives for each frame and the server computes every measure, so the frames can be read again whenever a rule changes (`docs/face-raw.md`). The full list, with the expected direction for each measure and how well supported it is, is in `engine/clinic_engine/data/association_hypotheses.json`. It was written before any data, so it works as a list of hypotheses fixed in advance.
+No photo, video or face shape leaves the phone. The phone sends the raw numbers ARKit gives for each frame and the server computes every measure, so the frames can be read again whenever a rule changes (`docs/face-raw.md`). The full list, with the expected direction for each measure and how well supported it is, is in `engine/clinic_engine/data/association_hypotheses.json`. It was written on 13 November 2026, before any data (commit d19df2e), so it works as a list of hypotheses fixed in advance. It is not registered anywhere outside this repository.
 
 ## Design
 
