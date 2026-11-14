@@ -346,5 +346,28 @@ final class LanviEyesTests: XCTestCase {
             }
         }
     }
-}
 
+    // MARK: On the snow (`.lanviHops(false)`, Home)
+
+    func testNoReactionOrTouchLiftsHimOffTheSnow() {
+        let moods: [LanviMood] = [.happy, .surprised, .greeting, .proud, .okay, .curious, .sleepy, .listening, .thinking]
+        for r in moods {
+            for dt in stride(from: 0.0, through: r.reactionLength, by: 1.0 / 60) {
+                var m = motion([LookStep(at: -100, target: nil)], at: clock + dt)
+                m.hops = false
+                m.reaction = r
+                m.reactionAt = clock
+                XCTAssertGreaterThanOrEqual(m.frame().pose.rootY, -0.01, "\(r) lifts him at \(dt) s")
+            }
+        }
+        for a in LanviTouchAct.allCases {
+            for dt in stride(from: 0.0, through: a.duration, by: 1.0 / 60) {
+                var m = motion([LookStep(at: -100, target: nil)], at: clock + dt)
+                m.hops = false
+                m.touch = a
+                m.touchAt = clock
+                XCTAssertGreaterThanOrEqual(m.frame().pose.rootY, -0.01, "\(a) lifts him at \(dt) s")
+            }
+        }
+    }
+}
