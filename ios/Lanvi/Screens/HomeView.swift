@@ -609,6 +609,7 @@ struct HomeView: View {
             try? await Task.sleep(for: .milliseconds(900))
             _ = await store.answerStory(answer)
         }
+        if args.contains("-flow") { await runFlow(); return }
         guard demo else { return }
 
         try? await Task.sleep(for: .seconds(3))
@@ -631,6 +632,29 @@ struct HomeView: View {
         while cover != nil { try? await Task.sleep(for: .milliseconds(200)) }
         try? await Task.sleep(for: .seconds(2))
         settle()
+    }
+
+    /// `-flow`: a short tour of Home, opening and closing each screen and sheet.
+    private func runFlow() async {
+        func wait(_ s: Double) async { try? await Task.sleep(for: .seconds(s)) }
+        await wait(3)
+        chatFrom = "speech"
+        open(.chat)
+        await wait(3)
+        cover = nil
+        await wait(1.8)
+        sheet = .more
+        await wait(2.2)
+        sheet = nil
+        await wait(1.6)
+        sheet = .growth
+        await wait(2.2)
+        sheet = nil
+        await wait(1.6)
+        open(.help)
+        await wait(2.4)
+        cover = nil
+        await wait(2)
     }
 
     private static func sample(_ kind: ActivityKind) -> API.ActivityIn {
