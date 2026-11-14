@@ -206,7 +206,7 @@ at(67.6, lambda d: fclip("curtains", d, ss=0.1))                                
 at(71.9, lambda d: fclip("nurse2", d, ss=0.05))                                    # "Anna, I read your note."
 at(76.8, lambda d: fclip("call", d, ss=0.0))                                       # "I'm here."
 at(81.7, lambda d: phone(A("home"), d, ss=1.0))                                    # "This time,"
-at(84.0, lambda d: fclip("return", d, ss=0.0))                                     # "Anna doesn't wait six weeks."
+at(84.0, lambda d: fclip("return", d, ss=0.0, tag="v15/tag_inv.png"))                                     # "Anna doesn't wait six weeks."
 at(88.95, lambda d: end_card(d, 3.0, 7.1, 13.3, 14.2))
 AEND = 110.6; END = 110.6
 FIXED = {t for t, _ in T}                                   # every cut is placed by hand; none is moved onto a beat

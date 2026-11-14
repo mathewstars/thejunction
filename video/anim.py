@@ -23,7 +23,7 @@ def stream(t, start):
     w, h = 640 * S, 720 * S; im = Image.new("RGB", (w, h), BG); g = ImageDraw.Draw(im)
     a = min(1.0, t / 0.5)
     g.text((40 * S, 44 * S), "What leaves the phone", font=f(32), fill=mix(BG, INK, a))
-    g.text((40 * S, 90 * S), "55 numbers, 30 times a second. No photo, no video.", font=f(16), fill=mix(BG, MUTED, a))
+    g.text((40 * S, 90 * S), "No photo, no video. Face-movement numbers only, 30 a second.", font=f(16), fill=mix(BG, MUTED, a))
     pos = (start + t) * RATE; i0 = min(len(SM) - 2, int(pos)); fr = pos - i0
     for k, (label, _) in enumerate(BARS):
         if t < 0.25 + 0.06 * k: continue
