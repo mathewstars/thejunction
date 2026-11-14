@@ -12,7 +12,7 @@ The platform does not read this file. After a change here, the same change has t
 |---|---|---|
 | Project name | 30 characters | Lanvi |
 | Punchline | 200 characters | See below (181 characters) |
-| Description | 5,000 characters | See below (4,996 characters) |
+| Description | 5,000 characters | See below (4,986 characters) |
 | Challenge | one | Aalto University, Beyond the Clinic |
 | Tech challenge | any number | Google DeepMind, Best Use of Gemini API |
 | Project demo | link | https://lanvi.app/demo (no login, read only; https://lanvi.app itself needs a login, which is no longer published) |
@@ -44,14 +44,14 @@ After TMS the daily clinic visits end and nobody sees a slow slide back. Lanvi i
 
 What we can show:
 - It runs. The film shows the app; lanvi.app/demo opens the clinic page, no login.
-- The face and the game are measured as numbers only. Gemini reads them and code checks it: 41 of 41 planted smiles found, nothing invented.
-- The decision layer (rules, two models, code that guards) is tested: on 40 cases worse never meant lower, 0 of 107.
+- ARKit face tracking, as numbers only: smiles, blinks and, new, brief twitches of the mouth corners in millimetres from the Face ID sensor. Gemini reads, code checks: 41 of 41 planted smiles found, nothing invented.
+- The mind: rules notice, two AI models in two layers weigh (the clinic's own, then Gemini), code guards, and it learns which small step helps each person. Tested on 40 cases: worse never meant lower, 0 of 107.
 - Real people: in public data of 1,390 Fitbit wearers our movement hypothesis holds within a person, and it is small.
 - Not shown: that any of it follows depression in a patient. That is the study.
 
 COULD IT HELP PEOPLE STAY WELL AT HOME?
 
-The clinic hears before the next appointment, in two ways. When someone drifts from their own normal for days, their name moves to the top of the clinic's list and, if it is serious, the clinic gets a message the same day. When someone writes that they need help, help numbers open on the phone at once and the clinic is told, with no model in between. Lanvi is not a crisis service; the help wording still needs a clinician's review. Then one small offer, from what helped before: sense, respond, learn.
+When someone drifts from their own normal for days, their name moves to the top of the clinic's list and, if it is serious, the clinic gets a message the same day. When someone writes that they need help, help numbers open on the phone at once and the clinic is told, with no model in between. Lanvi is not a crisis service; the help wording still needs a clinician's review. Then one small offer: sense, respond, learn.
 
 WOULD SOMEONE RECOVERING FROM DEPRESSION USE IT EVERY DAY?
 
@@ -59,11 +59,11 @@ One thing a day, 90 seconds or less: a game, a minute of breathing together, thr
 
 SMART SENSING: WHAT THE PHONE MEASURES
 
-During the game and the breathing, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. Gemini gets a reduced stream of numbers, no name or date, with consent (that screen is not built yet). The server computes 18 measures: smiles and whether they reach the eyes, blinks, gaze, how much the face moves at all. Since Saturday night the app also sends a finer signal from the Face ID sensor: the face mesh reduced on the phone to twelve regions, in millimetres per frame (noise about 1 mm). Two real sessions so far; nothing reads it. The game, Revontulet, borrows from published tasks, far shorter than the originals: an easy or a hard shot (effort for reward), a traced half circle (drawing speed), reaction to embers, slow strokes over the sleeping fox (swipe speed). Steps and walking speed come from Apple Health. Each number is compared only with the person's own earlier days.
+During the game and the breathing, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. Gemini gets a reduced stream of numbers, no name or date, with consent (that screen is not built yet). The server computes 18 measures: smiles and whether they reach the eyes, blinks, gaze, how much the face moves at all. Since Saturday night the app also sends a finer signal from the Face ID sensor: the face mesh reduced on the phone to twelve regions, in millimetres per frame (its noise is not measured yet). Two real sessions so far; nothing reads it. The game, Revontulet, borrows from published tasks, far shorter than the originals: an easy or a hard shot (effort for reward), a traced half circle (drawing speed), reaction to embers, slow strokes over the sleeping fox (swipe speed). Steps and walking speed come from Apple Health.
 
-In the public PSYCHE-D data (1,390 people with a Fitbit and four PHQ-9 scores over a year), quarters with steps clearly below the person's own normal had a PHQ-9 0.4 points above their own other quarters (95% interval 0.2 to 0.6): the direction we fixed in advance.
+In the public PSYCHE-D data (1,390 people with a Fitbit and four PHQ-9 scores over a year), quarters with steps clearly below the person's own normal had a PHQ-9 0.4 points above their own other quarters: the direction we fixed in advance.
 
-Two readers go through each face session: a fixed rule in code, and Gemini, whose every reported smile is checked against the numbers. On ten hard generated sessions, with talking, a moving phone and smiles planted at known places, the fixed rule found 20 of 28 clear smiles and none of 13 faint ones. A simple rule relative to the person's own rest found all but reported 22 things that were not smiles. Gemini found all 41 and nothing else. Gemini had been told what talking looks like; the rule had not.
+Two readers go through each face session: a fixed rule in code, and Gemini, whose every reported smile is checked against the numbers. On ten hard generated sessions, with talking, a moving phone and smiles planted at known places, the fixed rule found 20 of 28 clear smiles and none of 13 faint ones. A simple rule relative to the person's own rest found all but reported 22 things that were not smiles. Gemini found all 41 and nothing else. Gemini had been told what talking looks like.
 
 We fixed 24 hypotheses before any data (three redefined when the game changed).
 
