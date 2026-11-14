@@ -1130,7 +1130,7 @@
     const avg = [];
     for (let day = 0; day < N; day += 1) {
       const vs = ms.map((m) => { const p = m.pts.find((q) => q[0] === day); return p ? p[1] : null; }).filter((v) => v !== null);
-      if (vs.length >= Math.min(2, ms.length)) avg.push([day, vs.reduce((t, q) => t + q, 0) / vs.length]);
+      if (vs.length) avg.push([day, vs.reduce((t, q) => t + q, 0) / vs.length]);  // of the measures that have a value that day
     }
     const avgS = smooth(avg);
     const isPhq = ref.key === "phq9", CUT = 10;
