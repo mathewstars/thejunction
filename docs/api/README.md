@@ -48,7 +48,7 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
    ```
    The code works once and expires (24 h by default). A second use is refused.
 
-2. **Send daily data** (Apple Health). One day, or a batch of history on first launch (up to 400 days). Upsert by date, so re-sending a day is fine.
+2. **Send daily data** (Apple Health). One day, or a batch of history on first launch (up to 400 days). Merged by date: a field left out keeps the stored value, an unchanged day is not written again, so re-sending days is fine (the app re-sends the last 14 days on every open).
    ```sh
    curl -X POST $B/v1/daily -H "Authorization: Bearer $DT" -H 'Content-Type: application/json' \
      -d '{"days":[{"date":"2026-11-13","steps":6400,"walking_speed_m_s":1.24,"hrv_ms":42,"sleep_h":7.1}]}'

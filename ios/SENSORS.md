@@ -26,7 +26,7 @@ Not taken: the Gemini client, prompts, schema, validator, Keychain store and the
 | Turning them into server days | `HealthDayAdapter.days` (`Sense/HarnessHealth.swift`) |
 | Sending | `HealthSync.sync` (`Sense/HealthSync.swift`): the history once (up to 400 days), then the missing days on every open, retried quietly |
 
-Sent to `POST /v1/daily`: `{"days":[{"date","steps","walking_speed_m_s","hrv_ms","sleep_h"}]}`. Days without steps are skipped; HRV and sleep are left out when there is no watch.
+Sent to `POST /v1/daily`: `{"days":[{"date","steps","walking_speed_m_s","hrv_ms","sleep_h"}]}`. Days without steps are skipped; HRV and sleep are left out when there is no watch. On every open (cold start, or back from the background) the app sends the days not sent yet plus the last 14 sent days again, since a watch hands sleep and HRV to the phone late; the server merges by date, a field left out keeps the stored value, so nothing is blanked. Last night's sleep belongs to the morning it ended, which is today, and today goes out on the first open tomorrow.
 
 One difference from the harness: hours asleep. A watch writes a night as many stage pieces, and `HealthSummaryBuilder` credits each piece to the day it ended, so a piece that ends before midnight lands on the evening before. The adapter joins the pieces into one night first (`SleepMath`) and credits the whole night to the morning. Peter, worth the same fix in the harness.
 

@@ -68,7 +68,7 @@ class DayIn(Strict):
 
 class DailyIn(Strict):
     days: list[DayIn] = Field(min_length=1, max_length=400,
-                              description="One day, or a batch of history. Upsert by date.")
+                              description="One day, or a batch of history. Merged by date: a field left out keeps the stored value.")
 
     model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [{"days": [
         {"date": "2026-11-13", "steps": 6400, "walking_speed_m_s": 1.24, "hrv_ms": 42.0,
