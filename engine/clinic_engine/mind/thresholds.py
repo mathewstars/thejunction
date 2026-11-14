@@ -66,6 +66,9 @@ class Thresholds:
     # from the first real ones (docs/revontulet-measures.md): about 11% of
     # unchanged games get a label per reference, whatever the game-to-game spread.
     revontulet_baseline_min: int = 8
+    # ... played on at least this many different days. Ten games in one evening
+    # (the first real games) are one sitting, not a usual range.
+    revontulet_min_days: int = 5
     revontulet_unusual_z: float = 2.5
     # The fixed reference: the person's start, games 3 to 12 (the first two are practice).
     revontulet_start_from: int = 2
