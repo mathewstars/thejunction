@@ -1036,7 +1036,7 @@
     const dash = (v, why) => (v === null || v === undefined ? el("span", { class: "muted", title: why || null }, why ? "not known" : "–") : v);
     const lines = [];
     if (got[0].example) lines.push(el("p", { class: "readout muted" }, el("b", null, "Generated example. "),
-      "No person played these games. The fall in harder choices and tracing speed from week five was written into the generator, together with a rising questionnaire score. It is not a sign that such a link exists."));
+      "No person played these games. The fall in harder choices and tracing speed from week five was written into the generator, together with a rising questionnaire score. It is not a sign that such a link exists, and it is far cleaner than real play would be."));
     // The finding, if there is one: the last three games against the person's start (or, with fewer games, against all before).
     const pool = (list) => {
       const rs = [].concat.apply([], list.map((x) => ((x.revontulet.rounds || []).length >= 3 ? x.revontulet.rounds : [])));
@@ -1045,12 +1045,13 @@
     };
     const chrono = got.slice().reverse();
     // One rule for the headline: the start as soon as the engine has one (from the 13th game), else all games before.
+    // With one or two games after the start the choices are too few (3 or 6), so only the tracing speed is said.
     const hasStart = Object.keys(own0.start || {}).length > 0 && got.length > 12, late = Math.min(3, got.length - 12);
     const ref = hasStart ? { n: late, list: chrono.slice(2, 12), lead: "Last " + plural(late, "game", "games") + " against this person’s start (games 3 to 12): ", word: "start" }
       : got.length >= 6 ? { n: 3, list: got.slice(3), lead: "Last 3 games against the " + (got.length - 3) + " before: ", word: "before" } : null;
     if (ref) {
       const now = pool(got.slice(0, ref.n)), was = pool(ref.list), parts = [];
-      if (now.rounds && was.rounds) parts.push("harder crack in " + now.hard + " of " + plural(now.rounds, "round", "rounds") + " (" + ref.word + ": " + was.hard + " of " + was.rounds + ")");
+      if (ref.n >= 3 && now.rounds && was.rounds) parts.push("harder crack in " + now.hard + " of " + plural(now.rounds, "round", "rounds") + " (" + ref.word + ": " + was.hard + " of " + was.rounds + ")");
       if (now.speed !== null && was.speed !== null) parts.push("tracing at " + num(now.speed, 1) + "\u00a0cm/s (" + ref.word + ": " + num(was.speed, 1) + "\u00a0cm/s)");
       if (parts.length) lines.push(el("p", { class: "readout" }, el("b", null, ref.lead), parts.join(", ") + "."));
     }
@@ -1095,7 +1096,7 @@
         "No yellow does not mean all is well. After a slow change the lower values count as recent, which is why the start (games 3 to 12; the first two are practice) is shown as a second reference that does not move. The start is only where this person began. It is not a healthy level: for someone who started just after treatment, the start may be their worst weeks. People keep getting faster for many games as they learn the game, so faster than start is expected. A run of labels against the start can also come from an odd start alone.",
         "The harder crack is chosen three times a game, so one game says nothing; it is only compared over several games, in the line above the chart. With 9 choices, two or three more or fewer can be chance. Time to choose is the middle value of the rounds, and speeds are averages over the rounds that were traced. A stroke speed is compared only when there were at least two strokes.",
         "Slower tracing can also mean more careful tracing: the game does not yet measure how closely the line was followed. The game asks for slow strokes, so slower stroking may only mean the person did as asked.",
-        "Things other than mood that change these numbers: getting used to the game (many people stop picking the harder crack once the bigger reward is no longer new), the 90-second limit (the easy crack can simply be the faster way to finish), time of day, tiredness, medicines that slow or calm, which hand and finger, holding the phone or laying it down, cold hands, a new screen cover, and doing something else while playing. Speeds are only comparable for one person on one phone: a new phone changes them, and after one the start no longer fits. A row marked “new phone” is the first game on a different screen size."),
+        "Things other than mood that change these numbers: getting used to the game (many people stop picking the harder crack once the bigger reward is no longer new), the 90-second limit (the easy crack can simply be the faster way to finish), time of day, tiredness, medicines that slow or calm, which hand and finger, holding the phone or laying it down, cold hands, a new screen cover, and doing something else while playing. Speeds are only comparable for one person on one phone: a new phone changes them, and after one the start no longer fits. A row marked “new phone” is the first game on a screen drawn at a different density. A new phone with the same density is not noticed."),
       fold("Where these measures come from",
         "The choice of the harder crack follows a laboratory task with about fifty choices. In 2009, among 61 students, those who reported less pleasure chose the harder option a little less often, on some questionnaires and not on others (Treadway and others, PLoS ONE). In 2012 a small study found fewer hard choices in 20 people with depression than in 15 others (Treadway and others, Journal of Abnormal Psychology). Most of those patients were taking medicine for depression, and among the patients a higher depression score did not go with fewer hard choices. Later studies do not all agree.",
         "Slowed movement that other people can see is one of the listed signs of depression. Whether finger speed on a phone shows it is not known. The tracing idea came from a 2025 tablet handwriting study of young people (Džepina and others, Applied Sciences) that we could not open to check, so we claim nothing from it.",

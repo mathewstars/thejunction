@@ -63,7 +63,8 @@ class Thresholds:
     # other games because a game gives few numbers: 8 earlier games before any
     # comparison, and 2.0 either way before the page calls a game unusual. Set
     # with revontulet_check on generated data: an unchanged person gets a label
-    # on about 6% of games, against 37% with 5 games and 1.5.
+    # on about 2% of games against the recent games and 2% against the start
+    # (it was 37% with 5 games, 1.5 and a label on time to choose as well).
     revontulet_baseline_min: int = 8
     revontulet_unusual_z: float = 2.0
     # The fixed reference: the person's start, games 3 to 12 (the first two are practice).
