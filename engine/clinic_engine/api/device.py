@@ -86,6 +86,8 @@ async def activities(body: ActivityIn, request: Request, p: Principal = Depends(
     rec = body.model_dump(mode="json")
     if rec.get("face_raw", "absent") is None:
         del rec["face_raw"]  # so a record without raw frames hashes as it always did
+    if rec.get("revontulet", "absent") is None:
+        del rec["revontulet"]  # the same for a record without Revontulet's measures
     rec["started_at"] = body.started_at.astimezone(timezone.utc).isoformat()
     return await service.record_activity(ctx_of(request), p, rec, rid_of(request))
 

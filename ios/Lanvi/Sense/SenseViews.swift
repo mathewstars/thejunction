@@ -13,54 +13,40 @@ struct SenseScene<Actions: View>: View {
     @ViewBuilder var actions: () -> Actions
 
     @State private var arrived = false
+    @State private var mouth: MouthShape?
 
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
-            let h = geo.size.height
-            let compact = h < 700
-            let buttonY = h - (compact ? 16 : 8) - 30
             let actionsHeight: CGFloat = 60 + 44            // the button and a quiet line under it
-            let fox = min(h * (compact ? 0.36 : 0.40), w * 0.80)
-            // Lanvi sits in the painting's hollow, as on Home, but always clear of the actions.
-            let insets = geo.safeAreaInsets
-            let world = WorldFrame(screen: CGSize(width: w, height: h + insets.top + insets.bottom))
-            let hollow = world.point(WorldFrame.hollow.x, WorldFrame.hollow.y)
-            let actionsTop = buttonY + 30 - actionsHeight
-            let feet = min(hollow.y - insets.top + fox * 0.03, actionsTop - 16)
-            let foxCenter = CGPoint(x: w / 2, y: feet - fox / 2)
-            let top: CGFloat = compact ? 56 : 76
+            // The shared fox layout (Home's size, centre and ground line), standing
+            // just above the quiet "Not now" line under the button.
+            let stage = FoxStage(size: geo.size, insets: geo.safeAreaInsets, controls: 44)
+            let scene: WorldScene = night ? .night : .at(hour: Calendar.current.component(.hour, from: Date()))
 
             ZStack(alignment: .top) {
-                PaintedWorld(scene: night ? .night : .at(hour: Calendar.current.component(.hour, from: Date())))
+                PaintedWorld(scene: scene)
 
                 // No hops in first run: the first cue is a nod, the next a happy squint.
-                LanviView(pose: pose, size: fox)
-                    .lanviReaction(bounce % 2 == 1 ? .listening : .happy, trigger: bounce)
-                    .lanviHops(false)
-                    .frame(width: fox * 2, height: fox * 2)
-                    .position(foxCenter)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-
-                VStack {
-                    Spacer(minLength: 0)
-                    // Lanvi's words in the speech bubble (navy on white), as on Home:
-                    // never free white text on a pale sky.
-                    HomeSpeechBubble(text: line)
-                        .frame(maxWidth: .infinity)
+                GroundedFox(stage: stage, scene: scene) {
+                    LanviView(pose: pose, size: stage.fox)
+                        .lanviReaction(bounce % 2 == 1 ? .listening : .happy, trigger: bounce)
+                        .lanviHops(false)
+                        .lanviMouth(mouth)
                 }
-                .padding(.horizontal, 24)
-                .frame(height: max(foxCenter.y - fox / 2 - 40 - top, 90))
-                .padding(.top, top)
-                .opacity(arrived ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: line)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+
+                // Lanvi's words in the speech bubble, in the same place as on Home:
+                // navy on white, never free white text on a pale sky.
+                HomeSpeech(text: line, target: stage.speechTarget, width: w, mouth: $mouth, hint: nil) {}
+                    .opacity(arrived ? 1 : 0)
 
                 VStack(spacing: 0) {
                     actions()
                 }
                 .frame(width: w - 48, height: actionsHeight, alignment: .top)
-                .position(x: w / 2, y: buttonY - actionsHeight / 2 + 30)
+                .position(x: w / 2, y: stage.buttonY - actionsHeight / 2 + 30)
                 .opacity(arrived ? 1 : 0)
                 .offset(y: arrived ? 0 : 24)
             }

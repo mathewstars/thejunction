@@ -42,6 +42,13 @@ final class LanviFlowUITests: XCTestCase {
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap()
     }
 
+    /// The opening: hold a finger on the kit in the snow until he wakes.
+    private func holdKit(_ name: String) {
+        event(name)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.70)).press(forDuration: 3.4)
+        pause(5.5)          // he wakes: "…you stayed." then "I'm Lanvi."
+    }
+
     private func launch(_ extra: [String]) {
         app = XCUIApplication()
         app.launchArguments = ["-offline", "-hour", "13"] + extra
@@ -62,7 +69,7 @@ final class LanviFlowUITests: XCTestCase {
         pause(2.5)
 
         // Welcome
-        tap(app.buttons, "Get started", "welcome.start")
+        holdKit("rescue.hold")
         pause(1.8)
 
         // What usually helps you?
@@ -134,7 +141,7 @@ final class LanviFlowUITests: XCTestCase {
     func test3Flow() {
         launch(["-firstRun"])
         pause(2.2)
-        tap(app.buttons, "Get started", "flow.start")
+        holdKit("flow.rescue")
         pause(1.8)
         tap(app.buttons, "Quiet", "flow.quiet")
         pause(0.8)

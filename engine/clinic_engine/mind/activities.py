@@ -59,6 +59,10 @@ def check_activity(a: dict, now: datetime) -> str | None:
             return "more_reactions_than_taps"
         if dur > 0 and taps > dur * 10:
             return "taps_too_fast"
+        rv = a.get("revontulet")
+        if rv is not None and rv.get("broke_through_s") is not None \
+                and rv["broke_through_s"] > dur + 1:
+            return "broke_through_after_end"
     elif t == "breathing":
         if a["time_played_s"] > dur + 1:
             return "played_longer_than_duration"

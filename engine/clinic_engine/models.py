@@ -323,8 +323,102 @@ class _ActivityBase(Strict):
         return v
 
 
+class RevontuletRound(Strict):
+    """One round of Revontulet: the fault line picked, the half-circle traced,
+    the slingshot pull and the embers. Numbers only, no touch paths."""
+    effort: Literal["easy", "hard"] = Field(description="The fault line picked: the thin low "
+                                                        "crack (easy) or the thick vein (hard).")
+    choice_ms: int = Field(ge=0, le=120000, description="Fault lines shown to the tap that "
+                                                        "picked one.")
+    trace_start_ms: Optional[int] = Field(None, ge=0, le=120000,
+                                          description="The half-circle appearing to the first "
+                                                      "touch on it.")
+    trace_ms: Optional[int] = Field(None, ge=0, le=120000,
+                                    description="First touch on the half-circle to the light "
+                                                "reaching its end. Null if not finished.")
+    trace_length_pt: float = Field(0, ge=0, le=20000,
+                                   description="Length of the finger's path while tracing, "
+                                               "screen points (lifts left out).")
+    trace_mean_speed_pt_s: Optional[float] = Field(None, ge=0, le=20000,
+                                                   description="Path length over the time the "
+                                                               "finger was down, points/s.")
+    trace_peak_speed_pt_s: Optional[float] = Field(None, ge=0, le=50000,
+                                                   description="Fastest the finger went while "
+                                                               "tracing (smoothed), points/s.")
+    trace_lifts: int = Field(0, ge=0, le=100, description="Times the finger lifted before the "
+                                                          "light reached the end.")
+    pull_pt: Optional[float] = Field(None, ge=0, le=2000,
+                                     description="How far the spark was pulled at the release, "
+                                                 "points. Null if never released.")
+    pull_hold_ms: Optional[int] = Field(None, ge=0, le=120000,
+                                        description="How long the pull was held before the "
+                                                    "release.")
+    embers_shown: int = Field(0, ge=0, le=5, description="Embers that flashed in the flight.")
+    embers_hit: int = Field(0, ge=0, le=5, description="Embers tapped in time. At most "
+                                                       "embers_shown.")
+    bonus: bool = Field(False, description="The surprise extra reward was given this round.")
+
+    @model_validator(mode="after")
+    def _hits(self):
+        if self.embers_hit > self.embers_shown:
+            raise ValueError("embers_hit is more than embers_shown")
+        return self
+
+
+class RevontuletStroke(Strict):
+    """One slow stroke over the sleeping fox."""
+    ms: int = Field(ge=0, le=60000)
+    length_pt: float = Field(ge=0, le=20000, description="Screen points.")
+    mean_speed_pt_s: float = Field(ge=0, le=20000, description="Points per second.")
+
+
+class RevontuletIn(Strict):
+    """What Revontulet measures beyond the focus record's taps and reaction
+    times (docs/revontulet-measures.md). Numbers only: no touch paths, no
+    positions, nothing that identifies a person. Stored with the activity and
+    shown to the clinician; not yet used to judge a day, pick suggestions,
+    count XP or build the person's own normal."""
+    rounds: list[RevontuletRound] = Field(default_factory=list, max_length=3,
+                                          description="One per round where a fault line was "
+                                                      "picked, in order.")
+    strokes: list[RevontuletStroke] = Field(default_factory=list, max_length=10,
+                                            description="The strokes over the sleeping fox, "
+                                                        "in order.")
+    broke_through_s: Optional[float] = Field(None, ge=0, le=600,
+                                             description="Seconds from the start to the wall "
+                                                         "bursting; null if it never burst. At "
+                                                         "most duration_s + 1.")
+    fox_finished: Optional[bool] = Field(None, description="True when time ran out and the "
+                                         "fox's own spark broke the wall. Null if not sent.")
+    pt_per_cm: Optional[float] = Field(None, ge=10, le=400,
+                                       description="Screen points per centimetre on this phone, "
+                                                   "to turn points/s into cm/s.")
+    touch_radius_mean_pt: Optional[float] = Field(None, ge=0, le=200,
+                                                  description="Mean touch radius over the game, "
+                                                              "points. A stand-in for pressure.")
+    touch_radius_var: Optional[float] = Field(None, ge=0, le=10000,
+                                              description="Variance of the touch radius, "
+                                                          "points squared.")
+
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [{
+        "rounds": [
+            {"effort": "easy", "choice_ms": 2310, "trace_start_ms": 1840, "trace_ms": 1650, "trace_length_pt": 288.4,
+             "trace_mean_speed_pt_s": 174.8, "trace_peak_speed_pt_s": 362.0, "trace_lifts": 0,
+             "pull_pt": 96.5, "pull_hold_ms": 820, "embers_shown": 0, "embers_hit": 0,
+             "bonus": False},
+            {"effort": "hard", "choice_ms": 940, "trace_start_ms": 960, "trace_ms": 1220, "trace_length_pt": 279.3,
+             "trace_mean_speed_pt_s": 228.9, "trace_peak_speed_pt_s": 455.0, "trace_lifts": 0,
+             "pull_pt": 108.2, "pull_hold_ms": 540, "embers_shown": 2, "embers_hit": 2,
+             "bonus": True}],
+        "strokes": [{"ms": 1450, "length_pt": 410.0, "mean_speed_pt_s": 282.8}],
+        "broke_through_s": 52.4, "fox_finished": False, "pt_per_cm": 64.2,
+        "touch_radius_mean_pt": 21.3,
+        "touch_radius_var": 4.7}]})
+
+
 class FocusActivityIn(_ActivityBase, _FaceOneWay):
-    """Sparks and snow, about 45 seconds."""
+    """Sparks and snow (about 45 seconds), or Revontulet (about 90 seconds,
+    with `revontulet`)."""
     type: Literal["focus"]
     correct_taps: int = Field(ge=0, le=1000)
     wrong_taps: int = Field(ge=0, le=1000, description="Tapped a snowflake.")
@@ -337,6 +431,9 @@ class FocusActivityIn(_ActivityBase, _FaceOneWay):
                                         "Prefer face_raw: the server computes the summary.")
     face_raw: Optional[FaceRawIn] = Field(None, description="Raw ARKit frames; the server "
                                           "computes the face summary. Not with face.")
+    revontulet: Optional[RevontuletIn] = Field(None, description="Only from Revontulet: the "
+                                               "effort choices, tracing, pull and strokes. "
+                                               "Without it the record means what it always did.")
 
 
 class BreathingActivityIn(_ActivityBase, _FaceOneWay):

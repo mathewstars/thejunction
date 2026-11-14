@@ -312,8 +312,14 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
                      for s in view.series],
         "attention_items": [{k: i.get(k) for k in ("id", "kind", "state", "level", "peak_level",
                                                    "since", "opened_at", "closed_at",
-                                                   "close_reason", "reason", "detail", "history")}
+                                                   "close_reason", "reason", "detail", "history",
+                                                   "rules_level", "level_source")}
                             for i in view.items],
+        # Who sets the levels ("rules" or "models") and, with models, what each
+        # of the two model levels said per item (codes only).
+        "triage": {"mode": getattr(mind.settings, "triage_mode", "rules"),
+                   **{k: (repo.get("mind/triage.json") or {}).get(k)
+                      for k in ("status", "at", "models", "levels")}},
         "suggestions": [{k: s.get(k) for k in ("id", "action", "text", "wording", "date",
                                                "created_at", "status", "answer", "felt",
                                                "attention_kind", "ranked", "round_completed")}
@@ -494,6 +500,9 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                     "rate_hz", "frames", "tracked_share", "channels")}
                 s["reading"] = _reading_out(a)
                 s["frames_reading"] = frames_reading_out(a)
+                if t == "focus":
+                    # Revontulet's own measures, as sent (numbers only), or null.
+                    s["revontulet"] = a.get("revontulet")
             else:
                 s["good_things"] = [item(g, "good_things") for g in a.get("good_things") or []]
                 s["plan"] = item(a.get("plan"), "plans")

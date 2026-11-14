@@ -292,7 +292,7 @@ TRIGGER_SHORT = {
     "reading": "Movement reading", "reading_requested": "Movement reading", "round": "Round",
     "preferences": "Preferences set", "queued_message_due": "Queued message",
     "appraisal": "Association appraisal", "frames_reading": "Frame reading",
-    "days_reading": "Day reading",
+    "days_reading": "Day reading", "triage": "Model triage",
 }
 OUTCOMES = ("message_sent", "attention_opened", "attention_raised", "suggested",
             "attention_closed", "refused", "nothing")

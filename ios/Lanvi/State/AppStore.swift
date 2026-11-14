@@ -143,6 +143,16 @@ final class AppStore {
     /// Which painted scene Lanvi is in right now.
     var worldScene: WorldScene { .at(hour: Calendar.current.component(.hour, from: now)) }
 
+    /// Back after three or more days away (nothing done yet today): Lanvi kept a spot warm.
+    var backAfterGap: Bool {
+        guard !days.dates.contains(days.today) else { return false }
+        guard let last = days.dates.max(), let lastDay = DaysTogether.date(last) else { return false }
+        return Calendar.current.dateComponents([.day], from: lastDay, to: Date()).day ?? 0 >= 3
+    }
+
+    /// Nothing done together yet: the very first time.
+    var firstTime: Bool { days.dates.isEmpty }
+
     var daysTogether: Int { max(days.dates.count, 1) }   // today counts as day one
 
     /// Today's one thing (the captain, Saturday 15:50). What is done stays done;

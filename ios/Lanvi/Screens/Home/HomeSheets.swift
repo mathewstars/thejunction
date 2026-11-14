@@ -2,10 +2,28 @@ import SwiftUI
 
 /// Words and icons for today's one thing, shared by Home, its sheets and the chat.
 enum TodayCopy {
+    /// What Lanvi asks for, in the care voice (the activities are things done for him).
+    static func ask(_ k: ActivityKind, firstTime: Bool) -> String {
+        switch k {
+        case .focus: return "The ice is thick today. Help me break it?"
+        case .breathing: return firstTime ? "Breathe with me. I'm still a bit cold." : "Sit with me a minute?"
+        case .checkin: return "Tell me three good things. I'll keep them."
+        }
+    }
+
     static func button(_ k: ActivityKind) -> String {
         switch k {
         case .breathing: return "Sit with me a minute · 1 min"
         case .focus: return "Break the ice with me · 90 sec"
+        case .checkin: return "Three good things · 1 min"
+        }
+    }
+
+    /// The button's words on a narrow phone.
+    static func shortButton(_ k: ActivityKind) -> String {
+        switch k {
+        case .breathing: return "Sit with me · 1 min"
+        case .focus: return "Break the ice · 90 sec"
         case .checkin: return "Three good things · 1 min"
         }
     }

@@ -28,38 +28,20 @@ struct HomeView: View {
     }
 
     /// Where things sit, for a screen size. Shared by the drawing and the moments.
+    /// Home's layout: Lanvi's place comes from the shared `FoxStage`.
     private struct Layout {
-        var size: CGSize
-        var compact: Bool
-        var fox: CGFloat
-        var feetY: CGFloat
-        var hill: CGFloat
-        var buttonY: CGFloat      // centre of the primary button
-        var foxCenter: CGPoint
+        let stage: FoxStage
+        var size: CGSize { stage.size }
+        var compact: Bool { stage.compact }
+        var fox: CGFloat { stage.fox }
+        var feetY: CGFloat { stage.feetY }
+        var buttonY: CGFloat { stage.buttonY }
+        var foxCenter: CGPoint { stage.foxCenter }
+        var foxTop: CGFloat { stage.foxTop }
 
         init(size: CGSize, insets: EdgeInsets, away: Bool) {
-            self.size = size
-            compact = size.height < 700
-            let bottomGap: CGFloat = compact ? 16 : 8
-            buttonY = size.height - bottomGap - 30
-            // Where the painting's hollow lands on this screen: Lanvi sits in it.
-            let screen = CGSize(width: size.width, height: size.height + insets.top + insets.bottom)
-            let world = WorldFrame(screen: screen)
-            let hollow = world.point(WorldFrame.hollow.x, WorldFrame.hollow.y)
-            let big = min(size.height * 0.46, size.width * 0.86)
-            fox = away ? big * 0.30 : big
-            feetY = min(hollow.y - insets.top + big * 0.03, buttonY - 30 - 24)
-            hill = world.point(0.5, 0.56).y - insets.top
-            if away {
-                // Off in the distance, by the pines on the right.
-                let far = world.point(0.80, 0.60)
-                foxCenter = CGPoint(x: far.x, y: far.y - insets.top - fox / 2)
-            } else {
-                foxCenter = CGPoint(x: size.width / 2, y: feetY - fox / 2)
-            }
+            stage = FoxStage(size: size, insets: insets)
         }
-
-        var foxTop: CGFloat { foxCenter.y - fox / 2 }
     }
 
     @State private var cover: Cover?
@@ -111,8 +93,8 @@ struct HomeView: View {
             ZStack(alignment: .top) {
                 PaintedWorld(scene: store.worldScene)
 
-                // Lanvi, large on the snow, with the fox fire behind the tail.
-                ZStack {
+                // Lanvi, settled in the snow of the clearing (the shared fox layout).
+                GroundedFox(stage: L.stage, scene: store.worldScene) {
                     LanviView(pose: pose, size: L.fox)
                         // Lanvi leaves the snow only for the reward after an activity.
                         .lanviHops(celebrating)
@@ -122,8 +104,6 @@ struct HomeView: View {
                         .lanviMouth(mouth)
                         // A tap is only the puppet's own touch reaction; growth opens from the Day pill.
                 }
-                .frame(width: L.fox * 2, height: L.fox * 2)
-                .position(x: L.foxCenter.x, y: L.foxCenter.y)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Lanvi")
                 .accessibilityIdentifier("home.fox")
@@ -237,7 +217,7 @@ struct HomeView: View {
         let lift: CGFloat = pop != nil ? 58 : 0
         let target = away
             ? CGPoint(x: L.foxCenter.x - L.fox * 0.1, y: L.foxCenter.y - L.fox * 0.55)
-            : CGPoint(x: L.foxCenter.x + L.fox * 0.10, y: L.foxTop + L.fox * 0.04)
+            : L.stage.speechTarget
         return HomeSpeech(text: bubbleText, target: target, width: L.size.width, mouth: $mouth) {
             open(.chat)
         }
@@ -289,7 +269,15 @@ struct HomeView: View {
         case .game(let k):
             HStack(spacing: 12) {
                 moreButton
-                Button(TodayCopy.button(k)) { open(.activity(k)) }
+                Button { open(.activity(k)) } label: {
+                    // The full words when they fit; a shorter form on narrow phones,
+                    // never a label cut off with "…".
+                    ViewThatFits(in: .horizontal) {
+                        Text(TodayCopy.button(k)).fixedSize()
+                        Text(TodayCopy.shortButton(k)).fixedSize()
+                        Text(TodayCopy.shortButton(k))
+                    }
+                }
                     .buttonStyle(HomePrimaryStyle())
                     .accessibilityIdentifier("home.primary")
                 chatButton
@@ -392,10 +380,16 @@ struct HomeView: View {
     }
 
     /// Lanvi's one line. When today's thing is done, it says so.
+    /// In the care voice: Lanvi asks for today's thing; after an activity, the
+    /// server's line; when it is done, glad you came; never guilt, never a countdown.
     private var bubbleText: String {
-        if case .done(let d) = store.todayThing, !d.restful, !celebrating {
-            return "That's our thing for today."
+        if celebrating { return store.line.isEmpty ? " " : store.line }
+        if case .done(let d) = store.todayThing {
+            return d.restful ? "That's all right. I'm here." : "That was our thing for today. I'm glad you came."
         }
+        if store.backAfterGap { return "I kept a spot warm for you." }
+        if let s = store.suggestion { return s.text }          // the server's own words
+        if case .game(let k) = store.todayThing { return TodayCopy.ask(k, firstTime: store.firstTime) }
         return store.line.isEmpty ? " " : store.line
     }
 

@@ -10,6 +10,7 @@ struct WhatHelpsView: View {
     @Environment(AppStore.self) private var store
     @State private var chosen: [String] = []
     @State private var say = "What usually helps you? Pick as many as you like."
+    @State private var mouth: MouthShape?
     /// One reaction at a time; never the same one twice in a row.
     @State private var reaction: LanviMood = .listening
     @State private var reactTick = 0
@@ -32,51 +33,42 @@ struct WhatHelpsView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let compact = geo.size.height < 700
-            let hill = geo.size.height * (compact ? 0.54 : 0.60)
-            let fox: CGFloat = compact ? 150 : 190
+            let chipsHeight: CGFloat = 66 * 2 + 12
+            // The shared fox layout, raised just enough for the chips in front of him.
+            let stage = FoxStage(size: geo.size, insets: geo.safeAreaInsets, controls: chipsHeight)
             ZStack(alignment: .top) {
                 PaintedWorld(scene: store.worldScene)
 
-                ZStack {
-                    LanviView(pose: .curious, size: fox)
+                GroundedFox(stage: stage, scene: store.worldScene) {
+                    LanviView(pose: .curious, size: stage.fox)
                         .lanviReaction(reaction, trigger: reactTick)
+                        .lanviMouth(mouth)
                         .lanviMood(proud ? .happy : nil)
                         .lanviHops(false)
                 }
-                .frame(width: fox * 2, height: fox * 2)
-                .position(x: geo.size.width / 2, y: hill - fox / 2 + 14)
 
-                VStack {
-                    Spacer(minLength: 0)
-                    HomeSpeechBubble(text: say)
-                }
-                .frame(width: geo.size.width - 40, height: max(hill + 14 - fox - 30, 60))
-                .padding(.top, 20)
+                // Lanvi's words in the same bubble, in the same place, as on Home.
+                HomeSpeech(text: say, target: stage.speechTarget, width: geo.size.width, mouth: $mouth, hint: nil) {}
 
-                VStack(spacing: compact ? 12 : 16) {
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                        ForEach(choices) { c in
-                            chip(c)
-                        }
+                // Chips on the snow in front of Lanvi; they never animate their place.
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                    ForEach(choices) { c in
+                        chip(c)
                     }
-                    Spacer(minLength: 0)
-                    Button(chosen.isEmpty ? "Skip for now" : "That's it") { finish() }
-                        .buttonStyle(chosen.isEmpty
-                                     ? ChunkyButtonStyle(fill: .white, edge: Theme.line, text: Theme.brand)
-                                     : ChunkyButtonStyle())
-                        .overlay {
-                            if chosen.isEmpty {
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(Theme.line, lineWidth: 2).allowsHitTesting(false)
-                            }
-                        }
-                        .disabled(sending)
-                        .animation(LanviTiming.swap, value: chosen.isEmpty)
                 }
-                .padding(.horizontal, 24)   // the same margins as Welcome, so the button never moves
-                .padding(.top, hill + (compact ? 26 : 36))
-                .padding(.bottom, 12)
+                .frame(height: chipsHeight)
+                .padding(.horizontal, 24)
+                .position(x: geo.size.width / 2, y: stage.buttonY - 30 - 16 - chipsHeight / 2)
+
+                // The button in the same place as on every first-run page and Home.
+                Button(chosen.isEmpty ? "Skip for now" : "That's it") { finish() }
+                    .buttonStyle(HomePrimaryStyle(fill: chosen.isEmpty ? .white : Theme.brand,
+                                                  edge: chosen.isEmpty ? Theme.line : Theme.brandEdge,
+                                                  text: chosen.isEmpty ? Theme.brand : .white))
+                    .disabled(sending)
+                    .frame(width: geo.size.width - 48)
+                    .position(x: geo.size.width / 2, y: stage.buttonY)
+                    .animation(LanviTiming.swap, value: chosen.isEmpty)
             }
         }
         .task {

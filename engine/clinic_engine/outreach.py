@@ -183,6 +183,8 @@ class Outreach:
                 INPUT_GATE.check_frames_pack(pack)  # the only pack that carries frames
             elif pack.task == "days_reading":
                 INPUT_GATE.check_days_pack(pack)
+            elif pack.task == "triage":
+                INPUT_GATE.check_triage_outbound(pack.payload)
             else:
                 INPUT_GATE.check_outbound(pack.payload)
             if self.standin:

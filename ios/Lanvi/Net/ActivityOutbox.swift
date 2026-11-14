@@ -64,6 +64,14 @@ struct DaysTogether: Codable, Equatable {
         return f.string(from: date)
     }
 
+    static func date(_ key: String) -> Date? {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f.date(from: key)
+    }
+
     /// A new day starts with a fresh "today", the count stays.
     mutating func roll(to date: Date) {
         let k = Self.key(date)
