@@ -262,3 +262,64 @@ def test_the_reference_set_is_fixed_and_the_fixed_rule_misses_most_slow_declines
                      weekly=[])
         res = check(said, (days, truth))
         assert len(res.value["reading"]["stretches"]) == len(truth), (k, kind)
+
+
+# ---- what the model found and code confirmed opens a flag for the clinic -----------------
+
+def _open_kinds(env, pid=None):
+    return {i["kind"]: i for i in env.repo(pid).items() if i["state"] == "open"}
+
+
+def test_a_slow_decline_only_the_model_named_opens_a_watch_flag_and_nothing_for_the_patient():
+    from datetime import timedelta
+    from conftest import NOW
+    # The demo patient's own days are replaced by a generated person with a
+    # four-week slide the fixed rule sees only in pieces.
+    series, _truth = make_series(3009, "gradual")
+    slide = {"start_d": 56, "end_d": 83, "channel": "steps", "direction": "lower",
+             "shape": "gradual"}
+    env, rec = days_env(reply(stretches=[slide], weekly=[]))
+    repo = env.repo()
+    for key in env.store.list(repo.p + "days/"):
+        env.store.delete(key)
+    last = NOW.date() - timedelta(days=1)
+    for k, iso in enumerate(sorted(series)):
+        d = (last - timedelta(days=83 - k)).isoformat()
+        repo.put(f"days/{d}.json", {**series[iso], "date": d, "example": False})
+    before = env.client.get("/v1/today", headers=env.H).json()
+    out = run(env)
+    assert out["status"] == "ready"
+    assert [s["status"] for s in out["reading"]["stretches"]] == ["model_only"]
+    item = _open_kinds(env)["model_noticed"]
+    assert item["level"] == "watch" or item["level"] == "attention"
+    assert item["detail"] == {"daily_channel": "steps", "daily_shape": "gradual", "daily_days": 28}
+    # Clinic side: the flag is on the patient's page. Patient side: nothing new.
+    det = env.client.get(f"/v1/clinic/patients/{env.demo['patient_id']}", headers=env.C()).json()
+    assert any(i["kind"] == "model_noticed" for i in det["attention_items"])
+    after = env.client.get("/v1/today", headers=env.H).json()
+    assert after.get("suggestion") == before.get("suggestion")
+    assert not [e for e in env.audit() if e["action"] == "notify_urgent"
+                and (e.get("detail") or {}).get("kind") == "model_noticed"]
+    # A stretch the model named but code did not confirm opens nothing.
+    env2, _ = days_env(reply(stretches=[{**slide, "start_d": 8, "end_d": 16}], weekly=[]))
+    assert run(env2)["status"] == "ready"
+    assert "model_noticed" not in _open_kinds(env2)
+
+
+def test_smiles_that_became_faint_open_the_flag_only_after_codes_check():
+    from clinic_engine.mind.watchers import View
+    def view(readings):
+        acts = [{"type": "focus", "frames_reading": {"status": "ready", "agreement": g}}
+                for g in readings]
+        from conftest import NOW
+        return View(today=NOW.date(), now=NOW, days={}, series=[], has_baseline=False, items=[],
+                    suggestions=[], oddities=[], notes=[], activities=acts)
+    clear = {"smiles_code": 3, "smiles_faint": 1}
+    faint = {"smiles_code": 0, "smiles_faint": 2}
+    none = {"smiles_code": 0, "smiles_faint": 0}
+    assert view([clear, clear, faint, faint]).model_noticed() == {"faint_sessions": 2,
+                                                                  "faint_smiles": 4}
+    assert view([clear, faint, clear]).model_noticed() == {}       # the last one is clear again
+    assert view([clear, clear, none, none]).model_noticed() == {}  # nothing confirmed by code
+    assert view([faint, faint, faint]).model_noticed() == {}       # never had clear smiles
+    assert view([clear, faint]).model_noticed() == {}              # too few readings

@@ -74,7 +74,7 @@
     ignored: "Offers unanswered", asked_for_help: "Asked for help", low_notes: "Low notes",
     weak_rounds: "Weak sessions", round_mismatch: "Signals disagree", fading: "Slowing down",
     stopped_early: "Stops early", not_played: "Offers not played", slow_reactions: "Slower reactions",
-    flat_face: "Less facial movement", face_flat: "Less facial movement", slower_reactions: "Slower reactions", checkins_stopped: "Check-ins stopped", plans_not_done: "Plans not done",
+    flat_face: "Less facial movement", face_flat: "Less facial movement", model_noticed: "Noticed by the model, confirmed by code", slower_reactions: "Slower reactions", checkins_stopped: "Check-ins stopped", plans_not_done: "Plans not done",
   };
   const ACTION = {
     ar_round: "Light round", ar_round_seated: "Seated light round", walk_10min: "Short walk",
@@ -695,6 +695,12 @@
       if (i.kind === "deviation") return "movement below own normal, " + x.low_days + " low days";
       if (i.kind === "slower_reactions") return "slower than usual in " + x.slower_sessions + " of the last " + x.of_last + " focus games";
       if (i.kind === "face_flat") return "less facial movement in " + x.flat_sessions + " of the last " + x.of_last + " sessions";
+      if (i.kind === "model_noticed") {
+        const parts = [];
+        if (x.daily_channel) parts.push((x.daily_shape === "gradual" ? "a slow decline" : "a lower stretch") + " in " + ({ steps: "steps", walk_speed: "walking speed", sleep_h: "sleep", hrv: "heart-rate variability" }[x.daily_channel] || x.daily_channel) + " over " + x.daily_days + " days that the fixed rule did not flag");
+        if (x.faint_sessions) parts.push("smiles have become faint: in the last " + x.faint_sessions + " sessions the fixed rule counts none and the model found " + x.faint_smiles);
+        return "the model found " + parts.join("; and ") + ". Code confirmed it in the numbers";
+      }
       if (i.kind === "plans_not_done") return x.in_a_row + " plans in a row not carried out";
       if (i.kind === "low_notes") return x.low_notes + " notes labelled low";
       if (i.kind === "weak_rounds") return x.rounds + " weak sessions in a row";

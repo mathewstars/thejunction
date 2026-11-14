@@ -281,7 +281,7 @@ KIND_SHORT = {
     "fading": "Slowing in rounds", "stopped_early": "Rounds stopped early",
     "not_played": "Activities not played", "slower_reactions": "Slower reactions",
     "face_flat": "Less facial movement", "checkins_stopped": "Check-ins stopped",
-    "plans_not_done": "Plans not done",
+    "plans_not_done": "Plans not done", "model_noticed": "Noticed by the model",
 }
 ACTION_SHORT = {"breathing": "breathing", "focus_game": "Sparks and snow", "checkin": "check-in",
                 "walk_10min": "a walk", "daylight_10min": "daylight", "call_someone": "a call"}

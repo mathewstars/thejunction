@@ -206,7 +206,8 @@ class Mind:
                     has_baseline=has_baseline(baseline_for(days, today, self.th)),
                     items=repo.items(), suggestions=repo.suggestions(),
                     oddities=repo.oddities(), notes=notes, contacts=contacts,
-                    rounds=repo.rounds(), activities=acts, tz=tz, th=self.th)
+                    rounds=repo.rounds(), activities=acts, tz=tz, th=self.th,
+                    days_reading=repo.get("research/days_reading.json"))
 
     # ---- the event handler -------------------------------------------------------------
 
@@ -992,6 +993,10 @@ class Mind:
             repo.put(f"activities/{activity_id}.json", cur)
             for r in refusals:
                 self.refuse(repo, r)
+            if result["status"] == "ready":
+                # The watchers look again: what the model found and code confirmed
+                # may open (or close) a flag for the clinic (watch_model_noticed).
+                await self.observe(repo, repo.patient(), self.clock.now())
             self.audit(repo, "frames_reading", activity_id=activity_id,
                        status=result["status"], reason=result.get("reason"),
                        frames_sent=sent.get("frames"), dropped=len(result.get("dropped", [])),
@@ -1113,6 +1118,8 @@ class Mind:
             repo.put("research/days_reading.json", result)
             for r in refusals:
                 self.refuse(repo, r)
+            if result["status"] == "ready":
+                await self.observe(repo, repo.patient(), self.clock.now())
             self.audit(repo, "days_reading", status=result["status"],
                        reason=result.get("reason"), days_sent=sent.get("days"),
                        dropped=len(result.get("dropped", [])),
