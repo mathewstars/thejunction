@@ -19,7 +19,7 @@ MEASURES = {
     "strokes": [{"ms": 1450, "length_pt": 410.0, "mean_speed_pt_s": 282.8},
                 {"ms": 1720, "length_pt": 395.5, "mean_speed_pt_s": 229.9},
                 {"ms": 1900, "length_pt": 402.1, "mean_speed_pt_s": 211.6}],
-    "broke_through_s": 52.4, "pt_per_cm": 64.2, "touch_radius_mean_pt": 21.3,
+    "broke_through_s": 52.4, "fox_finished": False, "pt_per_cm": 64.2, "touch_radius_mean_pt": 21.3,
     "touch_radius_var": 4.7,
 }
 
@@ -68,7 +68,7 @@ def test_optional_fields_may_be_left_out(env):
     assert post(env, game("rv-slim-000001", measures=slim)).status_code == 200
     rv = env.repo().get("activities/rv-slim-000001.json")["revontulet"]
     assert rv["rounds"][0]["embers_shown"] == 0 and rv["rounds"][0]["bonus"] is False
-    assert rv["strokes"] == [] and rv["pt_per_cm"] is None
+    assert rv["strokes"] == [] and rv["pt_per_cm"] is None and rv["fox_finished"] is None
 
 
 def test_unknown_fields_are_refused_at_every_level(env):
@@ -83,7 +83,8 @@ def test_unknown_fields_are_refused_at_every_level(env):
 
 def test_out_of_range_values_are_refused(env):
     bad = [("rounds", [ROUND_EASY] * 4), ("strokes", MEASURES["strokes"] * 4),
-           ("pt_per_cm", 5.0), ("touch_radius_mean_pt", -1.0), ("broke_through_s", 601)]
+           ("pt_per_cm", 5.0), ("touch_radius_mean_pt", -1.0), ("broke_through_s", 601),
+           ("fox_finished", "maybe")]
     for i, (k, v) in enumerate(bad):
         m = {**copy.deepcopy(MEASURES), k: v}
         assert post(env, game(f"rv-range-0000{i}", measures=m)).status_code == 422, k

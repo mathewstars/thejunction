@@ -385,6 +385,8 @@ class RevontuletIn(Strict):
                                              description="Seconds from the start to the wall "
                                                          "bursting; null if it never burst. At "
                                                          "most duration_s + 1.")
+    fox_finished: Optional[bool] = Field(None, description="True when time ran out and the "
+                                         "fox's own spark broke the wall. Null if not sent.")
     pt_per_cm: Optional[float] = Field(None, ge=10, le=400,
                                        description="Screen points per centimetre on this phone, "
                                                    "to turn points/s into cm/s.")
@@ -406,7 +408,8 @@ class RevontuletIn(Strict):
              "pull_pt": 108.2, "pull_hold_ms": 540, "embers_shown": 2, "embers_hit": 2,
              "bonus": True}],
         "strokes": [{"ms": 1450, "length_pt": 410.0, "mean_speed_pt_s": 282.8}],
-        "broke_through_s": 52.4, "pt_per_cm": 64.2, "touch_radius_mean_pt": 21.3,
+        "broke_through_s": 52.4, "fox_finished": False, "pt_per_cm": 64.2,
+        "touch_radius_mean_pt": 21.3,
         "touch_radius_var": 4.7}]})
 
 
