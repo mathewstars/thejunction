@@ -279,68 +279,37 @@ struct RevontuletPainter {
         let c = CGPoint(x: box.midX, y: box.midY)
         softEllipse(&g, c, rx: max(box.width, box.height) * 0.9, ry: max(box.width, box.height) * 0.7,
                     [RevontuletColor.teal.opacity(0.24 + 0.1 * e.skyLight), RevontuletColor.green.opacity(0.08), RevontuletColor.violet.opacity(0.06)])
-        // Stars in the window, a few per piece, twinkling.
-        for (i, f) in art.facets.enumerated() {
+        // Stars in the window, a few per piece, twinkling (placed once, when the piece fell).
+        for (i, rim) in art.rims {
             guard let t = art.fallAt[i], now >= t else { continue }
-            let b = f.path.boundingRect
-            for k in 0..<5 {
-                let dk = Double(i * 7 + k)
-                let fx = abs(sin(dk * 12.9898) * 43758.5453).truncatingRemainder(dividingBy: 1)
-                let fy = abs(sin(dk * 78.233) * 12345.678).truncatingRemainder(dividingBy: 1)
-                let p = CGPoint(x: b.minX + b.width * CGFloat(fx), y: b.minY + b.height * CGFloat(fy))
-                guard f.path.contains(p) else { continue }
-                let a = (0.55 + 0.45 * sin(now * (0.9 + 0.1 * Double(k)) + dk)) * min(1, (now - t) / 0.6)
-                let len: CGFloat = CGFloat(2 + 2.5 * fy)
-                g.fill(Path(ellipseIn: CGRect(x: p.x - len, y: p.y - 0.5, width: len * 2, height: 1)), with: .color(Color.white.opacity(0.8 * a)))
-                g.fill(Path(ellipseIn: CGRect(x: p.x - 0.5, y: p.y - len, width: 1, height: len * 2)), with: .color(Color.white.opacity(0.8 * a)))
-                g.fill(Path(ellipseIn: CGRect(x: p.x - 1.6, y: p.y - 1.6, width: 3.2, height: 3.2)), with: .color(Color.white.opacity(0.7 * a)))
+            let rise = min(1, (now - t) / 0.6)
+            for st in rim.stars {
+                let a = (0.55 + 0.45 * sin(now * 1.1 + st.phase)) * rise
+                g.fill(Path(ellipseIn: CGRect(x: st.p.x - st.len, y: st.p.y - 0.5, width: st.len * 2, height: 1)), with: .color(Color.white.opacity(0.8 * a)))
+                g.fill(Path(ellipseIn: CGRect(x: st.p.x - 0.5, y: st.p.y - st.len, width: 1, height: st.len * 2)), with: .color(Color.white.opacity(0.8 * a)))
+                g.fill(Path(ellipseIn: CGRect(x: st.p.x - 1.6, y: st.p.y - 1.6, width: 3.2, height: 3.2)), with: .color(Color.white.opacity(0.7 * a)))
             }
         }
     }
 
     /// The broken rim of each hole, on the glass that is left: thick and uneven, lit in places
     /// and broken in others, with small chips, and a shaded side for the glass's thickness.
+    /// Its shapes were made once when the piece fell; a few strokes a frame.
     private func holes(_ ctx: inout GraphicsContext) {
-        for (i, f) in art.facets.enumerated() {
+        for (i, rim) in art.rims {
             guard let t = art.fallAt[i], now >= t else { continue }
             let fresh = max(0, 1 - (now - t) / 0.8)
             var side = ctx
             side.translateBy(x: 1.5, y: 3)
-            side.stroke(f.path, with: .color(Color.black.opacity(0.3)), lineWidth: 5)
+            side.stroke(art.facets[i].path, with: .color(Color.black.opacity(0.3)), lineWidth: 5)
             var g = ctx
             g.blendMode = .plusLighter
-            let pts = f.points
-            var n = 0
-            for k in 0..<pts.count {
-                let a = pts[k], b = pts[(k + 1) % pts.count]
-                // Each edge in a few pieces of different weight; some pieces are missing.
-                for piece in 0..<3 {
-                    n += 1
-                    let r1 = abs(sin(Double(i * 31 + n) * 12.9898) * 43758.5453).truncatingRemainder(dividingBy: 1)
-                    let r2 = abs(sin(Double(i * 17 + n) * 78.233) * 12345.678).truncatingRemainder(dividingBy: 1)
-                    guard r1 > 0.34 else { continue }
-                    let u0 = CGFloat(piece) / 3, u1 = CGFloat(piece + 1) / 3
-                    let p0 = CGPoint(x: a.x + (b.x - a.x) * u0, y: a.y + (b.y - a.y) * u0)
-                    let p1 = CGPoint(x: a.x + (b.x - a.x) * u1, y: a.y + (b.y - a.y) * u1)
-                    var seg = Path()
-                    seg.move(to: p0)
-                    seg.addLine(to: p1)
-                    let w = CGFloat(1.2 + 8 * r2 * r2)
-                    let lit = 0.2 + 0.7 * r1 * r1 + 0.3 * fresh
-                    g.stroke(seg, with: .color(RevontuletColor.iceCold.opacity(0.12 * lit)), style: StrokeStyle(lineWidth: w * 1.5, lineCap: .round))
-                    g.stroke(seg, with: .color(RevontuletColor.frost.opacity(0.6 * lit)), style: StrokeStyle(lineWidth: max(0.8, w * 0.45), lineCap: .butt))
-                    if r2 > 0.55 {
-                        // A small chip of glass sitting on the edge, catching the light.
-                        let m = CGPoint(x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2)
-                        var chip = Path()
-                        chip.move(to: CGPoint(x: m.x - 3, y: m.y - 1))
-                        chip.addLine(to: CGPoint(x: m.x + 1, y: m.y - 4))
-                        chip.addLine(to: CGPoint(x: m.x + 3, y: m.y + 2))
-                        chip.closeSubpath()
-                        g.fill(chip, with: .color(Color.white.opacity(0.5 * lit)))
-                    }
-                }
+            for edge in rim.edges {
+                let lit = edge.lit + 0.3 * fresh
+                g.stroke(edge.path, with: .color(RevontuletColor.iceCold.opacity(0.12 * lit)), style: StrokeStyle(lineWidth: edge.width * 1.5, lineCap: .round))
+                g.stroke(edge.path, with: .color(RevontuletColor.frost.opacity(0.6 * lit)), style: StrokeStyle(lineWidth: max(0.8, edge.width * 0.45), lineCap: .butt))
             }
+            g.fill(rim.chips, with: .color(Color.white.opacity(0.4 + 0.3 * fresh)))
         }
     }
 
