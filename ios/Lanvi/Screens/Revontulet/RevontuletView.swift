@@ -34,6 +34,7 @@ struct RevontuletView: View {
     @State private var petTick = 0
     /// The fox's answer held during a stroke (the third: eyes closed happily).
     @State private var petMood: LanviMood?
+    @State private var joy = false
     // The screen.
     @State private var line = ""
     @State private var finger: CGPoint?
@@ -126,7 +127,7 @@ struct RevontuletView: View {
                     }
                     // Lower-left and smaller while playing; at the burst it springs to the centre.
                     RevontuletFox(act: act(e), size: L.foxSize, reaction: reaction, reactionTick: reactionTick,
-                                  look: look, yawnTick: yawnTick, petTick: petTick, petMood: petMood)
+                                  look: look, yawnTick: yawnTick, petTick: petTick, petMood: petMood, joy: joy)
                         .equatable()
                         .frame(width: L.foxSize, height: L.foxSize)
                         .scaleEffect(Self.foxScale(e))
@@ -505,13 +506,18 @@ struct RevontuletView: View {
                     let hit = e.impacts.last
                     let hard = hit?.hard == true
                     Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(hard ? 0.75 : 0.5))
+                        // Easy: a quick warm smile. Hard: wide-eyed, then proud; with both
+                        // embers lit, a real hop of joy.
+                        try? await Task.sleep(for: .seconds(hard ? 0.7 : 0.3))
                         guard let b = engine?.beat, b == .impact || b == .choice else { return }
                         foxReact(hard ? .proud : .happy)
                         guard hard, (hit?.embersHit ?? 0) >= 2 else { return }
-                        try? await Task.sleep(for: .seconds(1.1))
+                        try? await Task.sleep(for: .seconds(0.9))
                         guard let b2 = engine?.beat, b2 == .impact || b2 == .choice || b2 == .trace else { return }
+                        joy = true
                         foxReact(.happy)
+                        try? await Task.sleep(for: .seconds(1.6))
+                        joy = false
                     }
                 }
             case .shattered:

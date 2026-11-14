@@ -53,11 +53,13 @@ struct RevontuletPainter {
         for (k, hit) in e.impacts.enumerated() where !hit.breaking {
             let age = now - hit.time
             guard age > 0 else { continue }
-            let big = hit.hard ? 1.0 + 0.2 * Double(hit.embersHit) : 0.55
+            // Easy: a small warm ribbon that opens fast. Hard: a big bright one unfurling slowly,
+            // bigger again with each ember lit.
+            let big = hit.hard ? 1.2 + 0.25 * Double(hit.embersHit) : 0.4
             let fade = e.beat == .sleep || e.beat == .done ? 0.6 : 1
-            curtain(&g, size: size, base: 0.2 + 0.07 * Double(k), amp: 14 + 10 * big, height: 0.09 + 0.07 * big,
-                    alpha: (0.22 + 0.3 * big) * fade, speed: 0.12 + 0.03 * Double(k), phase: 4 + 1.7 * Double(k),
-                    violetTop: k % 2 == 0, reveal: min(1, age / 1.6), origin: Double(hit.point.x), step: 8)
+            curtain(&g, size: size, base: 0.2 + 0.07 * Double(k), amp: 10 + 14 * big, height: 0.06 + 0.09 * big,
+                    alpha: (0.14 + 0.36 * big) * fade, speed: 0.12 + 0.03 * Double(k), phase: 4 + 1.7 * Double(k),
+                    violetTop: hit.hard, reveal: min(1, age / (hit.hard ? 1.9 : 0.8)), origin: Double(hit.point.x), step: 8)
         }
         for (k, r) in e.impacts.enumerated() where r.ribbon {
             let age = now - r.time
@@ -560,13 +562,25 @@ struct RevontuletPainter {
         for (k, hit) in e.impacts.enumerated() {
             let t = now - hit.time
             guard t >= 0, t < 1.0 else { continue }
-            if t < 0.45 {
-                let k2 = pow(1 - t / 0.45, 2)
-                let big = hit.hard ? 1.0 + 0.25 * Double(hit.embersHit) : 0.6
-                let r = CGFloat((22 + 120 * t / 0.45) * big)
+            // Easy: a small warm flash, quick. Hard: a big bright one in the aurora's colours,
+            // with a second ring of light running out after it.
+            let span = hit.hard ? 0.6 : 0.35
+            if t < span {
+                let k2 = pow(1 - t / span, 2)
+                let big = hit.hard ? 1.5 + 0.35 * Double(hit.embersHit) : 0.5
+                let r = CGFloat((22 + 120 * t / span) * big)
+                let tint: [Color] = hit.hard
+                    ? [RevontuletColor.core.opacity(0.9 * k2), RevontuletColor.green.opacity(0.4 * k2), RevontuletColor.teal.opacity(0.18 * k2), .clear]
+                    : [RevontuletColor.core.opacity(0.8 * k2), RevontuletColor.gold.opacity(0.5 * k2), RevontuletColor.amber.opacity(0.15 * k2), .clear]
                 g.fill(Path(ellipseIn: CGRect(x: hit.point.x - r, y: hit.point.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
-                    Gradient(colors: [RevontuletColor.core.opacity(0.85 * k2), RevontuletColor.gold.opacity(0.45 * k2), RevontuletColor.amber.opacity(0.15 * k2), .clear]),
-                    center: hit.point, startRadius: 0, endRadius: r))
+                    Gradient(colors: tint), center: hit.point, startRadius: 0, endRadius: r))
+                if hit.hard, t > 0.08 {
+                    let r2 = r * 1.6
+                    let k3 = pow(1 - (t - 0.08) / (span - 0.08), 2)
+                    g.fill(Path(ellipseIn: CGRect(x: hit.point.x - r2, y: hit.point.y - r2, width: r2 * 2, height: r2 * 2)), with: .radialGradient(
+                        Gradient(stops: [.init(color: .clear, location: 0.7), .init(color: RevontuletColor.teal.opacity(0.3 * k3), location: 0.9),
+                                         .init(color: .clear, location: 1)]), center: hit.point, startRadius: 0, endRadius: r2))
+                }
             }
             // Light racing across the ice from the hit.
             if t < 0.5, !hit.breaking {
