@@ -12,7 +12,7 @@ The platform does not read this file. After a change here, the same change has t
 |---|---|---|
 | Project name | 30 characters | Lanvi |
 | Punchline | 200 characters | See below (181 characters) |
-| Description | 5,000 characters | See below (4,997 characters) |
+| Description | 5,000 characters | See below (4,999 characters) |
 | Challenge | one | Aalto University, Beyond the Clinic |
 | Tech challenge | any number | Google DeepMind, Best Use of Gemini API |
 | Project demo | link | https://lanvi.app/demo (no login, read only; https://lanvi.app itself needs a login, which is no longer published) |
@@ -59,19 +59,19 @@ One thing a day, 90 seconds or less: a game, a minute of breathing together, thr
 
 SMART SENSING: WHAT THE PHONE MEASURES
 
-During the game and the breathing, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. The server computes 18 measures: smiles, blinks, gaze, how much the face moves. Since Saturday night the app also sends a finer signal from the Face ID sensor: the face mesh reduced on the phone to twelve regions, in millimetres per frame. Nine real sessions so far; nothing reads it yet. The game borrows from published tasks: effort for reward, drawing speed, reaction time, swipe speed. Steps and walking speed come from Apple Health.
+During the game and the breathing, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. The server computes 18 measures: smiles, blinks, gaze, how much the face moves. Since Saturday night the app also sends a finer signal from the Face ID sensor: the face mesh reduced on the phone to twelve regions, in millimetres. Nine real sessions so far; nothing reads it. The game borrows from published tasks: effort for reward, drawing speed, reaction time, swipe speed. Steps and walking speed come from Apple Health.
 
 WHAT WE TESTED, AND HOW
 
 We fixed 24 hypotheses before any data (three redefined when the game changed), then ran them on public data of real people, with every rule decided before looking at a result.
 
 Faces (LMVD, 1,684 video logs, half by people with depression): 6 of 11 measures differ as we wrote down, including all three we rated strongest; 3 go the other way; 2 show nothing. A score from our measures ranks unseen videos at 0.76.
-Fine movement, the same videos through our Face ID code: with depression a region of the face travels 4 mm from rest against 6.6 mm, and more slowly. Brief twitches came out opposite, so we do not trust that rule yet.
+Fine movement (1,676 of those videos through our Face ID code): with depression a region of the face travels 4 mm from rest against 6.6 mm, and more slowly. Brief twitches came out opposite, so we do not trust that rule yet.
 Movement (PSYCHE-D, 1,390 people, a year): a quarter with steps clearly below the person's own normal had a PHQ-9 0.4 points above their own other quarters.
 False alarms (LifeSnaps, 67 healthy volunteers): our rule, unchanged, flagged 23 at least once in three months. A low-step day there is a rest day, not a sad one.
-Gemini as second reader: on ten hard generated sessions it found all 41 planted smiles and nothing else; our fixed rule found 20. Code checks every item Gemini reports.
+Gemini as second reader: on ten hard generated sessions, with disturbances its prompt names, it found all 41 planted smiles and nothing else; our fixed rule found 20. Code checks every item.
 
-These are differences between people, or at coarse time scales. They support our choice of measures. They do not show that a phone can warn of relapse.
+These are differences between people, or at coarse time scales: they support our choice of measures, not that a phone can warn of relapse.
 
 THE MIND, AND HOW WE TESTED IT
 
