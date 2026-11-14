@@ -73,6 +73,10 @@ class Thresholds:
     revontulet_start_from: int = 2
     revontulet_start_to: int = 12
     activity_min_reactions: int = 5  # a focus session needs this many reaction times
+    # Revontulet gives few: three rounds, two embers on a hard round, so at most six
+    # ember taps a game, and none on an easy-only game. One hard round with both
+    # embers lit is enough for a median; the spread still needs four.
+    revontulet_min_reactions: int = 2
     reaction_min_ms: int = 120  # faster taps are anticipations; left out of the median
     # A face summary enters a baseline only when tracking was good enough.
     # A low-quality summary is stored and shown, never used.

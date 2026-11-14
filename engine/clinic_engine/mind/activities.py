@@ -95,7 +95,11 @@ def features(a: dict, th: Thresholds = T) -> dict:
     f: dict = {"completed": bool(a["completed"]), "ended_by": a["ended_by"]}
     if t == "focus":
         rts = [r for r in a["reaction_ms"] if r >= th.reaction_min_ms]
-        enough = len(rts) >= th.activity_min_reactions
+        # A Revontulet game has at most six ember taps (its reaction_ms), Sparks and
+        # snow about seventeen: each needs the number its game can give.
+        need = th.revontulet_min_reactions if a.get("revontulet") is not None \
+            else th.activity_min_reactions
+        enough = len(rts) >= need
         total = a["correct_taps"] + a["wrong_taps"] + a["misses"]
         f.update(median_reaction_ms=float(median(rts)) if enough else None,
                  reaction_spread_ms=_iqr(rts) if enough else None,

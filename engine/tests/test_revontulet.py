@@ -52,8 +52,29 @@ def test_a_full_game_is_accepted_and_stored_whole(env):
     # The taps and reactions are read exactly as before.
     assert stored["features"]["error_rate"] == round(1 / 7, 3)
     assert stored["features"]["reactions_used"] == 3
-    # Fewer than activity_min_reactions (5): no median, so no z for this game.
-    assert stored["features"]["median_reaction_ms"] is None
+    # Three ember taps: enough for a Revontulet game (revontulet_min_reactions is 2).
+    assert stored["features"]["median_reaction_ms"] == 380.0  # three ember taps are enough for a game
+
+
+def test_a_games_few_ember_taps_give_a_reaction_time(env):
+    """A game has at most six ember taps, so two are enough for the median (the
+    other focus game, with about seventeen taps, keeps needing five). The spread
+    needs four. An easy-only game sends none and gets none."""
+    post(env, game("rv-rt-00000001", reaction_ms=[410, 380]))
+    f = env.repo().get("activities/rv-rt-00000001.json")["features"]
+    assert f["median_reaction_ms"] == 395.0 and f["reactions_used"] == 2
+    assert f["reaction_spread_ms"] is None
+    post(env, game("rv-rt-00000002", reaction_ms=[410, 380, 350, 300, 420, 360], correct_taps=9))
+    f = env.repo().get("activities/rv-rt-00000002.json")["features"]
+    assert f["median_reaction_ms"] == 370.0 and f["reaction_spread_ms"] is not None
+    post(env, game("rv-rt-00000003", reaction_ms=[], misses=0, correct_taps=3))
+    assert env.repo().get("activities/rv-rt-00000003.json")["features"]["median_reaction_ms"] is None
+    # Anticipations (under 120 ms) still do not count.
+    post(env, game("rv-rt-00000004", reaction_ms=[80, 410]))
+    assert env.repo().get("activities/rv-rt-00000004.json")["features"]["median_reaction_ms"] is None
+    # Without the measures the record is the old game: five reactions or nothing.
+    post(env, game("rv-rt-00000005", measures=None, reaction_ms=[410, 380, 350]))
+    assert env.repo().get("activities/rv-rt-00000005.json")["features"]["median_reaction_ms"] is None
 
 
 def test_a_record_without_the_measures_means_what_it_always_did(env):
