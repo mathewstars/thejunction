@@ -1,0 +1,113 @@
+{
+  "_about": "ILLUSTRATIVE reply in the section-9 format, written by hand to show what the validator accepts: every number appears in experiment_c_combined_request.json, every statement names its evidence and is marked direct_observation or hypothesis, and no emotion or diagnosis words occur. This is NOT a recorded Gemini output; no live call has been made from this repository (no API key here). The proxy wraps the model text in {request_id, status, model, text, usage, latency_ms, ...}; this file is the content of `text`.",
+  "experiment_type": "combined",
+  "baseline_summary": {
+    "HeartRateVariabilitySDNN": "Personal median 44.6 ms, usual range 28.3–60.9 ms over 30 days (coverage 0.968). Sampled 3.25 times per day, so daily means rest on 2–4 readings.",
+    "blinkRatePerMinute": "Personal median 20.2 per minute across 9 recordings, usual range 15.8–24.6; each recording is under a minute, so the reference is thin."
+  },
+  "health_observations": [
+    {
+      "observation": "HRV daily means sat between 38.9 and 49.1 ms in the five listed days, inside the person's usual range of 28.3–60.9 ms.",
+      "supporting_measurements": ["daily_rows[*].health.HeartRateVariabilitySDNN = 46.2, 38.9, 44.6, 49.1, 41.7", "baseline_profile.healthReferences[HeartRateVariabilitySDNN].lowerUsual = 28.3, upperUsual = 60.9"],
+      "time_range": {"start": "2026-11-10", "end": "2026-11-14"},
+      "kind": "direct_observation",
+      "data_quality": "HRV coverage 0.968 of days; 3.25 samples per day; not a continuous signal.",
+      "limitations": "Daily means from 2–4 night readings; a single reading moves the mean."
+    },
+    {
+      "observation": "The week starting 2026-10-26 had a lower weekly HRV mean (36.4 ms) than the following two weeks (45.8 and 44.5 ms).",
+      "supporting_measurements": ["metrics[HeartRateVariabilitySDNN].weekly[*].mean = 36.4, 45.8, 44.5"],
+      "time_range": {"start": "2026-10-26", "end": "2026-11-14"},
+      "kind": "direct_observation",
+      "data_quality": "7, 7 and 6 days per week respectively.",
+      "limitations": "Three weeks only; the first-to-last-quarter change for the whole period is small (relativeChange -0.015)."
+    }
+  ],
+  "facial_behavior_observations": [
+    {
+      "observation": "In the 2026-11-14 recording, 16 blinks were detected over 44.967 s of recording (21.4 per minute), with a mean blink duration of 0.111 s and no one-sided blinks.",
+      "supporting_measurements": ["sessions[0].session_level_features.blink.count = 16", "blink.ratePerMinute = 21.4", "blink.meanDurationSeconds = 0.111", "blink.leftOnlyCount = 0, rightOnlyCount = 0"],
+      "time_range": {"start": "2026-11-14T06:00:00.000Z", "end": "2026-11-14T06:00:44.967Z"},
+      "kind": "direct_observation",
+      "data_quality": "Face tracked in 0.9666 of frames; camera limited in 0.044 of frames; 2 frames estimated dropped.",
+      "limitations": "One short recording with scripted markers (Neutral face, Smile, Look left, Look right); blink rate under instruction may differ from unprompted behaviour."
+    },
+    {
+      "observation": "Head yaw amplitude (0.375 rad) was far larger than pitch (0.071 rad) and roll (0.034 rad), consistent with the Look left and Look right marker intervals in the same recording.",
+      "supporting_measurements": ["headMovement.amplitudeRad.yaw = 0.375, pitch = 0.071, roll = 0.034", "markers = Look left, Look right"],
+      "time_range": {"start": "2026-11-14T06:00:00.000Z", "end": "2026-11-14T06:00:44.967Z"},
+      "kind": "direct_observation",
+      "data_quality": "Computed from the raw head_world transform on 1303 tracked frames.",
+      "limitations": "Amplitude here includes instructed movement; it is not a measure of spontaneous head motion."
+    }
+  ],
+  "cross_modal_patterns": [
+    {
+      "observation": "Days with higher HRV tended to have higher facial movement variability (Spearman 0.58 over 9 paired days).",
+      "supporting_measurements": ["correlations[HeartRateVariabilitySDNN × facialVariability, lag 0].spearmanRho = 0.58, pearsonR = 0.62, pairedPoints = 9"],
+      "time_range": {"start": "2026-11-06", "end": "2026-11-14"},
+      "kind": "hypothesis",
+      "data_quality": "9 paired days; each facial value is one recording under a minute long.",
+      "limitations": "Descriptive association only. With 9 points a single day can produce a coefficient of this size by chance; no correction for the 56 pairs tested."
+    },
+    {
+      "observation": "Longer sleep the night before went with a lower blink rate the same day (Spearman -0.67 over 9 paired days); 2026-11-11 had the shortest sleep (6.2 h) and the highest blink rate (24.1 per minute) but also the lowest tracking fraction (0.91).",
+      "supporting_measurements": ["correlations[SleepAnalysis × blinkRatePerMinute, lag 0].spearmanRho = -0.67, pairedPoints = 9", "daily_rows[2026-11-11].health.SleepAnalysis = 6.2", "daily_rows[2026-11-11].facial.blinkRatePerMinute = 24.1", "daily_rows[2026-11-11].facial.trackedFraction = 0.91"],
+      "time_range": {"start": "2026-11-06", "end": "2026-11-14"},
+      "kind": "hypothesis",
+      "data_quality": "Sleep from the source with the most recorded sleep per night; blink rate from one recording per day.",
+      "limitations": "The day driving the association is also the worst-tracked day; lost frames shorten the tracked span used in the rate."
+    },
+    {
+      "observation": "Steps on one day showed no clear relation to head pose variability on the next day (Spearman 0.1 over 8 paired days).",
+      "supporting_measurements": ["correlations[StepCount × headPoseVariabilityRad, lag 1].spearmanRho = 0.1, pairedPoints = 8"],
+      "time_range": {"start": "2026-11-06", "end": "2026-11-14"},
+      "kind": "direct_observation",
+      "data_quality": "Steps from HealthKit daily statistics (sources merged).",
+      "limitations": "Head variability in these recordings is dominated by instructed Look left / Look right movement."
+    }
+  ],
+  "longitudinal_changes": [
+    {
+      "observation": "Over the 30 days, HRV moved from a first-quarter median of 45.3 ms to a last-quarter median of 44.6 ms, a relative change of -0.015.",
+      "supporting_measurements": ["metrics[HeartRateVariabilitySDNN].longitudinal_change.firstPeriodMedian = 45.3, lastPeriodMedian = 44.6, relativeChange = -0.015"],
+      "time_range": {"start": "2026-10-16", "end": "2026-11-14"},
+      "kind": "direct_observation",
+      "data_quality": "30 days covered.",
+      "limitations": "Quarter medians hide the lower week starting 2026-10-26."
+    }
+  ],
+  "potential_confounders": [
+    {
+      "observation": "Recording instructions (markers) shape blink rate, head amplitude and smile coefficients; comparing days requires the same marker script each day.",
+      "supporting_measurements": ["sessions[0].markers = Neutral face, Smile, Look left, Look right"],
+      "time_range": {"start": "2026-11-10", "end": "2026-11-14"},
+      "kind": "hypothesis",
+      "data_quality": "Marker labels present for the listed session.",
+      "limitations": "Marker scripts of the other listed days are not in the input."
+    },
+    {
+      "observation": "Tracking quality varied between days (tracked fraction 0.91 to 0.99) and camera tracking was limited in 0.044 of frames on 2026-11-14; lighting (mean ambient 902) is only known for that recording.",
+      "supporting_measurements": ["daily_rows[*].facial.trackedFraction = 0.97, 0.91, 0.98, 0.99, 0.9666", "trackingQuality.cameraStateDistribution.limited = 0.044", "trackingQuality.meanAmbientIntensity = 902"],
+      "time_range": {"start": "2026-11-10", "end": "2026-11-14"},
+      "kind": "direct_observation",
+      "data_quality": "Per-recording tracking statistics available.",
+      "limitations": "Lighting and phone distance for the other days are absent from the input."
+    }
+  ],
+  "data_quality": {
+    "health": "HRV sparse (3.25 per day); sleep and steps from two overlapping sources resolved by largest-source rule; blood pressure, VO2 max and body fat empty.",
+    "arkit": "One recording per day, each under a minute; 60 s windows therefore coincide with the whole recording.",
+    "join": "8 of 56 health×facial pairs reached 7 paired days."
+  },
+  "uncertainties": [
+    "Whether the HRV–facial variability association survives more days or a fixed marker script is unknown.",
+    "Self-reported wellbeing is absent from the input, so nothing can be said about it."
+  ],
+  "recommended_tracking": [
+    "Record the same marker script at the same time of day for at least 3 weeks so day-to-day facial comparisons are not confounded by instructions.",
+    "Keep the recordings' lighting and phone distance stable, or log them, since both are visible only for one day here.",
+    "Add a short daily self-report item if wellbeing is to be related to the measurements."
+  ],
+  "plain_language_explanation": "Over these days the heart-rate variability stayed within this person's usual range, with one lower week in late October. In the face recordings, blinking and head movement were largely shaped by the instructions given during recording. Across nine days, higher HRV went together with somewhat more facial movement, and shorter sleep went together with more blinking, but nine short recordings cannot separate real patterns from chance, and the day driving the sleep pattern was also the worst-tracked day. These are descriptions of movement and physiology, not statements about how the person felt."
+}

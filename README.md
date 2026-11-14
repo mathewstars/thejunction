@@ -100,4 +100,5 @@ Level 1 runs on hardware we control. Level 2 gets only an anonymous pack, with n
 - `ios/` — the iPhone app. The Xcode project goes here.
 - `LICENSE` — MIT, as Junction requires for every submission.
 - `aalto/` — our challenge, Aalto "Beyond the Clinic": brief, judging criteria and what they provide in `CHALLENGE.md`.
+- `harness/` — HKGeminiHarness: the HealthKit + Gemini integration test app with reusable Swift modules (HealthKit reader, ARKit export importer, facial features, time alignment, combined dataset, Gemini client), the key-holding Gemini proxy, synthetic example data and the hand-over docs for Matthew. See `harness/README.md`.
 - `facemetrics/` — FaceMetrics, a native iOS ARKit facial-tracking research instrument (Swift, SwiftUI, ARKit, SceneKit). Xcode project, not yet compiled on a Mac. See `facemetrics/README.md`.
