@@ -133,7 +133,7 @@ struct RevontuletLayout: Equatable {
         warmFoxScale = warmSize / foxSize
         let warmFeet = min(h * 0.875, h - safeBottom - 70)
         warmFoxCenter = CGPoint(x: w / 2, y: warmFeet - warmSize / 2)
-        strokeLength = warmSize * 0.36
+        strokeLength = warmSize * 0.3
         let buttonY = h - safeBottom - 16 - 27
         restLineY = buttonY - 27 - 26
         restFoxCenter = CGPoint(x: w / 2, y: restLineY - 30 - warmSize / 2)

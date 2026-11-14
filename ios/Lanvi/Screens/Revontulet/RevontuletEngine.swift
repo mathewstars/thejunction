@@ -490,7 +490,7 @@ struct RevontuletEngine: Equatable {
             records[round].impactUptime = time
             records[round].bonus = ribbon
         }
-        skyLight = min(0.85, skyLight + (f.hard ? 0.2 + 0.08 * Double(hits) : 0.13))
+        skyLight = min(0.85, skyLight + (f.hard ? 0.24 + 0.08 * Double(hits) : 0.1))
         setBeat(.impact, at: time)
         return [.impact(round: round, pieces: pieces, breaking: breaking)]
     }
@@ -511,7 +511,8 @@ struct RevontuletEngine: Equatable {
         let hits = f.emberHitAt.compactMap { $0 }.count
         let breaking = f.foxOwn || round >= Self.rounds - 1 || t >= Self.breakOnImpactAfter
         // Round one is thin ice: a quick, generous first win. Later rounds build to the burst.
-        let pieces = f.foxOwn ? 2 : (f.hard ? 2 + hits : 1) + (round == 0 ? 1 : 0)
+        // Easy: one piece. Hard: a much wider hole, wider still with each ember lit.
+        let pieces = f.foxOwn ? 2 : (f.hard ? 3 + hits : 1) + (round == 0 ? 1 : 0)
         let ribbon = f.hard && hits == 2 && rng.next() < 0.6
         return .init(pieces: pieces, embersHit: hits, breaking: breaking, ribbon: ribbon)
     }

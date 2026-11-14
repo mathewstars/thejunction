@@ -32,6 +32,9 @@ struct RevontuletView: View {
     @State private var look: UnitPoint?
     @State private var yawnTick = 0
     @State private var petTick = 0
+    /// The fox's answer held during a stroke (the third: eyes closed happily).
+    @State private var petMood: LanviMood?
+    @State private var joy = false
     // The screen.
     @State private var line = ""
     @State private var finger: CGPoint?
@@ -52,6 +55,8 @@ struct RevontuletView: View {
         var auto: RevontuletAutoPlay?
         var frame = 0
         var furFrom: CGPoint?
+        var lastStrokeMove = 0.0
+        var purring = false
     }
 
     /// `-revontuletFreezeRound N`: freeze the beat in round N (0, 1, 2) for stills of each round.
@@ -122,7 +127,7 @@ struct RevontuletView: View {
                     }
                     // Lower-left and smaller while playing; at the burst it springs to the centre.
                     RevontuletFox(act: act(e), size: L.foxSize, reaction: reaction, reactionTick: reactionTick,
-                                  look: look, yawnTick: yawnTick, petTick: petTick)
+                                  look: look, yawnTick: yawnTick, petTick: petTick, petMood: petMood, joy: joy)
                         .equatable()
                         .frame(width: L.foxSize, height: L.foxSize)
                         .scaleEffect(Self.foxScale(e))
@@ -351,7 +356,7 @@ struct RevontuletView: View {
         case .impact: return e.beat == .impact && into > 0.28
         case .burst: return e.beat == .burst && into > 0.7
         case .celebrate: return e.beat == .celebrate && into > 1.0
-        case .warmth: return e.beat == .warmth && e.stroking && e.strokesCounted >= 1
+        case .warmth: return e.beat == .warmth && e.stroking && e.strokesCounted >= max(1, freezeRound)
         case .sleep: return e.beat == .sleep && into > 1.5
         case .done: return e.beat == .done
         }
@@ -388,6 +393,11 @@ struct RevontuletView: View {
         if !events.isEmpty { react(events, e, now: now) }
         tendCoach(now: now)
         steerFox(e, now: now)
+        // The purr follows the hand: a finger resting still lets it fade; moving brings it back.
+        if box.purring, e.stroking, now - box.lastStrokeMove > 0.25, !quiet {
+            box.purring = false
+            feel.purrEnded()
+        }
         // Snow right under a stroking finger comes off at once.
         if e.beat == .warmth, e.stroking, let f = e.finger, let art {
             let before = art.speckGone.count
@@ -496,13 +506,18 @@ struct RevontuletView: View {
                     let hit = e.impacts.last
                     let hard = hit?.hard == true
                     Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(hard ? 0.75 : 0.5))
+                        // Easy: a quick warm smile. Hard: wide-eyed, then proud; with both
+                        // embers lit, a real hop of joy.
+                        try? await Task.sleep(for: .seconds(hard ? 0.7 : 0.3))
                         guard let b = engine?.beat, b == .impact || b == .choice else { return }
                         foxReact(hard ? .proud : .happy)
                         guard hard, (hit?.embersHit ?? 0) >= 2 else { return }
-                        try? await Task.sleep(for: .seconds(1.1))
+                        try? await Task.sleep(for: .seconds(0.9))
                         guard let b2 = engine?.beat, b2 == .impact || b2 == .choice || b2 == .trace else { return }
+                        joy = true
                         foxReact(.happy)
+                        try? await Task.sleep(for: .seconds(1.6))
+                        joy = false
                     }
                 }
             case .shattered:
@@ -530,9 +545,13 @@ struct RevontuletView: View {
                 say(nil)
                 showCoach(.stroke, at: now + RevontuletEngine.strokesFrom)
             case let .strokeBegan(n):
+                // Each stroke is answered differently: the first leans in, the second nuzzles
+                // (the puppet's petting takes turns), the third closes its eyes happily.
                 petTick += 1
-                if n >= 2 { foxReact(n == 2 ? .proud : .happy) }
+                if n >= 3 { petMood = .okay }
             case let .strokeMoved(speed):
+                box.lastStrokeMove = now
+                box.purring = true
                 if !quiet {
                     feel.purr(speed: speed)
                     // A faint tick of fur every few points the finger travels.
@@ -549,7 +568,11 @@ struct RevontuletView: View {
                 }
             case let .strokeEnded(n, counted):
                 box.furFrom = nil
+                box.purring = false
                 if !quiet { feel.purrEnded() }
+                petMood = nil
+                if counted, n == 2 { foxReact(.okay) }
+                if counted, n >= 3 { foxReact(.happy) }
                 if counted {
                     RevontuletCoachMemory.learned(.stroke)
                     art?.sync(e)
