@@ -145,8 +145,9 @@ struct LanviMotion {
         case 1: yawn(&f, yt: ft)
         case 2: // paw wave
             let up = Motion.hold(ft, start: 0.0, end: 1.6, response: 0.35, damping: 0.6)
-            f.pawR += 48 * up + 12 * up * sin(ft * 2 * .pi / 0.42)
-            f.pawRY -= CGFloat(18 * up)
+            f.pawR += 14 * up * sin(ft * 2 * .pi / 0.42)
+            f.pawRX += CGFloat(50 * up)
+            f.pawRY -= CGFloat(160 * up)
             if Motion.inside(ft, 0.15, 1.6) { f.eyes = .happy }
             f.headTilt -= 4 * up
         default: // happy squint
@@ -223,8 +224,11 @@ struct LanviMotion {
             f.bodySX *= CGFloat(1 + (1 - h.squash) * 0.6)
             earsLag(&f, lift: h.lift, t: rt - 0.05)
             let paws = Motion.hold(rt, start: 0.08, end: 1.35, response: 0.32, damping: 0.55)
-            f.pawL += 62 * paws; f.pawR += 62 * paws
-            f.pawLY -= CGFloat(26 * paws); f.pawRY -= CGFloat(26 * paws)
+            // Both paws up beside the white chest, wiggling.
+            let wiggle = 7 * sin(2 * .pi * rt / 0.3) * paws
+            f.pawL += wiggle; f.pawR -= wiggle
+            f.pawLX -= CGFloat(45 * paws); f.pawRX += CGFloat(45 * paws)
+            f.pawLY -= CGFloat(150 * paws); f.pawRY -= CGFloat(150 * paws)
             // Tail wags fast, three-ish times, with the tip whipping behind.
             let wagEnv = Motion.hold(rt, start: 0.0, end: 1.3, response: 0.25, damping: 0.9)
             let wag = { (x: Double) in 15 * sin(2 * .pi * x / 0.34) }
@@ -243,7 +247,7 @@ struct LanviMotion {
             f.headDY -= CGFloat(10 * perk)
             f.bodySY += CGFloat(0.03 * jolt)
             f.tail -= 10 * perk
-            f.pawL += 14 * jolt; f.pawR += 14 * jolt
+            f.pawLY -= CGFloat(40 * jolt); f.pawRY -= CGFloat(40 * jolt)
         case .curious:
             guard rt < 2.2 else { return }
             if look == nil, Motion.inside(rt, 0.05, 1.7), f.eyes == .open { f.eyes = .rightUp; f.eyeDX += 4; f.eyeDY -= 3 }

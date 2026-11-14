@@ -31,8 +31,8 @@ struct LanviPuppetPreview: View {
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width, h = geo.size.height
-            let hill = h * 0.58
-            let fox = min(w * 0.82, 340)
+            let hill = h * 0.64
+            let fox = min(w * 0.86, 350)
             ZStack(alignment: .top) {
                 SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: hill)
 
@@ -60,13 +60,13 @@ struct LanviPuppetPreview: View {
                     HStack(spacing: 12) {
                         ForEach(buttons.suffix(2), id: \.0) { b in reactionButton(b.0, b.1) }
                         Button("Look") { nextLook() }
-                            .buttonStyle(ChunkyButtonStyle(fill: .white, edge: Theme.line, text: Theme.brand))
+                            .buttonStyle(ChunkyButtonStyle(fill: Theme.tint, edge: Color(hex: 0xC5D3F5), text: Theme.brand))
                     }
                     Button("Hop") { bounce += 1 }
-                        .buttonStyle(ChunkyButtonStyle(fill: .white, edge: Theme.line, text: Theme.brand))
+                        .buttonStyle(ChunkyButtonStyle(fill: Theme.tint, edge: Color(hex: 0xC5D3F5), text: Theme.brand))
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, hill + 70)
+                .padding(.top, hill + 44)
             }
         }
         .task {

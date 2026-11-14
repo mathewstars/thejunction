@@ -135,8 +135,8 @@ struct LanviPuppet: View {
             tail(f)
             part(Rig.body, sx: f.bodySX, sy: f.bodySY)
             headGroup(f)
-            part(Rig.pawL, rotate: -f.pawL, dy: f.pawLY + (f.bodySY - 1) * 40)
-            part(Rig.pawR, rotate: f.pawR, dy: f.pawRY + (f.bodySY - 1) * 40)
+            part(Rig.pawL, rotate: -f.pawL, dx: f.pawLX, dy: f.pawLY + (f.bodySY - 1) * 40)
+            part(Rig.pawR, rotate: f.pawR, dx: f.pawRX, dy: f.pawRY + (f.bodySY - 1) * 40)
         }
     }
 
@@ -146,6 +146,7 @@ struct LanviPuppet: View {
             .resizable()
             .interpolation(.high)
             .frame(width: p.size.width * k, height: p.size.height * k)
+            .rotationEffect(.degrees(p.rest))
             .scaleEffect(x: sx, y: sy, anchor: p.pivot)
             .rotationEffect(.degrees(rotate), anchor: p.pivot)
             .position(x: (p.center.x + dx) * k, y: (p.center.y + dy) * k)

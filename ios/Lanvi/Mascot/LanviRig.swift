@@ -18,7 +18,11 @@ enum Rig {
         var center: CGPoint
         var scale: CGFloat
         var pivot: UnitPoint
-        var size: CGSize { CGSize(width: px.width * scale, height: px.height * scale) }
+        /// Extra height stretch (the body is drawn a little short at the neck).
+        var stretchY: CGFloat = 1
+        /// Turned this much (degrees, around its centre) at rest.
+        var rest: Double = 0
+        var size: CGSize { CGSize(width: px.width * scale, height: px.height * scale * stretchY) }
         var origin: CGPoint { CGPoint(x: center.x - size.width / 2, y: center.y - size.height / 2) }
         /// The pivot in canvas units.
         var pivotPoint: CGPoint {
@@ -32,17 +36,20 @@ enum Rig {
     static let tail = Part(image: "puppet-tail", px: CGSize(width: 466, height: 376),
                            center: CGPoint(x: 205, y: 742), scale: 1.05, pivot: UnitPoint(x: 0.86, y: 0.76))
     static let body = Part(image: "puppet-body", px: CGSize(width: 493, height: 415),
-                           center: CGPoint(x: 515, y: 730), scale: 1.12, pivot: UnitPoint(x: 0.5, y: 1.0))
+                           center: CGPoint(x: 515, y: 718), scale: 1.12, pivot: UnitPoint(x: 0.5, y: 1.0),
+                           stretchY: 1.045)
     static let earL = Part(image: "puppet-ear-left", px: CGSize(width: 240, height: 315),
-                           center: CGPoint(x: 290, y: 170), scale: 1.15, pivot: UnitPoint(x: 0.72, y: 0.86))
+                           center: CGPoint(x: 290, y: 182), scale: 1.15, pivot: UnitPoint(x: 0.72, y: 0.86))
     static let earR = Part(image: "puppet-ear-right", px: CGSize(width: 239, height: 312),
-                           center: CGPoint(x: 690, y: 160), scale: 1.15, pivot: UnitPoint(x: 0.28, y: 0.86))
+                           center: CGPoint(x: 690, y: 172), scale: 1.15, pivot: UnitPoint(x: 0.28, y: 0.86))
     static let head = Part(image: "puppet-head", px: CGSize(width: 519, height: 425),
-                           center: CGPoint(x: 500, y: 338), scale: 1.27, pivot: UnitPoint(x: 0.5, y: 0.9))
+                           center: CGPoint(x: 500, y: 352), scale: 1.27, pivot: UnitPoint(x: 0.5, y: 0.9))
     static let pawL = Part(image: "puppet-paw-left", px: CGSize(width: 217, height: 222),
-                           center: CGPoint(x: 455, y: 875), scale: 0.92, pivot: UnitPoint(x: 0.24, y: 0.14))
+                           center: CGPoint(x: 462, y: 868), scale: 0.92, pivot: UnitPoint(x: 0.24, y: 0.14),
+                           rest: 14)
     static let pawR = Part(image: "puppet-paw-right", px: CGSize(width: 224, height: 213),
-                           center: CGPoint(x: 590, y: 875), scale: 0.92, pivot: UnitPoint(x: 0.76, y: 0.14))
+                           center: CGPoint(x: 584, y: 868), scale: 0.92, pivot: UnitPoint(x: 0.76, y: 0.14),
+                           rest: -14)
 
     /// The tail's second joint (0...1 of the mirrored tail): the tip turns around it.
     static let tailMid = UnitPoint(x: 0.56, y: 0.6)
@@ -174,6 +181,8 @@ struct RigFrame {
     /// Positive = paw lifts up toward the chest.
     var pawL: Double = 0
     var pawR: Double = 0
+    var pawLX: CGFloat = 0   // negative = outward
+    var pawRX: CGFloat = 0   // positive = outward
     var pawLY: CGFloat = 0
     var pawRY: CGFloat = 0
     var eyes: EyeShape = .open
