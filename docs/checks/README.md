@@ -46,3 +46,13 @@ One thing the check found about the data and not about the rule: many files run 
 | Inside one window (10,829 windows, 4,027 people): did the change of the PHQ-9 over the three months go with the trend of the steps in it? | No. The rank correlation is +0.03 (0.02 to 0.05), very small and in the other direction. |
 
 What this says: on real people the direction we fixed in advance holds within a person, and it is small. A quarter with clearly fewer steps goes with less than half a point on a scale of 27. It does not say that a phone can warn of a relapse: the windows are three months long, a "normal" from three other windows is crude (it calls 22% of windows clearly low), and one of the three questions came out slightly the other way. Intervals come from resampling people, not rows.
+
+### Looking for a stronger signal in the same data
+
+`psyched_explore.py` and `psyched-explore-2026-11-15.json`. People were split in two halves by a fixed rule; every choice was made on the first half (661 people) and the second half (729 people) was looked at once.
+
+- 106 measures of steps and sleep that change from window to window were tried. The plain average of daily steps was the strongest on the first half (rank correlation -0.07 within person) and held on the second (-0.08).
+- A combined score of the eight strongest measures looked better on the half it was chosen on (0.10) and was no better than steps alone on the half it had not seen (0.07, 95% interval 0.03 to 0.11). Two sleep measures that looked promising on the first half (how irregular bedtime is, sleep efficiency) did not hold.
+- As a flag, the highest fifth of that score went with a PHQ-9 0.49 points above the person's own average on the second half (0.22 to 0.79), against 0.39 for the steps-only rule above.
+
+So we did not find a better detector in this data: nothing beats plain steps compared with the person's own average, and the relation stays small (about 0.08). That is at three-month resolution with Fitbit summaries; daily data, the game and the face are not in this dataset.

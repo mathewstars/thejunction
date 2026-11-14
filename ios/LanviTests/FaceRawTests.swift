@@ -233,3 +233,155 @@ final class FaceSendTests: XCTestCase {
         XCTAssertGreaterThan(big.count, LanviClient.bigBodyBytes, "45 s of frames goes through the upload session")
     }
 }
+
+// MARK: - Fine facial movement (kept in this file so the generated Xcode project needs no change)
+
+/// The fine movement stream the phone computes from the face mesh (`docs/face-fine.md`).
+/// The mesh here is a flat grid the size of a face, in metres, in the face anchor's
+/// space (+X is the person's left, +Y up).
+final class FaceFineTests: XCTestCase {
+
+    /// 41 x 51 points, 14 cm wide and 18 cm high.
+    private func grid() -> [SIMD3<Float>] {
+        var out: [SIMD3<Float>] = []
+        for iy in 0...50 {
+            for ix in 0...40 {
+                out.append(SIMD3(-0.07 + 0.14 * Float(ix) / 40, -0.09 + 0.18 * Float(iy) / 50, 0))
+            }
+        }
+        return out
+    }
+
+    /// The grid with one region pushed `mm` millimetres towards the camera.
+    private func pushed(_ shape: [SIMD3<Float>], region: String, mm: Float) -> [SIMD3<Float>] {
+        let box = FaceFineRecorder.boxes.first { $0.name == region }!
+        return shape.map { p in
+            let u = (p.x + 0.07) / 0.14, v = (p.y + 0.09) / 0.18
+            return box.u.contains(u) && box.v.contains(v) ? p + SIMD3(0, 0, mm / 1000) : p
+        }
+    }
+
+    private func recorded(frames: Int = 90, _ shapeAt: (Int) -> [SIMD3<Float>]) -> FaceFineRecorder {
+        var r = FaceFineRecorder(rateHz: 30)
+        for i in 0..<frames {
+            r.add(time: 100 + Double(i) / 30, tracked: true) { shapeAt(i) }
+        }
+        return r
+    }
+
+    func testRegionNamesAreTheServersAndTheDocumentedOnes() throws {
+        let doc = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("docs/face-fine.md")
+        let text = try String(contentsOf: doc, encoding: .utf8)
+        let after = try XCTUnwrap(text.range(of: "## Regions")).upperBound
+        let open = try XCTUnwrap(text.range(of: "```\n", range: after..<text.endIndex))
+        let close = try XCTUnwrap(text.range(of: "```", range: open.upperBound..<text.endIndex))
+        let names = Set(text[open.upperBound..<close.lowerBound]
+            .split(whereSeparator: { $0 == " " || $0 == "\n" }).map(String.init))
+        XCTAssertEqual(Set(FaceFineRecorder.boxes.map(\.name)), names)
+        XCTAssertEqual(names.count, 12)
+    }
+
+    func testEveryRegionCatchesVerticesAndLeftIsThePersonsLeft() {
+        let sizes = FaceFineRecorder.assign(grid())
+        for (box, ids) in zip(FaceFineRecorder.boxes, sizes) {
+            XCTAssertGreaterThanOrEqual(ids.count, FaceFineRecorder.minVertices, box.name)
+        }
+        let shape = grid()
+        let left = sizes[FaceFineRecorder.boxes.firstIndex { $0.name == "mouth_left" }!]
+        let right = sizes[FaceFineRecorder.boxes.firstIndex { $0.name == "mouth_right" }!]
+        XCTAssert(left.allSatisfy { shape[$0].x > 0 })    // +X: the person's own left
+        XCTAssert(right.allSatisfy { shape[$0].x < 0 })
+    }
+
+    func testAStillFaceIsZeroEverywhere() throws {
+        let shape = grid()
+        let fine = try XCTUnwrap(recorded { _ in shape }.faceFine())
+        XCTAssertEqual(fine.source, "mesh")
+        XCTAssertEqual(fine.rateHz, 30)
+        XCTAssertEqual(fine.samples.count, 90)
+        XCTAssertEqual(fine.regions.count, 12)
+        XCTAssertNil(fine.tracked)
+        XCTAssertEqual(fine.noiseMm, 0)
+        XCTAssert(fine.samples.allSatisfy { $0.count == 12 && $0.allSatisfy { $0 == 0 } })
+    }
+
+    func testAMovementShowsOnItsRegionInMillimetres() throws {
+        let shape = grid()
+        // Still for 2 seconds, then the left mouth corner moves 2 mm for 5 frames.
+        let fine = try XCTUnwrap(recorded { i in
+            (60..<65).contains(i) ? self.pushed(shape, region: "mouth_left", mm: 2) : shape
+        }.faceFine())
+        let l = try XCTUnwrap(fine.regions.firstIndex(of: "mouth_left"))
+        let r = try XCTUnwrap(fine.regions.firstIndex(of: "mouth_right"))
+        XCTAssertEqual(fine.samples[62][l], 2.0, accuracy: 0.01)
+        XCTAssertEqual(fine.samples[62][r], 0)
+        XCTAssertEqual(fine.samples[59][l], 0)
+        XCTAssertEqual(fine.samples[66][l], 0)
+    }
+
+    func testTheRestingShapeIsTheMedianSoOneEarlyMovementDoesNotShiftIt() throws {
+        let shape = grid()
+        // A movement inside the first 45 frames: the median still rests on the still face.
+        let fine = try XCTUnwrap(recorded { i in
+            (10..<15).contains(i) ? self.pushed(shape, region: "jaw", mm: 3) : shape
+        }.faceFine())
+        let j = try XCTUnwrap(fine.regions.firstIndex(of: "jaw"))
+        XCTAssertEqual(fine.samples[12][j], 3.0, accuracy: 0.01)
+        XCTAssertEqual(fine.samples[70][j], 0)
+        XCTAssertGreaterThan(try XCTUnwrap(fine.noiseMm), 0)
+    }
+
+    func testTooFewTrackedFramesGiveNothing() {
+        let shape = grid()
+        XCTAssertNil(recorded(frames: 30) { _ in shape }.faceFine())
+        var r = FaceFineRecorder(rateHz: 30)
+        for i in 0..<90 { r.add(time: Double(i) / 30, tracked: false) { [] } }
+        XCTAssertNil(r.faceFine())
+    }
+
+    func testUntrackedFramesStayInTimeAndSixtyHertzBecomesThirty() throws {
+        let shape = grid()
+        var r = FaceFineRecorder(rateHz: 30)
+        var asked = 0
+        for i in 0..<240 {   // 4 seconds at 60 Hz
+            let untracked = (130..<150).contains(i)
+            r.add(time: 5 + Double(i) / 60, tracked: !untracked) { asked += 1; return shape }
+        }
+        let fine = try XCTUnwrap(r.faceFine())
+        // A frame lands in the slot nearest its time, so 240 frames fill slots 0...120.
+        XCTAssertEqual(fine.samples.count, 121)
+        XCTAssertEqual(asked, 111)   // the mesh is read only for frames that are kept and tracked
+        let tracked = try XCTUnwrap(fine.tracked)
+        XCTAssertEqual(tracked.filter { $0 == 0 }.count, 10)
+        XCTAssertEqual(tracked[70], 0)
+    }
+
+    func testOnlyTheEndIsKeptAndTheJSONKeysAreTheServers() throws {
+        let shape = grid()
+        let fine = try XCTUnwrap(recorded(frames: 300) { _ in shape }.faceFine(lastSeconds: 4))
+        XCTAssertEqual(fine.samples.count, 120)
+        var record = API.ActivityIn(id: "fine-test-0001", type: .focus, startedAt: "2026-11-14T20:00:00Z",
+                                    durationS: 4, completed: true, endedBy: .finished)
+        record.faceFine = fine
+        let json = try XCTUnwrap(String(data: try API.encoder.encode(record), encoding: .utf8))
+        XCTAssert(json.contains("\"face_fine\""))
+        XCTAssert(json.contains("\"rate_hz\":30"))
+        XCTAssert(json.contains("\"noise_mm\""))
+        XCTAssert(json.contains("\"source\":\"mesh\""))
+        XCTAssertFalse(json.contains("vertices"))
+    }
+
+    func testARefusedRecordGoesAgainWithoutTheFineStreamFirst() throws {
+        let shape = grid()
+        var record = API.ActivityIn(id: "fine-test-0002", type: .focus, startedAt: "2026-11-14T20:00:00Z",
+                                    durationS: 3, completed: true, endedBy: .finished)
+        record.faceFine = recorded { _ in shape }.faceFine()
+        record.faceRaw = API.FaceRaw(rateHz: 30, channels: ["mouthSmileLeft"], samples: [[0.1]], tracked: nil, momentsMs: nil)
+        let next = try XCTUnwrap(LanviClient.smaller(after: APIError.rejected("invalid_request"), sent: record))
+        XCTAssertNil(next.faceFine)
+        XCTAssertNotNil(next.faceRaw)   // the raw frames stay for the next try
+        XCTAssertEqual(next, record.withoutFaceFine)
+    }
+}

@@ -65,6 +65,8 @@ A way to compute it from the mesh (`ARFaceGeometry.vertices`):
 4. Per frame and region: the mean, over the region's vertices, of the distance between the vertex and its resting position.
 5. `noise_mm`: the same number computed over frames you know to be still (for example the two seconds used for the resting shape), averaged over regions.
 
+**In the app this is built** (`FaceFineRecorder`, `ios/SENSORS.md`), with two differences from the recipe: the resting shape is the median of the first 45 tracked frames (1.5 seconds at 30 a second), and regions are found by where they lie on the resting face instead of by fixed vertex numbers. It compiles for a device and its unit tests pass; it has not run on a phone yet, so the region boxes are unchecked.
+
 From the depth map (`ARFrame.capturedDepthData`), the idea is the same with one more step: project each region into the depth image, and send how far the measured surface is from where the resting shape would be. The depth map does not arrive on every frame; set `rate_hz` to the rate you really have.
 
 **What we expect, and have not measured:** ARKit builds the mesh from the same fit as the blend shapes, so `mesh` may show little that `face_raw` does not already show. The depth map is the independent measurement. That is the first thing to find out (see the first experiment in the research proposal), and it is why `source` is in the record.

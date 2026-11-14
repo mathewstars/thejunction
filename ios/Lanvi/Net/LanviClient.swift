@@ -98,7 +98,8 @@ actor LanviClient: LanviBackend {
             } catch {
                 guard let next = Self.smaller(after: error, sent: record) else { throw error }
                 Self.log("activities: \(record.type.rawValue) \(record.id) refused (\(error)); sending it again "
-                         + (next.faceRaw == nil && record.faceRaw != nil ? "without the frames" : "without the Revontulet measures"))
+                         + (next.faceFine == nil && record.faceFine != nil ? "without the fine movement stream"
+                            : next.faceRaw == nil && record.faceRaw != nil ? "without the frames" : "without the Revontulet measures"))
                 record = next
             }
         }
@@ -109,6 +110,8 @@ actor LanviClient: LanviBackend {
     /// that does not take them yet), then the frames. Nil when nothing more can go.
     static func smaller(after error: Error, sent: API.ActivityIn) -> API.ActivityIn? {
         guard case APIError.rejected(let code) = error else { return nil }
+        // The newest and least needed part goes first: the research-only fine stream.
+        if sent.faceFine != nil { return sent.withoutFaceFine }
         if code == "body_too_large", let lighter = withoutFaceFallback(after: error, sent: sent) { return lighter }
         if let plain = RevontuletSendGate.shared.retry(after: error, sent: sent) { return plain }
         return withoutFaceFallback(after: error, sent: sent)

@@ -1,0 +1,109 @@
+{
+ "people": {
+  "choose_on": 661,
+  "confirm_on": 729
+ },
+ "measures_tried": 106,
+ "top_on_first_half": [
+  {
+   "measure": "steps_awake_mean",
+   "rank_correlation": -0.071,
+   "on_second_half": -0.082
+  },
+  {
+   "measure": "sleep_main_start_hour_adj_iqr",
+   "rank_correlation": 0.061,
+   "on_second_half": 0.026
+  },
+  {
+   "measure": "steps__streaks__countDistinct__score_",
+   "rank_correlation": 0.058,
+   "on_second_half": -0.003
+  },
+  {
+   "measure": "steps__active_day_count_",
+   "rank_correlation": -0.056,
+   "on_second_half": -0.059
+  },
+  {
+   "measure": "steps__rolling_6_sum__max__intercept_",
+   "rank_correlation": -0.056,
+   "on_second_half": -0.046
+  },
+  {
+   "measure": "sleep__main_efficiency__intercept",
+   "rank_correlation": -0.054,
+   "on_second_half": -0.0
+  },
+  {
+   "measure": "steps__light_activity__sum__intercept",
+   "rank_correlation": -0.054,
+   "on_second_half": -0.04
+  },
+  {
+   "measure": "sleep_in_bed_iqr",
+   "rank_correlation": 0.053,
+   "on_second_half": 0.014
+  },
+  {
+   "measure": "steps__awake__sum__intercept",
+   "rank_correlation": -0.052,
+   "on_second_half": -0.062
+  },
+  {
+   "measure": "steps__rolling_6_sum__max__intercept",
+   "rank_correlation": -0.051,
+   "on_second_half": -0.068
+  },
+  {
+   "measure": "sleep_main_start_hour_adj_range",
+   "rank_correlation": 0.05,
+   "on_second_half": 0.028
+  },
+  {
+   "measure": "steps_rolling_6_median_recent",
+   "rank_correlation": -0.049,
+   "on_second_half": -0.039
+  }
+ ],
+ "steps_alone": {
+  "first_half": -0.071,
+  "second_half": -0.082
+ },
+ "combined_score": {
+  "tried_on_first_half": {
+   "1": 0.062,
+   "2": 0.069,
+   "3": 0.086,
+   "5": 0.077,
+   "8": 0.097,
+   "12": 0.093
+  },
+  "chosen_k": 8,
+  "first_half": 0.097,
+  "second_half": 0.073,
+  "second_half_interval_95": [
+   0.029,
+   0.111
+  ],
+  "measures": [
+   "steps_awake_mean",
+   "sleep_main_start_hour_adj_iqr",
+   "steps__streaks__countDistinct__score_",
+   "steps__active_day_count_",
+   "steps__rolling_6_sum__max__intercept_",
+   "sleep__main_efficiency__intercept",
+   "steps__light_activity__sum__intercept",
+   "sleep_in_bed_iqr"
+  ]
+ },
+ "flag_on_second_half": {
+  "windows_flagged": 584,
+  "of": 2916,
+  "phq9_difference": 0.49,
+  "interval_95": [
+   0.217,
+   0.791
+  ]
+ }
+}
