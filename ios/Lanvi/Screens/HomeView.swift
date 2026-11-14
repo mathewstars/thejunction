@@ -445,10 +445,11 @@ struct HomeView: View {
         default:
             if isDoneToday { next = .love }
             else {
+                let hour = Calendar.current.component(.hour, from: store.now)
                 switch store.dayPart {
                 case .morning: next = .cheer        // a morning stretch
                 case .day, .evening: next = .curious
-                case .night: next = .love           // curled up and cosy
+                case .night: next = (hour >= 22 || hour < 5) ? .love : .curious   // late: curled up and cosy
                 }
             }
         }
