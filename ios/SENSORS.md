@@ -51,7 +51,7 @@ Never sent or stored: the camera image, video, the face mesh, landmarks. No face
 
 Sending: a record with frames is 0.4 to 3 MB, so `LanviClient` posts it through a session with a 90 s request timeout (the small calls keep 6 s). A refused record with frames (413, 422) goes once more without them, same id, so the activity itself always arrives (`LanviClient.withoutFaceFallback`). In a debug build the console says what happened: `lanvi-sense: face_raw N frames ...` when frames were attached, `lanvi-net: ...` when a send failed or was retried, and nothing between them means the tracker gave no frames (no yes, camera off in Settings, an interruption, or the face not in view).
 
-## Fine facial movement (research only)
+## Fine facial movement
 
 Beside `face_raw`, the same tracker now sends `face_fine` (`docs/face-fine.md`): for fourteen named regions (the two mouth corners among them) and every frame, one number, how far the region is from the person's own resting shape, in millimetres.
 

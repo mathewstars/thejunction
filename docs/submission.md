@@ -12,7 +12,7 @@ The platform does not read this file. After a change here, the same change has t
 |---|---|---|
 | Project name | 30 characters | Lanvi |
 | Punchline | 200 characters | See below (181 characters) |
-| Description | 5,000 characters | See below (4,988 characters) |
+| Description | 5,000 characters | See below (4,999 characters) |
 | Challenge | one | Aalto University, Beyond the Clinic |
 | Tech challenge | any number | Google DeepMind, Best Use of Gemini API |
 | Project demo | link | https://lanvi.app/demo (no login, read only; https://lanvi.app itself needs a login, which is no longer published) |
@@ -44,43 +44,46 @@ After TMS the daily clinic visits end and nobody sees a slow slide back. Lanvi i
 
 What we can show:
 - It runs. The film shows the app; lanvi.app/demo opens the clinic page, no login.
-- ARKit face tracking, as numbers only: smiles, blinks and, new, brief twitches of the mouth corners in millimetres from the Face ID sensor. Gemini reads, code checks: 41 of 41 planted smiles found, nothing invented.
+- The face, as numbers only, from ARKit and the Face ID sensor. We ran 1,676 real videos of people with and without depression through our own fine-movement code: with depression the face travels less far from rest (4 mm against 6.6) and more slowly, as we had written down. On our own phones those two numbers are the most repeatable we have. Our three best-supported ARKit hypotheses hold on the same videos: less smiling, fewer smiles, less facial movement.
 - The mind: rules notice, two AI models in two layers weigh (the clinic's own, then Gemini), code guards, and it learns which small step helps each person. Tested on 40 cases: worse never meant lower, 0 of 107.
-- Real people: in public data of 1,390 Fitbit wearers our movement hypothesis holds within a person, and it is small.
-- Not shown: that any of it follows depression in a patient. That is the study.
+- Movement: in 1,390 real Fitbit wearers our hypothesis holds within a person, and it is small.
+- Not shown: that any of it follows depression in one patient over time. That is the study.
 
 COULD IT HELP PEOPLE STAY WELL AT HOME?
 
-When someone drifts from their own normal for days, their name moves to the top of the clinic's list and, if it is serious, the clinic gets a message the same day. When someone writes that they need help, help numbers open on the phone at once and the clinic is told, with no model in between. Lanvi is not a crisis service; the help wording still needs a clinician's review. Then one small offer: sense, respond, learn.
+When someone drifts from their own normal for days, their name moves to the top of the clinic's list and, if it is serious, the clinic gets a message the same day. When someone writes that they need help, help numbers open on the phone at once and the clinic is told, with no model in between. Lanvi is not a crisis service. Then one small offer: sense, respond, learn.
 
 WOULD SOMEONE RECOVERING FROM DEPRESSION USE IT EVERY DAY?
 
-One thing a day, 90 seconds or less: a game, a minute of breathing together, three good things in the evening. No score, no streak, nothing to set up, and a bad day costs nothing. After a week away the fox says "I kept the light on for you." The camera is optional.
+One thing a day, 90 seconds or less: a game, a minute of breathing together, three good things in the evening. No score, no streak, nothing to set up, and a bad day costs nothing. The camera is optional.
 
 SMART SENSING: WHAT THE PHONE MEASURES
 
-During the game and the breathing, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. Gemini gets a reduced stream of numbers, no name or date, with consent (that screen is not built yet). The server computes 18 measures: smiles and whether they reach the eyes, blinks, gaze, how much the face moves at all. Since Saturday night the app also sends a finer signal from the Face ID sensor: the face mesh reduced on the phone to twelve regions, in millimetres per frame (its noise is not measured yet). Seven real sessions so far; nothing reads it. The game, Revontulet, borrows from published tasks, far shorter than the originals: an easy or a hard shot (effort for reward), a traced half circle (drawing speed), reaction to embers, slow strokes over the sleeping fox (swipe speed). Steps and walking speed come from Apple Health.
+During the game and the breathing, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. The server computes 18 measures: smiles, blinks, gaze, how much the face moves. Since Saturday night the app also sends a finer signal from the Face ID sensor: the face mesh reduced on the phone to twelve regions, in millimetres. Nine real sessions so far; nothing reads it. The game borrows from published tasks: effort for reward, drawing speed, reaction time, swipe speed. Steps and walking speed come from Apple Health.
 
-In the public PSYCHE-D data (1,390 people with a Fitbit and four PHQ-9 scores over a year), quarters with steps clearly below the person's own normal had a PHQ-9 0.4 points above their own other quarters: the direction we fixed in advance.
+WHAT WE TESTED, AND HOW
 
-Two readers go through each face session: a fixed rule in code, and Gemini, whose every reported smile is checked against the numbers. On ten hard generated sessions, with talking, a moving phone and smiles planted at known places, the fixed rule found 20 of 28 clear smiles and none of 13 faint ones. A simple rule relative to the person's own rest found all but reported 22 things that were not smiles. Gemini found all 41 and nothing else. Gemini had been told what talking looks like.
+We fixed 24 hypotheses before any data (three redefined when the game changed), then ran them on public data of real people, with every rule decided before looking at a result.
 
-We fixed 24 hypotheses before any data (three redefined when the game changed).
+Faces (LMVD, 1,684 video logs, half by people with depression): 6 of 11 ARKit-style measures as we wrote down, 3 opposite, 2 nothing; a score from them ranks unseen videos at 0.76.
+Fine movement: reach and speed as expected; brief twitches came out opposite, so we do not trust that rule yet.
+Movement (PSYCHE-D, 1,390 people, a year): a quarter with steps clearly below the person's own normal had a PHQ-9 0.4 points above their own other quarters.
+False alarms (LifeSnaps, 67 healthy volunteers): our rule, unchanged, flagged 23 at least once in three months. A low-step day there is a rest day, not a sad one.
+Gemini as second reader: on ten hard generated sessions, with disturbances its prompt names, it found all 41 planted smiles and nothing else; our fixed rule found 20. Code checks every item.
+
+These are differences between people, or at coarse time scales: they support our choice of measures, not that a phone can warn of relapse.
 
 THE MIND, AND HOW WE TESTED IT
 
 Plain rules we can explain notice a change and raise a flag. Two models weigh it: a small one on the clinic's own hardware sets how soon someone should look, and Gemini agrees, raises or lowers one step. Code guards both: help is always urgent, no model can lower what the rules call "needs review today", and the rules stand when no model answers. A clinician can add a rule for one person in plain words.
 
-On 40 generated cases read by the real models, as it is, again, worse, and with a clinic rule:
-Against the rules alone the models only lowered: 12 of 107 flags, one step. No level is yet compared with a clinician's.
-The clinic rule was applied where it belonged in 20 of 20 cases, and nowhere else.
-What does not flatter us: the same case read twice changed 7 of 107 flags, and Gemini agreed in 369 of 372 readings.
+On 40 generated cases read by the real models: worse never meant lower; the clinic rule was applied where it belonged in 20 of 20; against the rules alone the models only lowered, 12 of 107 flags by one step. What does not flatter us: the same case read twice changed 7 of 107 flags, and Gemini agreed in 369 of 372 readings.
 
 WHAT IS REAL AND WHAT IS NOT
 
-Live: the server, the clinician page, both models, the alert; one team member's iPhone sent real games, face numbers and Apple Health days through the whole path. The other people on the page are generated examples. Nothing is tested with patients, and the face and game measures are not shown to follow depression. That is the study we want to run with Aalto: 20 to 30 people after TMS, twelve weeks, each compared only with themselves.
+Live: the server, the clinician page, both models, the alert; a team member's iPhone sent real games, face numbers and Apple Health days through the whole path. The other people on the page are generated examples. Nothing is tested with patients. That is the study we want to run with Aalto: 20 to 30 people after TMS, twelve weeks, each compared only with themselves.
 
-The research and the mind in depth: lanvi.app/demo#/blueprint.
+In depth: lanvi.app/demo#/blueprint. Every check and its script: docs/checks in the repository.
 ```
 
 ## Rules for the wording

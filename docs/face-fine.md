@@ -1,6 +1,6 @@
-# Fine facial movement: what the phone may send (research only)
+# Fine facial movement: what the phone may send
 
-For the iOS developer. This is the server side of the idea in `docs/research-proposal.md`, "A finer signal we would try next". It is an experiment: the server takes the numbers, sums them up, keeps them and shows them on the clinician page beside the person's own earlier sessions. No flag, level, reading or model uses them.
+For the iOS developer. This is the server side of the idea in `docs/research-proposal.md`, "A finer signal we would try next". It is an experiment: the server takes the numbers, sums them up, keeps them and shows them on the clinician page beside the person's own earlier sessions. Since 15 November one flag reads one of them, the reach ("One rule reads the reach" below). No level, reading or model uses them.
 
 The rule that does not change: **no face shape leaves the phone.** A mesh and a depth map are the shape of a face. So this is the one place where the phone computes before it sends. What leaves is, for a few named regions and for every frame, one distance in millimetres.
 
@@ -149,6 +149,16 @@ python -m clinic_engine.fine_reference --stream stream.json       # the same on 
 
 Not done on purpose: sending the stream to the server's level 2. That needs its own input and output gate in `mind/gates.py`, as the frame reading has, and it should be written once real streams show what the payload has to carry.
 
+## One rule reads the reach
+
+Since 15 November 2026 the flag "less facial movement" is decided from this stream, for every person whose app sends it. Before, it was decided from ARKit's facial activity and smiling; that older rule still serves a person whose app sends no stream.
+
+- **What is compared.** The reach of a session is the mean, over the regions, of how far each region goes above its own level (95th percentile, millimetres). The middle of the last five sessions is compared with the middle of the person's earlier sessions (at least five), on the logarithm.
+- **Why five sessions together.** On the first real games (ten, one iPhone, one evening, a team member who was well) the reach differed from game to game by about 0.6 on its logarithm, a factor of 1.8. The games differed because the face did different things in them: in one the player smiled more than half the time, in another the brows were raised. One session cannot be judged against that.
+- **How it behaves** (`python -m clinic_engine.fine_flat_check`, generated numbers at the measured spread, ten earlier sessions): it flags a person who has not changed in about 5 looks in 100; it sees a drop of a quarter in about 15 in 100, a halving in about 45, a drop to a third in about 70 and to a fifth in about 95.
+- **What it rests on.** Ten real games from one person and generated streams. No patient, no second person, no second evening. Nobody has shown that the reach falls when a person gets worse; the example people are generated with a drop to a third in their dip because we wrote it in.
+- **The example people** carry generated streams for every face session (`seed.fine_stream`), shaped on the real ones: where the regions sit, how they creep, how far and how often they move. Their ARKit numbers were moved onto the scale of 19 real games at the same time: facial activity near 0.13 (the first guess was 0.52), no smile in about half of the games, about eight blinks a minute, the head tilted down at the phone.
+
 ## What it is not
 
-It does not describe mood, symptoms or risk, and nothing on the server treats it as if it did. It is a measurement to compare with the blend shapes and, later and only with consent, with the weekly questionnaire.
+It does not describe mood, symptoms or risk. The one rule that reads it says "the face moved less than this person's usual" and nothing about why. It is a measurement to compare with the blend shapes and, later and only with consent, with the weekly questionnaire.

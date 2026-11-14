@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import copy
 import math
+from functools import lru_cache
 import os
 import random
 import secrets
@@ -244,32 +246,160 @@ def _clamp01(x: float) -> float:
     return max(0.0, min(1.0, x))
 
 
+# The levels and spreads below follow the first real games: 19 well tracked games from
+# two team members' iPhones on 14 November 2026 (docs/face-generator.md). Before that
+# the generated face was about four times as lively as a real one during the game,
+# smiled in every session and held the phone level. Real players mostly do not smile
+# while they play, blink about eight times a minute and look down at the phone.
+# What a dip does (flat < 1) is still OUR assumption, not something measured.
+
 def _face_more(rx: random.Random, flat: float) -> dict:
-    """The newer face fields. Drawn from their own generator, so the older
-    fields (and everything the mind decided on them) stay exactly as before.
-    In the dip (flat < 1) smiling and head movement drop, brows, blinks and
-    head angle go the other way."""
-    return {"smile_time_share": round(_clamp01(rx.gauss(0.16, 0.02) * flat * flat), 2),
-            "eye_smile_share": round(_clamp01(rx.gauss(0.55, 0.05) * flat), 2),
-            "smile_response_share": round(_clamp01(rx.gauss(0.7, 0.08) * flat), 2),
+    """The newer face fields. Drawn from their own generator, so the draws of
+    the older fields stay in step. In the dip (flat < 1) smiling and head
+    movement drop, brows, blinks and head angle go the other way."""
+    return {"smile_time_share": abs(rx.gauss(0.02, 0.008)),          # per smile a minute; see _face
+            "eye_smile_share": round(_clamp01(rx.gauss(0.15, 0.2) * flat), 2),
+            "smile_response_share": round(_clamp01(rx.gauss(0.05, 0.15) * flat), 2),
             "smile_response_latency_s": round(max(0.2, rx.gauss(1.1, 0.15) / flat), 2),
-            "brow_down_share": round(_clamp01(rx.gauss(0.08, 0.015) / flat), 2),
-            "inner_brow_up_share": round(_clamp01(rx.gauss(0.05, 0.01) / flat), 2),
-            "blink_duration_ms": round(rx.gauss(150, 12) / math.sqrt(flat), 0),
-            "head_pitch_deg": round(rx.gauss(4.0, 1.5) + (1 - flat) * 16, 1),
-            "head_movement": round(_clamp01(rx.gauss(0.42, 0.04) * flat), 2),
-            "smile_asymmetry": round(_clamp01(rx.gauss(0.12, 0.02)), 2)}
+            "brow_down_share": round(_clamp01(rx.gauss(0.03, 0.03) / flat), 2),
+            "inner_brow_up_share": round(_clamp01(rx.gauss(0.02, 0.04) / flat), 2),
+            "blink_duration_ms": round(max(33.0, rx.gauss(100, 25) / math.sqrt(flat)), 0),
+            "head_pitch_deg": round(rx.gauss(-16.0, 4.0) + (1 - flat) * 16, 1),
+            "head_movement": round(_clamp01(rx.gauss(0.43, 0.10) * flat), 2),
+            "smile_asymmetry": round(_clamp01(rx.gauss(0.03, 0.02)), 2)}
 
 
 def _face(rng: random.Random, flat: float = 1.0, rx: random.Random | None = None) -> dict:
     more = _face_more(rx, flat) if rx is not None else {}
-    return {**more, "smile_rate_per_min": round(max(0.0, rng.gauss(2.6, 0.25) * flat * flat), 2),
-            "smile_intensity": round(max(0.0, min(1.0, rng.gauss(0.36, 0.03) * flat)), 2),
-            "facial_activity": round(max(0.0, min(1.0, rng.gauss(0.52, 0.03) * flat)), 2),
-            "blink_rate_per_min": round(rng.gauss(16.0, 1.2), 1),
-            "look_down_share": round(max(0.0, min(1.0, rng.gauss(0.2, 0.03) / flat)), 2),
-            "head_tilt_deg": round(rng.gauss(3.0, 1.0), 1),
-            "tracking_quality": round(min(1.0, rng.gauss(0.86, 0.03)), 2)}
+    # About half of the real games had no smile at all, and a few had many.
+    rate = round(max(0.0, rng.gauss(0.3, 2.6)) * flat * flat, 2)
+    out = {**more, "smile_rate_per_min": rate,
+           "smile_intensity": round(max(0.0, min(1.0, rng.gauss(0.36, 0.08) * flat)), 2),
+           "facial_activity": round(max(0.02, min(1.0, rng.gauss(0.13, 0.03) * flat)), 3),
+           "blink_rate_per_min": round(max(1.0, rng.gauss(8.0, 3.0)), 1),
+           "look_down_share": round(max(0.0, min(1.0, rng.gauss(0.15, 0.10) / flat)), 2),
+           "head_tilt_deg": round(abs(rng.gauss(2.5, 1.5)), 1),
+           "tracking_quality": round(max(0.62, min(1.0, rng.gauss(0.92, 0.08))), 2)}
+    if more:
+        out["smile_time_share"] = round(_clamp01(rate * more["smile_time_share"]), 3)
+    if rate == 0:
+        # No smile in the session: nothing to say about how the smiles looked.
+        out["smile_intensity"] = 0.0
+        for k in ("eye_smile_share", "smile_response_share"):
+            if k in out:
+                out[k] = 0.0
+        for k in ("smile_response_latency_s", "smile_asymmetry"):
+            if k in out:
+                out[k] = None
+    elif "smile_response_share" in out and out["smile_response_share"] == 0:
+        out["smile_response_latency_s"] = None
+    return out
+
+
+# Which draw of the generated fine movement the examples use. At the real spread a
+# drop to a third shows in about 7 of 10 such stories (25 of the 32 draws tried); this is one where the
+# example dip shows and the unchanged example stays quiet (as EXAMPLE_SEED for the game).
+FINE_SEED = 2
+
+FINE_REGIONS = ("mouth_left", "mouth_right", "lip_upper", "lip_lower", "cheek_left", "cheek_right",
+                "brow_left", "brow_right", "eyelid_left", "eyelid_right", "jaw", "nose",
+                "mouth_corner_left", "mouth_corner_right")
+
+
+# Per group of regions, from the first real games: where the region sits (mm from the
+# resting shape), how far it reaches against the face's mean reach, and brief movements
+# a minute at the usual reach. (level, reach factor, brief movements a minute)
+_FINE_SHAPE = {"mouth": (1.4, 1.3, 9.0), "lip_upper": (1.7, 0.8, 2.0), "lip_lower": (1.8, 1.8, 12.0),
+               "cheek": (1.0, 0.6, 2.0), "brow": (1.5, 0.9, 6.0), "eyelid": (1.3, 0.4, 2.0),
+               "jaw": (1.25, 1.3, 9.0), "nose": (0.85, 0.3, 0.0), "mouth_corner": (1.0, 1.4, 12.0)}
+FINE_REACH_MM = 0.5      # the middle of the real games' mean reach
+FINE_SPREAD = 0.6        # how much it differs from game to game, on its logarithm
+_FINE_CAL = 1.0          # brings the summary's reach onto the reach asked for (set by measuring)
+
+
+@lru_cache(maxsize=4096)
+def fine_stream(activity_id: str, flat: float = 1.0) -> dict:
+    """The fine movement stream of one generated session, shaped like the app's
+    (docs/face-fine.md): fourteen regions, thirty frames a second, millimetres
+    from the resting shape. Drawn from its own generator, seeded by the
+    session's id, so nothing else in the example moves. The summary on the
+    page is computed from it by the same code as for a real stream.
+
+    The shape follows the first real games (14 November 2026, one iPhone, ten
+    games): each region sits one to two millimetres from the resting shape and
+    creeps up through the game; from frame to frame it jumps by about a
+    hundredth of a millimetre; slower movements of half a second to three
+    seconds give the reach, near half a millimetre over the face and differing
+    from game to game by a factor of about 1.8; brief movements of a tenth of
+    a second rise 0.55 to 1 mm, most often at the mouth. That a dip lowers the
+    reach, and by how much (to about a third when `flat` is 0.5), is OUR
+    assumption: nobody has measured it."""
+    r = random.Random(f"fine-{FINE_SEED}-{activity_id}")
+    n = r.randint(800, 1300)
+    session = FINE_REACH_MM * math.exp(r.gauss(0, FINE_SPREAD)) * flat ** 1.5
+    creep = r.uniform(0.1, 1.0)
+    cols = []
+    for name in FINE_REGIONS:
+        level, factor, brief = _FINE_SHAPE[name.replace("_left", "").replace("_right", "")]
+        reach = session * factor * math.exp(r.gauss(0, 0.2)) * _FINE_CAL
+        base = abs(r.gauss(level, 0.3))
+        y = [base + creep * i / n + r.gauss(0, 0.012) for i in range(n)]
+        t = r.uniform(0, 4) * 30
+        while t < n:                                   # slower movements: these give the reach
+            long = int(r.uniform(0.6, 3.0) * 30)
+            high = reach * r.uniform(0.7, 1.6)
+            for i in range(int(t), min(n, int(t) + long)):
+                y[i] += high * math.sin(math.pi * (i - t) / long) ** 2
+            t += long + r.expovariate(1 / (5.0 * 30))
+        for _ in range(_poisson(r, brief * n / 1800 * min(2.0, session / FINE_REACH_MM))):
+            i0, long, high = r.randrange(n - 6), r.randint(3, 5), r.uniform(0.55, 1.0)
+            for i in range(i0, i0 + long):
+                y[i] += high
+        cols.append(y)
+    return {"source": "mesh", "rate_hz": 30, "regions": list(FINE_REGIONS),
+            "samples": [[round(max(0.0, c[i]), 2) for c in cols] for i in range(n)],
+            "noise_mm": round(abs(r.gauss(0.09, 0.03)), 2)}
+
+
+def _poisson(r: random.Random, mean: float) -> int:
+    k, p, limit = 0, 1.0, math.exp(-max(0.0, mean))
+    while True:
+        p *= r.random()
+        if p <= limit:
+            return k
+        k += 1
+
+
+def _fine(activity_id: str, flat: float = 1.0) -> dict:
+    """The fields a generated face session carries for its fine movement: the
+    summary and the counts, computed from the generated stream as the server
+    computes them from a real one."""
+    # The example people share session ids ("example-act-003"), so the person is part
+    # of the name the stream is drawn from: no two people get the same face.
+    name = f"{_FINE_WHO}{activity_id}"
+    _FINE_FLAT[activity_id] = (name, flat)
+    return copy.deepcopy(_fine_summary(name, flat, FINE_SEED))
+
+
+@lru_cache(maxsize=4096)
+def _fine_summary(activity_id: str, flat: float, draw: int) -> dict:
+    from .mind import face_fine
+    stream = fine_stream(activity_id, flat)
+    return {"face_fine": face_fine.summarize(stream), "face_fine_info": face_fine.describe(stream)}
+
+
+_FINE_FLAT: dict[str, tuple[str, float]] = {}   # per session id: the name and `flat` its stream was drawn with
+_FINE_WHO = ""                                    # set by the writer: whose sessions are being drawn
+
+
+def put_fine_stream(store, base: str, rec: dict) -> None:
+    """Keep the generated stream beside the session, as for a real one.
+    `base` is the patient's folder."""
+    if rec.get("face_fine"):
+        stream = fine_stream(*_FINE_FLAT.get(rec["id"], (rec["id"], 1.0)))
+        store.put(base + f"facefine/{rec['id']}.json",
+                  {"activity_id": rec["id"], "type": rec["type"], "started_at": rec["started_at"],
+                   "received_at": rec["started_at"], **stream, "frames": len(stream["samples"])})
 
 
 def revontulet_game(rv: random.Random, rts: list[int], low: float = 0.0, finished: bool = True,
@@ -316,6 +446,7 @@ def make_activity(rng: random.Random, aid: str, started: datetime, typ: str, how
         rec.update(duration_s=45.0 if how == "finished" else round(rng.uniform(18, 28), 1),
                    correct_taps=n - 1, wrong_taps=1, misses=rng.randint(1, 3) + (2 if dip else 0),
                    reaction_ms=rts[: n], face=_face(rng, 0.5 if dip else 1.0, rx))
+        rec.update(_fine(aid, 0.5 if dip else 1.0))
         # In the dip the tracing and the ember taps get slower; the embers are
         # still tapped, so the slower reaction times are there to be seen.
         rec.update(revontulet_game(rv or rng, rts, 0.6 if dip else 0.0, how == "finished",
@@ -327,6 +458,7 @@ def make_activity(rng: random.Random, aid: str, started: datetime, typ: str, how
         rec.update(duration_s=played, time_played_s=played,
                    breaths_completed=6 if how == "finished" else int(played // 10),
                    face=_face(rng, 0.5 if dip else 1.0, rx))
+        rec.update(_fine(aid, 0.5 if dip else 1.0))
     else:
         k = 1 if dip else rng.choice([2, 3, 3])
         things = rng.sample(GOOD_THINGS, k)
@@ -351,6 +483,8 @@ def write_activities(store: Store, clinic_id: str, patient_id: str, today, tz: Z
     rng = random.Random(seed + 31)
     rx = random.Random(seed + 37)  # the newer face fields only
     rv = random.Random(seed + 43)  # Revontulet's measures only
+    global _FINE_WHO
+    _FINE_WHO = f"{seed}:"         # each example person has their own seed
     base = f"clinics/{clinic_id}/patients/{patient_id}/activities/"
     for key in store.list(base):
         if (store.get(key) or {}).get("example"):
@@ -391,6 +525,7 @@ def write_activities(store: Store, clinic_id: str, patient_id: str, today, tz: Z
                    crisis=False, analysis={"status": "not_applicable" if typ == "checkin"
                                            else "off"})
         store.put(base + f"{rec['id']}.json", rec)
+        put_fine_stream(store, base[:-len("activities/")], rec)
         previous.append(rec)
 
 
@@ -447,7 +582,7 @@ def wipe_patient(store: Store, clinic_id: str, patient_id: str) -> None:
     base = f"clinics/{clinic_id}/patients/{patient_id}/"
     for folder in ("days", "rounds", "activities", "lanvi", "suggestions", "feedback", "notes",
                    "attention", "mind", "rejected", "ratings", "research", "exchanges",
-                   "faceraw", "health"):
+                   "faceraw", "facefine", "health"):
         store.delete_prefix(base + folder + "/")
     for key in store.list(f"clinics/{clinic_id}/attention_index/"):
         if (store.get(key) or {}).get("patient_id") == patient_id:

@@ -240,12 +240,16 @@ def test_the_page_gets_each_session_beside_the_earlier_ones_and_never_the_stream
     r = env.client.get(f"/v1/clinic/patients/{env.demo['patient_id']}", headers=env.C())
     assert r.status_code == 200 and '"samples"' not in r.text
     mine = [s for s in r.json()["activities"]["focus"]["sessions"] if s["id"].startswith("act-fine-own-")]
-    assert [s["fine"]["earlier"] for s in mine] == [0, 1, 2, 3]
-    assert mine[2]["fine"]["usual"]["twitches_per_min"] is None
-    assert mine[3]["fine"]["usual"]["twitches_per_min"] == 0 and mine[3]["fine"]["values"]["twitches_per_min"] == 1.33
+    # The example person's own generated sessions come before these four.
+    first = mine[0]["fine"]["earlier"]
+    counts = [s["fine"]["earlier"] - first for s in mine]
+    assert counts == sorted(counts) and len(set(counts)) == 4 and counts[-1] >= 3
+    assert mine[3]["fine"]["values"]["twitches_per_min"] == 1.33 and mine[3]["fine"]["usual"]["twitches_per_min"] is not None
     assert mine[3]["fine"]["frames"] == 2700 and mine[3]["fine"]["source"] == "mesh"
+    # The example person's generated sessions carry a fine stream too, kept like a real one.
     plain = [s for s in r.json()["activities"]["focus"]["sessions"] if not s["id"].startswith("act-fine-")]
-    assert all(s["fine"] is None for s in plain)
+    assert plain and all(s["fine"] and s["fine"]["values"] for s in plain)
+    assert env.repo().get(f"facefine/{plain[0]['id']}.json")["samples"]
 
 
 def test_the_example_person_has_generated_fine_movement_and_code_marks_it(env):
@@ -279,7 +283,7 @@ def test_a_partly_tracked_or_noisy_session_counts_toward_the_own_usual_with_its_
     assert [f["quality"] for f in mine] == ["good", "partly", "noisy", "good"]
     assert [f["counts"] for f in mine] == [True, True, True, True]
     assert all(f["values"] for f in mine)                      # each one is still shown
-    assert mine[3]["earlier"] - mine[0]["earlier"] == 3        # all three before it count
+    assert mine[3]["earlier"] - mine[0]["earlier"] >= 3        # all three before it count
 
 # ---- brief movements of the mouth corners ---------------------------------------------------
 
@@ -351,3 +355,40 @@ def test_stored_summaries_can_be_made_again_from_the_kept_streams(env):
     assert res["done_again"] >= 1
     again = env.repo().get("activities/act-fine-again-01.json")["face_fine"]
     assert again["rules"] == face_fine.RULES_VERSION and again["quality"] == "good"
+
+
+# ---- the reach decides "less facial movement" ----------------------------------------------
+
+def test_the_rule_on_the_reach_behaves_as_the_page_says_on_generated_numbers():
+    from clinic_engine import fine_flat_check
+    res = fine_flat_check.run(runs=1500)["flagged_percent_by_share_of_usual_reach"]
+    assert res["1.0"] < 8                      # an unchanged person: about 1 look in 20
+    assert 30 < res["0.5"] < 60                # a halving: under half... and not nothing
+    assert 60 < res["0.35"] < 85               # a drop to a third: about 7 of 10
+    assert res["0.2"] > 90
+
+
+def test_a_person_with_the_fine_stream_is_judged_by_its_reach_and_one_low_session_is_not_enough(env):
+    from clinic_engine.mind.activities import fine_recent
+    acts = env.repo().activities()
+    assert any(a.get("fine_reach_mm") for a in acts)            # the example person sends the stream
+    assert "face_flat" not in {i["kind"] for i in env.repo().items() if i["state"] == "open"}
+    env.client.post("/v1/demo/scenario", headers=env.A, json={"name": "dip"})
+    item = next(i for i in env.repo().items() if i["state"] == "open" and i["kind"] == "face_flat")
+    d = item["detail"]
+    assert d["from"] == "fine" and d["of_last"] == 5 and d["reach_mm"] < 0.5 * d["usual_mm"]
+    r = fine_recent(env.repo().activities())
+    assert r["z"] <= -2.5
+    # The generated stream is kept beside the session and the summary comes from it.
+    a = next(a for a in reversed(env.repo().activities()) if a.get("face_fine"))
+    stream = env.repo().get(f"facefine/{a['id']}.json")
+    assert face_fine.summarize(stream)["regions"] == a["face_fine"]["regions"]
+
+
+def test_two_example_people_do_not_share_a_generated_face():
+    from clinic_engine import seed
+    seed._FINE_WHO = "100:"
+    a = seed._fine("example-act-003")["face_fine"]["regions"]["jaw"]["reach_mm"]
+    seed._FINE_WHO = "101:"
+    b = seed._fine("example-act-003")["face_fine"]["regions"]["jaw"]["reach_mm"]
+    assert a != b

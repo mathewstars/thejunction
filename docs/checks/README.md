@@ -159,3 +159,21 @@ What we expected was written into the script before it ran: with depression, les
 - **Does the fine signal add to the action units?** A score from the five fine measures alone ranks unseen videos at 0.71; the ten action-unit measures alone at 0.74; both together at 0.74. So on this data the fine signal carries most of the same information and adds almost nothing on top, which is the outcome the research proposal named as possible ("the mesh may add nothing").
 
 Limits beyond those above: these are flat picture landmarks from compressed video, not a depth sensor; a head turned sideways leaks into the numbers; only the first 12,000 frames of a video are used; and the people are talking.
+
+## How repeatable are our own face measures? (the team's test sessions, 15 November)
+
+Not a public dataset: the sessions on the team's test profile, read on the server on the night of 15 November. Each session was cut in two halves and summed up twice with the server's own code. A measure is usable for following one person only if the two halves of one session agree better than two different sessions do.
+
+| Measure | Sessions | The two halves differ by (median) | Sessions differ by (spread over mean) | Do the halves rank the sessions alike? |
+|---|---|---|---|---|
+| Fine movement: reach | 9 | 34% | 76% | +0.70 |
+| Fine movement: top speed | 9 | 25% | 65% | +0.77 |
+| Fine movement: brief movements a minute | 9 | 50% | 52% | +0.68 |
+| Blend shapes: time smiling | 19 | 200% | 201% | +0.14 |
+| Blend shapes: overall facial movement | 19 | 22% | 30% | +0.43 |
+| Blend shapes: blink rate | 19 | 48% | 54% | +0.54 |
+| Blend shapes: head movement | 19 | 33% | 34% | +0.48 |
+
+Reach and top speed of the fine signal are the most repeatable numbers we have: sessions differ two to three times more than the halves of one session do. Brief movements are not (the halves differ as much as the sessions), which fits what the LMVD run showed about that rule. Of the blend-shape measures only overall facial movement is somewhat repeatable; time smiling is not, because in a game of a minute or so a smile is a rare event and falls in one half or the other.
+
+Limits: few sessions, one evening, halves of 15 to 30 seconds, and the profile has seven paired phones, so some of the difference between sessions is a difference between people and phones, which makes the sessions look easier to tell apart than one person's days will be.

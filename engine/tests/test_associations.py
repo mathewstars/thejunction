@@ -501,7 +501,8 @@ def test_the_seed_produces_an_appraisal_for_the_demo_patient(env):
     assert "face.smile_time_share" in acts[-1]["usual"]
     env.client.post("/v1/demo/scenario", headers=env.A, json={"name": "dip"})
     dip = [a for a in env.repo().activities() if a.get("face")]
-    assert dip[-1]["face"]["smile_time_share"] < acts[0]["face"]["smile_time_share"]
+    from statistics import median
+    assert dip[-1]["face"]["facial_activity"] < 0.7 * median(a["face"]["facial_activity"] for a in acts)
     assert any(r["score"] >= 10 for r in env.repo().docs("ratings"))
 
 

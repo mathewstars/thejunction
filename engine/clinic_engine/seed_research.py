@@ -17,7 +17,8 @@ from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from .config import Settings
-from .seed import (GOOD_THINGS, _day_values, _face, create_patient, revontulet_game,
+from .seed import (GOOD_THINGS, _day_values, _face, _fine, create_patient, put_fine_stream,
+                   revontulet_game,
                    wipe_patient)
 from .store import Store, make_store
 
@@ -41,7 +42,9 @@ def _simulate(store: Store, base: str, tz, now: datetime, plan: list[tuple[int, 
               seed: int, tag: str) -> None:
     """Write example days, sessions and weekly PHQ-9 for `plan`: (days ago, symptom level),
     oldest first. Every record is marked example and carries `tag` in its id."""
+    from . import seed as seed_module
     from .mind.activities import process_activity
+    seed_module._FINE_WHO = f"{tag}:{seed}:"   # this person's own fine movement streams
     today = now.astimezone(tz).date()
     rng, rx, noise = random.Random(seed), random.Random(seed + 1), random.Random(seed + 2)
     rv = random.Random(seed + 3)  # Revontulet's measures only: the other draws stay as they were
@@ -84,6 +87,7 @@ def _simulate(store: Store, base: str, tz, now: datetime, plan: list[tuple[int, 
                          reaction_ms=[int(max(200, rng.gauss(520, 55 + 40 * s) * (1 + 0.4 * s)))
                                       for _ in range(n)],
                          face=_face(rng, flat, rx))
+                a.update(_fine(a["id"], flat))
                 # The game is Revontulet: harder cracks, ember taps and the two
                 # speeds follow the symptom level, like everything else here.
                 a.update(revontulet_game(rv, a["reaction_ms"], s, hard=0.9 - 0.35 * s,
@@ -95,6 +99,7 @@ def _simulate(store: Store, base: str, tz, now: datetime, plan: list[tuple[int, 
                 a.update(duration_s=played, time_played_s=played,
                          breaths_completed=6 if how == "finished" else int(played // 10),
                          face=_face(rng, flat, rx))
+                a.update(_fine(a["id"], flat))
             else:
                 good = max(0, min(3, int(round(3 - 2.4 * s + noise.gauss(0, 0.5)))))
                 a.update(duration_s=round(rng.uniform(40, 80), 1),
@@ -109,6 +114,7 @@ def _simulate(store: Store, base: str, tz, now: datetime, plan: list[tuple[int, 
                        crisis=False, analysis={"status": "not_applicable" if typ == "checkin"
                                                else "off"})
             store.put(base + f"activities/{rec['id']}.json", rec)
+            put_fine_stream(store, base, rec)
             previous.append(rec)
 
 

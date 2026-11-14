@@ -38,6 +38,10 @@ To build it yourself you need a Mac with Xcode and an iPhone. The face numbers n
 
 What an install sends (games, face numbers and, if you allow it, Apple Health days) lands on that shared profile, which the open demo shows to anyone. Do not install it on a phone whose data you want to keep private, and do not allow Apple Health there. More about the app: [`ios/README.md`](ios/README.md).
 
+## What we tested on real data
+
+We fixed our hypotheses before any data, then ran them on five public datasets of real people, with our own code unchanged and every rule decided before looking at a result. We ran 1,676 real videos of people with and without depression through the same code that reads the Face ID sensor in our app: with depression the face travels less far from rest (about 4 mm against 6.6 mm) and more slowly, as we had written down, and on our own phones those two numbers are the most repeatable we have. On the same videos the three ARKit face hypotheses we rated strongest all hold (less time smiling, fewer smiles, less facial movement). In 1,390 people with a Fitbit, less movement goes with a slightly higher PHQ-9 within the same person. And our movement rule flags a third of healthy volunteers within three months, which is why it never raises more than "attention" by itself. What held, what went against us and how each study was done: [`docs/research-studies.md`](docs/research-studies.md).
+
 ## Three things to look at
 
 ### The mind
@@ -54,7 +58,7 @@ On 40 generated cases read by the real models, a worse case never got a lower le
 
 The front camera, through ARKit, gives 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. Two readers go through each session: a fixed rule in code, and Gemini, whose every reported smile is checked against the numbers. On 50 sessions we generated with smiles planted at known places, Gemini found every one and reported nothing else. That says how the readers handle a known signal, not how they read a person.
 
-Since the night of 14 November the app also sends a finer signal from the sensor Face ID uses: the face mesh, reduced on the phone to twelve regions (mouth corners, lips, cheeks, brows, eyelids, jaw, nose), one distance in millimetres per region and frame. No mesh leaves the phone. The first seven real sessions are on the test profile. How noisy the signal is has not been measured yet (the number that first build sent as noise measured something else), and nothing reads this signal for any flag. It is an experiment that has started to collect: [`docs/face-fine.md`](docs/face-fine.md).
+Since the night of 14 November the app also sends a finer signal from the sensor Face ID uses: the face mesh, reduced on the phone to twelve regions (mouth corners, lips, cheeks, brows, eyelids, jaw, nose), one distance in millimetres per region and frame. No mesh leaves the phone. The first seven real sessions are on the test profile. How noisy the signal is has not been measured yet (the number that first build sent as noise measured something else), and the first build's fault is fixed on the phone and on the server. Since 15 November one flag reads it: "less facial movement" compares how far the face moves over the last five sessions, in millimetres, with the person's own usual. That rule is set on ten real games from one team member who was well and has not been tested on a patient: [`docs/face-fine.md`](docs/face-fine.md).
 
 Whether any of this follows depression is the study we want to run: 24 hypotheses fixed before any data (three were redefined on 14 November, when the game changed), 30 people after TMS, 12 weeks, each compared only with themselves.
 
