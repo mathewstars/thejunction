@@ -61,9 +61,11 @@ class Guard:
     """Pure ASGI middleware: request id, body size limit, security headers,
     access log without bodies."""
 
-    def __init__(self, app, max_body: int):
+    def __init__(self, app, max_body: int, route_limits: dict | None = None):
         self.app = app
         self.max_body = max_body
+        # (method, path) -> a larger limit for that route only.
+        self.route_limits = route_limits or {}
 
     async def _reject(self, send, status: int, code: str, msg: str, rid: str) -> None:
         body = _json_bytes(status, code, msg, rid)
@@ -79,8 +81,9 @@ class Guard:
         scope.setdefault("state", {})["request_id"] = rid
         t0 = time.monotonic()
         headers = dict(scope.get("headers") or [])
+        limit = self.route_limits.get((scope.get("method"), scope["path"]), self.max_body)
         cl = headers.get(b"content-length")
-        if cl is not None and (not cl.isdigit() or int(cl) > self.max_body):
+        if cl is not None and (not cl.isdigit() or int(cl) > limit):
             log.info("%s %s 413 rid=%s", scope["method"], scope["path"], rid)
             return await self._reject(send, 413, "body_too_large", "Request body is too large.", rid)
         body = b""
@@ -88,7 +91,7 @@ class Guard:
             msg = await receive()
             if msg["type"] == "http.request":
                 body += msg.get("body", b"")
-                if len(body) > self.max_body:
+                if len(body) > limit:
                     return await self._reject(send, 413, "body_too_large",
                                               "Request body is too large.", rid)
                 if not msg.get("more_body"):
@@ -251,7 +254,8 @@ def create_app(settings: Optional[Settings] = None, store: Optional[Store] = Non
         app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins,
                            allow_methods=["GET", "POST", "DELETE"],
                            allow_headers=["Authorization", "Content-Type"])
-    app.add_middleware(Guard, max_body=settings.max_body_bytes)
+    app.add_middleware(Guard, max_body=settings.max_body_bytes, route_limits={
+        ("POST", "/v1/activities"): max(settings.max_body_bytes, settings.max_face_raw_body_bytes)})
     app.add_middleware(GZipMiddleware, minimum_size=1024)  # the patient page is ~170 KB of JSON
     return app
 

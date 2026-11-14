@@ -5,7 +5,8 @@ All code, no model:
   2. features  per type: focus -> median and spread of reaction time,
                error rate, completion; breathing -> completion and time
                played; checkin -> good things, plan made, yesterday's plan done
-  3. face      the summary values, used only when tracking quality is good
+  3. face      the summary values (sent by the phone, or computed by the server
+               from raw frames in face_features.py), used only when tracking quality is good
                enough; a low-quality summary is stored but never enters a
                baseline
   4. own normal per activity type and per feature: robust z against the
@@ -62,8 +63,11 @@ def check_activity(a: dict, now: datetime) -> str | None:
             return "played_longer_than_duration"
         if a.get("breaths_completed") is not None and a["breaths_completed"] > dur / 2 + 2:
             return "implausible_breaths"
-    if a.get("face") is not None and t == "checkin":
+    if (a.get("face") is not None or a.get("face_raw") is not None) and t == "checkin":
         return "face_on_checkin"
+    raw = a.get("face_raw")
+    if raw is not None and len(raw["samples"]) / raw["rate_hz"] > dur * 1.2 + 5:
+        return "face_frames_longer_than_activity"
     return None
 
 

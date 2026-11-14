@@ -13,8 +13,8 @@ from ..mind import trace as trace_mod
 from ..mind import views
 from ..mind.watchers import compute_status
 from ..mind import associations as assoc
-from ..models import (AssociationsOut, ClinicMeOut, LoginIn, LoginOut, RatingIn, RatingOut,
-                      RatingsOut, TraceOut)
+from ..models import (AssociationsOut, ClinicMeOut, FaceRawOut, LoginIn, LoginOut, RatingIn,
+                      RatingOut, RatingsOut, TraceOut)
 from ..security import (Principal, dummy_verify, issue_token, new_id, sha256_hex,
                         verify_password)
 from ..service import ApiError
@@ -116,6 +116,26 @@ async def patient_round(request: Request, patient_id: str = Path(pattern=SID),
     if out is None:
         raise ApiError(404, "not_found", "Round not found.")
     return out
+
+
+@router.get("/patients/{patient_id}/activities/{activity_id}/face-raw",
+            response_model=FaceRawOut, responses=errors(401, 403, 404, 429),
+            summary="Raw face frames of one activity, as the phone sent them (research download)")
+async def patient_face_raw(request: Request, patient_id: str = Path(pattern=SID),
+                           activity_id: str = Path(pattern=CID),
+                           p: Principal = Depends(clinician_only)):
+    """Only for focus and breathing sessions sent with `face_raw`; 404 otherwise.
+    Numbers only: blend-shape coefficients and head angles per frame. Each
+    download is audited (which activity, never any values)."""
+    ctx = ctx_of(request)
+    repo = _patient_repo(request, p, patient_id)
+    raw = repo.get(f"faceraw/{activity_id}.json")
+    if raw is None:
+        raise ApiError(404, "not_found", "No raw face frames for this activity.")
+    write_audit(ctx.store, ctx.clock.now(), clinic_id=p.clinic_id, patient_id=patient_id,
+                actor=p.actor, action="face_raw_read", detail={"activity_id": activity_id},
+                request_id=rid_of(request))
+    return raw
 
 
 @router.get("/patients/{patient_id}/exchanges", responses=errors(401, 403, 404, 422, 429),
