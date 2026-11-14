@@ -326,3 +326,20 @@ table.assoc td.num, table.assoc td.r { white-space: nowrap; }
 .tg-avg.dim { stroke: var(--muted); stroke-width: 2; }
 .bandkey.amber { background: var(--amber); opacity: 0.35; border-color: transparent; }
 .tg-cut { opacity: 1; }
+.key.k-m.thick { border-top-width: 2.5px; }
+.key.k-now { border-color: var(--ember); }
+.tg-ref.now { stroke: var(--ember); }
+.tg-refpt.now { fill: var(--ember); }
+.panel > .legend, .panel div > .legend { margin-bottom: 12px; row-gap: 4px; }
+@media (max-width: 720px) {
+  .topbar { padding: 8px 12px; gap: 10px; }
+  .subnav { order: 5; flex-basis: 100%; overflow-x: auto; }
+  .hero-t { font-size: 20px; }
+  .lead { font-size: 15px; }
+  .viz { overflow-x: auto; }
+  .viz > svg.tg, .viz > svg.fp { min-width: 680px; }
+  .attlist li { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .attlist .since { display: none; }
+  .tbar .search { width: 100%; }
+  .msg { max-width: 92%; }
+}

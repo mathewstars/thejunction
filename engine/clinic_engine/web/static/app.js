@@ -1153,15 +1153,19 @@
       sv.appendChild(svg("rect", { x: xa, y: AT, width: Math.max(1, xb - xa), height: BT + BH - AT, class: "tg-band" }));
     });
     // panel A: the rating
-    sv.appendChild(svg("text", { x: PL, y: 14, class: "tg-t" }, ref.label || ref.key, svg("tspan", { class: "tg-s" }, isPhq ? "   score, 0 to 27 · the same scale on every patient’s page" : "   " + (ref.worse_is === "lower" ? "lower is worse" : "higher is worse"))));
+    sv.appendChild(svg("text", { x: PL, y: 14, class: "tg-t" }, ref.label || ref.key, svg("tspan", { class: "tg-s" }, isPhq ? "   score, shown 0 to " + aHi + " (the scale goes to 27) · the same on every patient’s page" : "   " + (ref.worse_is === "lower" ? "lower is worse" : "higher is worse"))));
     (isPhq ? [0, 10, 20] : [aLo, aHi]).forEach((g) => {
       if (g > aHi) return;
       sv.appendChild(svg("line", { x1: PL, y1: ya(g), x2: W - PR, y2: ya(g), class: isPhq && g === CUT ? "tg-cut" : "fp-grid" }));
       sv.appendChild(svg("text", { x: PL - 8, y: ya(g) + 4, class: "tg-ax", "text-anchor": "end" }, isPhq && g === CUT ? "cut-off 10" : String(Math.round(g * 10) / 10)));
     });
     sv.appendChild(svg("polyline", { points: rp.map((p) => x(p[0]).toFixed(1) + "," + ya(p[1]).toFixed(1)).join(" "), class: "tg-ref" }));
+    let from = rp.length - 1;
+    while (from > 0 && rp[from][1] > rp[from - 1][1]) from -= 1;
+    const rising = isPhq && from < rp.length - 1 && rp[rp.length - 1][1] >= CUT;
+    if (rising) sv.appendChild(svg("polyline", { points: rp.slice(from).map((p) => x(p[0]).toFixed(1) + "," + ya(p[1]).toFixed(1)).join(" "), class: "tg-ref now" }));
     rp.forEach((p, i) => {
-      sv.appendChild(svg("circle", { cx: x(p[0]), cy: ya(p[1]), r: 5, class: "tg-refpt" }));
+      sv.appendChild(svg("circle", { cx: x(p[0]), cy: ya(p[1]), r: 5, class: rising && i === rp.length - 1 ? "tg-refpt now" : "tg-refpt" }));
       const prev = i > 0 ? rp[i - 1][1] : null, next = i < rp.length - 1 ? rp[i + 1][1] : null;
       const peak = (prev === null || p[1] >= prev) && (next === null || p[1] >= next);
       sv.appendChild(svg("text", { x: x(p[0]), y: peak ? ya(p[1]) - 10 : ya(p[1]) + 19, class: "tg-v", "text-anchor": "middle" }, String(Math.round(p[1] * 10) / 10)));
@@ -1193,18 +1197,19 @@
       lines.push(el("div", { class: "tip-r" }, el("span", null, ref.label || ref.key), el("b", null, rpt ? String(rpt[1]) : "no rating")));
       ms.forEach((m) => { const p = near(sr.measures[m.r.key], day, 2); lines.push(el("div", { class: "tip-r" }, el("span", null, m.r.label), el("b", null, p ? fmtMeasure(m.r.key, p[1]) : "–"))); });
       const cxp = ev.clientX - box.left;
-      tip.show(cxp > box.width / 2 ? cxp - 260 : cxp, (box.height * (AT + AH + 6)) / H, lines);
+      tip.show(cxp > box.width / 2 ? cxp - 260 : cxp, (box.height * (BT + 8)) / H, lines);
     });
     sv.addEventListener("mouseleave", () => { cross.setAttribute("visibility", "hidden"); tip.hide(); });
     const said = pick.map((r) => (WORSE[r.key] || r.label.toLowerCase()));
     return el("div", null,
       el("ul", { class: "legend" },
         el("li", null, el("span", { class: "key k-ref" }), (ref.label || ref.key) + " (the number is the score)"),
-        el("li", null, el("span", { class: "key k-avg" }), "average of the " + pick.length + " measures"),
-        el("li", null, el("span", { class: "key k-m" }), pick.map((r) => r.label.charAt(0).toLowerCase() + r.label.slice(1)).join(" · ")),
-        isPhq && rp.some((p) => p[1] >= CUT) ? el("li", null, el("span", { class: "bandkey amber" }), "weeks at or over the cut-off") : null),
+        el("li", null, el("span", { class: anyGood ? "key k-avg" : "key k-m thick" }), "average of the measures that have a value that day"),
+        el("li", null, el("span", { class: "key k-m" }), "each measure (named below)"),
+        isPhq && rp.some((p) => p[1] >= CUT) ? el("li", null, el("span", { class: "bandkey amber" }), "weeks at or over the cut-off") : null,
+        rising ? el("li", null, el("span", { class: "key k-now" }), "the latest rise") : null),
       host,
-      el("p", { class: "muted small" }, "In the lower panel up means worse: " + joinAnd(said.map((t) => "“" + t + "”")) + " all point up. Each grey line is a 7-day average; a break in a line is a week without that measure." +
+      el("p", { class: "muted small" }, "In the lower panel up means worse: " + joinAnd(said.map((t) => "“" + t + "”")) + " all point up. Each grey line is a 7-day average of one measure; a break is a week without it, and the average then rests on the measures that remain." +
         (anyGood ? "" : " None of these came out as expected, so the average is drawn grey too.")));
   }
   // One row per measure, grouped by kind: the estimate and its range on one scale.
@@ -1253,7 +1258,7 @@
       const r = it.r, my = cy + RHt / 2, ok = r.agreement === "consistent";
       const g = svg("g", { class: "fp-row" });
       g.appendChild(svg("rect", { x: 0, y: cy, width: W, height: RHt, class: "fp-hit" }));
-      g.appendChild(svg("text", { x: LX - 14, y: my + 4, class: "fp-l", "text-anchor": "end" }, (charted.indexOf(r) >= 0 ? "in the chart above · " : "") + r.label));
+      g.appendChild(svg("text", { x: LX - 14, y: my + 4, class: "fp-l", "text-anchor": "end" }, r.label + (charted.indexOf(r) >= 0 ? "  ◆" : "")));
       g.appendChild(svg("line", { x1: x(r.ci_low), y1: my, x2: x(r.ci_high), y2: my, class: ok ? "fp-ci" : "fp-ci dim" }));
       g.appendChild(svg("circle", { cx: x(r.rho), cy: my, r: 5.5, class: "fp-pt " + (ok ? "k-cons" : r.agreement === "opposite" ? "k-opp" : "k-inc") }));
       g.appendChild(svg("text", { x: RX + 18, y: my + 4, class: ok ? "fp-v" : "fp-v dim" }, f2(r.rho)));
@@ -1334,7 +1339,7 @@
     else if (!a.series) wrap.appendChild(empty("Select “Recalculate” to draw the charts."));
     const fp = forestChart(a);
     if (fp) wrap.appendChild(el("section", { class: "panel" }, el("h2", null, "Every measure", el("span", { class: "count" }, des.rows_tested)),
-      el("p", { class: "muted small" }, "How closely each measure followed the " + refName + " across " + (des.observations || "") + " " + unitWord + ". Further right: it moved the way research leads us to expect when symptoms are worse. The bar is the range the true value plausibly lies in; a bar that reaches zero settles nothing."),
+      el("p", { class: "muted small" }, "How closely each measure followed the " + refName + " across " + (des.observations || "") + " " + unitWord + ". Further right: it moved the way research leads us to expect when symptoms are worse. The bar is the range the true value plausibly lies in; a bar that reaches zero settles nothing. ◆ marks the measures in the chart above; they come first in their group, the rest follow by size."),
       fp,
       el("ul", { class: "legend" }, el("li", null, el("span", { class: "dotk k-cons" }), "as expected: range clear of zero and corrected p ≤ 0.10"), el("li", null, el("span", { class: "dotk k-inc" }), "inconclusive"),
         (a.rows || []).some((r) => r.agreement === "opposite") ? el("li", null, el("span", { class: "dotk k-opp" }), "opposite") : null)));
