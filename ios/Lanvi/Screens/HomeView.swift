@@ -267,21 +267,7 @@ struct HomeView: View {
     @ViewBuilder private var actions: some View {
         switch store.todayThing {
         case .game(let k):
-            HStack(spacing: 12) {
-                moreButton
-                Button { open(.activity(k)) } label: {
-                    // The full words when they fit; a shorter form on narrow phones,
-                    // never a label cut off with "…".
-                    ViewThatFits(in: .horizontal) {
-                        Text(TodayCopy.button(k)).fixedSize()
-                        Text(TodayCopy.shortButton(k)).fixedSize()
-                        Text(TodayCopy.shortButton(k))
-                    }
-                }
-                    .buttonStyle(HomePrimaryStyle())
-                    .accessibilityIdentifier("home.primary")
-                chatButton
-            }
+            mainRow(TodayCopy.button(k), short: TodayCopy.shortButton(k)) { open(.activity(k)) }
         case .realWorld(let s):
             HStack(spacing: 16) {
                 Button("I did it") { Task { await store.answerSuggestion(s, didIt: true) } }
@@ -290,15 +276,28 @@ struct HomeView: View {
                     .buttonStyle(HomePrimaryStyle(fill: .white, edge: Theme.line, text: Theme.brand))
             }
         case .done:
-            Button { sheet = .more } label: {
-                Text("Do something more")
-                    .font(Theme.rounded(17, .heavy))
-                    .foregroundStyle(Theme.brand)
-                    .padding(.vertical, 14)
-                    .padding(.horizontal, 20)
-                    .contentShape(Rectangle())
+            // Done for today is never a dead end: the same row as before, and the
+            // game can always be played again.
+            mainRow("Play again · 90 sec", short: "Play again") { open(.activity(.focus)) }
+        }
+    }
+
+    /// Home's row: More, the one real button, the chat. The same shape in every state.
+    private func mainRow(_ label: String, short: String, action: @escaping () -> Void) -> some View {
+        HStack(spacing: 12) {
+            moreButton
+            Button(action: action) {
+                // The full words when they fit; a shorter form on narrow phones,
+                // never a label cut off with "…".
+                ViewThatFits(in: .horizontal) {
+                    Text(label).fixedSize()
+                    Text(short).fixedSize()
+                    Text(short)
+                }
             }
-            .buttonStyle(SpeechPressStyle())
+            .buttonStyle(HomePrimaryStyle())
+            .accessibilityIdentifier("home.primary")
+            chatButton
         }
     }
 
