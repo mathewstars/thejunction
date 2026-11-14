@@ -26,7 +26,9 @@ struct LanviMotion {
     var freezeBlink: Double? = nil       // debug: hold a blink at this phase (s)
     var loving = false                   // the `love` pose: soft happy eyes
 
-    static let eyesCenter = Rig.headToCanvas(CGPoint(x: 2, y: -30))
+    /// Between the eyes, in canvas units.
+    static let eyesCenter = Rig.headToCanvas(CGPoint(x: 2, y: -15))
+    private static var bodyHeight: CGFloat { Rig.body.size.height / Rig.unit }
 
     func frame() -> RigFrame {
         var f = RigFrame()
@@ -45,7 +47,7 @@ struct LanviMotion {
             f.bodySY += CGFloat(breathAmp * b)
             f.bodySX += CGFloat(breathAmp * 0.45 * b)
             // The head rides the chest a beat late.
-            f.headDY -= CGFloat(breathAmp * bLate) * Rig.body.size.height * 0.85
+            f.headDY -= CGFloat(breathAmp * bLate) * Self.bodyHeight * 0.85
 
             // Tail: base sways, the tip follows 0.25 s later.
             let tailPeriod = held == .happy ? 2.2 : 3.3
@@ -87,7 +89,7 @@ struct LanviMotion {
         }
 
         // The head stays on the neck when the body squashes or stretches.
-        f.headDY -= (f.bodySY - 1) * Rig.body.size.height * 0.85
+        f.headDY -= (f.bodySY - 1) * Self.bodyHeight * 0.85
 
         // --- Blink (always, even with Reduce Motion) ---
         applyBlink(&f, sleepy: sleepy)
@@ -138,16 +140,16 @@ struct LanviMotion {
         switch kind {
         case 0: // look around
             if Motion.inside(ft, 0.2, 1.0) { f.eyes = .right }
-            else if Motion.inside(ft, 1.0, 1.8) { f.eyes = .leftUp }
+            else if Motion.inside(ft, 1.0, 1.8) { f.eyes = .left }
             let side = Motion.hold(ft, start: 0.25, end: 1.0, response: 0.35) - Motion.hold(ft, start: 1.05, end: 1.8, response: 0.35)
             f.headDX += CGFloat(10 * side)
             f.headTilt += 4 * side
         case 1: yawn(&f, yt: ft)
         case 2: // paw wave
             let up = Motion.hold(ft, start: 0.0, end: 1.6, response: 0.35, damping: 0.6)
-            f.pawR += 14 * up * sin(ft * 2 * .pi / 0.42)
-            f.pawRX += CGFloat(50 * up)
-            f.pawRY -= CGFloat(160 * up)
+            f.pawR += 30 * up + 12 * up * sin(ft * 2 * .pi / 0.42)
+            f.pawRX += CGFloat(10 * up) / Rig.unit
+            f.pawRY -= CGFloat(360 * up) / Rig.unit
             if Motion.inside(ft, 0.15, 1.6) { f.eyes = .happy }
             f.headTilt -= 4 * up
         default: // happy squint
@@ -174,7 +176,7 @@ struct LanviMotion {
     /// Head turn, tilt, eye offset and eye shape for a target in canvas units.
     private static func lookPose(_ p: CGPoint?) -> (dx: CGFloat, tilt: Double, ex: CGFloat, ey: CGFloat, shape: EyeShape?) {
         guard let p else { return (0, 0, 0, 0, nil) }
-        let dx = p.x - eyesCenter.x, dy = p.y - eyesCenter.y
+        let dx = (p.x - eyesCenter.x) / Rig.unit, dy = (p.y - eyesCenter.y) / Rig.unit
         let d = max(hypot(dx, dy), 1)
         let headDX = max(min(dx * 0.04, 12), -12)
         let tilt = Double(max(min(dx * 0.012, 6), -6))
@@ -183,11 +185,9 @@ struct LanviMotion {
         let a = atan2(-Double(dy), Double(dx)) * 180 / .pi   // 0 = right, 90 = up
         let shape: EyeShape
         switch a {
-        case -35..<28: shape = .right
-        case 28..<68: shape = .rightUp
-        case 68..<112: shape = .up
-        case 112..<152: shape = .leftUp
-        case 152...180, -180 ..< -145: shape = .left
+        case -40..<45: shape = .right
+        case 45..<135: shape = .up
+        case 135...180, -180 ..< -140: shape = .left
         default: shape = .open   // looking down: open eyes, nudged down
         }
         return (headDX, tilt, ex, ey + (shape == .open ? 4 : 0), shape)
@@ -225,10 +225,10 @@ struct LanviMotion {
             earsLag(&f, lift: h.lift, t: rt - 0.05)
             let paws = Motion.hold(rt, start: 0.08, end: 1.35, response: 0.32, damping: 0.55)
             // Both paws up beside the white chest, wiggling.
-            let wiggle = 7 * sin(2 * .pi * rt / 0.3) * paws
-            f.pawL += wiggle; f.pawR -= wiggle
-            f.pawLX -= CGFloat(45 * paws); f.pawRX += CGFloat(45 * paws)
-            f.pawLY -= CGFloat(150 * paws); f.pawRY -= CGFloat(150 * paws)
+            let wiggle = 6 * sin(2 * .pi * rt / 0.3) * paws
+            f.pawL += 28 * paws + wiggle; f.pawR += 28 * paws - wiggle
+            f.pawLX -= CGFloat(10 * paws) / Rig.unit; f.pawRX += CGFloat(10 * paws) / Rig.unit
+            f.pawLY -= CGFloat(330 * paws) / Rig.unit; f.pawRY -= CGFloat(330 * paws) / Rig.unit
             // Tail wags fast, three-ish times, with the tip whipping behind.
             let wagEnv = Motion.hold(rt, start: 0.0, end: 1.3, response: 0.25, damping: 0.9)
             let wag = { (x: Double) in 15 * sin(2 * .pi * x / 0.34) }
@@ -250,7 +250,7 @@ struct LanviMotion {
             f.pawLY -= CGFloat(40 * jolt); f.pawRY -= CGFloat(40 * jolt)
         case .curious:
             guard rt < 2.2 else { return }
-            if look == nil, Motion.inside(rt, 0.05, 1.7), f.eyes == .open { f.eyes = .rightUp; f.eyeDX += 4; f.eyeDY -= 3 }
+            if look == nil, Motion.inside(rt, 0.05, 1.7), f.eyes == .open { f.eyes = .up; f.eyeDX += 4; f.eyeDY -= 3 }
             guard m else { return }
             let tilt = Motion.hold(rt, start: 0.05, end: 1.6, response: 0.4, damping: 0.55)
             f.headTilt += 9 * tilt
@@ -317,16 +317,14 @@ struct LanviMotion {
             else if Motion.rnd(k, seed &+ 32) < 0.2, bt >= 0.3 * len, bt < 0.48 * len { phase = (bt - 0.3 * len) / len }   // the odd double blink
         }
         guard let p = phase, p >= 0, p < 0.18 else { return }
-        // close 60 ms, shut 40 ms, open 80 ms
+        // close 60 ms, shut 40 ms, open 80 ms: open, half closed, closed, half closed, open
         let o: Double = p < 0.06 ? 1 - p / 0.06 : (p < 0.10 ? 0 : Motion.easeOut((p - 0.10) / 0.08))
         switch f.eyes {
         case .happy, .closed: return
         case .half:
-            if o < 0.45 { f.eyes = .closed } else { f.eyeOpen = CGFloat(0.55 + 0.45 * o) }
+            if o < 0.5 { f.eyes = .closed }
         default:
-            if o < 0.2 { f.eyes = .closed }
-            else if o < 0.6 { f.eyes = .half; f.eyeOpen = CGFloat(0.75 + 0.25 * (o - 0.2) / 0.4) }
-            else { f.eyeOpen = CGFloat(0.55 + 0.45 * (o - 0.6) / 0.4) }
+            if o < 0.22 { f.eyes = .closed } else if o < 0.7 { f.eyes = .half }
         }
     }
 }

@@ -1,24 +1,34 @@
 #!/usr/bin/env python3
-"""Cut Lanvi's paper-puppet parts out of the green-screen parts sheet.
+"""Cut Lanvi's paper-puppet parts out of the painted art sheets.
 
 Usage:
-    python3 ios/tools/cut_puppet_parts.py path/to/lanvi-parts-sheet.png [--list] [--preview DIR]
+    python3 ios/tools/cut_puppet_parts.py PARTS.png FACE.png [--preview DIR]
+
+The sheets are 2048 x 2048 PNGs with a real transparent background:
+- PARTS: top row left ear, head, right ear; middle row body, tail;
+  bottom row left front leg, right front leg.
+- FACE: row 1 eye pairs open, half closed, closed, happy; row 2 eye pairs looking
+  left, looking right, looking up, wide; row 3 mouths smile, o, happy, yawn, flat.
 
 What it does, in plain words:
-1. Keys out the green: a pixel is background when its green is much stronger than
-   its red and blue ("greenness"). A soft ramp between two greenness levels gives
-   soft, anti-aliased fur edges instead of a hard cut.
-2. Removes green spill: the edge is shrunk by one pixel, and any green left in a
-   pixel is pulled down to the level of its red/blue (classic de-spill).
-3. Finds every separate part (connected blob) on the sheet, names them by where
-   they sit (see PARTS below), trims each to its own box and saves it into
+1. Finds every separate piece: pixels that are not see-through, joined to their
+   neighbours, make one piece. Pieces close together in a row (the two eyes of a
+   pair) are kept as one image.
+2. Cleans the edge: the sheets keep a coloured glow in their see-through pixels,
+   so every soft edge pixel takes the colour of the solid paint just inside it
+   (no glow, no dark rim). Nearly solid pixels become fully solid.
+3. Trims each piece, scales it to 60 % (plenty sharp on a phone) and saves it into
    ios/Lanvi/Assets.xcassets as puppet-<name>.imageset.
+4. Writes ios/Lanvi/Mascot/LanviArt.swift with every piece's size on the sheet,
+   so the rig in code always matches the art. Each eye pair stays one image; the
+   file also says where to split it, so the two eyes can sit on the head's own
+   eye patches (they are further apart on the head than on the face sheet).
 
-Only Pillow is needed. Re-run it whenever better art arrives; if the new sheet's
-layout differs, run with --list to see the blobs and adjust PARTS.
+Only Pillow is needed. Re-run it whenever better art arrives.
 """
 import json
 import os
+import shutil
 import sys
 from collections import deque
 
@@ -26,37 +36,16 @@ from PIL import Image, ImageChops, ImageFilter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.normpath(os.path.join(HERE, "..", "Lanvi", "Assets.xcassets"))
+SWIFT = os.path.normpath(os.path.join(HERE, "..", "Lanvi", "Mascot", "LanviArt.swift"))
+STEP = 4          # blob finding works on a 4x smaller mask
+SAVE_SCALE = 0.6  # saved assets are this size of the sheet
+PAIR_GAP = 70     # face sheet pixels: pieces closer than this in a row are one image (eye pairs)
 
-# Greenness = G - max(R, B). Background sits around 230+, fur is negative.
-SOLID = 28     # at or below: fully opaque
-CLEAR = 120    # at or above: fully transparent
-STEP = 4       # downsample factor for blob finding
+PART_NAMES = [["ear-left", "head", "ear-right"], ["body", "tail"], ["leg-left", "leg-right"]]
+FACE_NAMES = [["eyes-open", "eyes-half", "eyes-closed", "eyes-happy"],
+              ["eyes-left", "eyes-right", "eyes-up", "eyes-wide"],
+              ["mouth-smile", "mouth-o", "mouth-happy", "mouth-yawn", "mouth-flat"]]
 
-# Each part: name -> the point (in sheet pixels) that lies inside it; eye pairs and
-# mouth pieces made of several blobs list several points. Parts are drawn on
-# the sheet at 2476x1642.
-PARTS = {
-    "reference": [(560, 600)],
-    "ear-left": [(1430, 230)],
-    "head": [(1850, 290)],
-    "ear-right": [(2270, 230)],
-    "body": [(1550, 700)],
-    "tail": [(2150, 700)],
-    "paw-left": [(1900, 950)],
-    "paw-right": [(2220, 950)],
-}
-
-def greenness_alpha(img):
-    r, g, b = img.split()
-    mx = ImageChops.lighter(r, b)
-    gn = ImageChops.subtract(g, mx)          # 0 when not green-dominant
-    span = CLEAR - SOLID
-    alpha = gn.point(lambda v: 255 if v <= SOLID else (0 if v >= CLEAR else int(255 * (CLEAR - v) / span)))
-    # de-spill: green may not exceed the average of red and blue (Lanvi's fur is
-    # blue and white, so this never touches real fur colour, only green spill)
-    avg = Image.blend(r, b, 0.5)
-    g2 = ImageChops.darker(g, avg)
-    return Image.merge("RGB", (r, g2, b)), alpha
 
 def blobs(alpha):
     small = alpha.resize((alpha.width // STEP, alpha.height // STEP), Image.BILINEAR)
@@ -66,138 +55,147 @@ def blobs(alpha):
     out = []
     for y in range(h):
         for x in range(w):
-            if seen[y][x] or px[x, y] < 128:
+            if seen[y][x] or px[x, y] < 100:
                 continue
-            q = deque([(x, y)]); seen[y][x] = len(out) + 1
+            q = deque([(x, y)])
+            seen[y][x] = 1
             cells = []
             while q:
-                cx, cy = q.popleft(); cells.append((cx, cy))
-                for nx, ny in ((cx+1, cy), (cx-1, cy), (cx, cy+1), (cx, cy-1)):
-                    if 0 <= nx < w and 0 <= ny < h and not seen[ny][nx] and px[nx, ny] >= 128:
-                        seen[ny][nx] = len(out) + 1; q.append((nx, ny))
-            xs = [c[0] for c in cells]; ys = [c[1] for c in cells]
-            out.append({"id": len(out) + 1, "cells": cells, "area": len(cells) * STEP * STEP,
-                        "box": (min(xs) * STEP, min(ys) * STEP, (max(xs) + 1) * STEP, (max(ys) + 1) * STEP)})
-    return out, seen
+                cx, cy = q.popleft()
+                cells.append((cx, cy))
+                for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
+                    if 0 <= nx < w and 0 <= ny < h and not seen[ny][nx] and px[nx, ny] >= 100:
+                        seen[ny][nx] = 1
+                        q.append((nx, ny))
+            if len(cells) * STEP * STEP < 400:
+                continue
+            xs = [c[0] for c in cells]
+            ys = [c[1] for c in cells]
+            out.append({"cells": cells,
+                        "box": [min(xs) * STEP, min(ys) * STEP, (max(xs) + 1) * STEP, (max(ys) + 1) * STEP]})
+    return out, (w, h)
 
-def blob_at(seen, pt):
-    x, y = pt[0] // STEP, pt[1] // STEP
-    # look in a small neighbourhood (thin strokes like arcs)
-    for r in range(0, 12):
-        for dy in range(-r, r + 1):
-            for dx in range(-r, r + 1):
-                yy, xx = y + dy, x + dx
-                if 0 <= yy < len(seen) and 0 <= xx < len(seen[0]) and seen[yy][xx]:
-                    return seen[yy][xx]
-    return None
 
-def main():
-    args = sys.argv[1:]
-    if not args:
-        print(__doc__); sys.exit(1)
-    sheet = Image.open(args[0]).convert("RGB")
-    rgb, alpha = greenness_alpha(sheet)
-    found, seen = blobs(alpha)
-    found = [b for b in found if b["area"] >= 300]
-    if "--list" in args:
-        for b in sorted(found, key=lambda b: (b["box"][1] // 200, b["box"][0])):
-            print(b["id"], b["box"], b["area"])
-        return
-    preview = None
-    if "--preview" in args:
-        preview = args[args.index("--preview") + 1]; os.makedirs(preview, exist_ok=True)
+def rows(found, names, pair_gap):
+    """Group pieces into rows (by vertical centre), then join close pieces in a row."""
+    found = sorted(found, key=lambda b: (b["box"][1] + b["box"][3]) / 2)
+    grouped = []
+    for b in found:
+        cy = (b["box"][1] + b["box"][3]) / 2
+        if grouped and abs(cy - grouped[-1][0]) < 160:
+            grouped[-1][1].append(b)
+        else:
+            grouped.append([cy, [b]])
+    result = []
+    for _, row in grouped:
+        row.sort(key=lambda b: b["box"][0])
+        items = [[row[0]]]
+        for b in row[1:]:
+            if b["box"][0] - items[-1][-1]["box"][2] < pair_gap:
+                items[-1].append(b)
+            else:
+                items.append([b])
+        result.append(items)
+    if [len(r) for r in result] != [len(r) for r in names]:
+        raise SystemExit(f"layout differs from what the script expects: rows {[len(r) for r in result]}, "
+                         f"expected {[len(r) for r in names]}")
+    return [(n, item) for row_names, row in zip(names, result) for n, item in zip(row_names, row)]
 
-    parts = dict(PARTS)
-    parts.update(face_parts(found))
-    by_id = {b["id"]: b for b in found}
-    manifest = {}
-    for name, pts in parts.items():
-        ids = {blob_at(seen, p) for p in pts} - {None}
-        if not ids:
-            print("MISSING", name); continue
-        # mask = the chosen blobs only (blown back up), grown a little to keep soft edges
-        mask_small = Image.new("L", (len(seen[0]), len(seen)), 0)
-        mp = mask_small.load()
-        for i in ids:
-            for cx, cy in by_id[i]["cells"]:
-                mp[cx, cy] = 255
-        mask = mask_small.resize(sheet.size, Image.NEAREST).filter(ImageFilter.MaxFilter(2 * STEP + 1))
-        a = ImageChops.multiply(alpha, mask)
-        a = a.filter(ImageFilter.MinFilter(3))          # shrink the edge one pixel
-        a = a.filter(ImageFilter.GaussianBlur(0.6))     # and soften it again
-        a = a.point(lambda v: 0 if v < 6 else v)
-        box = a.getbbox()
-        pad = 4
-        box = (max(box[0] - pad, 0), max(box[1] - pad, 0), min(box[2] + pad, sheet.width), min(box[3] + pad, sheet.height))
-        piece = rgb.crop(box).convert("RGBA")
-        piece.putalpha(a.crop(box))
-        piece = bleed(piece)
-        manifest[name] = {"box": box, "size": piece.size}
-        if name == "reference":
-            if preview: piece.save(os.path.join(preview, "reference.png"))
-            continue
-        save_asset(piece, "puppet-" + name)
-        if preview:
-            piece.save(os.path.join(preview, name + ".png"))
-    print(json.dumps(manifest, indent=1))
+
+def cut(sheet, pieces, small_size):
+    alpha = sheet.getchannel("A")
+    mask_small = Image.new("L", small_size, 0)
+    mp = mask_small.load()
+    for b in pieces:
+        for cx, cy in b["cells"]:
+            mp[cx, cy] = 255
+    mask = mask_small.resize(sheet.size, Image.NEAREST).filter(ImageFilter.MaxFilter(2 * STEP + 3))
+    a = ImageChops.multiply(alpha, mask)
+    a = a.point(lambda v: 0 if v < 4 else min(255, round(v * 255 / 248)))   # nearly solid = solid
+    box = a.getbbox()
+    pad = 3
+    box = (max(box[0] - pad, 0), max(box[1] - pad, 0), min(box[2] + pad, sheet.width), min(box[3] + pad, sheet.height))
+    piece = sheet.crop(box)
+    piece.putalpha(a.crop(box))
+    return bleed(piece), box
+
 
 def bleed(piece):
-    """Replace colour in see-through pixels with the nearest solid fur colour, so
-    scaling on the phone never blends in a dark or green halo."""
+    """Soft edge pixels take the colour of the solid paint just inside them."""
     r, g, b, a = piece.split()
-    solid = a.point(lambda v: 255 if v > 200 else 0)
+    solid = a.point(lambda v: 255 if v > 235 else 0)
     rgb = Image.merge("RGB", (r, g, b))
     filled = Image.new("RGB", piece.size, (0, 0, 0))
     filled.paste(rgb, mask=solid)
     known = solid
-    for _ in range(6):
+    for _ in range(8):
         grown = filled.filter(ImageFilter.MaxFilter(3))
         grown_mask = known.filter(ImageFilter.MaxFilter(3))
         ring = ImageChops.subtract(grown_mask, known)
         filled.paste(grown, mask=ring)
         known = grown_mask
-    # solid pixels keep their colour; the soft edge takes the colour of the fur just
-    # inside it, so the edge fades out in fur colour, never in a green or dark rim
-    out_rgb = Image.composite(rgb, filled, solid)
-    out = out_rgb.convert("RGBA"); out.putalpha(a)
+    out = Image.composite(rgb, filled, solid).convert("RGBA")
+    out.putalpha(a)
     return out
 
-def face_parts(found):
-    """Eyes (8 pairs, left to right: open, half closed, happy arc, happy arc 2,
-    then looking right, right and up, up, and wide open) and mouths (5: smile, o, big happy, yawn, flat) and mouths (5) sit in two rows at the bottom of the sheet."""
-    eyes = sorted([b for b in found if 1100 < b["box"][1] < 1350 and b["box"][3] < 1350], key=lambda b: b["box"][0])
-    mouths = sorted([b for b in found if b["box"][1] >= 1350], key=lambda b: b["box"][0])
-    eye_names = ["open", "half", "happy", "happy2", "right", "right-up", "up", "wide"]
-    mouth_names = ["smile", "o", "happy", "yawn", "flat"]
-    out = {}
-    if len(eyes) == 16:
-        # each eye is saved on its own (l = the one on the viewer's left), so the
-        # pair can be spaced to sit on the head's eye patches
-        for i, n in enumerate(eye_names):
-            left, right = eyes[2 * i: 2 * i + 2]
-            out["eye-" + n + "-l"] = [center(left)]
-            out["eye-" + n + "-r"] = [center(right)]
-    else:
-        print("expected 16 eye blobs, found", len(eyes), [b["box"] for b in eyes])
-    if len(mouths) == 5:
-        for b, n in zip(mouths, mouth_names):
-            out["mouth-" + n] = [center(b)]
-    else:
-        print("expected 5 mouth blobs, found", len(mouths), [b["box"] for b in mouths])
-    return out
-
-def center(b):
-    # a point surely inside the blob: one of its own cells
-    cx, cy = b["cells"][len(b["cells"]) // 2]
-    return (cx * STEP + STEP // 2, cy * STEP + STEP // 2)
 
 def save_asset(img, name):
     d = os.path.join(ASSETS, name + ".imageset")
     os.makedirs(d, exist_ok=True)
-    img.save(os.path.join(d, name + ".png"), optimize=True)
+    small = img.resize((max(1, round(img.width * SAVE_SCALE)), max(1, round(img.height * SAVE_SCALE))), Image.LANCZOS)
+    small.save(os.path.join(d, name + ".png"), optimize=True)
     with open(os.path.join(d, "Contents.json"), "w") as f:
         json.dump({"images": [{"filename": name + ".png", "idiom": "universal", "scale": "1x"}],
                    "info": {"author": "xcode", "version": 1}}, f, indent=2)
+
+
+def main():
+    args = sys.argv[1:]
+    if len(args) < 2:
+        print(__doc__)
+        sys.exit(1)
+    preview = args[args.index("--preview") + 1] if "--preview" in args else None
+    if preview:
+        os.makedirs(preview, exist_ok=True)
+
+    # one set of puppet assets only: clear the old ones first
+    for d in os.listdir(ASSETS):
+        if d.startswith("puppet-") and d.endswith(".imageset"):
+            shutil.rmtree(os.path.join(ASSETS, d))
+
+    sizes = {}
+    eyes = {}
+    for path, names, gap in ((args[0], PART_NAMES, 0), (args[1], FACE_NAMES, PAIR_GAP)):
+        sheet = Image.open(path).convert("RGBA")
+        found, small_size = blobs(sheet.getchannel("A"))
+        for name, pieces in rows(found, names, gap):
+            img, box = cut(sheet, pieces, small_size)
+            save_asset(img, "puppet-" + name)
+            sizes[name] = (img.width, img.height, box[0], box[1])
+            if name.startswith("eyes-") and len(pieces) == 2:
+                # where to split a pair in two, and each eye's centre, in pixels of the image
+                l, r = pieces
+                split = (l["box"][2] + r["box"][0]) / 2 - box[0]
+                c = lambda b: ((b["box"][0] + b["box"][2]) / 2 - box[0], (b["box"][1] + b["box"][3]) / 2 - box[1])
+                eyes[name] = (split, *c(l), *c(r))
+            if preview:
+                img.save(os.path.join(preview, name + ".png"))
+
+    lines = ["// Written by ios/tools/cut_puppet_parts.py. Do not edit by hand: re-run the script.",
+             "// Each puppet part's size in pixels on the 2048 x 2048 art sheet.",
+             "import CoreGraphics", "", "enum LanviArt {", "    static let size: [String: CGSize] = ["]
+    for name, (w, h, _, _) in sizes.items():
+        lines.append(f'        "{name}": CGSize(width: {w}, height: {h}),')
+    lines += ["    ]", "",
+              "    /// Eye pairs: where the image splits between the eyes, and each eye's centre.",
+              "    static let eyeSplit: [String: (split: CGFloat, left: CGPoint, right: CGPoint)] = ["]
+    for name, (sp, lx, ly, rx, ry) in eyes.items():
+        lines.append(f'        "{name}": ({sp:.0f}, CGPoint(x: {lx:.0f}, y: {ly:.0f}), CGPoint(x: {rx:.0f}, y: {ry:.0f})),')
+    lines += ["    ]", "", "    static func px(_ name: String) -> CGSize { size[name] ?? CGSize(width: 1, height: 1) }", "}", ""]
+    with open(SWIFT, "w") as f:
+        f.write("\n".join(lines))
+    print(json.dumps(sizes))
+
 
 if __name__ == "__main__":
     main()

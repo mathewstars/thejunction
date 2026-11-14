@@ -26,7 +26,9 @@ struct LanviPuppet: View {
     @State private var lookTo: CGPoint?
     @State private var lookAt: Double = -100
 
+    /// Points per canvas unit (master pixel), and per motion unit.
     private var k: CGFloat { size / Rig.canvas.height }
+    private var mu: CGFloat { k * Rig.unit }
     private var held: LanviMood { moodOverride ?? pose.puppetMood }
     private var canvasOrigin: CGPoint {
         CGPoint(x: (size - Rig.canvas.width * k) / 2, y: size - Rig.canvas.height * k)
@@ -39,7 +41,7 @@ struct LanviPuppet: View {
                 shadow(f)
                 rig(f)
                     .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k)
-                    .offset(x: f.rootX * k, y: f.rootY * k)
+                    .offset(x: f.rootX * mu, y: f.rootY * mu)
             }
             .frame(width: size, height: size, alignment: .bottom)
         }
@@ -126,86 +128,121 @@ struct LanviPuppet: View {
         let lift = max(-f.rootY, 0) / 140
         return Ellipse()
             .fill(Theme.ink.opacity(0.13 * (1 - 0.5 * lift)))
-            .frame(width: size * 0.5 * (1 - 0.25 * lift) * f.bodySX, height: size * 0.06)
-            .offset(y: size * 0.02)
+            .frame(width: size * 0.56 * (1 - 0.25 * lift) * f.bodySX, height: size * 0.06)
+            .offset(x: size * 0.08, y: size * 0.02)
     }
 
     private func rig(_ f: RigFrame) -> some View {
         ZStack(alignment: .topLeading) {
             tail(f)
+            headTurn(f) {
+                part(Rig.earL, rotate: -f.earL, sy: f.earLStretch)
+                part(Rig.earR, rotate: f.earR, sy: f.earRStretch)
+            }
             part(Rig.body, sx: f.bodySX, sy: f.bodySY)
-            headGroup(f)
-            part(Rig.pawL, rotate: -f.pawL, dx: f.pawLX, dy: f.pawLY + (f.bodySY - 1) * 40)
-            part(Rig.pawR, rotate: f.pawR, dx: f.pawRX, dy: f.pawRY + (f.bodySY - 1) * 40)
+            leg(Rig.legL, rotate: f.pawL, dx: f.pawLX, dy: f.pawLY, bodySY: f.bodySY)
+            leg(Rig.legR, rotate: -f.pawR, dx: f.pawRX, dy: f.pawRY, bodySY: f.bodySY)
+            headTurn(f) {
+                head()
+                eyes(f)
+                mouth(f)
+            }
         }
     }
 
-    private func part(_ p: Rig.Part, rotate: Double = 0, sx: CGFloat = 1, sy: CGFloat = 1,
-                      dx: CGFloat = 0, dy: CGFloat = 0) -> some View {
+    private func image(_ p: Rig.Part) -> some View {
         Image(p.image)
             .resizable()
             .interpolation(.high)
             .frame(width: p.size.width * k, height: p.size.height * k)
-            .rotationEffect(.degrees(p.rest))
+    }
+
+    private func part(_ p: Rig.Part, rotate: Double = 0, sx: CGFloat = 1, sy: CGFloat = 1) -> some View {
+        image(p)
             .scaleEffect(x: sx, y: sy, anchor: p.pivot)
             .rotationEffect(.degrees(rotate), anchor: p.pivot)
-            .position(x: (p.center.x + dx) * k, y: (p.center.y + dy) * k)
+            .position(x: p.local.x * k, y: p.local.y * k)
+    }
+
+    /// A front leg: its top fades into the chest fur so it grows out of the body.
+    private func leg(_ p: Rig.Part, rotate: Double, dx: CGFloat, dy: CGFloat, bodySY: CGFloat) -> some View {
+        image(p)
+            .mask(LinearGradient(stops: [.init(color: .clear, location: 0),
+                                         .init(color: .black, location: Rig.legFade)],
+                                 startPoint: .top, endPoint: .bottom))
+            .rotationEffect(.degrees(rotate), anchor: p.pivot)
+            .position(x: p.local.x * k + dx * mu, y: p.local.y * k + dy * mu + (bodySY - 1) * 30 * mu)
     }
 
     /// The tail turns at its hidden base; the tip turns again around the tail's middle
     /// a beat later, so the tip trails behind (one picture, so no seam can open).
     private func tail(_ f: RigFrame) -> some View {
         let p = Rig.tail
-        return Image(p.image)
-            .resizable()
-            .interpolation(.high)
-            .frame(width: p.size.width * k, height: p.size.height * k)
-            .scaleEffect(x: -1, y: 1)
-            .rotationEffect(.degrees(f.tailTip), anchor: Rig.tailMid)
-            .rotationEffect(.degrees(f.tail), anchor: p.pivot)
-            .position(x: p.center.x * k, y: p.center.y * k)
+        return image(p)
+            .rotationEffect(.degrees(-f.tailTip), anchor: Rig.tailMid)
+            .rotationEffect(.degrees(-f.tail), anchor: p.pivot)
+            .position(x: p.local.x * k, y: p.local.y * k)
     }
 
-    /// Ears, head, eyes and mouth turn together around the neck.
-    private func headGroup(_ f: RigFrame) -> some View {
+    /// Everything that turns with the head (the ears behind the body, and the head,
+    /// eyes and mouth in front) gets the same tilt around the neck and the same shift.
+    private func headTurn<Content: View>(_ f: RigFrame, @ViewBuilder _ content: () -> Content) -> some View {
         let neck = UnitPoint(x: Rig.neck.x / Rig.canvas.width, y: Rig.neck.y / Rig.canvas.height)
-        return ZStack(alignment: .topLeading) {
-            part(Rig.earL, rotate: -f.earL, sy: f.earLStretch)
-            part(Rig.earR, rotate: f.earR, sy: f.earRStretch)
-            part(Rig.head)
-            eye(f, left: true)
-            eye(f, left: false)
-            mouth(f)
-        }
-        .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k)
-        .rotationEffect(.degrees(f.headTilt), anchor: neck)
-        .offset(x: f.headDX * k, y: f.headDY * k)
+        return ZStack(alignment: .topLeading) { content() }
+            .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k, alignment: .topLeading)
+            .rotationEffect(.degrees(f.headTilt), anchor: neck)
+            .offset(x: f.headDX * mu, y: f.headDY * mu)
     }
 
-    private func eye(_ f: RigFrame, left: Bool) -> some View {
+    /// The head, with its neck stub fading out under the chin.
+    private func head() -> some View {
+        let p = Rig.head
+        return image(p)
+            .mask(LinearGradient(stops: [.init(color: .black, location: 0),
+                                         .init(color: .black, location: Rig.neckFade.from),
+                                         .init(color: .clear, location: Rig.neckFade.to)],
+                                 startPoint: .top, endPoint: .bottom))
+            .position(x: p.local.x * k, y: p.local.y * k)
+    }
+
+    /// One eye-pair image, drawn as two halves so each eye sits on its own patch.
+    private func eyes(_ f: RigFrame) -> some View {
         let shape = f.eyes
-        let img = shape.image(left: left)
+        let px = LanviArt.px(shape.name)
+        let split = LanviArt.eyeSplit[shape.name] ?? (px.width / 2, CGPoint(x: px.width / 4, y: px.height / 2),
+                                                      CGPoint(x: px.width * 3 / 4, y: px.height / 2))
         let s = Rig.eyeScale * Rig.head.scale * k
-        let base = left ? Rig.eyeL : Rig.eyeR
-        let c = Rig.headToCanvas(CGPoint(x: base.x + f.eyeDX, y: base.y + shape.dropY + f.eyeDY))
-        return Image(img.name)
+        let shift = CGPoint(x: f.eyeDX, y: shape.dropY + f.eyeDY)
+        let l = Rig.headToCanvas(CGPoint(x: Rig.eyeL.x + shift.x, y: Rig.eyeL.y + shift.y))
+        let r = Rig.headToCanvas(CGPoint(x: Rig.eyeR.x + shift.x, y: Rig.eyeR.y + shift.y))
+        let full = Image("puppet-" + shape.name)
             .resizable()
             .interpolation(.high)
-            .frame(width: shape.px.width * s, height: shape.px.height * s)
-            .scaleEffect(x: img.flipX ? -1 : 1, y: img.flipY ? -1 : 1)
-            .scaleEffect(x: 1, y: f.eyeOpen, anchor: UnitPoint(x: 0.5, y: 0.62))
-            .position(x: c.x * k, y: c.y * k)
+            .frame(width: px.width * s, height: px.height * s)
+        return ZStack(alignment: .topLeading) {
+            full
+                .frame(width: split.split * s, height: px.height * s, alignment: .leading)
+                .clipped()
+                .position(x: l.x * k + (split.split / 2 - split.left.x) * s,
+                          y: l.y * k + (px.height / 2 - split.left.y) * s)
+            full
+                .frame(width: (px.width - split.split) * s, height: px.height * s, alignment: .trailing)
+                .clipped()
+                .position(x: r.x * k + ((split.split + px.width) / 2 - split.right.x) * s,
+                          y: r.y * k + (px.height / 2 - split.right.y) * s)
+        }
     }
 
     private func mouth(_ f: RigFrame) -> some View {
         let m = f.mouth
+        let px = LanviArt.px(m.name)
         let s = m.scale * Rig.head.scale * k
-        let h = m.px.height * m.scale
+        let h = px.height * m.scale
         let c = Rig.headToCanvas(CGPoint(x: Rig.mouthTop.x, y: Rig.mouthTop.y + m.dropY + h / 2))
-        return Image(m.image)
+        return Image("puppet-" + m.name)
             .resizable()
             .interpolation(.high)
-            .frame(width: m.px.width * s, height: m.px.height * s)
+            .frame(width: px.width * s, height: px.height * s)
             .scaleEffect(f.mouthScale, anchor: .top)
             .position(x: c.x * k, y: c.y * k)
     }

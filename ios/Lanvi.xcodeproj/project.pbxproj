@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		14D52ABE9497798035286052 /* LanviArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B5136458E518ED70EBBEF0 /* LanviArt.swift */; };
 		20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CA1C956F7514A490E2C77E /* Theme.swift */; };
 		43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856CB611495D91BE8B81E2D4 /* WelcomeView.swift */; };
 		471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4534A11EF57C9E6ACC5030B /* HomeView.swift */; };
@@ -29,6 +30,7 @@
 		743C0B865552B2E8824FA20B /* LanviRig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviRig.swift; sourceTree = "<group>"; };
 		856CB611495D91BE8B81E2D4 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		8863592B90900967DE7CA797 /* LanviPuppet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviPuppet.swift; sourceTree = "<group>"; };
+		96B5136458E518ED70EBBEF0 /* LanviArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviArt.swift; sourceTree = "<group>"; };
 		9A53ADD818B703E6EC089EFE /* SkyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyScene.swift; sourceTree = "<group>"; };
 		B2CF64DD8486227CA2F2DC5B /* LanviMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviMotion.swift; sourceTree = "<group>"; };
 		BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviView.swift; sourceTree = "<group>"; };
@@ -41,6 +43,7 @@
 		34E5733CDBCA97363404C909 /* Mascot */ = {
 			isa = PBXGroup;
 			children = (
+				96B5136458E518ED70EBBEF0 /* LanviArt.swift */,
 				B2CF64DD8486227CA2F2DC5B /* LanviMotion.swift */,
 				8863592B90900967DE7CA797 /* LanviPuppet.swift */,
 				5E91BDD22A3D7AF3A6B1F654 /* LanviPuppetPreview.swift */,
@@ -175,6 +178,7 @@
 				B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */,
 				471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */,
 				A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */,
+				14D52ABE9497798035286052 /* LanviArt.swift in Sources */,
 				4ABAE2E43A171B3B8395BD70 /* LanviMotion.swift in Sources */,
 				4B8E994B97B8B69A57E5C727 /* LanviPuppet.swift in Sources */,
 				F143A28682E5808FBAD2EB81 /* LanviPuppetPreview.swift in Sources */,
