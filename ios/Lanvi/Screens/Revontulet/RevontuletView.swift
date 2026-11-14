@@ -38,6 +38,8 @@ struct RevontuletView: View {
     @State private var coach: RevontuletCoachState?
     /// This flight's embers are being coached (the first hard shot this player has made).
     @State private var coachingEmbers = false
+    /// The goodnight's Continue button is showing.
+    @State private var continueShown = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.displayScale) private var displayScale
@@ -118,7 +120,11 @@ struct RevontuletView: View {
 
     private func overlay(_ e: RevontuletEngine) -> some View {
         let L = e.layout
-        let lineY: CGFloat = e.beat == .intro ? L.startY - 27 - 30 : L.lineY
+        let lineY: CGFloat = switch e.beat {
+        case .intro: L.startY - 27 - 30
+        case .sleep, .done: L.restLineY
+        default: L.lineY
+        }
         return ZStack {
             if e.beat == .intro {
                 // On the dark glass, where white reads clearly, with room around it.
@@ -169,6 +175,16 @@ struct RevontuletView: View {
                     .allowsHitTesting(false)
             }
 
+            // The end beat stays until the player continues: the app's own chunky button.
+            if continueShown, !handedBack {
+                Button("Continue") { continueTapped() }
+                    .buttonStyle(ChunkyButtonStyle())
+                    .padding(.horizontal, 24)
+                    .position(x: L.size.width / 2, y: L.startY)
+                    .transition(.opacity.combined(with: .offset(y: 14)).animation(.easeOut(duration: 0.4)))
+                    .accessibilityLabel("Continue")
+            }
+
             Button { close() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 17, weight: .heavy))
@@ -184,7 +200,8 @@ struct RevontuletView: View {
     private static func foxPlace(_ e: RevontuletEngine) -> RevontuletLayout.FoxPlace {
         switch e.beat {
         case .burst, .celebrate: return .full
-        case .warmth, .sleep, .done: return .warm
+        case .warmth: return .warm
+        case .sleep, .done: return .rest
         default: return .play
         }
     }
@@ -193,7 +210,7 @@ struct RevontuletView: View {
         switch foxPlace(e) {
         case .play: return e.layout.playFoxScale
         case .full: return 1
-        case .warm: return e.layout.warmFoxScale
+        case .warm, .rest: return e.layout.warmFoxScale
         }
     }
 
@@ -202,6 +219,7 @@ struct RevontuletView: View {
         case .play: return e.layout.playFoxCenter
         case .full: return e.layout.foxCenter
         case .warm: return e.layout.warmFoxCenter
+        case .rest: return e.layout.restFoxCenter
         }
     }
 
@@ -280,6 +298,7 @@ struct RevontuletView: View {
         frozenAt = now
         finger = auto.finger
         react(all, e, now: now)
+        continueShown = e.beat == .sleep && e.completed
         if RevontuletCoachMemory.forced, let k = Self.coachFor(beat) {
             coach = RevontuletCoachState(kind: k, since: now - 1.2)
         }
@@ -495,14 +514,12 @@ struct RevontuletView: View {
                 if !quiet { feel.sleep() }
                 yawnTick += 1
                 say("Thank you. Goodnight.")
+            case .asleep:
+                withAnimation(.easeOut(duration: 0.4)) { continueShown = true }
             case let .ended(completed):
                 emit(.revontuletEnded(finished: completed))
-                if completed, !quiet {
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(0.4))
-                        if let e = engine { handBack(e) }
-                    }
-                }
+                // Continue, or the safety net: hand back at once (closing hands back itself).
+                if completed, !quiet, let e = engine { handBack(e) }
             }
         }
     }
@@ -625,6 +642,14 @@ struct RevontuletView: View {
             react(events, e, now: CACurrentMediaTime())
         }
         handBack(e)
+    }
+
+    /// Continue on the goodnight: the finished game goes back, once.
+    private func continueTapped() {
+        guard !handedBack, var e = engine else { return }
+        let events = e.handle(.finish, at: CACurrentMediaTime())
+        engine = e
+        react(events, e, now: CACurrentMediaTime())
     }
 
     private func interrupt() {

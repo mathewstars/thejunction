@@ -200,10 +200,9 @@ struct RevontuletAutoPlay {
         case .burst where style == .close:
             return [Step(at: e.beatStart + 0.5, input: .close)]
 
-        case .sleep where style == .mixed || style == .hard:
-            // A tap anywhere on the goodnight ends it at once.
-            let p = CGPoint(x: L.size.width * 0.5, y: L.size.height * 0.4)
-            return tap(p, at: t0 + 1.1)
+        case .sleep:
+            // Presses Continue a moment after it appears.
+            return [Step(at: e.beatStart + RevontuletEngine.asleepAfter + 1.6, input: .finish)]
 
         default:
             return []
