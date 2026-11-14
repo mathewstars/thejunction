@@ -8,6 +8,7 @@ struct LanviApp: App {
         WindowGroup {
             RootView()
                 .environment(store)
+                .lanviSense(store)
         }
     }
 }

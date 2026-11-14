@@ -310,6 +310,7 @@ struct FocusGameView: View {
         glow += 1
         bounce &+= 1
         guard glow.isMultiple(of: 5) else { return }
+        FaceSense.mark()
         poseToken += 1
         let token = poseToken
         withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = glow.isMultiple(of: 10) ? .cheer : .love }
@@ -339,6 +340,7 @@ struct FocusGameView: View {
                 phase = .finished
                 pose = .cheer
             }
+            FaceSense.mark()
         }
     }
 

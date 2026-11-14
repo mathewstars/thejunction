@@ -10,7 +10,11 @@ targets:
   Lanvi:
     type: application
     platform: iOS
-    sources: [Lanvi]
+    sources:
+      - path: Lanvi
+        excludes: [Sense/Peter]
+    dependencies:
+      - target: Harness
     info:
       path: Lanvi/Info.plist
       properties:
@@ -25,6 +29,15 @@ targets:
           - Nunito-Black.ttf
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        NSHealthShareUsageDescription: "Lanvi reads how much you move and sleep: steps, walking speed, heart-rate variability and hours asleep. Never your messages, photos or location."
+        NSCameraUsageDescription: "Only if you say yes: during two games Lanvi reads how your face moves, as numbers only. Never a picture or video."
+    entitlements:
+      path: Lanvi/Lanvi.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    scheme:
+      testTargets: [LanviTests]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.lanvi.Lanvi
@@ -39,3 +52,30 @@ targets:
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  Harness:
+    # Peter's HealthKit harness modules (Models, Statistics, HealthKit), as he wrote them.
+    # Its own module, so his names never clash with the app's. See ios/SENSORS.md.
+    type: framework
+    platform: iOS
+    sources: [Lanvi/Sense/Peter]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.lanvi.Harness
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+  LanviTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [LanviTests]
+    dependencies:
+      - target: Lanvi
+      - target: Harness
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.lanvi.LanviTests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
