@@ -208,6 +208,7 @@ private struct SheetRowStyle: ButtonStyle {
 struct HomeGrowthSheet: View {
     var stage: API.Stage
     var xp: Int
+    var level: LanviLevel
     var stageStart: Int
     var nextStageAt: Int?
     var daysTogether: Int
@@ -233,6 +234,20 @@ struct HomeGrowthSheet: View {
                 LanviView(pose: .love, size: 88)
             }
             HomeProgressBar(progress: progress, height: 16)
+            // The level, beside the stage: its own bar and how far the next one is.
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Level \(level.level)")
+                        .font(Theme.rounded(20, .heavy))
+                        .foregroundStyle(Theme.ink)
+                    Spacer()
+                    Text("\(level.toNext) XP to level \(level.level + 1)")
+                        .font(Theme.rounded(15, .semibold))
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+                HomeProgressBar(progress: level.progress, height: 12)
+            }
+            .padding(.top, 4)
             Text("Day \(daysTogether) together. Growth only ever goes up.")
                 .font(Theme.rounded(16, .semibold))
                 .foregroundStyle(Theme.inkSecondary)

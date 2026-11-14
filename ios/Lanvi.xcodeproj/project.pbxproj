@@ -46,6 +46,7 @@
 		681091D31275649D0FBDAD90 /* RevontuletRecordTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A700C88249DAC5E5D1DFC936 /* RevontuletRecordTests.swift */; };
 		6ED5E6C6908681928159A9E4 /* RevontuletArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AF5D037379E7DAC80011C4A /* RevontuletArt.swift */; };
 		70C6A7B3EB4DC1265714772A /* CheckinModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C049B0C402500302F08D494 /* CheckinModels.swift */; };
+		79A885ADB66B1D46803007C8 /* LanviLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB89A7DD4A86F62054FF62BA /* LanviLevel.swift */; };
 		7E44533D8B224A540E1246AA /* WhatHelpsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55866B9F718B556BABB20541 /* WhatHelpsView.swift */; };
 		801BB5516A9A840A6B6373FC /* HealthSummaryBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D140086C7FF38F31C3EE8E /* HealthSummaryBuilder.swift */; };
 		80C78847CDF1DDCA4C904495 /* FileExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06C37D8A2F572DC15C68D65 /* FileExport.swift */; };
@@ -58,6 +59,7 @@
 		966709A0031A479E6D292413 /* HomeMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */; };
 		97AA30EC4D44E23539CBD8F9 /* RevontuletFeelLab.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF5EC131A21101419274A7AF /* RevontuletFeelLab.swift */; };
 		9B687749D49A04C7081D4DFA /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3595C8C9C83D14C2B300184 /* JSONValue.swift */; };
+		9B8F3072525FACBDAF6448E2 /* HomeLevels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B69781C42BF599F1ACB06FF /* HomeLevels.swift */; };
 		9CC3E3C1AA7E2D00D7F3C812 /* LanviEyesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14332D1FBE2937C010FE068A /* LanviEyesTests.swift */; };
 		A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */; };
 		A27DCC0E64CA203AB2636FFB /* FaceTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D91945D05F0DA6BDBC2AB0A /* FaceTracker.swift */; };
@@ -92,6 +94,7 @@
 		EDAB3E53B21FBF2A45578C8D /* LanviClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */; };
 		EEDB19C869011580DA5780AC /* BreatheView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E9EB5764D665F8A8B7399B /* BreatheView.swift */; };
 		EF19B31CB4510B47533E7D06 /* Nunito-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B4817EE878DEB9396B0E72CB /* Nunito-ExtraBold.ttf */; };
+		F03049893621B33EEBB67403 /* LanviLevelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B76649DAE7B69FC8A978C46A /* LanviLevelTests.swift */; };
 		F143A28682E5808FBAD2EB81 /* LanviPuppetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E91BDD22A3D7AF3A6B1F654 /* LanviPuppetPreview.swift */; };
 		F290EE901462103738396F40 /* Nunito-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */; };
 		F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */; };
@@ -150,6 +153,7 @@
 		033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Black.ttf"; sourceTree = "<group>"; };
 		043F24BD4810CC96B85B74B4 /* LanviTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviTiming.swift; sourceTree = "<group>"; };
 		0A642E52DE3048D1D92DE79C /* RevontuletDirect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevontuletDirect.swift; sourceTree = "<group>"; };
+		0B69781C42BF599F1ACB06FF /* HomeLevels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeLevels.swift; sourceTree = "<group>"; };
 		0E369E41135184A2334A61A6 /* FocusResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusResult.swift; sourceTree = "<group>"; };
 		11CA1C956F7514A490E2C77E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		14332D1FBE2937C010FE068A /* LanviEyesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviEyesTests.swift; sourceTree = "<group>"; };
@@ -215,6 +219,7 @@
 		B0FB8AE15346D15FAA5BA3AF /* FaceSense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceSense.swift; sourceTree = "<group>"; };
 		B2CF64DD8486227CA2F2DC5B /* LanviMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviMotion.swift; sourceTree = "<group>"; };
 		B4817EE878DEB9396B0E72CB /* Nunito-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraBold.ttf"; sourceTree = "<group>"; };
+		B76649DAE7B69FC8A978C46A /* LanviLevelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviLevelTests.swift; sourceTree = "<group>"; };
 		BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviView.swift; sourceTree = "<group>"; };
 		C3595C8C9C83D14C2B300184 /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
 		C8082B9E5762CA3450E914CE /* HomeSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeech.swift; sourceTree = "<group>"; };
@@ -226,6 +231,7 @@
 		CD8451A836E61C66138838EE /* PaintedWorld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintedWorld.swift; sourceTree = "<group>"; };
 		D3C73568A4E2AF330F3A6A0E /* Nunito-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-SemiBold.ttf"; sourceTree = "<group>"; };
 		D60D7109047F207FBF71FBE2 /* LanviFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviFlowUITests.swift; sourceTree = "<group>"; };
+		DB89A7DD4A86F62054FF62BA /* LanviLevel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviLevel.swift; sourceTree = "<group>"; };
 		DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMoments.swift; sourceTree = "<group>"; };
 		DEA3B1DFBEFDF89BAD28FF08 /* RevontuletFox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevontuletFox.swift; sourceTree = "<group>"; };
 		E4534A11EF57C9E6ACC5030B /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -281,6 +287,7 @@
 				9880ABDFC5EF111BB77915E2 /* FaceRawTests.swift */,
 				F7415116ED3C0D377127D698 /* HealthTests.swift */,
 				14332D1FBE2937C010FE068A /* LanviEyesTests.swift */,
+				B76649DAE7B69FC8A978C46A /* LanviLevelTests.swift */,
 				753C4D1AA1DF18A98D5B915B /* RevontuletMeasuresTests.swift */,
 				A700C88249DAC5E5D1DFC936 /* RevontuletRecordTests.swift */,
 			);
@@ -450,6 +457,7 @@
 			children = (
 				883989149D83098DC4D7155A /* AppStore.swift */,
 				A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */,
+				DB89A7DD4A86F62054FF62BA /* LanviLevel.swift */,
 				8603229F7AA339B7123C7D1C /* PerfProbe.swift */,
 			);
 			path = State;
@@ -471,6 +479,7 @@
 			children = (
 				C962121826B8FE96E44B0F86 /* FoxStage.swift */,
 				F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */,
+				0B69781C42BF599F1ACB06FF /* HomeLevels.swift */,
 				252A074008D2696F20B23913 /* HomeMindScreen.swift */,
 				DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */,
 				15B8C888729DE19EB41449A4 /* HomeOverlays.swift */,
@@ -715,6 +724,7 @@
 				86FA2AE12B3177708A7A23B2 /* HealthDays.swift in Sources */,
 				EC579C3478D378C5BFB7C6E5 /* HealthSync.swift in Sources */,
 				B366EDE9B773EEA90854B56A /* HomeChatScreen.swift in Sources */,
+				9B8F3072525FACBDAF6448E2 /* HomeLevels.swift in Sources */,
 				DD756509C515F4C1509219AD /* HomeMindScreen.swift in Sources */,
 				966709A0031A479E6D292413 /* HomeMoments.swift in Sources */,
 				B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */,
@@ -726,6 +736,7 @@
 				14D52ABE9497798035286052 /* LanviArt.swift in Sources */,
 				EDAB3E53B21FBF2A45578C8D /* LanviClient.swift in Sources */,
 				83D94EC75E881A9964282D4B /* LanviFrameLog.swift in Sources */,
+				79A885ADB66B1D46803007C8 /* LanviLevel.swift in Sources */,
 				4ABAE2E43A171B3B8395BD70 /* LanviMotion.swift in Sources */,
 				559778D7817C23DE20017C0F /* LanviOverlayHost.swift in Sources */,
 				4B8E994B97B8B69A57E5C727 /* LanviPuppet.swift in Sources */,
@@ -767,6 +778,7 @@
 				42388E6A19E9972BFD34235B /* FaceRawTests.swift in Sources */,
 				3F11B1A55A50095524067A63 /* HealthTests.swift in Sources */,
 				9CC3E3C1AA7E2D00D7F3C812 /* LanviEyesTests.swift in Sources */,
+				F03049893621B33EEBB67403 /* LanviLevelTests.swift in Sources */,
 				B7F3D3AC39FC358C2FB2D5F9 /* RevontuletMeasuresTests.swift in Sources */,
 				681091D31275649D0FBDAD90 /* RevontuletRecordTests.swift in Sources */,
 			);

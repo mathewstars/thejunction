@@ -11,7 +11,13 @@ struct LanviApp: App {
             let d = UserDefaults.standard
             for k in d.dictionaryRepresentation().keys where k.hasPrefix("lanvi.") { d.removeObject(forKey: k) }
         }
-        let store = AppStore()
+        // `-demoLevelUp`: the demo starts 5 XP short of level 7 (unless -demoXP says
+        // otherwise) and Home sends one activity, so a level up shows on demand.
+        var args = ProcessInfo.processInfo.arguments
+        if args.contains("-demoLevelUp"), !args.contains("-demoXP") {
+            args += ["-demoXP", String(LanviLevel.start(of: 7) - 5)]
+        }
+        let store = AppStore(arguments: args)
         _store = State(initialValue: store)
         // Decode today's painted world (and the night of the first run) off the main
         // thread now, so no screen decodes it while it opens.
