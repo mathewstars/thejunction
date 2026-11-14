@@ -216,6 +216,14 @@ struct LanviTouchRequest: Equatable {
 
 private struct TalkingKey: EnvironmentKey { static let defaultValue = false }
 private struct TouchKey: EnvironmentKey { static let defaultValue: LanviTouchRequest? = nil }
+
+/// Preview: a scripted finger path for the eyes to follow (0 a slow circle, 1 a figure of eight).
+struct LanviFollowRequest: Equatable {
+    var path: Int
+    var token: AnyHashable
+    static func == (a: Self, b: Self) -> Bool { a.token == b.token }
+}
+private struct FollowKey: EnvironmentKey { static let defaultValue: LanviFollowRequest? = nil }
 private struct MomentKey: EnvironmentKey { static let defaultValue: LanviMomentRequest? = nil }
 
 extension EnvironmentValues {
@@ -230,6 +238,10 @@ extension EnvironmentValues {
     var lanviTouchRequest: LanviTouchRequest? {
         get { self[TouchKey.self] }
         set { self[TouchKey.self] = newValue }
+    }
+    var lanviFollowRequest: LanviFollowRequest? {
+        get { self[FollowKey.self] }
+        set { self[FollowKey.self] = newValue }
     }
 }
 
