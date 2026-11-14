@@ -1451,7 +1451,7 @@
   function bpLearnCount() {
     const rv = (S.bpDetail && S.bpDetail.reviews) || [];
     if (!rv.length) return null;
-    const sum = (k) => rv.reduce((a, r) => a + (Number(r[k]) || 0), 0);
+    const sum = (k) => rv.reduce((a, r) => a + (Array.isArray(r[k]) ? r[k].length : (Number(r[k]) || 0)), 0);
     const g = rv.filter((r) => r.models && r.models.level2 === "replied").length;
     return el("p", { class: "bp-count" }, "Counted on the example patient's stored runs: in the last " + rv.length + " checks, lessons were kept or renewed " + sum("accepted") + " times and " + sum("refused") + " proposals were dropped by code. Gemini answered in " + g + " of those checks. Example data: this shows the mechanism running, not that the lessons are right.");
   }
