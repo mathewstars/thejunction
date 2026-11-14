@@ -305,9 +305,9 @@ def make_activity(rng: random.Random, aid: str, started: datetime, typ: str, how
                   dip: bool, prev_plan: bool, rx: random.Random | None = None,
                   good: int | None = None, rv: random.Random | None = None) -> dict:
     """`good` sets how many good things a check-in names, after the usual draws,
-    so every other example value stays exactly as it was. With `rv` (its own
-    generator, for the same reason) a focus record is a Revontulet game, the
-    game the app plays since 14 November; without it, Sparks and snow."""
+    so every other example value stays exactly as it was. A focus record is a
+    Revontulet game; `rv` is the generator for its measures (its own, for the
+    same reason)."""
     rec = {"id": aid, "type": typ, "started_at": started.isoformat(), "suggestion_id": None}
     if typ == "focus":
         slow = 1.35 if dip else 1.0
@@ -316,11 +316,10 @@ def make_activity(rng: random.Random, aid: str, started: datetime, typ: str, how
         rec.update(duration_s=45.0 if how == "finished" else round(rng.uniform(18, 28), 1),
                    correct_taps=n - 1, wrong_taps=1, misses=rng.randint(1, 3) + (2 if dip else 0),
                    reaction_ms=rts[: n], face=_face(rng, 0.5 if dip else 1.0, rx))
-        if rv is not None:
-            # In the dip the tracing and the ember taps get slower; the embers are
-            # still tapped, so the slower reaction times are there to be seen.
-            rec.update(revontulet_game(rv, rts, 0.6 if dip else 0.0, how == "finished",
-                                       rec["duration_s"], hard=0.9, hit=0.9, min_hits=3))
+        # In the dip the tracing and the ember taps get slower; the embers are
+        # still tapped, so the slower reaction times are there to be seen.
+        rec.update(revontulet_game(rv or rng, rts, 0.6 if dip else 0.0, how == "finished",
+                                   rec["duration_s"], hard=0.9, hit=0.9, min_hits=3))
     elif typ == "breathing":
         if dip and rng.random() < 0.7:
             how = "user_stopped"
