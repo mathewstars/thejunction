@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The three hand-painted scenes Lanvi lives in (same hand as the fox):
 /// snow hills in layers, pines at the edges, mountains, a clearing with a
@@ -62,7 +63,7 @@ struct PaintedWorld: View {
                 #if DEBUG
                 let _ = FrameMeter.count("World")
                 #endif
-                Image(scene.imageName)
+                WorldPictures.shared.image(scene)
                     .resizable()
                     .interpolation(.high)
                     .scaledToFill()
@@ -79,6 +80,41 @@ struct PaintedWorld: View {
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
+    }
+}
+
+/// The painted worlds, each decoded once off the main thread and kept. A world
+/// is 1520 x 2688 pixels: decoding it the first time a screen shows it would
+/// hold the main thread for a few frames (at launch, and the first time Help,
+/// the chat or the first run shows it). The app decodes today's world at launch.
+final class WorldPictures: @unchecked Sendable {
+    static let shared = WorldPictures()
+    private let lock = NSLock()
+    private var decoded: [WorldScene: UIImage] = [:]
+    private var loading: Set<WorldScene> = []
+
+    /// The decoded picture when it is ready; until then the picture by name
+    /// (decoded on first use, as before), and its decoding is started.
+    func image(_ scene: WorldScene) -> Image {
+        if let ui = lock.withLock({ decoded[scene] }) { return Image(uiImage: ui) }
+        preload([scene])
+        return Image(scene.imageName)
+    }
+
+    /// Decode these worlds in the background, each once.
+    func preload(_ scenes: [WorldScene]) {
+        let todo = lock.withLock { scenes.filter { decoded[$0] == nil && loading.insert($0).inserted } }
+        guard !todo.isEmpty else { return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            for scene in todo {
+                guard let ui = UIImage(named: scene.imageName) else { continue }
+                let ready = ui.preparingForDisplay() ?? ui
+                self.lock.withLock {
+                    self.decoded[scene] = ready
+                    self.loading.remove(scene)
+                }
+            }
+        }
     }
 }
 
