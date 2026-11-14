@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		053EBA860422BF2F170DD9E5 /* APIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D93B9957583CC3DB996A3C8 /* APIModels.swift */; };
 		09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB97273333C0DBAE7FC11418 /* FocusEngine.swift */; };
+		0CFF1ACB5D8BF4C22E1BCCBE /* GameMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B5C92796F5DE0B8D3DA00AF /* GameMoments.swift */; };
 		14D52ABE9497798035286052 /* LanviArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B5136458E518ED70EBBEF0 /* LanviArt.swift */; };
 		151BF5444E01D40CF03FB960 /* ChatLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84158FA0F8C7B4E9A416B47C /* ChatLink.swift */; };
 		1D2F0537C7AAB50875AA6F3B /* ActivityRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F685787902006429E41D5A7 /* ActivityRouter.swift */; };
@@ -61,6 +62,7 @@
 		11CA1C956F7514A490E2C77E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		15B8C888729DE19EB41449A4 /* HomeOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOverlays.swift; sourceTree = "<group>"; };
 		166A2EF8FECA301AACE53B2A /* HomeSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSheets.swift; sourceTree = "<group>"; };
+		1B5C92796F5DE0B8D3DA00AF /* GameMoments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameMoments.swift; sourceTree = "<group>"; };
 		1C049B0C402500302F08D494 /* CheckinModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinModels.swift; sourceTree = "<group>"; };
 		248059A5DA624F501FEE521B /* Lanvi.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lanvi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		252A074008D2696F20B23913 /* HomeMindScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMindScreen.swift; sourceTree = "<group>"; };
@@ -271,9 +273,18 @@
 				0D7E93C8CF5FB597A3B43917 /* Breathe */,
 				D1A262F183C53F9B7602400F /* Checkin */,
 				DD50134CD3D249E677BC4BC0 /* Focus */,
+				FD745ABCDD705B3E35660182 /* Games */,
 				E4073053305CA28D4D60131E /* Home */,
 			);
 			path = Screens;
+			sourceTree = "<group>";
+		};
+		FD745ABCDD705B3E35660182 /* Games */ = {
+			isa = PBXGroup;
+			children = (
+				1B5C92796F5DE0B8D3DA00AF /* GameMoments.swift */,
+			);
+			path = Games;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -365,6 +376,7 @@
 				09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */,
 				5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */,
 				45C0A7261327E95CF788718C /* FocusResult.swift in Sources */,
+				0CFF1ACB5D8BF4C22E1BCCBE /* GameMoments.swift in Sources */,
 				B366EDE9B773EEA90854B56A /* HomeChatScreen.swift in Sources */,
 				DD756509C515F4C1509219AD /* HomeMindScreen.swift in Sources */,
 				966709A0031A479E6D292413 /* HomeMoments.swift in Sources */,
