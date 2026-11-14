@@ -166,7 +166,7 @@ struct CheckinQuietButtonStyle: ButtonStyle {
             .offset(y: pressed ? 5 : 0)
             .background(shape.fill(Theme.line).offset(y: 5))
             .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: pressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: pressed) { wasDown, isDown in isDown && !wasDown }
     }
 }
 
@@ -197,7 +197,7 @@ struct CheckinCloseButton: View {
                 .background(Circle().fill(Theme.brandEdge).offset(y: 4))
                 .contentShape(Circle())
                 .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
-                .sensoryFeedback(.impact(weight: .light), trigger: pressed)
+                .sensoryFeedback(.impact(weight: .light), trigger: pressed) { wasDown, isDown in isDown && !wasDown }
         }
     }
 }

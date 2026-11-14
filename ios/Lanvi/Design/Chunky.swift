@@ -26,7 +26,7 @@ struct ChunkyButtonStyle: ButtonStyle {
             .offset(y: pressed ? 5 : 0)
             .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(edge).offset(y: 5))
             .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: pressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: pressed) { wasDown, isDown in isDown && !wasDown }
     }
 }
 
