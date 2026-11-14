@@ -1,0 +1,123 @@
+{
+ "people": {
+  "chosen_on": 661,
+  "fresh_people": 1715,
+  "second_half_seen_before": 729
+ },
+ "A_steps_by_group": {
+  "everyone": {
+   "chosen_on": {
+    "people": 661,
+    "rank_correlation": -0.071
+   },
+   "fresh_people": {
+    "people": 1715,
+    "rank_correlation": -0.063,
+    "interval_95": [
+     -0.102,
+     -0.021
+    ]
+   },
+   "second_half_seen_before": {
+    "people": 729,
+    "rank_correlation": -0.082
+   }
+  },
+  "ever_10_or_more": {
+   "chosen_on": {
+    "people": 283,
+    "rank_correlation": -0.069
+   },
+   "fresh_people": {
+    "people": 838,
+    "rank_correlation": -0.077,
+    "interval_95": [
+     -0.133,
+     -0.024
+    ]
+   },
+   "second_half_seen_before": {
+    "people": 336,
+    "rank_correlation": -0.089
+   }
+  },
+  "moved_5_or_more": {
+   "chosen_on": {
+    "people": 301,
+    "rank_correlation": -0.082
+   },
+   "fresh_people": {
+    "people": 597,
+    "rank_correlation": -0.094,
+    "interval_95": [
+     -0.161,
+     -0.035
+    ]
+   },
+   "second_half_seen_before": {
+    "people": 376,
+    "rank_correlation": -0.11
+   }
+  },
+  "both": {
+   "chosen_on": {
+    "people": 226,
+    "rank_correlation": -0.082
+   },
+   "fresh_people": {
+    "people": 479,
+    "rank_correlation": -0.103,
+    "interval_95": [
+     -0.167,
+     -0.041
+    ]
+   },
+   "second_half_seen_before": {
+    "people": 280,
+    "rank_correlation": -0.106
+   }
+  }
+ },
+ "B_change_to_next_window": {
+  "chosen_on": {
+   "pairs": 1983,
+   "rank_correlation": -0.096,
+   "pairs_with_2000_fewer_steps": 294,
+   "mean_phq9_change_then": 0.36,
+   "mean_phq9_change_otherwise": -0.16
+  },
+  "fresh_people": {
+   "pairs": 2296,
+   "rank_correlation": -0.054,
+   "interval_95": [
+    -0.1,
+    -0.005
+   ],
+   "pairs_with_2000_fewer_steps": 360,
+   "mean_phq9_change_then": 0.21,
+   "mean_phq9_change_otherwise": -0.02
+  },
+  "second_half_seen_before": {
+   "pairs": 2187,
+   "rank_correlation": -0.082,
+   "pairs_with_2000_fewer_steps": 322,
+   "mean_phq9_change_then": 0.45,
+   "mean_phq9_change_otherwise": -0.18
+  }
+ },
+ "C_learned_combination": {
+  "measures": 111,
+  "fresh_people": {
+   "rank_correlation": 0.041,
+   "interval_95": [
+    0.005,
+    0.076
+   ],
+   "steps_alone_same_people": 0.063
+  },
+  "second_half_seen_before": {
+   "rank_correlation": 0.047,
+   "steps_alone_same_people": 0.082
+  }
+ }
+}
