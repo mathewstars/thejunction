@@ -61,7 +61,7 @@ enum LanviArt {
         "face-patch-r": CGRect(x: 0.43911, y: 0.21362, width: 0.50062, height: 0.37784),
         "face-brow-l": CGRect(x: 0.28659, y: 0.20961, width: 0.11685, height: 0.08678),
         "face-brow-r": CGRect(x: 0.60886, y: 0.20961, width: 0.11439, height: 0.08812),
-        "face-nose": CGRect(x: 0.42681, y: 0.50601, width: 0.14883, height: 0.12150),
+        "face-nose": CGRect(x: 0.38991, y: 0.46595, width: 0.22263, height: 0.19092),
         "body-bib": CGRect(x: 0.24533, y: 0.14449, width: 0.50000, height: 0.48927),
         "head-base-l": CGRect(x: 0.00369, y: 0.00401, width: 0.61747, height: 0.85714),
         "head-base-r": CGRect(x: 0.46494, y: 0.00401, width: 0.53137, height: 0.85714),

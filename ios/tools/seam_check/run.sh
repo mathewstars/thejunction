@@ -3,7 +3,8 @@
 # shuts down, releases the lock.   ios/tools/seam_check/run.sh DEVICE OUTDIR
 dev=$1; out=$2
 root=$(cd "$(dirname $0)/../../.." && pwd)
-until mkdir /tmp/lanvi-heavy.lock 2>/dev/null; do
+# (while /tmp/lanvi-phone-priority exists the captain's phone build goes first: no lock)
+until [[ ! -e /tmp/lanvi-phone-priority ]] && mkdir /tmp/lanvi-heavy.lock 2>/dev/null; do
   if [[ -n $(find /tmp/lanvi-heavy.lock -maxdepth 0 -mmin +15) ]]; then rmdir /tmp/lanvi-heavy.lock; fi
   sleep 15
 done

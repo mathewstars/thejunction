@@ -200,8 +200,12 @@ FACE = {
     "face-patch-r": ((0.51, 0.28, 0.87, 0.585), (0.69, 0.45), lambda v: v > 205, 66, 7),
     "face-brow-l": ((0.26, 0.2, 0.43, 0.31), (0.342, 0.255), lambda v: v < 155, 8, 3),
     "face-brow-r": ((0.57, 0.2, 0.74, 0.31), (0.665, 0.255), lambda v: v < 155, 8, 3),
-    "face-nose": ((0.4, 0.48, 0.6, 0.64), (0.5, 0.565), lambda v: v < 120, 12, 3),
+    # the nose slides a fifth further than the patches (it sits further forward): it
+    # carries a wide rim of the fur around it, wider than the hole the patches leave for
+    # it (`NOSE_HOLE`) plus that extra slide, so the head under it never shows
+    "face-nose": ((0.4, 0.48, 0.6, 0.64), (0.5, 0.565), lambda v: v < 120, 36, 6),
 }
+NOSE_HOLE = 12     # px around the nose that the patches leave to the nose
 BIB = ((0.24, 0.16, 0.76, 0.66), (0.496, 0.366), lambda v: v > 205, 12, 5)
 # Bands: drawn in order, each over the last (see `bands`).
 # Pivot (share of the part), distance measured in shares of `by` (width or
@@ -562,7 +566,7 @@ def depth_layers(pieces, preview):
            for name, spec in FACE.items()}
     masks = {name: m for name, (m, _) in cut.items()}
     # the patches never take the nose or brows with them
-    nose_zone = masks["face-nose"].filter(ImageFilter.MaxFilter(9))
+    nose_zone = feature_mask(head, *FACE["face-nose"][:3], NOSE_HOLE, 3)[0].filter(ImageFilter.MaxFilter(9))
     brow_zone = ImageChops.lighter(masks["face-brow-l"], masks["face-brow-r"]).filter(ImageFilter.MaxFilter(9))
     for side in ("face-patch-l", "face-patch-r"):
         masks[side] = ImageChops.subtract(masks[side], ImageChops.lighter(nose_zone, brow_zone))
@@ -591,17 +595,25 @@ def depth_layers(pieces, preview):
     # in the middle), so the far cheek can tuck in and the near one come forward.
     W, H = base.size
     f = 0.04 * W
-    left = Image.new("L", base.size, 0)
-    # (the left half runs on, solid, far under the right half: the halves scale apart a
-    # little when the head turns, and the right half's soft fade-in must always lie over
-    # solid head, never over a gap that shows what is behind the head)
-    ImageDraw.Draw(left).rectangle((0, 0, int(W / 2 + f + 0.08 * W), H), fill=255)
     right = Image.new("L", base.size, 0)
     rp = right.load()
     for x in range(W):
         v = int(round(255 * smooth((x - (W / 2 - f)) / (2 * f))))
         for y in range(H):
             rp[x, y] = v
+    # The left half runs on far under the right half (0.08 of the width past its fade):
+    # the halves scale apart a little when the head turns, and the right half's soft
+    # fade-in must always lie over solid head, never over a gap that shows what is behind
+    # the head. Where the head's own paint is see-through (its outline, the neck stub)
+    # the left half thins out so the two together are exactly as see-through as the
+    # painting: right r a over left l a gives a when l = (1 - r) / (1 - r a).
+    left = Image.new("L", base.size, 0)
+    lp, bp = left.load(), base.getchannel("A").load()
+    reach = int(W / 2 + f + 0.08 * W)
+    for y in range(H):
+        for x in range(min(W, reach + 1)):
+            r, av = rp[x, y] / 255, bp[x, y] / 255
+            lp[x, y] = 255 if r * av >= 0.999 else int(round(255 * min(1.0, (1 - r) / (1 - r * av))))
     keep("head-base-l", *layer(base, left), head)
     keep("head-base-r", *layer(base, right), head)
 
