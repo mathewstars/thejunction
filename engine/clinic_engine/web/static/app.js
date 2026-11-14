@@ -126,7 +126,7 @@
   const S = {
     token: null, me: null, list: null, detail: null, trace: null,
     route: { view: "patients", pid: null, tab: "overview" },
-    metric: "movement", open: {}, changedOnly: true, page: 0, demoMsg: "", busy: false, timer: null,
+    metric: "movement", open: {}, tbl: {}, actTab: "summary", tq: "", changedOnly: true, page: 0, demoMsg: "", busy: false, timer: null,
   };
   try { S.token = sessionStorage.getItem("clinic_session") || null; } catch (e) { S.token = null; }
 
@@ -253,11 +253,58 @@
     if (focusKey) { const again = view.querySelector('[data-key="' + focusKey + '"]'); if (again) again.focus({ preventScroll: true }); }
   }
   function refreshBtn() { return el("button", { type: "button", class: "btn", "data-key": "refresh", on: { click: refresh } }, "Refresh"); }
-  function table(heads, rows, cls) {
+  // Every table: search by typing, an optional filter on one column, and pages.
+  // The bar appears once a table is long enough to need it. Typing redraws only the
+  // table body, so the search box keeps its focus. State is kept per table in S.tbl.
+  const TABLE_PER = 10, TABLE_BAR_FROM = 7;
+  function cellKey(td) { return td && td.firstChild ? String(td.firstChild.textContent || "").split(",")[0].trim() : ""; }
+  function table(heads, rows, cls, opt) {
+    opt = opt || {};
+    rows = (rows || []).filter(Boolean);
     const t = el("table", { class: cls || null });
     t.appendChild(el("thead", null, el("tr", null, heads.map((h) => el("th", { class: h.r ? "r" : null, scope: "col" }, h.t || h)))));
-    t.appendChild(el("tbody", null, rows));
-    return el("div", { class: "scroll" }, t);
+    const body = el("tbody");
+    t.appendChild(body);
+    const box = el("div", { class: "scroll" }, t);
+    if (opt.plain || rows.length < TABLE_BAR_FROM) { rows.forEach((r) => body.appendChild(r)); return box; }
+    const id = opt.id || (cls || "t") + ":" + heads.map((h) => h.t || h).join("|");
+    const st = S.tbl[id] || (S.tbl[id] = { q: "", page: 0, f: "" });
+    const per = opt.per || TABLE_PER;
+    const hay = rows.map((r) => r.textContent.toLowerCase());
+    const fcol = typeof opt.filter === "number" ? opt.filter : -1;
+    const fkeys = fcol >= 0 ? rows.map((r) => cellKey(r.children[fcol])) : [];
+    const info = el("span", { class: "muted small num" });
+    const prev = el("button", { type: "button", class: "btn btn-small", "data-key": id + "-prev" }, "←");
+    const next = el("button", { type: "button", class: "btn btn-small", "data-key": id + "-next" }, "→");
+    const none = el("tr", null, el("td", { colspan: heads.length, class: "muted" }, "Nothing matches."));
+    const draw = () => {
+      const terms = st.q.toLowerCase().split(/\s+/).filter(Boolean);
+      const found = rows.filter((r, i) => (!st.f || fkeys[i] === st.f) && terms.every((w) => hay[i].indexOf(w) >= 0));
+      const pages = Math.max(1, Math.ceil(found.length / per));
+      st.page = Math.min(Math.max(st.page, 0), pages - 1);
+      const from = st.page * per, shown = found.slice(from, from + per);
+      info.textContent = found.length ? (from + 1) + "–" + (from + shown.length) + " of " + found.length : "0 of " + rows.length;
+      prev.disabled = st.page === 0; next.disabled = st.page >= pages - 1;
+      body.replaceChildren.apply(body, shown.length ? shown : [none]);
+    };
+    prev.addEventListener("click", () => { st.page -= 1; draw(); });
+    next.addEventListener("click", () => { st.page += 1; draw(); });
+    const search = el("input", { type: "search", class: "search", placeholder: "Search", "aria-label": "Search this table", "data-key": id + "-q" });
+    search.value = st.q;
+    search.addEventListener("input", () => { st.q = search.value; st.page = 0; draw(); });
+    let pick = null;
+    if (fcol >= 0) {
+      const values = Array.from(new Set(fkeys.filter(Boolean))).sort();
+      if (values.length > 1) {
+        pick = el("select", { class: "search pick", "aria-label": "Filter by " + (heads[fcol].t || heads[fcol]), "data-key": id + "-f" },
+          el("option", { value: "" }, (heads[fcol].t || heads[fcol]) + ": all"), values.map((v) => el("option", { value: v }, v)));
+        if (values.indexOf(st.f) < 0) st.f = "";
+        pick.value = st.f;
+        pick.addEventListener("change", () => { st.f = pick.value; st.page = 0; draw(); });
+      } else { st.f = ""; }
+    }
+    draw();
+    return el("div", null, el("div", { class: "bar tbar" }, search, pick, el("div", { class: "push pager" }, prev, info, next)), box);
   }
   function panel(title, count, ...body) {
     return el("section", { class: "panel" }, el("h2", null, title, count !== null && count !== undefined ? el("span", { class: "count" }, count) : null), body);
@@ -665,7 +712,9 @@
     const wrap = el("div");
     const t = S.trace;
     if (!t) { wrap.appendChild(empty("Loading…")); return wrap; }
-    const chains = (t.chains || []).filter((c) => !S.changedOnly || c.changed);
+    const tterms = (S.tq || "").toLowerCase().split(/\s+/).filter(Boolean);
+    const chainText = (c) => [c.headline, TRIGGER[c.trigger] || c.trigger, c.outcome, stamp(c.at)].concat((c.entries || []).map((e) => [LAYER[e.layer] || e.layer, e.code, (e.detail || {}).kind, (e.detail || {}).task, (e.detail || {}).action, (e.detail || {}).because].join(" "))).join(" ").replace(/_/g, " ").toLowerCase();
+    const chains = (t.chains || []).filter((c) => (!S.changedOnly || c.changed) && (!tterms.length || tterms.every((w) => chainText(c).indexOf(w) >= 0)));
     const pages = Math.max(1, Math.ceil(chains.length / PAGE));
     if (S.page >= pages) S.page = pages - 1;
     const from = S.page * PAGE, shown = chains.slice(from, from + PAGE);
@@ -676,9 +725,10 @@
     wrap.appendChild(el("div", { class: "bar" },
       el("button", { type: "button", class: "btn btn-small", "aria-pressed": S.changedOnly ? "true" : "false", "data-key": "changed-only",
         on: { click: () => { S.changedOnly = !S.changedOnly; S.page = 0; render(); } } }, "Changes only"),
-      el("span", { class: "muted small" }, "One row per trigger, one column per step of the system. Select a row for the numbers behind it."),
+      (() => { const q = el("input", { type: "search", class: "search", placeholder: "Search the timeline", "aria-label": "Search the timeline", "data-key": "tl-q" });
+        q.value = S.tq || ""; q.addEventListener("input", () => { S.tq = q.value; S.page = 0; const at = q.selectionStart; render(); const again = document.querySelector('[data-key="tl-q"]'); if (again) { again.focus(); again.setSelectionRange(at, at); } }); return q; })(),
       el("div", { class: "push" }, pager("top"))));
-    if (!chains.length) { wrap.appendChild(empty(S.changedOnly ? "No changes recorded. Turn off “Changes only” to see every check." : "Nothing recorded yet.")); return wrap; }
+    if (!chains.length) { wrap.appendChild(empty(tterms.length ? "Nothing in the timeline matches “" + S.tq + "”." : S.changedOnly ? "No changes recorded. Turn off “Changes only” to see every check." : "Nothing recorded yet.")); return wrap; }
     const rows = [];
     shown.forEach((c) => {
       const key = "chain-" + c.chain_id;
@@ -691,7 +741,7 @@
         el("div", { class: "tl-body" }, el("table", null, el("tbody", null, (c.entries || []).map(entryRow))),
           (S.exch || []).filter((x) => x.chain_id === c.chain_id).slice().reverse().map(exchangeBox)))));
     });
-    wrap.appendChild(el("section", { class: "panel" }, table(["When", "Trigger"].concat(TL_COLS.map((x) => x[1])), rows, "pick tl-table")));
+    wrap.appendChild(el("section", { class: "panel" }, table(["When", "Trigger"].concat(TL_COLS.map((x) => x[1])), rows, "pick tl-table", { plain: true })));
     if (pages > 1) wrap.appendChild(pager("bottom"));
     return wrap;
   }
@@ -702,11 +752,6 @@
     const wrap = el("div", { class: "stack" });
     const acts = (d.progress && d.progress.actions) || {};
     const used = Object.keys(acts).filter((a) => acts[a].offered > 0).sort((a, b) => acts[b].offered - acts[a].offered);
-    wrap.appendChild(panel("What was offered", null, used.length ? table(
-      ["Offer", { t: "Offered", r: 1 }, { t: "Done", r: 1 }, { t: "Not today", r: 1 }, { t: "No answer", r: 1 }, "Days after"],
-      used.map((a) => el("tr", null, el("td", null, action(a)), el("td", { class: "r num" }, acts[a].offered), el("td", { class: "r num" }, acts[a].done),
-        el("td", { class: "r num" }, acts[a].not_today), el("td", { class: "r num" }, (acts[a].no_answer || 0) + (acts[a].open || 0)),
-        el("td", null, outcomeWord(acts[a].mean_outcome_change))))) : empty("Nothing offered yet.")));
     const A = d.activities || {};
     const zCell = (z) => el("td", { class: "num" }, z === null || z === undefined ? "–" : zWord(z) + " (" + signed(z) + ")");
     const faceCell = (f) => {
@@ -724,42 +769,55 @@
       const said = [rd.reactions, rd.expression, rd.eyes].filter((v) => v && !/^(steady|as_usual|unclear)$/.test(v)).map((v) => words(v).toLowerCase());
       const dropped = (r.dropped || []).length;
       return el("td", null, said.length ? said.join(" · ") : "as usual",
-        el("span", { class: "sub" }, (r.read_by === "level1" ? "local model" : "outside model") + ", checked by code" + (dropped ? " · " + dropped + " claim" + (dropped > 1 ? "s" : "") + " dropped" : "")));
+        el("span", { class: "sub" }, (r.read_by === "level1" ? "model 1" : "model 2") + ", checked by code" + (dropped ? " · " + dropped + " claim" + (dropped > 1 ? "s" : "") + " dropped" : "")));
     };
     const yes = (b) => (b ? "yes" : "no");
-    const recent = (g) => ((g && g.sessions) || []).slice(-14).reverse();
-    const c7 = (A.counts && A.counts.last_7_days) || {};
-    if (A.focus || A.breathing || A.checkin) {
-      const tile = (key, label) => factTile(c7[key] ? c7[key].finished + "/" + c7[key].played : "–", label + " finished, 7 d");
-      wrap.appendChild(panel("Lanvi", d.lanvi ? words(d.lanvi.stage) + " · " + num(d.lanvi.xp) + " XP" : null,
-        el("div", { class: "facts" }, tile("focus", "focus games"), tile("breathing", "breathing"), tile("checkin", "check-ins"))));
+    const recent = (g) => ((g && g.sessions) || []).slice().reverse();
+    const offers = (d.suggestions || []).slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+    const rounds = (d.progress && d.progress.rounds && d.progress.rounds.energy_series) || [];
+    const SUB = [["summary", "Summary", null], ["focus", "Focus game", recent(A.focus).length], ["breathing", "Breathing", recent(A.breathing).length],
+      ["checkin", "Evening check-in", recent(A.checkin).length], ["offers", "Offers and answers", offers.length], ["earlier", "Earlier sessions", rounds.length]]
+      .filter((x) => x[2] === null || x[2] > 0);
+    if (!SUB.some((x) => x[0] === S.actTab)) S.actTab = "summary";
+    wrap.appendChild(el("div", { class: "seg", role: "group", "aria-label": "Activity sections" }, SUB.map(([key, label, n]) =>
+      el("button", { type: "button", class: "btn btn-small", "aria-pressed": S.actTab === key ? "true" : "false", "data-key": "act-" + key,
+        on: { click: () => { S.actTab = key; render(); } } }, label + (n ? " · " + n : "")))));
+    const sub = S.actTab;
+    if (sub === "summary") {
+      if (A.focus || A.breathing || A.checkin) {
+        const c7 = (A.counts && A.counts.last_7_days) || {};
+        const tile = (key, label) => factTile(c7[key] ? c7[key].finished + "/" + c7[key].played : "–", label + " finished, 7 d");
+        wrap.appendChild(panel("Lanvi", d.lanvi ? words(d.lanvi.stage) + " · " + num(d.lanvi.xp) + " XP" : null,
+          el("div", { class: "facts" }, tile("focus", "focus games"), tile("breathing", "breathing"), tile("checkin", "check-ins"))));
+      }
+      wrap.appendChild(panel("What was offered", null, used.length ? table(
+        ["Offer", { t: "Offered", r: 1 }, { t: "Done", r: 1 }, { t: "Not today", r: 1 }, { t: "No answer", r: 1 }, "Days after"],
+        used.map((a) => el("tr", null, el("td", null, action(a)), el("td", { class: "r num" }, acts[a].offered), el("td", { class: "r num" }, acts[a].done),
+          el("td", { class: "r num" }, acts[a].not_today), el("td", { class: "r num" }, (acts[a].no_answer || 0) + (acts[a].open || 0)),
+          el("td", null, outcomeWord(acts[a].mean_outcome_change))))) : empty("Nothing offered yet.")));
     }
-    if (recent(A.focus).length) wrap.appendChild(panel("Focus game", A.focus.sessions.length, table(["Date", "Finished", { t: "Reaction", r: 1 }, "Against own normal", { t: "Errors", r: 1 }, "Face", "Model reading"],
+    if (sub === "focus") wrap.appendChild(panel("Focus game", A.focus.sessions.length, table(["Date", "Finished", { t: "Reaction", r: 1 }, "Against own normal", { t: "Errors", r: 1 }, "Face", "Model reading"],
       recent(A.focus).map((x) => el("tr", null, el("td", { class: "num" }, dayShort(x.date)), el("td", null, yes(x.completed)),
         el("td", { class: "r num" }, x.values && x.values.median_reaction_ms != null ? num(x.values.median_reaction_ms) + " ms" : "–"),
         el("td", { class: "num" }, !x.z || x.z.median_reaction_ms == null ? "–" : (x.z.median_reaction_ms >= 1.5 ? "slower than usual" : x.z.median_reaction_ms <= -1.5 ? "faster than usual" : "usual") + " (" + signed(x.z.median_reaction_ms) + ")"),
         el("td", { class: "r num" }, x.values && x.values.error_rate != null ? Math.round(x.values.error_rate * 100) + " %" : "–"),
-        faceCell(x.face), readCell(x.reading))))));
-    if (recent(A.breathing).length) wrap.appendChild(panel("Breathing", A.breathing.sessions.length, table(["Date", "Finished", { t: "Time", r: 1 }, "Face", "Model reading"],
+        faceCell(x.face), readCell(x.reading))), null, { filter: 1 })));
+    if (sub === "breathing") wrap.appendChild(panel("Breathing", A.breathing.sessions.length, table(["Date", "Finished", { t: "Time", r: 1 }, "Face", "Model reading"],
       recent(A.breathing).map((x) => el("tr", null, el("td", { class: "num" }, dayShort(x.date)), el("td", null, yes(x.completed)),
-        el("td", { class: "r num" }, x.values && x.values.time_played_s != null ? num(x.values.time_played_s) + " s" : "–"), faceCell(x.face), readCell(x.reading))))));
-    if (recent(A.checkin).length) wrap.appendChild(panel("Evening check-in", A.checkin.sessions.length, table(["Date", { t: "Good things", r: 1 }, "Plan for next day", "Plan done", "Asked for help"],
+        el("td", { class: "r num" }, x.values && x.values.time_played_s != null ? num(x.values.time_played_s) + " s" : "–"), faceCell(x.face), readCell(x.reading))), null, { filter: 1 })));
+    if (sub === "checkin") wrap.appendChild(panel("Evening check-in", A.checkin.sessions.length, table(["Date", { t: "Good things", r: 1 }, "Plan for next day", "Plan done", "Asked for help"],
       recent(A.checkin).map((x) => el("tr", null, el("td", { class: "num" }, dayShort(x.date)),
         el("td", { class: "r num" }, x.values ? x.values.good_things : "–"),
         el("td", null, x.plan ? x.plan.label || (x.plan.catalog_id ? words(x.plan.catalog_id) : "own words") : "–"),
         el("td", null, x.plan_done === "yes" ? "yes" : x.plan_done === "no" ? "no" : "–"),
-        el("td", null, x.asked_for_help ? el("span", { class: "chip l-urgent" }, icon("dot"), "Yes") : "No"))))));
-    const offers = (d.suggestions || []).slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 14);
-    wrap.appendChild(panel("Offers and answers", offers.length || "", offers.length ? table(["Date", "Offer", "Because of", "Answer", "Felt"],
+        el("td", null, x.asked_for_help ? el("span", { class: "chip l-urgent" }, icon("dot"), "Yes") : "No"))), null, { filter: 3 })));
+    if (sub === "offers") wrap.appendChild(panel("Offers and answers", offers.length || "", table(["Date", "Offer", "Because of", "Answer", "Felt"],
       offers.map((o) => el("tr", null, el("td", { class: "num" }, dayShort(o.date)), el("td", null, action(o.action)), el("td", null, kind(o.attention_kind)),
         el("td", null, el("span", { class: "chip " + (o.answer === "did_it" ? "good" : o.answer ? "" : "bad") }, ANSWER[o.answer] || "No answer")),
-        el("td", null, o.felt ? words(o.felt) : "–")))) : empty("No offers yet.")));
-    const rounds = (d.progress && d.progress.rounds && d.progress.rounds.energy_series) || [];
-    if (rounds.length) {
-      wrap.appendChild(el("details", { class: "more panel" }, el("summary", null, "Earlier sessions (" + rounds.length + ")"),
-        table(["Date", "Mode", "Finished", "Energy"], rounds.slice(-14).reverse().map((r) => el("tr", null,
-          el("td", { class: "num" }, dayShort(r.started_at)), el("td", null, words(r.mode)), el("td", null, r.completed ? "yes" : "no"), el("td", null, r.energy_bucket ? words(r.energy_bucket) : "–"))))));
-    }
+        el("td", null, o.felt ? words(o.felt) : "–"))), null, { filter: 3 })));
+    if (sub === "earlier") wrap.appendChild(panel("Earlier sessions", rounds.length,
+      table(["Date", "Mode", "Finished", "Energy"], rounds.slice().reverse().map((r) => el("tr", null,
+        el("td", { class: "num" }, dayShort(r.started_at)), el("td", null, words(r.mode)), el("td", null, r.completed ? "yes" : "no"), el("td", null, r.energy_bucket ? words(r.energy_bucket) : "–"))), null, { filter: 1 })));
     return wrap;
   }
 
@@ -922,7 +980,7 @@
     all.sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)));
     if (!all.length) return panel("Samples collected", "", empty("No sessions yet."));
     const heads = ["When", "Activity", { t: "Reaction ms", r: 1 }, { t: "Errors", r: 1 }].concat(SAMPLE_COLS.map((c) => ({ t: c[1], r: 1 })), ["Tracking", "Model reading"]);
-    const rows = all.slice(0, 40).map((x) => {
+    const rows = all.map((x) => {
       const f = x.face || {}, fz = f.z || {}, v = x.values || {}, z = x.z || {}, rd = (x.reading || {}).reading;
       const said = rd ? [rd.reactions, rd.expression, rd.eyes].filter((w) => w && !/^(steady|as_usual|unclear)$/.test(w)).map((w) => words(w).toLowerCase()).join(" · ") || "as usual" : "–";
       return el("tr", null,
@@ -935,7 +993,7 @@
         el("td", { class: "small" }, said));
     });
     return panel("Samples collected", all.length, el("p", { class: "muted small" }, "One row per session from the phone. ▲ ▼ mark a value at least 2 spreads from this person's own usual."),
-      el("div", { class: "scroll-x" }, table(heads, rows, "samples")));
+      el("div", { class: "scroll-x" }, table(heads, rows, "samples", { filter: 1 })));
   }
   function closePops() { const ks = Object.keys(S.open).filter((k) => k.indexOf("cav-") === 0 && S.open[k]); ks.forEach((k) => delete S.open[k]); if (ks.length) render(); }
   document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closePops(); });
@@ -999,7 +1057,7 @@
             el("td", null, tested ? [el("span", { class: "chip " + (r.agreement === "consistent" ? "good" : r.agreement === "opposite" ? "bad" : "") }, words(r.agreement).toLowerCase() + (r.strength ? ", " + r.strength : "")),
               el("span", { class: "sub" }, SRC[r.agreement_source] || "")] : "–"),
             caveatCell(r));
-        }), "assoc")));
+        }), "assoc", { id: "assoc-" + g, filter: 6 })));
     });
     wrap.appendChild(samplesPanel(d));
     const cor = a.corrections || [];
@@ -1015,15 +1073,15 @@
     const wrap = el("div", { class: "stack" });
     const ref = d.refusal_log || [];
     wrap.appendChild(panel("Model answers refused by the gates", ref.length || "", ref.length ? table(["When", "Step", "Reason", "Used instead"],
-      ref.slice(0, 30).map((r) => el("tr", null, el("td", { class: "num" }, stamp(r.at)), el("td", null, words(r.task || r.gate || r.layer || "")),
+      ref.map((r) => el("tr", null, el("td", { class: "num" }, stamp(r.at)), el("td", null, words(r.task || r.gate || r.layer || "")),
         el("td", null, words(r.reason || r.code || "")), el("td", null, words(r.fallback || r.used || "–"))))) : empty("No refusals.")));
     const nl = d.notify_log || [];
     wrap.appendChild(panel("Alerts to the clinic", nl.length || "", nl.length ? table(["When", "Level", "Result", "Why"],
-      nl.slice(0, 30).map((n) => el("tr", null, el("td", { class: "num" }, stamp(n.at)), el("td", null, levelChip(n.level) || "–"),
+      nl.map((n) => el("tr", null, el("td", { class: "num" }, stamp(n.at)), el("td", null, levelChip(n.level) || "–"),
         el("td", null, words(n.result || n.event || n.code || "")), el("td", null, words(n.reason || kind(n.kind) || "–"))))) : empty("No alerts.")));
     const notes = d.notes || [];
     wrap.appendChild(panel("Notes from the patient", notes.length || "", notes.length ? table(["When", "Mood", "Asked for help", "Text"],
-      notes.slice(0, 30).map((n) => { const c = n.classification || n.labels || n; return el("tr", null, el("td", { class: "num" }, stamp(n.at || n.created_at)),
+      notes.map((n) => { const c = n.classification || n.labels || n; return el("tr", null, el("td", { class: "num" }, stamp(n.at || n.created_at)),
         el("td", null, words(c.mood || "–")), el("td", null, c.asks_for_help || n.crisis ? el("span", { class: "chip l-urgent" }, icon("dot"), "Yes") : "No"),
         el("td", null, n.text ? n.text : el("span", { class: "muted" }, "not shared"))); })) : empty("No notes.")));
     const dw = d.draft_wording || {};

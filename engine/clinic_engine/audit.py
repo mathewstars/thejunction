@@ -40,8 +40,7 @@ def list_audit(store: Store, clinic_id: str | None, patient_id: str | None = Non
                outcome: str | None = None, limit: int = 200) -> list[dict]:
     keys = store.list(audit_prefix(clinic_id, patient_id))[-limit * 4:]
     out = []
-    for k in reversed(keys):
-        ev = store.get(k)
+    for ev in store.get_many(list(reversed(keys))):
         if ev and (outcome is None or ev.get("outcome") == outcome):
             out.append(ev)
             if len(out) >= limit:

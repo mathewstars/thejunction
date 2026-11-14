@@ -41,6 +41,12 @@ class PatientRepo:
     def docs(self, folder: str) -> list[dict]:
         return self.store.list_docs(self.p + folder + "/")
 
+    def snapshot(self) -> "PatientRepo":
+        """A copy for ONE read-only request: each record and folder is fetched
+        once and reused while that request builds its answer. Not kept between
+        requests. A write through it drops what it remembered."""
+        return _Snapshot(self.store, self.clinic_id, self.patient_id)
+
     # ---- typed accessors -------------------------------------------------------
     def days(self) -> dict[str, dict]:
         return {d["date"]: d for d in self.docs("days")}
@@ -92,3 +98,35 @@ class PatientRepo:
 
     def save_state(self, st: dict) -> None:
         self.put("mind/state.json", st)
+
+
+class _Snapshot(PatientRepo):
+    def __init__(self, store: Store, clinic_id: str, patient_id: str) -> None:
+        super().__init__(store, clinic_id, patient_id)
+        self._seen: dict[str, str] = {}
+
+    def _once(self, key: str, read):
+        import json
+        if key not in self._seen:
+            self._seen[key] = json.dumps(read())
+        return json.loads(self._seen[key])  # a fresh copy, so callers may change it
+
+    def patient(self) -> dict | None:
+        return self._once("patient.json", super().patient)
+
+    def get(self, rel: str) -> dict | None:
+        return self._once(rel, lambda: PatientRepo.get(self, rel))
+
+    def docs(self, folder: str) -> list[dict]:
+        return self._once(folder + "/", lambda: PatientRepo.docs(self, folder))
+
+    def put(self, rel: str, doc: dict) -> None:
+        self._seen.clear()
+        super().put(rel, doc)
+
+    def delete(self, rel: str) -> None:
+        self._seen.clear()
+        super().delete(rel)
+
+    def snapshot(self) -> "PatientRepo":
+        return self

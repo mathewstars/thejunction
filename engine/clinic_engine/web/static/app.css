@@ -250,3 +250,7 @@ td.cav { position: relative; white-space: nowrap; }
 .pop-h { padding-right: 24px; }
 .pop-x { position: absolute; top: 6px; right: 8px; font: inherit; font-size: 20px; line-height: 1; color: var(--muted); background: none; border: 0; cursor: pointer; padding: 4px 6px; }
 .pop-x:hover { color: var(--ink); }
+.tbar { margin-bottom: 8px; }
+.tbar .search { width: min(240px, 100%); min-height: 30px; padding: 4px 12px; }
+select.pick { width: auto; max-width: 220px; appearance: none; padding-right: 26px; cursor: pointer; }
+.panel .scroll-x .tbar { position: sticky; left: 0; }

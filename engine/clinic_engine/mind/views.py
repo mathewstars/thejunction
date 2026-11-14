@@ -183,6 +183,11 @@ def spark(view: View, days: int = 28) -> list[float | None]:
 
 
 def clinician_line(mind, repo: PatientRepo) -> dict:
+    repo = repo.snapshot()  # read each record once while building this answer
+    return _clinician_line(mind, repo)
+
+
+def _clinician_line(mind, repo: PatientRepo) -> dict:
     view = mind.build_view(repo)
     status = compute_status(view)
     items = [i for i in view.items if i["state"] == "open"]
@@ -276,7 +281,8 @@ def _reply_line(note: dict) -> str | None:
 
 
 def clinician_detail(mind, repo: PatientRepo) -> dict:
-    line = clinician_line(mind, repo)
+    repo = repo.snapshot()  # read each record once while building this answer
+    line = _clinician_line(mind, repo)
     view = mind.build_view(repo)
     rows, _ = mind.evidence(repo)
     patient = repo.patient()
