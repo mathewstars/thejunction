@@ -21,7 +21,7 @@ struct SenseScene<Actions: View>: View {
             let compact = h < 700
             let buttonY = h - (compact ? 16 : 8) - 30
             let actionsHeight: CGFloat = 60 + 44            // the button and a quiet line under it
-            let fox = min(h * (compact ? 0.38 : 0.44), w * 0.84)
+            let fox = min(h * (compact ? 0.36 : 0.40), w * 0.80)
             let feet = buttonY - actionsHeight + 12 - 24
             let hill = feet - fox * 0.30
             let foxCenter = CGPoint(x: w / 2, y: feet - fox / 2)
@@ -55,7 +55,7 @@ struct SenseScene<Actions: View>: View {
                         .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: 10)), removal: .opacity))
                 }
                 .padding(.horizontal, 24)
-                .frame(height: max(foxCenter.y - fox / 2 - 16 - top, 90))
+                .frame(height: max(foxCenter.y - fox / 2 - 40 - top, 90))
                 .padding(.top, top)
                 .opacity(arrived ? 1 : 0)
                 .animation(.spring(response: 0.5, dampingFraction: 0.8), value: line)

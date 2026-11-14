@@ -69,7 +69,8 @@ actor DemoDailyUploader: DailyUploader {
 /// server upserts by date).
 ///
 /// Launch arguments: `-healthReset` forgets the answer and what was sent,
-/// `-healthAsk` shows the first-run screen again, `-sampleHealth` uses sample
+/// `-healthAsk` shows the first-run screen again, `-healthAllowed` counts as
+/// allowed without the screen (simulator tests), `-sampleHealth` uses sample
 /// days on a real phone. The simulator and the offline demo always use sample days.
 @MainActor
 final class HealthSync {
@@ -99,6 +100,10 @@ final class HealthSync {
             for k in defaults.dictionaryRepresentation().keys where k.hasPrefix("lanvi.health.") {
                 defaults.removeObject(forKey: k)
             }
+        }
+        if args.contains("-healthAllowed") {
+            defaults.set(true, forKey: Key.asked)
+            defaults.set(true, forKey: Key.allowed)
         }
     }
 

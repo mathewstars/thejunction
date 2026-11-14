@@ -219,6 +219,7 @@ final class FaceSummaryTests: XCTestCase {
         XCTAssertNotNil(json["tracking_quality"])
         XCTAssertNotNil(json["smile_rate_per_min"])
         XCTAssertNotNil(json["smile_response_latency_s"])
+        print("face-json: \(String(decoding: try API.encoder.encode(f), as: UTF8.self))")
     }
 
     func testEulerAnglesMatchFaceMetrics() {

@@ -58,9 +58,18 @@ struct LanviSense: ViewModifier {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("lanvi.welcomed") private var welcomed = false
     @State private var asking = false
+    /// `-senseScreen face | help`: show one sense screen straight away (screenshots).
+    private let preview = UserDefaults.standard.string(forKey: "senseScreen")
 
     func body(content: Content) -> some View {
         content
+            .overlay {
+                switch preview {
+                case "face": FaceAskView { _ in }
+                case "help": HomeHelpScreen(crisis: DemoBackend.crisis) {}
+                default: EmptyView()
+                }
+            }
             .overlay {
                 if asking {
                     HealthAskView(onAllow: { await HealthSync.shared.allow(store) },
@@ -78,7 +87,7 @@ struct LanviSense: ViewModifier {
             }
             .task(id: welcomed) {
                 guard welcomed || ProcessInfo.processInfo.arguments.contains("-healthAsk") else { return }
-                guard HealthSync.shared.shouldAsk else { return }
+                guard preview == nil, HealthSync.shared.shouldAsk else { return }
                 // Let Home arrive first, then ask.
                 try? await Task.sleep(for: .milliseconds(700))
                 withAnimation(.easeInOut(duration: 0.4)) { asking = true }
