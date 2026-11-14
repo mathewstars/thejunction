@@ -214,6 +214,7 @@ struct LanviMotion {
         idle(x, &p)
         lookLayer(x, &p, &face)
         momentLayer(x, &p, &face)
+        lifeLayer(x, &p)
         talkLayer(x, &p, &face)
         reactionLayer(x, &p, &face)
         touchLayer(x, &p, &face)
@@ -284,6 +285,63 @@ struct LanviMotion {
         // Where the head faces drifts a hair, so the face is never a frozen picture.
         p.dirX += 0.045 * sin(2 * .pi * (x + s) / 8.3) + 0.025 * sin(2 * .pi * (x + s) / 13.1 + 2)
         p.dirY += 0.03 * sin(2 * .pi * (x + s) / 10.7 + 0.5)
+    }
+
+    // MARK: Small signs of life between the moments
+
+    /// Between the performed moments he is never still: now and then the pupils shift a
+    /// little and hold (sometimes back to the middle), one ear twitches (sometimes twice),
+    /// or the tail tip flicks. Each on its own irregular clock, so they never line up into
+    /// a loop. They fade out under a moment, a reaction, a touch or a look at something
+    /// (never two things at once), and back in after it.
+    private func lifeLayer(_ x: Double, _ p: inout Pose) {
+        var w = 1 - busy(x)
+        if w > 0.001, let m = currentMoment(x) { w *= 1 - m.weight }
+        guard w > 0.001 else { return }
+        // Pupils: a new small resting place every 1.9 to 4.5 s; each change springs from
+        // where they were (0.12 s, no wobble). The changes before the last three have
+        // settled long ago.
+        let slot = 3.2, off = Double(seed % 89) * 0.37
+        let k = Int(floor((x + off) / slot))
+        func target(_ j: Int) -> (x: Double, y: Double) {
+            guard Motion.rnd(j, seed &+ 62) >= 0.3 else { return (0, 0) }
+            return ((Motion.rnd(j, seed &+ 63) * 2 - 1) * 2.4, (Motion.rnd(j, seed &+ 64) * 2 - 1) * 1.3)
+        }
+        var gaze = target(k - 3)
+        for j in (k - 2)...k {
+            let start = Double(j) * slot + 1.3 * Motion.rnd(j, seed &+ 61) - off
+            let e = Self.critical(x - start, response: 0.12)
+            let a = target(j - 1), b = target(j)
+            gaze.x += (b.x - a.x) * e
+            gaze.y += (b.y - a.y) * e
+        }
+        p.eyeX += gaze.x * w
+        p.eyeY += gaze.y * w
+
+        // One ear twitches (6 to 10 degrees, a quarter of a second), in about half of
+        // the 5.3 s slots.
+        let eslot = 5.3, eoff = Double(seed % 83) * 0.53
+        let ek = Int(floor((x + eoff) / eslot))
+        for j in [ek - 1, ek] where Motion.rnd(j, seed &+ 71) < 0.55 {
+            let start = Double(j) * eslot + 2.6 * Motion.rnd(j, seed &+ 72) - eoff
+            let lt = x - start
+            guard lt >= 0, lt < 1 else { continue }
+            var a = (6 + 4 * Motion.rnd(j, seed &+ 74)) * flick(lt, 0.12)
+            if Motion.rnd(j, seed &+ 75) < 0.3 { a += 5 * flick(lt - 0.42, 0.11) }
+            if Motion.rnd(j, seed &+ 73) < 0.5 { p.earL += a * w } else { p.earR += a * w }
+        }
+
+        // The tail tip flicks up and settles, in about half of the 7.7 s slots.
+        let tslot = 7.7, toff = Double(seed % 79) * 0.61
+        let tk = Int(floor((x + toff) / tslot))
+        for j in [tk - 1, tk] where Motion.rnd(j, seed &+ 81) < 0.5 {
+            let start = Double(j) * tslot + 3 * Motion.rnd(j, seed &+ 82) - toff
+            let lt = x - start
+            guard lt >= 0, lt < 1.6 else { continue }
+            let h = Motion.pulse(lt, start: 0, end: 0.35, response: 0.3, damping: 0.55, settle: 0.6)
+            p.tailCurl += 7 * h * w
+            p.tail += 2.5 * h * w
+        }
     }
 
     // MARK: Held moods

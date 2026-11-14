@@ -87,13 +87,13 @@ write("idle-base", from: base, seconds: 20) { $0.appearAt = .infinity }
 
 // Each idle moment, forced, with half a second of rest either side.
 for m in LanviMoment.allCases {
-    write("moment-\(m.rawValue)", from: base - 0.5, seconds: m.duration + 1.2) {
+    write("moment-\(m.rawValue)", from: base - 0.5, seconds: m.duration + 1.8) {
         $0.appearAt = .infinity; $0.moment = m; $0.momentAt = base; $0.momentSide = 1
     }
 }
 // Each reaction.
 for r in LanviMood.allCases where r != .calm {
-    write("reaction-\(r.rawValue)", from: base - 0.5, seconds: r.reactionLength + 1.2) {
+    write("reaction-\(r.rawValue)", from: base - 0.5, seconds: r.reactionLength + 1.8) {
         $0.appearAt = .infinity; $0.reaction = r; $0.reactionAt = base
     }
 }
@@ -101,7 +101,7 @@ for r in LanviMood.allCases where r != .calm {
 write("hop", from: base - 0.5, seconds: 2.2) { $0.appearAt = .infinity; $0.hopAt = base }
 // Each touch reaction (no hop in any of them), on the right side.
 for a in LanviTouchAct.allCases {
-    write("touch-\(a.rawValue)", from: base - 0.5, seconds: a.duration + 1.2) {
+    write("touch-\(a.rawValue)", from: base - 0.5, seconds: a.duration + 1.8) {
         $0.appearAt = .infinity; $0.touch = a; $0.touchAt = base; $0.touchSide = 1
     }
 }
