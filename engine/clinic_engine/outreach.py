@@ -142,7 +142,8 @@ class Outreach:
         # answers: it gets its own output limit and timeout; other tasks keep theirs.
         frames = pack.task in ("frames_reading", "days_reading")  # the two long readings
         max_tokens = self.settings.gemini_frames_max_tokens if frames else None
-        timeout = self.settings.gemini_frames_timeout_s if frames else self.settings.gemini_timeout_s
+        timeout = self.settings.gemini_days_timeout_s if pack.task == "days_reading" else \
+            self.settings.gemini_frames_timeout_s if frames else self.settings.gemini_timeout_s
         try:
             if pack.task == "reading":
                 INPUT_GATE.check_reading_outbound(pack.payload)
