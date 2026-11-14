@@ -173,8 +173,11 @@
     try {
       if (!S.me) S.me = await api("GET", "/v1/clinic/me");
       const r = S.route;
-      if (r.view === "patients" || r.view === "demo") {
+      if (r.view === "patients" || r.view === "demo" || r.view === "blueprint") {
         if (force || !S.list) S.list = await api("GET", "/v1/clinic/patients");
+        if (r.view === "blueprint" && S.me.demo && S.me.demo.patient_id && (force || !S.bpAssoc)) {
+          try { S.bpAssoc = await api("GET", "/v1/clinic/patients/" + encodeURIComponent(S.me.demo.patient_id) + "/associations"); } catch (e) { S.bpAssoc = null; }
+        }
       } else if (r.view === "patient") {
         const base = "/v1/clinic/patients/" + encodeURIComponent(r.pid);
         if (force || !S.detail) S.detail = await api("GET", base);
@@ -943,10 +946,119 @@
     wrap.appendChild(chat);
     return wrap;
   }
+  // ---- blueprint: the research, for someone who has never heard of a PHQ-9
+  function bpResearch(wrap) {
+    wrap.appendChild(el("p", { class: "lead" }, "After treatment a person sees the clinic rarely. Their phone is with them every day. The question is simple: do things a phone can measure change when depression gets worse again? If they do, the clinic could know weeks earlier."));
+    // 1. the idea in one picture
+    const W = 960, H = 150, BW = 280, BH = 96;
+    const s1 = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "bp", role: "img", "aria-label": "Every day the phone measures. Every week the clinic's questionnaire gives a score. We check whether the two move together." });
+    const box = (x, n, t, l1, l2, cls) => {
+      s1.appendChild(svg("rect", { x, y: 26, width: BW, height: BH, rx: 10, class: "bp-box " + cls }));
+      s1.appendChild(svg("text", { x: x + 14, y: 20, class: "bp-l" }, n));
+      s1.appendChild(svg("text", { x: x + 14, y: 56, class: "bp-t" }, t));
+      s1.appendChild(svg("text", { x: x + 14, y: 80, class: "bp-s" }, l1));
+      s1.appendChild(svg("text", { x: x + 14, y: 99, class: "bp-s" }, l2));
+    };
+    const arrow = (x1, x2) => {
+      s1.appendChild(svg("line", { x1, y1: 74, x2, y2: 74, class: "bp-line" }));
+      s1.appendChild(svg("polygon", { points: x2 + ",74 " + (x2 - 10) + ",69 " + (x2 - 10) + ",79", class: "bp-head" }));
+    };
+    box(10, "EVERY DAY, AT HOME", "The phone measures", "smiles, reactions, steps:", "numbers only, no pictures", "code");
+    box(340, "EVERY WEEK", "A questionnaire gives a score", "nine questions, 0 to 27,", "the one clinics already use", "model");
+    box(670, "THEN", "Do they move together?", "week by week, for this one person,", "checked by plain statistics", "code");
+    arrow(290, 340); arrow(620, 670);
+    wrap.appendChild(el("section", { class: "panel" }, el("figure", { class: "bp-fig" }, s1)));
+    // 2. what the phone measures
+    const card = (title, where, items) => el("section", { class: "panel" }, el("h2", null, title), el("p", { class: "muted small" }, where), el("ul", { class: "plain" }, items.map((t) => el("li", null, t))));
+    wrap.appendChild(el("div", { class: "grid3" },
+      card("The face", "Front camera, during a 45-second game or a minute of breathing. The phone turns the face into numbers on the spot; no photo or video is kept or sent.",
+        ["how often and how strongly the person smiles", "how much the face moves at all", "how much they look down, how they blink"]),
+      card("The game", "A short focus game: tap the right lights.", ["how fast they react", "how even the reactions are", "how many mistakes"]),
+      card("Apple Health", "What the phone and watch already collect all day (HealthKit), with permission.", ["steps and walking speed", "hours of sleep", "heart-rate variability"])));
+    wrap.appendChild(el("section", { class: "panel" }, el("h2", null, "Why these"),
+      el("p", { class: "small" }, "Decades of research describe the same picture when depression deepens: people smile less, the face becomes still, reactions slow down, and they move less. That is observed by doctors in the room. What is not known is whether a phone at home can see it in one person, week by week. That is the question here.")));
+    // 3. the questionnaire
+    const s2 = svg("svg", { viewBox: "0 0 960 92", class: "bp", role: "img", "aria-label": "The PHQ-9 score from 0 to 27 in five bands: 0 to 4 minimal, 5 to 9 mild, 10 to 14 moderate, 15 to 19 moderately severe, 20 to 27 severe. 10 is the usual cut-off." });
+    const X = (v) => 10 + (v / 27) * 940;
+    [[0, 5, "minimal", 0.1], [5, 10, "mild", 0.22], [10, 15, "moderate", 0.42], [15, 20, "moderately severe", 0.62], [20, 27.0001, "severe", 0.85]].forEach(([a, b, name, op]) => {
+      const r = svg("rect", { x: X(a) + 1, y: 30, width: X(b) - X(a) - 2, height: 26, rx: 4, class: "phq-band" });
+      r.setAttribute("opacity", op);
+      s2.appendChild(r);
+      s2.appendChild(svg("text", { x: (X(a) + X(b)) / 2, y: 76, class: "tg-ax", "text-anchor": "middle" }, name));
+      s2.appendChild(svg("text", { x: X(a) + 2, y: 22, class: "tg-ax" }, String(a)));
+    });
+    s2.appendChild(svg("text", { x: 950, y: 22, class: "tg-ax", "text-anchor": "end" }, "27"));
+    s2.appendChild(svg("line", { x1: X(10), y1: 24, x2: X(10), y2: 62, class: "fp-ci" }));
+    s2.appendChild(svg("text", { x: X(10) + 6, y: 12, class: "bp-l" }, "10: the usual cut-off, where symptoms count as moderate"));
+    wrap.appendChild(el("section", { class: "panel" }, el("h2", null, "What we compare it with: the PHQ-9"),
+      el("p", { class: "small" }, "The PHQ-9 is a questionnaire of nine questions, such as “little interest or pleasure in doing things” and “trouble sleeping”. For each, the person says how often it bothered them in the last two weeks, from “not at all” (0) to “nearly every day” (3). The points add up to a score from 0 to 27. Clinics everywhere use it, so it is our yardstick: we never compare the phone’s numbers with a diagnosis, only with this score."),
+      el("figure", { class: "bp-fig" }, s2)));
+    // 4. one measure, worked through with the example patient
+    const a = S.bpAssoc, sr = a && a.series, ref = (a && a.reference) || {};
+    const key = "face.smile_rate_per_min", row = a && (a.rows || []).find((r) => r.key === key);
+    if (sr && row && row.status === "tested" && ref.key === "phq9" && (sr.measures || {})[key]) {
+      const pts = [];
+      sr.reference.forEach((rp) => { const week = sr.measures[key].filter((m) => rp[0] - m[0] >= 0 && rp[0] - m[0] < 7); if (week.length) pts.push([rp[1], week.reduce((t, m) => t + m[1], 0) / week.length, rp[0]]); });
+      const SW = 560, SH = 330, L = 70, R = 20, T = 20, B = 52;
+      const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+      const xMax = Math.max(20, Math.max.apply(null, xs) + 2), yLo = Math.min.apply(null, ys) * 0.85, yHi = Math.max.apply(null, ys) * 1.1;
+      const sx = (v) => L + (v / xMax) * (SW - L - R), sy = (v) => T + (1 - (v - yLo) / (yHi - yLo)) * (SH - T - B);
+      const s3 = svg("svg", { viewBox: "0 0 " + SW + " " + SH, class: "bp scatter", role: "img", "aria-label": "One dot per week: the PHQ-9 score across, smiles per minute up. Weeks with a higher score have fewer smiles." });
+      [0, 5, 10, 15, 20].forEach((g) => { if (g > xMax) return; s3.appendChild(svg("line", { x1: sx(g), y1: T, x2: sx(g), y2: SH - B, class: g === 10 ? "tg-cut" : "fp-grid" })); s3.appendChild(svg("text", { x: sx(g), y: SH - B + 18, class: "tg-ax", "text-anchor": "middle" }, String(g))); });
+      s3.appendChild(svg("line", { x1: L, y1: SH - B, x2: SW - R, y2: SH - B, class: "fp-zero" }));
+      s3.appendChild(svg("text", { x: (L + SW - R) / 2, y: SH - 8, class: "bp-s", "text-anchor": "middle" }, "PHQ-9 score that week  →  worse"));
+      s3.appendChild(svg("text", { x: 12, y: T + 12, class: "bp-s" }, "smiles"));
+      s3.appendChild(svg("text", { x: 12, y: T + 28, class: "bp-s" }, "per min"));
+      [yLo + (yHi - yLo) * 0.1, yLo + (yHi - yLo) * 0.9].forEach((g) => s3.appendChild(svg("text", { x: L - 8, y: sy(g) + 4, class: "tg-ax", "text-anchor": "end" }, g.toFixed(1))));
+      pts.forEach((p) => s3.appendChild(svg("circle", { cx: sx(p[0]), cy: sy(p[1]), r: 7, class: "tg-refpt" })));
+      const hiP = pts.reduce((m, p) => (p[0] > m[0] ? p : m), pts[0]), loP = pts.reduce((m, p) => (p[0] < m[0] ? p : m), pts[0]);
+      s3.appendChild(svg("text", { x: sx(hiP[0]) - 12, y: sy(hiP[1]) + 22, class: "tg-v", "text-anchor": "end" }, "a bad week: score " + hiP[0] + ", " + hiP[1].toFixed(1) + " smiles a minute"));
+      s3.appendChild(svg("text", { x: sx(loP[0]) + 12, y: sy(loP[1]) - 10, class: "tg-v" }, "a good week: score " + loP[0] + ", " + loP[1].toFixed(1) + " smiles a minute"));
+      const step = (n, t, body) => el("div", { class: "row" }, el("div", { class: "top" }, el("span", { class: "chip" }, n), el("span", { class: "t" }, t)), el("div", { class: "d" }, body));
+      wrap.appendChild(el("section", { class: "panel" }, el("h2", null, "How one measure is tested: smiling"),
+        el("p", { class: "muted small" }, "Example data for one example person, Anna, over 12 weeks. It shows the method, not a finding."),
+        el("div", { class: "grid" }, el("figure", { class: "bp-fig" }, s3),
+          el("div", { class: "rows" },
+            step("1", "One dot per week", "Each dot is one week: how high the questionnaire score was, and how often she smiled during the games that week."),
+            step("2", "Look at the shape", "The dots fall from left to right: in the weeks with a higher score she smiled less. If smiling had nothing to do with it, the dots would be a shapeless cloud."),
+            step("3", "One number for the shape", "A correlation runs from 0 (no link) to 1 (the weeks line up perfectly). Here it is " + f2(row.rho).replace("+", "") + " for " + row.n + " weeks."),
+            step("4", "How sure", "With a dozen weeks, luck can do a lot. So we also compute the range the true value could lie in: " + f2(row.ci_low).replace("+", "") + " to " + f2(row.ci_high).replace("+", "") + ". Only when that whole range stays clear of zero do we say “as expected”.")))));
+    }
+    // 5. the two answers
+    const list = (S.list && S.list.patients) || [];
+    const anna = S.me && S.me.demo && S.me.demo.patient_id, elina = (list.find((p) => p.label === "Example R-001") || {}).patient_id;
+    wrap.appendChild(el("div", { class: "grid2" },
+      el("section", { class: "panel" }, el("h2", null, "Answer one: “they move together”"),
+        el("p", { class: "small" }, "Anna’s score went up, came down and went up again. In the same weeks she smiled less, reacted more slowly and walked less. Three different kinds of measure agree."),
+        anna ? el("p", null, el("a", { href: "#/p/" + encodeURIComponent(anna) + "/research" }, "Open Anna’s research page")) : null),
+      el("section", { class: "panel" }, el("h2", null, "Answer two: “we cannot tell”"),
+        el("p", { class: "small" }, "Elina stayed well. Her score hardly moved, so there is nothing for the measures to follow, and the tool says so. A tool that always finds something would be worthless."),
+        elina ? el("p", null, el("a", { href: "#/p/" + encodeURIComponent(elina) + "/research" }, "Open Elina’s research page")) : null)));
+    // 6. who does what, and the limits
+    wrap.appendChild(el("div", { class: "grid2" },
+      panel("Who does what", null, el("ul", { class: "plain" },
+        el("li", null, "The phone measures. Only numbers leave it."),
+        el("li", null, "Plain code does all the statistics."),
+        el("li", null, "A language model reads the finished table and writes the judgement and the cautions. It never sees the person’s data."),
+        el("li", null, "Code checks every sentence of that judgement against the numbers and corrects what does not hold."))),
+      panel("What this does not show", null, el("ul", { class: "plain" },
+        el("li", null, "It is example data. Nobody knows yet whether a phone can see this in real patients."),
+        el("li", null, "It is about one person over time. It never says “people who smile less are depressed”."),
+        el("li", null, "It is not a diagnosis and it replaces no clinician. It can only say: these numbers moved with the score."),
+        el("li", null, "Light, glasses, how the phone is held and medication can all move the face numbers too.")))));
+    wrap.appendChild(el("section", { class: "panel" }, el("h2", null, "The study we want to run"),
+      el("p", { class: "small" }, "Twenty to thirty people after TMS treatment, twelve weeks, a weekly PHQ-9, and this app. For each person: does anything on the phone follow their score, and does it move first? The plan is in the project’s research proposal.")));
+  }
+
   // ---- blueprint: how the learning loop works
   function viewBlueprint() {
     const wrap = el("div", { class: "stack" });
+    const tab = S.bpTab || "research";
+    const tabsRow = el("div", { class: "seg", role: "group", "aria-label": "Blueprint sections" }, [["research", "The research"], ["learning", "How it learns"]].map(([k, label]) =>
+      el("button", { type: "button", class: "btn btn-small", "aria-pressed": tab === k ? "true" : "false", "data-key": "bp-" + k, on: { click: () => { S.bpTab = k; window.scrollTo(0, 0); render(); } } }, label)));
+    if (tab === "research") { wrap.appendChild(el("div", { class: "head" }, el("h1", null, "The research: can a phone notice depression coming back?"))); wrap.appendChild(tabsRow); bpResearch(wrap); return wrap; }
     wrap.appendChild(el("div", { class: "head" }, el("h1", null, "How the system learns")));
+    wrap.appendChild(tabsRow);
     wrap.appendChild(el("p", { class: "lead" }, "The system learns which small things suit one person. A model proposes, code decides. Nothing a model writes reaches the patient, and a lesson can only change the order of offers that we wrote ourselves."));
     const W = 960, H = 318, BW = 262, BH = 88;
     const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "bp", role: "img",

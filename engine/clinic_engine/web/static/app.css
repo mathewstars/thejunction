@@ -343,3 +343,8 @@ table.assoc td.num, table.assoc td.r { white-space: nowrap; }
   .tbar .search { width: 100%; }
   .msg { max-width: 92%; }
 }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+.phq-band { fill: var(--amber); }
+.scatter { max-width: 560px; }
+@media (max-width: 860px) { .grid3, .grid2 { grid-template-columns: minmax(0, 1fr); } }
