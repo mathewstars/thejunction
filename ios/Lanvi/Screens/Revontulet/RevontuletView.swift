@@ -72,7 +72,17 @@ struct RevontuletView: View {
         return RevontuletBeat(rawValue: args[i + 1])
     }()
 
+    private static let feelLab = ProcessInfo.processInfo.arguments.contains("-revontuletFeelLab")
+
     var body: some View {
+        if Self.feelLab {
+            RevontuletFeelLab()
+        } else {
+            game
+        }
+    }
+
+    private var game: some View {
         GeometryReader { outer in
             let insets = outer.safeAreaInsets
             GeometryReader { geo in
@@ -489,6 +499,11 @@ struct RevontuletView: View {
                 if !quiet { feel.landing(at: at, hard: hard, embersHit: hits, ribbon: ribbon, burstAt: burstAt) }
             case let .impact(r, pieces, breaking):
                 art?.sync(e)
+                // The burst's ticks follow the shards it is about to draw.
+                if breaking, !quiet, let b = e.impacts.last.map({ $0.time + RevontuletEngine.breakDelay }),
+                   let times = art?.shardLandings() {
+                    feel.shardTicks(at: b, times: times)
+                }
                 say(nil)
                 if !quiet {
                     punchSize = breaking ? 10 : CGFloat(3 + 1.5 * Double(pieces))

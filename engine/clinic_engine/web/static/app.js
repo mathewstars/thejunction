@@ -2345,7 +2345,7 @@
         rows.map((r) => {
           const tested = r.status === "tested";
           return el("tr", { class: strongest.has(r.key) ? "changed" : "" },
-            el("td", null, r.label, el("span", { class: "sub" }, r.why)),
+            el("td", null, r.label, r.task_bound ? el("span", { class: "chip tag" }, "depends on how the phone is held") : null, el("span", { class: "sub" }, r.why)),
             el("td", null, r.expected, el("span", { class: "sub" }, r.support + " support")),
             el("td", { class: "r num" }, r.n),
             el("td", null, tested ? el("div", { class: "rhocell" }, rhoBar(r), el("span", { class: "num small" }, f2(r.rho) + " [" + f2(r.ci_low) + ", " + f2(r.ci_high) + "]")) : el("span", { class: "muted" }, R_STATUS[r.status] || words(r.status))),
@@ -2371,7 +2371,7 @@
         el("li", null, "Confidence is set by code. " + (des.low_below_ratings ? "Fewer than " + des.low_below_ratings + " ratings always gives low, whatever the measures do. " : "") + "The pattern is called “moves as expected” only when, in every kind of measure that agrees, at least half of the measures with an expected direction came out as expected. Otherwise it is “partly as expected”."),
         el("li", null, "The evening check-in is the person’s own answers, like the score itself, so those two share a method."),
         el("li", null, "Reaction time comes from at most six taps a game. In the first real games most games had none."),
-        el("li", null, "Most plausible other explanation named: " + (o.main_alternative_text || words(o.main_alternative))),
+        el("li", null, "Most plausible other explanation, named by " + (a.appraised_by === "model" ? "the model" : "code") + ": " + (o.main_alternative_text || words(o.main_alternative))),
         notes.map((n) => el("li", null, n.text)),
         a.hypotheses_reviewed_by_clinician ? null : el("li", null, "The list of expected directions has not yet been reviewed by a clinician.")),
       cor.length ? table(["Where", "Field", "Model said", "Code set", "Why"],

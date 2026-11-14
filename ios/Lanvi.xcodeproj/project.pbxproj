@@ -56,6 +56,7 @@
 		942A29C36871C91B6C4230BA /* BreathePieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29013F2F7831D454F4237DF1 /* BreathePieces.swift */; };
 		96313F278A5FBE5EEE2B2790 /* FrameMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */; };
 		966709A0031A479E6D292413 /* HomeMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */; };
+		97AA30EC4D44E23539CBD8F9 /* RevontuletFeelLab.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF5EC131A21101419274A7AF /* RevontuletFeelLab.swift */; };
 		9B687749D49A04C7081D4DFA /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3595C8C9C83D14C2B300184 /* JSONValue.swift */; };
 		9CC3E3C1AA7E2D00D7F3C812 /* LanviEyesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14332D1FBE2937C010FE068A /* LanviEyesTests.swift */; };
 		A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */; };
@@ -239,6 +240,7 @@
 		F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusGameView.swift; sourceTree = "<group>"; };
 		FD3F81F3EF6C8E219C91311D /* RevontuletAutoPlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevontuletAutoPlay.swift; sourceTree = "<group>"; };
 		FE302A87F06086F1486E7DCF /* LanviTouch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviTouch.swift; sourceTree = "<group>"; };
+		FF5EC131A21101419274A7AF /* RevontuletFeelLab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevontuletFeelLab.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -505,6 +507,7 @@
 				0A642E52DE3048D1D92DE79C /* RevontuletDirect.swift */,
 				ED29D543DC313AABB988967F /* RevontuletEngine.swift */,
 				6E7FB0E06C454380ECB20FD9 /* RevontuletFeel.swift */,
+				FF5EC131A21101419274A7AF /* RevontuletFeelLab.swift */,
 				DEA3B1DFBEFDF89BAD28FF08 /* RevontuletFox.swift */,
 				4FA6F39FA7B8EDFDD18AB261 /* RevontuletMeasures.swift */,
 				F4F6CF2EF1D602B235A66678 /* RevontuletModel.swift */,
@@ -736,6 +739,7 @@
 				B0AC66AEFCE17E1CDE35E35A /* RevontuletDirect.swift in Sources */,
 				F67B6544CC99447BBF65A7BE /* RevontuletEngine.swift in Sources */,
 				25BF8E17E15D212C9C743A28 /* RevontuletFeel.swift in Sources */,
+				97AA30EC4D44E23539CBD8F9 /* RevontuletFeelLab.swift in Sources */,
 				1EAF38B3C0A01E43512FEE9B /* RevontuletFox.swift in Sources */,
 				65C54BD206B6EA73A157288C /* RevontuletMeasures.swift in Sources */,
 				53DFDA41B96A5436FE6B9BD6 /* RevontuletModel.swift in Sources */,
