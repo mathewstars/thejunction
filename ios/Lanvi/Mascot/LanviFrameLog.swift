@@ -17,7 +17,9 @@ final class LanviFrameLog {
         return v > 0 ? v : 10
     }()
 
-    func record(date: Date, _ f: RigFrame) {
+    /// `extra`: the puppet's own state for the frame (petting, finger, touch, moment, look
+    /// steps, clock lag), only worked out while logging.
+    func record(date: Date, _ f: RigFrame, extra: @autoclosure () -> String = "") {
         guard !written else { return }
         let now = CACurrentMediaTime()
         if first == nil { first = now }
@@ -30,12 +32,14 @@ final class LanviFrameLog {
         values += [p.headX, p.headY, p.headTilt, p.bodySY, p.chest, p.dirX, p.dirY]
         values += [p.earL, p.earR, f.earLBend, f.earRBend, p.tail, f.tailBend, f.headSY, p.eyeX, p.eyeY]
         let row = values.map { String(format: "%.5f", $0) }.joined(separator: ",")
-        lines.append(row + ",\(f.face.eyes),\(f.face.mouth),\(f.eyes.count)")
+        // every eye picture drawn this frame with its opacity, e.g. "open:0.55|half:0.45"
+        let eyeLayers = f.eyes.map { "\($0.0):" + String(format: "%.2f", $0.1) }.joined(separator: "|")
+        lines.append(row + ",\(f.face.eyes),\(f.face.mouth),\(f.eyes.count),\(eyeLayers),\(extra())")
     }
 
     private func write() {
         written = true
-        let header = "now,date,rootX,rootY,rootSX,rootSY,rootTilt,headX,headY,headTilt,bodySY,chest,dirX,dirY,earL,earR,earLBend,earRBend,tail,tailBend,headSY,eyeX,eyeY,eyes,mouth,eyeLayers\n"
+        let header = "now,date,rootX,rootY,rootSX,rootSY,rootTilt,headX,headY,headTilt,bodySY,chest,dirX,dirY,earL,earR,earLBend,earRBend,tail,tailBend,headSY,eyeX,eyeY,eyes,mouth,eyeCount,eyeLayers,petting,finger,touch,moment,lookSteps,clockLag\n"
         let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("puppet-frames.csv")
         try? (header + lines.joined(separator: "\n")).write(to: url, atomically: true, encoding: .utf8)
     }

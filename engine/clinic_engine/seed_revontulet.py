@@ -37,8 +37,9 @@ PHQ9 = (5, 4, 5, 6, 8, 11, 13, 15)
 PT_PER_CM = 60.4
 TRACE_CM_S, STROKE_CM_S = 13.5, 19.5
 # How much a whole game's speed varies from one game to the next, as a share of
-# the speed: from the same real games (tracing: six games; strokes: five). Ten
-# minutes of play by one team member, so a first look and not a norm.
+# the speed: from the same nine real games (about 13 to 15% for tracing, about
+# 30% for strokes; some of the nine gave no speed). Ten minutes of play by one
+# team member, so a first look and not a norm.
 TRACE_VARIES, STROKE_VARIES = 0.13, 0.29
 
 

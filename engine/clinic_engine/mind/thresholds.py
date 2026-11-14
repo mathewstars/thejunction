@@ -66,6 +66,9 @@ class Thresholds:
     # from the first real ones (docs/revontulet-measures.md): about 11% of
     # unchanged games get a label per reference, whatever the game-to-game spread.
     revontulet_baseline_min: int = 8
+    # ... played on at least this many different days. Ten games in one evening
+    # (the first real games) are one sitting, not a usual range.
+    revontulet_min_days: int = 5
     revontulet_unusual_z: float = 2.5
     # The fixed reference: the person's start, games 3 to 12 (the first two are practice).
     revontulet_start_from: int = 2
@@ -286,6 +289,7 @@ class Thresholds:
     assoc_seed: int = 20261113  # fixed, so results are reproducible
     assoc_p_adj_max: float = 0.10  # above this a row cannot be "consistent"
     assoc_weak_n: int = 12  # below this many paired days, at most "weak"
+    assoc_low_ratings: int = 20  # one observation per rating: fewer ratings than this is always "low"
     assoc_high_n: int = 20  # "high" confidence needs this many paired days ...
     assoc_high_lines: int = 3  # ... this many independent lines, and a rating reference
     assoc_medium_lines: int = 2  # code's own "medium" needs this many lines
