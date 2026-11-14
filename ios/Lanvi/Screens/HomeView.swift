@@ -244,17 +244,6 @@ struct HomeView: View {
             .offset(y: -lift)
             .opacity(arrived ? 1 : 0)
     }
-            .buttonStyle(SpeechPressStyle())
-            .homeZoomSource("speech", in: zoom)
-            .accessibilityHint("Opens a chat with Lanvi")
-        }
-        .padding(.horizontal, 24)
-        .frame(height: bottom - top)
-        .padding(.top, top)
-        .offset(y: -lift)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: bubbleText)
-        .opacity(arrived ? 1 : 0)
-    }
 
     /// Solid white pill, navy type: reads on the pale dawn and the deep night alike.
     private var dayPill: some View {
