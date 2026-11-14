@@ -112,6 +112,7 @@ private struct MoodKey: EnvironmentKey { static let defaultValue: LanviMood? = n
 private struct ReactionKey: EnvironmentKey { static let defaultValue: LanviReactionRequest? = nil }
 private struct LookKey: EnvironmentKey { static let defaultValue: UnitPoint? = nil }
 private struct MouthKey: EnvironmentKey { static let defaultValue: MouthShape? = nil }
+private struct HopsKey: EnvironmentKey { static let defaultValue = true }
 private struct FreezeKey: EnvironmentKey { static let defaultValue: LanviDebugFreeze? = nil }
 
 extension EnvironmentValues {
@@ -122,6 +123,10 @@ extension EnvironmentValues {
     var lanviReactionRequest: LanviReactionRequest? {
         get { self[ReactionKey.self] }
         set { self[ReactionKey.self] = newValue }
+    }
+    var lanviHops: Bool {
+        get { self[HopsKey.self] }
+        set { self[HopsKey.self] = newValue }
     }
     var lanviMouth: MouthShape? {
         get { self[MouthKey.self] }
@@ -146,6 +151,13 @@ extension View {
     /// Play `mood` once each time `trigger` changes. The idle keeps going underneath.
     func lanviReaction<T: Hashable>(_ mood: LanviMood, trigger: T) -> some View {
         environment(\.lanviReactionRequest, LanviReactionRequest(mood: mood, token: AnyHashable(trigger)))
+    }
+
+    /// False: Lanvi never leaves the snow (no hop on pose changes, taps or the happy
+    /// reaction; faces, ears and tail still react). Home and first run use this and
+    /// allow the hop only for the reward after an activity.
+    func lanviHops(_ on: Bool) -> some View {
+        environment(\.lanviHops, on)
     }
 
     /// Show one of the existing mouth shapes while set (talking); nil = the puppet decides.

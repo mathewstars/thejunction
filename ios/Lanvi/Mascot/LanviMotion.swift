@@ -23,6 +23,9 @@ struct LanviMotion {
     var lookFrom: CGPoint?               // previous target
     var lookAt: Double                   // when the target changed
     var reduceMotion: Bool
+    /// False: no hops at all (pose changes, taps and the happy reaction keep their
+    /// faces, ears and tail, without leaving the snow). See `.lanviHops`.
+    var hops: Bool = true
     var freezeBlink: Double? = nil       // debug: hold a blink at this phase (s)
     var loving = false                   // the `love` pose: soft happy eyes
 
@@ -84,7 +87,7 @@ struct LanviMotion {
         // --- Reactions on top (the idle never stops) ---
         if let r = reaction { applyReaction(r, &f, rt: t - reactionAt) }
         applyTap(&f, rt: t - tapAt)
-        if !reduceMotion { hop(&f, t - hopAt, height: 120) }
+        if !reduceMotion && hops { hop(&f, t - hopAt, height: 120) }
 
         // Breathing: chest 1.5 % over 4 s, a plain smooth sine (eases in and out).
         // The head stays on the neck: it rides the chest (breath 0.15 s late) once.
@@ -224,7 +227,7 @@ struct LanviMotion {
             // Back to the normal face inside a small nod at 1.65 s.
             if Motion.inside(rt, 0.31, 1.65) { f.eyes = .happy; f.mouth = .happy }
             guard m else { return }
-            hop(&f, rt - 0.05, height: 110, headLeads: true)
+            if hops { hop(&f, rt - 0.05, height: 110, headLeads: true) }
             f.headDY += CGFloat(7 * Motion.flick(rt - 1.58, duration: 0.14))
             // Tail wags fast: four swings that shrink, the tip clearly trailing.
             let wag = { (x: Double) -> Double in
@@ -287,7 +290,7 @@ struct LanviMotion {
         f.headTilt += 7 * tapSide * tilt
         let flick = Motion.flick(rt - 0.05, duration: 0.13) * 11
         if tapSide < 0 { f.earL += flick } else { f.earR += flick }
-        hop(&f, rt - 0.3, height: 45)
+        if hops { hop(&f, rt - 0.3, height: 45) }
         f.tail += 10 * Motion.flick(rt - 0.2, duration: 0.2)
     }
 

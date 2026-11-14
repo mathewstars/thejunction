@@ -13,7 +13,7 @@ struct PairView: View {
     @State private var say = "Your clinic gave you a code. Type it here and I'll remember you."
     @State private var busy = false
     @State private var paired = false
-    @State private var pose: LanviPose = .curious
+    @State private var reaction: LanviMood = .happy
     @State private var reactTick = 0
     @State private var look: UnitPoint?
     @FocusState private var focused: Bool
@@ -34,10 +34,11 @@ struct PairView: View {
                         .padding(.horizontal, 24)
                         .padding(.top, 16)
 
-                    LanviView(pose: pose, size: fox)
-                        .lanviMood(busy ? .listening : nil)
-                        .lanviReaction(.happy, trigger: reactTick)
+                    LanviView(pose: .curious, size: fox)
+                        .lanviMood(busy || (focused && !code.isEmpty) ? .listening : nil)
+                        .lanviReaction(reaction, trigger: reactTick)
                         .lanviLookAt(look)
+                        .lanviHops(false)
                         .frame(height: fox)
                         .padding(.top, 4)
                         .accessibilityHidden(true)
@@ -116,12 +117,14 @@ struct PairView: View {
             case .ok:
                 paired = true
                 focused = false
-                pose = .cheer
+                reaction = .happy
                 reactTick += 1
                 say = "There you are. I'll remember you."
                 try? await Task.sleep(for: .seconds(1.6))
                 onDone()
             case .badCode:
+                reaction = .curious
+                reactTick += 1
                 say = "That code didn't work. Codes work once. Ask your clinic for a fresh one."
             case .offline:
                 say = "I can't reach the clinic right now. Check the internet, then try again."

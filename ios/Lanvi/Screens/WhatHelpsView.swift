@@ -10,8 +10,10 @@ struct WhatHelpsView: View {
     @Environment(AppStore.self) private var store
     @State private var chosen: [String] = []
     @State private var say = "What usually helps you? Pick as many as you like."
-    @State private var pose: LanviPose = .curious
-    @State private var bounce = 0
+    /// One reaction at a time; never the same one twice in a row.
+    @State private var reaction: LanviMood = .listening
+    @State private var reactTick = 0
+    @State private var proud = false
     @State private var sending = false
 
     private struct Choice: Identifiable {
@@ -37,7 +39,10 @@ struct WhatHelpsView: View {
                 PaintedWorld(scene: store.worldScene)
 
                 ZStack {
-                    LanviView(pose: pose, size: fox, bounceTrigger: bounce)
+                    LanviView(pose: .curious, size: fox)
+                        .lanviReaction(reaction, trigger: reactTick)
+                        .lanviMood(proud ? .happy : nil)
+                        .lanviHops(false)
                 }
                 .frame(width: fox * 2, height: fox * 2)
                 .position(x: geo.size.width / 2, y: hill - fox / 2 + 14)
@@ -74,7 +79,12 @@ struct WhatHelpsView: View {
                 .padding(.bottom, 12)
             }
         }
-        .task { await runDemo() }
+        .task {
+            // Arriving: ears up and a small nod, "I'm listening".
+            try? await Task.sleep(for: .milliseconds(450))
+            reactTick += 1
+            await runDemo()
+        }
     }
 
     private func chip(_ c: Choice) -> some View {
@@ -112,24 +122,30 @@ struct WhatHelpsView: View {
     }
 
     private func toggle(_ id: String) {
-        // The chips animate; Lanvi's pose is set plainly (the puppet eases it itself).
         withAnimation(LanviTiming.pop) {
             if let i = chosen.firstIndex(of: id) { chosen.remove(at: i) } else if chosen.count < 4 { chosen.append(id) }
         }
-        pose = chosen.isEmpty ? .curious : .love
+        // A happy squint for a choice, a head tilt for the next one, and so on.
+        react(reaction == .happy ? .curious : .happy)
     }
 
     private func finish() {
         guard !sending else { return }
         if chosen.isEmpty { onDone(); return }
         sending = true
+        react(.listening)          // a nod: thank you, noted
         Task {
             let line = await store.setPreferences(chosen)
             say = line ?? "Got it. Thank you for telling me."
-            pose = .cheer
+            proud = true
             try? await Task.sleep(for: .seconds(demo ? 2.6 : 1.9))
             onDone()
         }
+    }
+
+    private func react(_ mood: LanviMood) {
+        reaction = mood
+        reactTick += 1
     }
 
     private func runDemo() async {

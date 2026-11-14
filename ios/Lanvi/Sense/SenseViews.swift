@@ -34,7 +34,10 @@ struct SenseScene<Actions: View>: View {
             ZStack(alignment: .top) {
                 PaintedWorld(scene: night ? .night : .at(hour: Calendar.current.component(.hour, from: Date())))
 
-                LanviView(pose: pose, size: fox, bounceTrigger: bounce)
+                // No hops in first run: the first cue is a nod, the next a happy squint.
+                LanviView(pose: pose, size: fox)
+                    .lanviReaction(bounce % 2 == 1 ? .listening : .happy, trigger: bounce)
+                    .lanviHops(false)
                     .frame(width: fox * 2, height: fox * 2)
                     .position(foxCenter)
                     .allowsHitTesting(false)

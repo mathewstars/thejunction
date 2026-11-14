@@ -69,7 +69,6 @@ struct HomeView: View {
     @State private var cover: Cover?
     @State private var sheet: Sheet?
     @State private var pose: LanviPose = .curious
-    @State private var bounce = 0
     @State private var pop: HomeCelebration?
     @State private var celebrating = false
     @State private var showGrowth = false
@@ -104,7 +103,9 @@ struct HomeView: View {
 
                 // Lanvi, large on the snow, with the fox fire behind the tail.
                 ZStack {
-                    LanviView(pose: pose, size: L.fox, bounceTrigger: bounce)
+                    LanviView(pose: pose, size: L.fox)
+                        // Lanvi leaves the snow only for the reward after an activity.
+                        .lanviHops(celebrating)
                         .lanviReaction(reaction, trigger: reactTick)
                         .lanviMood(restingMood)
                         .lanviLookAt(look)
