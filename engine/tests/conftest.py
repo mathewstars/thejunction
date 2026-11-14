@@ -61,7 +61,8 @@ class Level2Recorder:
 
 
 def make_settings(**kw):
-    base = dict(store="memory", review_inline=True, tick_seconds=0)
+    base = dict(store="memory", review_inline=True, tick_seconds=0,
+                gemini_frames_retry_wait_s=0)
     base.update(kw)
     return Settings(**base)
 

@@ -14,8 +14,12 @@ The parts that are pure code:
 - code_view(): code's own detection on the FULL-rate raw frames, with the
   thresholds of the face summary (smiles, blinks, the moment answers) plus a
   few of its own (segments, side, overall words).
-- verify(): every item the model returned, confirmed, corrected or dropped
-  against code_view(), with an agreement block.
+- verify(): every item the model returned, compared with code_view(), with an
+  agreement block. Two methods read the same numbers: where they agree the
+  item is confirmed; where the model reports a smile that code's fixed onset
+  did not reach, code tests the span against the session's own resting level
+  and keeps it apart as a faint smile when the rise is in the numbers.
+- aggregate(): the agreement over many sessions, with their number.
 
 Clinician-only. Nothing here reaches the patient, opens or closes attention,
 changes what is offered or feeds the learning review.
@@ -32,9 +36,10 @@ from .thresholds import T, Thresholds
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
-# The channels of the reduced stream, in this order. Each is sent only when its
-# source channels exist; "tracked" is always last and always sent.
-CHANNELS = ("smile", "smile_left", "smile_right", "cheek", "frown", "blink", "look_down",
+# The channels of the reduced stream, in this order. "t" (seconds from the
+# first frame) is always first and "tracked" always last; each of the others is
+# sent only when its source channels exist.
+CHANNELS = ("t", "smile", "smile_left", "smile_right", "cheek", "frown", "blink", "look_down",
             "brow_down", "brow_inner_up", "jaw_open", "head_pitch", "head_yaw", "head_roll",
             "tracked")
 SOURCES = {
@@ -67,6 +72,33 @@ TRACKING = ("good", "partly", "poor")
 CONFIDENCE = ("low", "medium", "high")
 MAX_SMILES = 30
 MAX_SEGMENTS = 12
+
+
+def _obj(props: dict) -> dict:
+    return {"type": "OBJECT", "properties": props, "required": list(props),
+            "propertyOrdering": list(props)}
+
+
+def _enum(words) -> dict:
+    return {"type": "STRING", "enum": list(words)}
+
+
+# The reply's shape for the model's structured output (the output gate checks
+# the same shape again, strictly, whatever the model was told).
+RESPONSE_SCHEMA = _obj({
+    "smiles": {"type": "ARRAY", "maxItems": MAX_SMILES, "items": _obj({
+        "start_s": {"type": "NUMBER"}, "end_s": {"type": "NUMBER"},
+        "reaches_eyes": {"type": "BOOLEAN", "nullable": True}, "side": _enum(SIDES)})},
+    "blinks": {"type": "INTEGER"},
+    "segments": {"type": "ARRAY", "maxItems": MAX_SEGMENTS, "items": _obj({
+        "start_s": {"type": "NUMBER"}, "end_s": {"type": "NUMBER"},
+        "what": _enum(SEGMENT_KINDS)})},
+    "moments": {"type": "ARRAY", "items": _obj({
+        "at_s": {"type": "NUMBER"}, "smiled": {"type": "BOOLEAN"}})},
+    "overall": _obj({"expression": _enum(EXPRESSION), "smiling": _enum(SMILING),
+                     "gaze": _enum(GAZE), "tracking": _enum(TRACKING),
+                     "confidence": _enum(CONFIDENCE)}),
+})
 
 
 @lru_cache(maxsize=1)
@@ -104,15 +136,16 @@ def reduce(raw: dict, activity: str, th: Thresholds = T) -> dict:
     tracked = ff._tracked(raw)
     n = len(tracked)
     k = block_size(n, rate, th)
-    series = {c: s for c in CHANNELS[:-1] if (s := _source_series(cols, c)) is not None}
-    names = [c for c in CHANNELS[:-1] if c in series] + ["tracked"]
+    series = {c: s for c in CHANNELS[1:-1] if (s := _source_series(cols, c)) is not None}
+    names = ["t"] + [c for c in CHANNELS[1:-1] if c in series] + ["tracked"]
     frames = []
     for a in range(0, n, k):
         b = min(n, a + k)
         seen = [i for i in range(a, b) if tracked[i]]
         is_tracked = 2 * len(seen) >= (b - a)
-        row = []
-        for c in names[:-1]:
+        # The time the block starts: the model reads times, it does not count rows.
+        row = [round(a / rate, 2)]
+        for c in names[1:-1]:
             if not seen:
                 # Nothing seen in this block: the values are not used (the prompt
                 # says to ignore a row with tracked 0), so none are sent.
@@ -129,7 +162,8 @@ def reduce(raw: dict, activity: str, th: Thresholds = T) -> dict:
         row.append(1 if is_tracked else 0)
         frames.append(row)
     duration = n / rate
-    moments = [round(m / 1000, 1) for m in (raw.get("moments_ms") or [])
+    # Rounded down, so a moment in the last tenth of a second stays inside.
+    moments = [math.floor(m / 100) / 10 for m in (raw.get("moments_ms") or [])
                if 0 <= m / 1000 < duration][:ff.MAX_MOMENTS]
     return {"activity": activity, "rate_hz": round(rate / k, 2), "channels": names,
             "frames": frames, "moments_s": moments}
@@ -177,6 +211,12 @@ def code_view(raw: dict, th: Thresholds = T) -> dict:
             smiles.append({"start_s": s / rate, "end_s": e / rate, "a": s, "b": e,
                            "reaches_eyes": reach, "side": side})
 
+    # The session's own resting level of the smile signal: the median over the
+    # tracked frames (a person smiling most of the session has a high one, and
+    # then nothing is "faint").
+    seen_vals = sorted(v for v, t in zip(smile, tracked) if t)
+    rest = seen_vals[len(seen_vals) // 2] if seen_vals else 0.0
+
     blink = [max(x, y) for x, y in zip(cols["eyeBlinkLeft"], cols["eyeBlinkRight"])]
     blinks = 0
     if enough:
@@ -201,13 +241,15 @@ def code_view(raw: dict, th: Thresholds = T) -> dict:
     # Moments: a smile starting within the window after it (as in the summary).
     moments = []
     for m in raw.get("moments_ms") or []:
-        mi = int(round(m / 1000 * rate))
-        if mi >= n or not tracked[mi] or not enough:
-            moments.append({"at_s": round(m / 1000, 1), "smiled": None})
+        if not 0 <= m / 1000 < n / rate:
+            continue  # not sent to the model either (reduce)
+        at = math.floor(m / 100) / 10
+        mi = min(n - 1, int(round(m / 1000 * rate)))
+        if not tracked[mi] or not enough:
+            moments.append({"at_s": at, "smiled": None})
             continue
         end = mi + th.smile_response_window_s * rate
-        moments.append({"at_s": round(m / 1000, 1),
-                        "smiled": any(mi <= s["a"] <= end for s in smiles)})
+        moments.append({"at_s": at, "smiled": any(mi <= s["a"] <= end for s in smiles)})
 
     fa, sr = summary.get("facial_activity"), summary.get("smile_rate_per_min")
     ld, tq = summary.get("look_down_share"), summary.get("tracking_quality") or 0.0
@@ -223,7 +265,8 @@ def code_view(raw: dict, th: Thresholds = T) -> dict:
                            ("good", "partly", "poor")),
     }
     return {"rate": rate, "n": n, "tracked": tracked, "smiles": smiles, "blinks": blinks,
-            "cond": cond, "moments": moments, "overall": overall, "summary": summary}
+            "cond": cond, "moments": moments, "overall": overall, "summary": summary,
+            "smile": smile, "left": left, "right": right, "rest": rest, "enough": enough}
 
 
 def _still_frames(cols, runs, rate: float, n: int, th: Thresholds) -> list[bool]:
@@ -280,22 +323,39 @@ def verify(reply: dict, raw: dict, payload: dict, th: Thresholds = T) -> dict:
     view = code_view(raw, th)
     dropped: list[dict] = []
 
-    # Smiles: matched to code's smiles by overlap, each code smile once.
+    # Smiles: matched to code's smiles one to one, by the overlap of the two
+    # spans over their union (so neither a sliver inside a smile nor a span far
+    # wider than it counts as the same smile). A reported smile that touches no
+    # smile of code's is tested against the session's resting level: when the
+    # rise is in the numbers it is kept apart as a faint smile.
     used: set[int] = set()
-    smiles_out = []
+    smiles_out, faint_out, start_errors = [], [], []
     for sm in reply["smiles"]:
         a, b = sm["start_s"], sm["end_s"]
-        best, best_share, best_free = None, 0.0, None
+        touches, taken, best_free = False, False, None
         for j, cs in enumerate(view["smiles"]):
-            ov = max(0.0, min(b, cs["end_s"]) - max(a, cs["start_s"])) / (b - a)
-            if ov > best_share:
-                best, best_share = j, ov
-            if j not in used and ov >= th.frames_smile_overlap and \
-                    (best_free is None or ov > best_free[1]):
-                best_free = (j, ov)
+            inter = max(0.0, min(b, cs["end_s"]) - max(a, cs["start_s"]))
+            if inter <= 0:
+                continue
+            touches = True
+            iou = inter / (max(b, cs["end_s"]) - min(a, cs["start_s"]))
+            if iou < th.frames_smile_iou:
+                continue
+            if j in used:
+                taken = True
+            elif best_free is None or iou > best_free[1]:
+                best_free = (j, iou)
         if best_free is None:
-            reason = "same_smile_twice" if best is not None and \
-                best_share >= th.frames_smile_overlap else "not_found_by_code"
+            again = False
+            if not touches:
+                rise = faint_rise(view, a, b, th)
+                again = rise is not None and any(
+                    min(b, f["end_s"]) > max(a, f["start_s"]) for f in faint_out)
+                if rise is not None and not again:
+                    faint_out.append({"start_s": a, "end_s": b, **rise})
+                    continue
+            reason = "same_smile_twice" if taken or again else \
+                "poor_overlap" if touches else "no_rise_in_numbers"
             dropped.append({"item": "smile", "start_s": a, "end_s": b, "reason": reason})
             continue
         j, share = best_free
@@ -310,9 +370,14 @@ def verify(reply: dict, raw: dict, payload: dict, th: Thresholds = T) -> dict:
             corrected.append("side")
             out["side"] = cs["side"]
         out.update(status="corrected" if corrected else "confirmed", corrected=corrected,
-                   overlap=round(share, 2))
+                   overlap=round(share, 2), code_start_s=round(cs["start_s"], 2),
+                   code_end_s=round(cs["end_s"], 2),
+                   start_error_s=round(a - cs["start_s"], 2),
+                   end_error_s=round(b - cs["end_s"], 2))
+        start_errors.append(abs(a - cs["start_s"]))
         smiles_out.append(out)
-    missed = len(view["smiles"]) - len(used)
+    missed = [{"start_s": round(cs["start_s"], 2), "end_s": round(cs["end_s"], 2)}
+              for j, cs in enumerate(view["smiles"]) if j not in used]
 
     # Blinks: the model's number, code's number beside it.
     bm, bc = reply["blinks"], view["blinks"]
@@ -328,6 +393,12 @@ def verify(reply: dict, raw: dict, payload: dict, th: Thresholds = T) -> dict:
             dropped.append({"item": "segment", "start_s": sg["start_s"], "end_s": sg["end_s"],
                             "what": sg["what"], "reason": reason})
             continue
+        short = sg["what"] in ("eyes_closed", "not_tracked")
+        if sg["end_s"] - sg["start_s"] < (th.frames_segment_min_short_s if short
+                                          else th.frames_segment_min_s) - 1e-9:
+            dropped.append({"item": "segment", "start_s": sg["start_s"], "end_s": sg["end_s"],
+                            "what": sg["what"], "reason": "too_short"})
+            continue
         if share < segment_threshold(sg["what"], th):
             dropped.append({"item": "segment", "start_s": sg["start_s"], "end_s": sg["end_s"],
                             "what": sg["what"], "reason": "code_share_too_low",
@@ -338,7 +409,7 @@ def verify(reply: dict, raw: dict, payload: dict, th: Thresholds = T) -> dict:
 
     # Moments: each compared with code's own answer.
     sent = list(payload.get("moments_s") or [])
-    code_moments = {round(m["at_s"], 1): m["smiled"] for m in view["moments"]}
+    code_moments = {round(m["at_s"], 1): m["smiled"] for m in view["moments"]}  # as sent
     moments_out, matched = [], set()
     for mo in reply["moments"]:
         at = round(mo["at_s"], 1)
@@ -355,32 +426,140 @@ def verify(reply: dict, raw: dict, payload: dict, th: Thresholds = T) -> dict:
         moments_out.append({"at_s": sent[hit], "smiled": code, "model": mo["smiled"],
                             "status": "confirmed" if code == mo["smiled"] else "corrected"})
 
-    # Overall words: replaced with code's word when they disagree.
+    # Overall words: code's word is the one shown; the model's stands beside it.
+    # They are a comparison of two summaries, not part of the item agreement:
+    # "expression" is computed by code from every blend shape, and the model
+    # sees ten channels.
     overall, checks = {}, {}
     for k in ("expression", "smiling", "gaze", "tracking"):
         m, c = reply["overall"][k], view["overall"][k]
         overall[k] = c
-        checks[k] = {"model": m, "code": c, "status": "confirmed" if m == c else "corrected"}
+        checks[k] = {"model": m, "code": c, "status": "same" if m == c else "different"}
     overall["confidence"] = reply["overall"]["confidence"]  # the model's own; not checkable
 
+    matched = len(smiles_out)
+    at_code_level = len(reply["smiles"]) - len(faint_out)
+    reasons = [d["reason"] for d in dropped if d["item"] == "smile"]
     agreement = {
         "smiles_reported": len(reply["smiles"]),
         "smiles_confirmed": sum(1 for s in smiles_out if s["status"] == "confirmed"),
         "smiles_corrected": sum(1 for s in smiles_out if s["status"] == "corrected"),
-        "smiles_dropped": sum(1 for d in dropped if d["item"] == "smile"),
-        "smiles_missed": missed,
+        "smiles_matched": matched,
+        # Kept apart, the rise confirmed by code: "faint" stays under the fixed
+        # onset; "brief" passes it but is shorter than the rule's minimum length.
+        "smiles_faint": sum(1 for f in faint_out if f["status"] == "faint"),
+        "smiles_brief": sum(1 for f in faint_out if f["status"] == "brief"),
+        "smiles_dropped": len(reasons),
+        # Of the dropped: nothing in the numbers, against a real smile matched badly
+        # (a sliver of it, far wider than it, or reported twice).
+        "smiles_not_in_numbers": reasons.count("no_rise_in_numbers"),
+        "smiles_poor_match": len(reasons) - reasons.count("no_rise_in_numbers"),
+        "smiles_missed": len(missed),
         "smiles_code": len(view["smiles"]),
+        # Of the smiles the model reported at code's level, the share code also
+        # found; of code's smiles, the share the model also reported.
+        "smile_precision": round(matched / at_code_level, 2) if at_code_level else None,
+        "smile_recall": round(matched / len(view["smiles"]), 2) if view["smiles"] else None,
+        "smile_start_error_s": round(sum(start_errors) / matched, 2) if matched else None,
         "segments_reported": len(reply["segments"]),
         "segments_confirmed": len(segments_out),
         "blinks_model": bm,
         "blinks_code": bc,
         "moments_reported": len(reply["moments"]),
         "moments_agree": sum(1 for m in moments_out if m["status"] == "confirmed"),
-        "overall_replaced": sum(1 for c in checks.values() if c["status"] == "corrected"),
+        "overall_same": sum(1 for c in checks.values() if c["status"] == "same"),
     }
-    reading = {"smiles": smiles_out, "blinks": blinks, "segments": segments_out,
-               "moments": moments_out, "overall": overall, "overall_checks": checks}
+    reading = {"smiles": smiles_out, "faint_smiles": faint_out, "missed_smiles": missed,
+               "blinks": blinks, "segments": segments_out, "moments": moments_out,
+               "overall": overall, "overall_checks": checks,
+               "resting_smile": round(view["rest"], 2)}
     return {"reading": reading, "agreement": agreement, "dropped": dropped}
+
+
+def _median(vals: list[float]) -> float:
+    vals = sorted(vals)
+    return vals[len(vals) // 2]
+
+
+def faint_rise(view: dict, start_s: float, end_s: float, th: Thresholds = T) -> dict | None:
+    """A reported smile that code's fixed rule did not find: is the rise in the
+    numbers? Over the tracked full-rate frames of the span, the smile signal
+    must lie above the local resting level by at least frames_faint_mean_rise
+    on average and frames_faint_peak_rise at its peak, for at least
+    smile_min_s, and both mouth corners must carry the rise. The local resting
+    level is taken within frames_faint_window_s before and after the span (the
+    span and code's smiles left out): the median of each side, and the higher of
+    the two, because a smile returns to rest on both sides and a step in the
+    baseline does not. With less than a second on either side, the session's
+    median. Returns the measured rise with its status ("faint":
+    the peak stays under the fixed onset; "brief": it passes the onset, but the
+    smile is shorter than the rule's minimum length), or None."""
+    if not view["enough"]:
+        return None
+    rate, n = view["rate"], view["n"]
+    a, b = max(0, int(math.floor(start_s * rate))), min(n, int(math.ceil(end_s * rate)))
+    idx = [i for i in range(a, b) if view["tracked"][i]]
+    if len(idx) / rate < th.smile_min_s:
+        return None
+    w = int(th.frames_faint_window_s * rate)
+    in_smile = [False] * n
+    for cs in view["smiles"]:
+        for i in range(cs["a"], cs["b"]):
+            in_smile[i] = True
+    sides = [[i for i in rng if view["tracked"][i] and not in_smile[i]]
+             for rng in (range(max(0, a - w), a), range(b, min(n, b + w)))]
+    sides = [sd for sd in sides if len(sd) / rate >= 1.0]
+
+    def rise_of(sig: list[float], fallback: float | None) -> tuple[float, float, float]:
+        # A smile returns to rest on both sides: the higher side is the rest.
+        rest = max(_median([sig[i] for i in sd]) for sd in sides) if sides else \
+            fallback if fallback is not None else \
+            _median([v for v, t in zip(sig, view["tracked"]) if t])
+        vals = [sig[i] for i in idx]
+        return sum(vals) / len(vals) - rest, max(vals) - rest, rest
+
+    mean_rise, peak_rise, rest = rise_of(view["smile"], view["rest"])
+    if mean_rise < th.frames_faint_mean_rise or peak_rise < th.frames_faint_peak_rise:
+        return None
+    side = th.frames_faint_side_share * th.frames_faint_mean_rise
+    if rise_of(view["left"], None)[0] < side or rise_of(view["right"], None)[0] < side:
+        return None
+    peak = max(view["smile"][i] for i in idx)
+    return {"status": "faint" if peak < th.smile_onset else "brief",
+            "peak": round(peak, 2), "rise": round(peak_rise, 2), "rest": round(rest, 2)}
+
+
+_SUMS = ("smiles_reported", "smiles_matched", "smiles_faint", "smiles_brief", "smiles_dropped",
+         "smiles_not_in_numbers", "smiles_poor_match", "smiles_missed",
+         "smiles_code", "segments_reported", "segments_confirmed", "moments_reported",
+         "moments_agree")
+
+
+def aggregate(agreements: list[dict], th: Thresholds = T) -> dict | None:
+    """The agreement of the two readers over several sessions: sums, the two
+    shares and how many sessions they cover. None when there is no session."""
+    # Readings stored before the union-overlap match have no matched count:
+    # they are left out rather than counted as no agreement.
+    agreements = [a for a in agreements if a.get("smiles_matched") is not None]
+    if not agreements:
+        return None
+    out = {"sessions": len(agreements)}
+    for k in _SUMS:
+        out[k] = sum(int(a.get(k) or 0) for a in agreements)
+    at_code_level = out["smiles_reported"] - out["smiles_faint"] - out["smiles_brief"]
+    out["smile_precision"] = round(out["smiles_matched"] / at_code_level, 2) \
+        if at_code_level else None
+    out["smile_recall"] = round(out["smiles_matched"] / out["smiles_code"], 2) \
+        if out["smiles_code"] else None
+    errs = [(a["smile_start_error_s"], a.get("smiles_matched") or 0) for a in agreements
+            if a.get("smile_start_error_s") is not None]
+    weight = sum(w for _, w in errs)
+    out["smile_start_error_s"] = round(sum(e * w for e, w in errs) / weight, 2) if weight else None
+    out["blink_sessions_agree"] = sum(
+        1 for a in agreements if a.get("blinks_model") is not None and
+        abs(a["blinks_model"] - a["blinks_code"]) <= max(
+            th.frames_blink_tolerance_n, th.frames_blink_tolerance_share * a["blinks_code"]))
+    return out
 
 
 def time_problem(reply: dict, payload: dict) -> str | None:

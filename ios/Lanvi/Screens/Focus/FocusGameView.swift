@@ -219,7 +219,10 @@ struct FocusGameView: View {
 
     private func topBar(showTime: Bool) -> some View {
         HStack(spacing: 16) {
-            Button { onDone(nil) } label: {
+            Button {
+                if phase == .playing { GameMoments.emit(.focusEnded(finished: false)) }
+                onDone(nil)
+            } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 17, weight: .heavy))
                     .foregroundStyle(.white)
@@ -268,6 +271,7 @@ struct FocusGameView: View {
         guard phase == .playing, let engine else { return }
         switch engine.tap(at: point, now: Date()) {
         case .caught(let ms):
+            GameMoments.emit(.sparkCaught(reactionMs: ms))
             caughtTick += 1
             streak += 1
             if engine.correctTaps == 1 {
@@ -282,6 +286,7 @@ struct FocusGameView: View {
                 lightArrived()
             }
         case .melted:
+            GameMoments.emit(.snowTapped)
             meltTick += 1
             say(["Brr, chilly!", "Snow likes to fall"].randomElement()!)
             if demo { print("focus: snowflake melted") }
@@ -305,6 +310,7 @@ struct FocusGameView: View {
         glow += 1
         bounce &+= 1
         guard glow.isMultiple(of: 5) else { return }
+        FaceSense.mark()
         poseToken += 1
         let token = poseToken
         withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = glow.isMultiple(of: 10) ? .cheer : .love }
@@ -318,6 +324,7 @@ struct FocusGameView: View {
     private func start() {
         guard phase == .intro else { return }
         engine = FocusEngine()
+        GameMoments.emit(.focusStarted)
         withAnimation(.spring(response: 0.6, dampingFraction: 0.86)) { phase = .playing }
     }
 
@@ -326,12 +333,14 @@ struct FocusGameView: View {
         let end = Date()
         engine.end(now: end)
         result = engine.result(completed: true, endedAt: end)
+        GameMoments.emit(.focusEnded(finished: true))
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(0.7))
             withAnimation(.spring(response: 0.6, dampingFraction: 0.82)) {
                 phase = .finished
                 pose = .cheer
             }
+            FaceSense.mark()
         }
     }
 

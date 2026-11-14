@@ -60,6 +60,7 @@ struct HomeHelpScreen: View {
                                     .padding(.top, -6)
                             }
                         }
+                        FaceSenseSwitch()
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, hill + 22)

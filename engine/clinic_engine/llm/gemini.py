@@ -15,8 +15,8 @@ from ..mind.gates import Pack
 GEMINI_HOST = "generativelanguage.googleapis.com"
 
 
-def build_request(settings: Settings, pack: Pack,
-                  max_output_tokens: int = 4000) -> tuple[str, dict, dict]:
+def build_request(settings: Settings, pack: Pack, max_output_tokens: int = 4000,
+                  response_schema: dict | None = None) -> tuple[str, dict, dict]:
     if not settings.gemini_model:
         raise RuntimeError("GEMINI_MODEL is not set")
     url = f"https://{GEMINI_HOST}/v1beta/models/{settings.gemini_model}:generateContent"
@@ -33,8 +33,27 @@ def build_request(settings: Settings, pack: Pack,
                              # the model thinks before it answers and that counts here
                              "maxOutputTokens": max_output_tokens},
     }
+    if response_schema is not None:
+        # Structured output: the model is held to the reply's shape. The output
+        # gate checks the shape again, whatever the model returns.
+        body["generationConfig"]["responseSchema"] = response_schema
     headers = {"x-goog-api-key": settings.gemini_api_key}
     return url, headers, body
+
+
+def reply_meta(data: dict) -> dict:
+    """Why the model stopped and how many tokens it used: codes and counts only."""
+    out: dict = {}
+    try:
+        out["finish"] = str(data["candidates"][0].get("finishReason") or "")[:30] or None
+    except (KeyError, IndexError, TypeError, AttributeError):
+        out["finish"] = None
+    usage = data.get("usageMetadata") if isinstance(data, dict) else None
+    for key, name in (("promptTokenCount", "prompt_tokens"), ("thoughtsTokenCount", "thought_tokens"),
+                      ("candidatesTokenCount", "output_tokens")):
+        v = usage.get(key) if isinstance(usage, dict) else None
+        out[name] = v if isinstance(v, int) and not isinstance(v, bool) else None
+    return out
 
 
 def parse_response(data: dict) -> str | None:

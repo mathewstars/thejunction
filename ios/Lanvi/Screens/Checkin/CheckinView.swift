@@ -19,6 +19,16 @@ struct CheckinView: View {
     enum Step: Int, Comparable {
         case planQuestion, goodThings, plan, goodnight
         static func < (a: Step, b: Step) -> Bool { a.rawValue < b.rawValue }
+
+        /// The step's name for game moments.
+        var moment: GameCheckinStep {
+            switch self {
+            case .planQuestion: .planQuestion
+            case .goodThings: .goodThings
+            case .plan: .plan
+            case .goodnight: .goodnight
+            }
+        }
     }
 
     enum TypingFor { case goodThing, plan }
@@ -107,14 +117,21 @@ struct CheckinView: View {
         .sensoryFeedback(.selection, trigger: plan)
         .sensoryFeedback(.warning, trigger: nudge)
         .sensoryFeedback(.success, trigger: finished)
-        .task { await debugShot() }
+        .task {
+            GameMoments.emit(.checkinStarted)
+            GameMoments.emit(.checkinStep(step.moment))
+            await debugShot()
+        }
     }
 
     // MARK: Top bar
 
     private var topBar: some View {
         HStack(spacing: 14) {
-            CheckinCloseButton { onDone(nil) }
+            CheckinCloseButton {
+                GameMoments.emit(.checkinEnded(finished: false))
+                onDone(nil)
+            }
             CheckinProgress(progress: progress)
             if let onHelp {
                 Button(action: onHelp) {
@@ -432,6 +449,7 @@ struct CheckinView: View {
     private func go(to next: Step) {
         forward = next > step
         withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) { step = next }
+        GameMoments.emit(.checkinStep(next.moment))
         switch next {
         case .planQuestion: react(.curious)
         case .goodThings: react(goodThings.isEmpty ? .curious : .love)
@@ -447,6 +465,7 @@ struct CheckinView: View {
 
     private func finish() {
         finished = true
+        GameMoments.emit(.checkinEnded(finished: true))
         let result = CheckinResult(
             goodThings: Array(goodThings.prefix(3)),
             plan: plan,

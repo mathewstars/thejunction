@@ -18,7 +18,7 @@ Status: a draft script and shot list. Nothing has been generated or recorded yet
 | 2. The phone is there | 0:12 to 0:22 | Generated footage, then the real app |
 | 3. What we compare | 0:22 to 0:40 | Real screen: Blueprint, "The research" |
 | 4. Two answers | 0:40 to 0:58 | Real screen: Anna's Research, then Elina's |
-| 5. The open question | 0:58 to 1:12 | Real screen, then one generated closing shot |
+| 5. The open question | 0:58 to 1:12 | Real screen, then the question as text |
 
 Rule for the whole video: **generated footage tells the story, real screen recordings carry every piece of evidence.** No generated app screens, charts or patients presented as real.
 
@@ -38,7 +38,7 @@ Rule for the whole video: **generated footage tells the story, real screen recor
 
 **4. Two answers (0:40 to 0:58)**
 
-> This is Anna, an example. When her score was higher, she smiled less, reacted more slowly and walked less. [switch] And this is Elina, who stayed well. Her score hardly moved, and the tool says: we cannot tell. It does not find patterns that are not there.
+> This is Anna, an example. When her score was higher, she smiled less, reacted more slowly and walked less. [switch] And this is Elina, who stayed well. Her score hardly moved, and the tool says: we cannot tell. Here it refuses to conclude.
 
 **5. The open question (0:58 to 1:12)**
 
@@ -55,7 +55,6 @@ Keep every shot 3 to 5 seconds, no faces in close-up, no text in the image, natu
 | G3 | Part 1 | A wall calendar in a hallway with one date circled weeks ahead, soft daylight, slow push in. |
 | G4 | Part 2 | A phone lying on a wooden bedside table next to a glass of water, early morning light, the screen lights up softly, static shot. |
 | G5 | Part 2 | Close on hands holding a phone in a kitchen, thumb tapping the screen in a calm rhythm, face not visible, morning light. |
-| G6 | Part 5 | The same woman from behind, walking along a snowy path between birch trees in daylight, steady pace, the camera follows at a distance. |
 
 Do not generate: the app, the fox, the clinic page, any chart, any doctor looking at a screen with data, any face presented as a patient.
 
@@ -107,18 +106,13 @@ Model names are as given on Higgsfield's page on 14 Nov 2026; use whatever the s
 - Still: `Close view of two hands holding a phone above a kitchen table, a mug beside them, morning light, the person's face out of frame, the phone screen turned away from the camera.`
 - Motion: `One thumb taps the screen in a calm, slow rhythm. Static camera.`
 
-**G6. Walking again**
-
-- Still: `A woman in a dark winter coat seen from behind at a distance, walking along a snowy path between birch trees in daylight, soft overcast sky.`
-- Motion: `She walks steadily away; the camera follows slowly at the same distance. Light snow falls.`
-
 **Check each result before keeping it**
 
 - No face in close-up, and nobody who could be taken for a real patient.
 - No readable text, signs or logos anywhere in the frame. Generated text is always wrong and gives the clip away.
 - The phone screen never shows an app. Our real screens are recorded, never generated.
 - Hands have five fingers. Reject and regenerate if not.
-- The same coat in G1 and G6, so it reads as the same person. If the site lets you reuse a character or a reference image, use the G1 still for G6.
+- There is no shot of her walking again (the earlier G6 is dropped): it suggests a recovery we have not shown.
 
 ## Shots to record from the real system
 
