@@ -13,7 +13,8 @@ struct LanviPuppet: View {
     @Environment(\.lanviDebugFreeze) private var freeze
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var seed = Int.random(in: 0..<100_000)
+    /// Fixed per fox size, so a screen rebuilding the fox never makes it jump.
+    private var seed: Int { Int(size * 13) % 997 }
     @State private var heldFrom: LanviMood = .calm
     @State private var heldSince: Double = -100
     @State private var reaction: LanviMood?
@@ -51,9 +52,14 @@ struct LanviPuppet: View {
                     .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k)
                     .scaleEffect(x: f.rootSX, y: f.rootSY, anchor: Self.feet)
                     .rotationEffect(.degrees(f.rootTilt), anchor: Self.feet)
-                    .offset(x: centring + f.rootX * mu, y: f.rootY * mu)
+                    // a render transform, never rounded to whole pixels (a layout offset can
+                    // be, which shows as a 1-pixel stair-step at slow speeds)
+                    .transformEffect(CGAffineTransform(translationX: centring + f.rootX * mu, y: f.rootY * mu))
             }
             .frame(width: size, height: size, alignment: .bottom)
+            // One driver per value: the clock. A screen's withAnimation or .animation
+            // must never also interpolate the parts (that fights the clock and stutters).
+            .transaction { $0.animation = nil; $0.disablesAnimations = true }
         }
         .contentShape(Rectangle())
         .simultaneousGesture(SpatialTapGesture().onEnded { tapped(at: $0.location) })
@@ -174,14 +180,10 @@ struct LanviPuppet: View {
             .position(x: p.local.x * k, y: p.local.y * k)
     }
 
-    /// A front leg: its top fades into the chest fur so it grows out of the body. The
-    /// paws stay planted: legs only move with the whole fox.
+    /// A front leg (its top fade is baked into the art). The paws stay planted: legs
+    /// only move with the whole fox.
     private func leg(_ p: Rig.Part) -> some View {
-        image(p)
-            .mask(LinearGradient(stops: [.init(color: .clear, location: 0),
-                                         .init(color: .black, location: Rig.legFade)],
-                                 startPoint: .top, endPoint: .bottom))
-            .position(x: p.local.x * k, y: p.local.y * k)
+        image(p).position(x: p.local.x * k, y: p.local.y * k)
     }
 
     /// The tail turns at its hidden base; the tip turns again around the tail's middle
@@ -201,46 +203,34 @@ struct LanviPuppet: View {
         return ZStack(alignment: .topLeading) { content() }
             .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k, alignment: .topLeading)
             .rotationEffect(.degrees(f.headTilt), anchor: neck)
-            .offset(x: f.headDX * mu, y: f.headDY * mu)
+            .transformEffect(CGAffineTransform(translationX: f.headDX * mu, y: f.headDY * mu))
     }
 
-    /// The head, with its neck stub fading out under the chin.
+    /// The head (its neck stub fade is baked into the art).
     private func head() -> some View {
-        let p = Rig.head
-        return image(p)
-            .mask(LinearGradient(stops: [.init(color: .black, location: 0),
-                                         .init(color: .black, location: Rig.neckFade.from),
-                                         .init(color: .clear, location: Rig.neckFade.to)],
-                                 startPoint: .top, endPoint: .bottom))
-            .position(x: p.local.x * k, y: p.local.y * k)
+        image(Rig.head).position(x: Rig.head.local.x * k, y: Rig.head.local.y * k)
     }
 
-    /// One eye-pair image, drawn as two halves so each eye sits on its own patch.
+    /// Two eye pictures (the halves of one pair from the face sheet), each on its own patch.
     private func eyes(_ f: RigFrame) -> some View {
         let shape = f.eyes
-        let px = LanviArt.px(shape.name)
-        let split = LanviArt.eyeSplit[shape.name] ?? (px.width / 2, CGPoint(x: px.width / 4, y: px.height / 2),
-                                                      CGPoint(x: px.width * 3 / 4, y: px.height / 2))
         let s = Rig.eyeScale * Rig.head.scale * k
         let shift = CGPoint(x: f.eyeDX, y: shape.dropY + f.eyeDY)
-        let l = Rig.headToCanvas(CGPoint(x: Rig.eyeL.x + shift.x, y: Rig.eyeL.y + shift.y))
-        let r = Rig.headToCanvas(CGPoint(x: Rig.eyeR.x + shift.x, y: Rig.eyeR.y + shift.y))
-        let full = Image("puppet-" + shape.name)
+        return ZStack(alignment: .topLeading) {
+            eye(shape.name + "-l", at: Rig.eyeL, shift: shift, scale: s)
+            eye(shape.name + "-r", at: Rig.eyeR, shift: shift, scale: s)
+        }
+    }
+
+    private func eye(_ name: String, at base: CGPoint, shift: CGPoint, scale s: CGFloat) -> some View {
+        let px = LanviArt.px(name)
+        let centre = LanviArt.eyeCenter[name] ?? CGPoint(x: px.width / 2, y: px.height / 2)
+        let c = Rig.headToCanvas(CGPoint(x: base.x + shift.x, y: base.y + shift.y))
+        return Image("puppet-" + name)
             .resizable()
             .interpolation(.high)
             .frame(width: px.width * s, height: px.height * s)
-        return ZStack(alignment: .topLeading) {
-            full
-                .frame(width: split.split * s, height: px.height * s, alignment: .leading)
-                .clipped()
-                .position(x: l.x * k + (split.split / 2 - split.left.x) * s,
-                          y: l.y * k + (px.height / 2 - split.left.y) * s)
-            full
-                .frame(width: (px.width - split.split) * s, height: px.height * s, alignment: .trailing)
-                .clipped()
-                .position(x: r.x * k + ((split.split + px.width) / 2 - split.right.x) * s,
-                          y: r.y * k + (px.height / 2 - split.right.y) * s)
-        }
+            .position(x: c.x * k + (px.width / 2 - centre.x) * s, y: c.y * k + (px.height / 2 - centre.y) * s)
     }
 
     private func mouth(_ f: RigFrame) -> some View {

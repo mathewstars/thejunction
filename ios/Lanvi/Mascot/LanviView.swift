@@ -7,9 +7,14 @@ import SwiftUI
 //       .lanviReaction(.happy, trigger: xp)       // plays once each time `xp` changes
 //       .lanviLookAt(UnitPoint(x: 0.9, y: -0.3))  // eyes, then head, turn to a point
 //
-// - The fox is a paper puppet: tail, body, paws, head, ears, eyes and mouth move on
-//   their own (blinks, breathing, tail sway, ear twitches, head tilts, a fidget now
-//   and then). Nothing to call: every `LanviView` is alive.
+// - The fox is a paper puppet: tail, body, paws, head, ears, eyes and mouth are separate
+//   pictures. At rest it is calm: breathing, one slow tail sway, a blink every 3 to 6 s
+//   and an ear flick every 6 to 10 s; between those it is completely still. Nothing to
+//   call: every `LanviView` is alive.
+// - The fox ignores the screen's withAnimation/.animation for its own parts (its clock
+//   is their only driver), so a spring on the screen never makes it stutter.
+// - Debug: `-puppetLog YES` writes every frame's part transforms to tmp/puppet-frames.csv;
+//   `-screen puppet -plain YES` shows the fox alone on flat green for measuring.
 // - Moods (`LanviMood`): calm, happy, curious, surprised, sleepy, listening.
 //   `.lanviMood` holds one (sleepy for the evening, listening while the person types).
 //   `.lanviReaction` plays one once on top of the idle, which never stops:

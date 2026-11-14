@@ -3,7 +3,7 @@ import QuartzCore
 
 /// Debug only (launch argument `-puppetLog YES`): records, for every frame the puppet
 /// draws, the wall-clock time, the timeline's date and the final transform of each
-/// moving part, from 2 s to 7 s after the first frame. Written to
+/// moving part, from 2 s to 10 s after the first frame. Written to
 /// `tmp/puppet-frames.csv` in the app's container. Used to measure the real frame
 /// rate and to find any shake (a value that changes direction too often).
 final class LanviFrameLog {
@@ -19,7 +19,7 @@ final class LanviFrameLog {
         if first == nil { first = now }
         let age = now - (first ?? now)
         if age < 2 { return }
-        if age > 7 { write(); return }
+        if age > 10 { write(); return }
         var values: [Double] = [now, date.timeIntervalSinceReferenceDate]
         values += [Double(f.rootX), Double(f.rootY), Double(f.rootSX), Double(f.rootSY), f.rootTilt]
         values += [Double(f.headDX), Double(f.headDY), f.headTilt, Double(f.bodySY)]
