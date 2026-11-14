@@ -433,6 +433,9 @@ async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
             rec = process_activity(stored, previous)
             rec.update(received_at=now.isoformat(), example=False, content_sha256=sha,
                        crisis=crisis, analysis={"status": ctx.mind.session_reading_state(repo, rec)})
+            if rec.get("face_source") == "raw":
+                # The frame reading (clinician-only): level 2 reads the frames, code checks.
+                rec["frames_reading"] = {"status": ctx.mind.frames_reading_state(repo, rec)}
             repo.put(f"activities/{rec['id']}.json", rec)
             if sug is not None:
                 sug["activity_id"] = rec["id"]
@@ -449,6 +452,8 @@ async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
                                    xp_gained=gained)
         if rec["analysis"]["status"] == "pending":
             await ctx.mind.schedule_session_reading(repo, rec["id"])
+        if (rec.get("frames_reading") or {}).get("status") == "pending":
+            await ctx.mind.schedule_frames_reading(repo, rec["id"])
         return _activity_out(ctx, repo, rec, gained, crisis)
 
 

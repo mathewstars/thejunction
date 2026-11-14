@@ -78,6 +78,11 @@ class Settings:
     gemini_api_key: str = ""
     gemini_model: str = ""  # placeholder: set the model id in the environment
     gemini_timeout_s: float = 15.0
+    # The frame reading (level 2 reads the raw face frames; code checks it).
+    # Gemini thinks before it answers on a long stream: it gets more room.
+    frames_reader: str = "auto"  # auto (when level 2 is on) | off
+    gemini_frames_max_tokens: int = 6000
+    gemini_frames_timeout_s: float = 60.0
 
     # Help (crisis) block, always shown by GET /v1/today. Wording: data/help_block.json
     emergency_number: str = "112"
@@ -133,6 +138,9 @@ class Settings:
             gemini_api_key=_env("GEMINI_API_KEY"),
             gemini_model=_env("GEMINI_MODEL"),
             gemini_timeout_s=_env_float("GEMINI_TIMEOUT_S", 15.0),
+            frames_reader=_env("FRAMES_READER", "auto").lower(),
+            gemini_frames_max_tokens=_env_int("GEMINI_FRAMES_MAX_TOKENS", 6000),
+            gemini_frames_timeout_s=_env_float("GEMINI_FRAMES_TIMEOUT_S", 60.0),
             emergency_number=_env("EMERGENCY_NUMBER", "112"),
             clinic_contact_label=_env("CLINIC_CONTACT_LABEL"),
             clinic_contact_phone=_env("CLINIC_CONTACT_PHONE"),

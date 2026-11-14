@@ -359,6 +359,41 @@ def _reading_out(a: dict) -> dict:
     return out
 
 
+_AGREEMENT_KEYS = ("smiles_reported", "smiles_confirmed", "smiles_corrected", "smiles_dropped",
+                   "smiles_missed", "smiles_code", "segments_reported", "segments_confirmed",
+                   "blinks_model", "blinks_code", "moments_reported", "moments_agree",
+                   "overall_replaced")
+
+
+def frames_reading_out(a: dict) -> dict:
+    """The frame reading for the clinician: what the model reported, as code
+    confirmed, corrected or dropped it. Counts, times and fixed words only;
+    never the frames. The same keys in every state (null or empty until ready)."""
+    fr = a.get("frames_reading") or {"status": "not_applicable"}
+    ready = fr.get("status") == "ready"
+    rd = fr.get("reading") or {}
+    ag = fr.get("agreement") or {}
+    return {
+        "status": fr.get("status", "not_applicable"),
+        "reason": fr.get("reason"),
+        "read_by": fr.get("read_by"), "model": fr.get("model"),
+        "checked_by": fr.get("checked_by"), "at": fr.get("at"),
+        "agreement": {k: ag.get(k) for k in _AGREEMENT_KEYS} if ready else None,
+        "overall": {k: (rd.get("overall") or {}).get(k) for k in
+                    ("expression", "smiling", "gaze", "tracking", "confidence")} if ready else None,
+        "overall_checks": rd.get("overall_checks") if ready else None,
+        "blinks": rd.get("blinks") if ready else None,
+        "smiles": [{k: x.get(k) for k in ("start_s", "end_s", "reaches_eyes", "side", "status",
+                                          "corrected")} for x in rd.get("smiles", [])],
+        "segments": [{k: x.get(k) for k in ("start_s", "end_s", "what", "code_share")}
+                     for x in rd.get("segments", [])],
+        "moments": [{k: x.get(k) for k in ("at_s", "smiled", "model", "status")}
+                    for x in rd.get("moments", [])],
+        "dropped": [{k: x.get(k) for k in ("item", "start_s", "end_s", "at_s", "what", "reason")
+                     if x.get(k) is not None} for x in fr.get("dropped", [])],
+    }
+
+
 def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
     tz = repo.tz()
     notes = {n["id"]: n for n in repo.notes()} if share else {}
@@ -393,6 +428,7 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                 s["raw"] = None if not info else {k: info.get(k) for k in (
                     "rate_hz", "frames", "tracked_share", "channels")}
                 s["reading"] = _reading_out(a)
+                s["frames_reading"] = frames_reading_out(a)
             else:
                 s["good_things"] = [item(g, "good_things") for g in a.get("good_things") or []]
                 s["plan"] = item(a.get("plan"), "plans")

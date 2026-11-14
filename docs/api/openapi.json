@@ -3062,7 +3062,7 @@
           "admin"
         ],
         "summary": "Run the level-2 reading again for one activity (or an earlier round)",
-        "description": "With `activity_id`: the session reading of a focus or breathing session\nwith a face summary. With `round_id`: the movement reading of an AR round\nof the earlier design.",
+        "description": "With `activity_id`: the session reading of a focus or breathing session\nwith a face summary, or with `what: \"frames\"` the frame reading of a session\nsent with raw face frames (level 2 reads them, code checks every item;\nreturns the stored `frames_reading`). With `round_id`: the movement reading\nof an AR round of the earlier design.",
         "operationId": "demo_analyze_v1_demo_analyze_post",
         "requestBody": {
           "content": {
@@ -3431,6 +3431,16 @@
             ],
             "title": "Activity Id",
             "description": "A focus or breathing activity."
+          },
+          "what": {
+            "type": "string",
+            "enum": [
+              "session",
+              "frames"
+            ],
+            "title": "What",
+            "description": "With activity_id: `session` runs the session reading, `frames` the frame reading (level 2 reads the raw face frames, code checks every item; the activity must have been sent with face_raw).",
+            "default": "session"
           }
         },
         "additionalProperties": false,

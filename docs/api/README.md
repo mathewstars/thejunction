@@ -210,12 +210,41 @@ The engine serves a plain web page for clinicians at `/` (files in `engine/clini
 | `POST /v1/clinic/login` | Session token, kept in memory and `sessionStorage` only |
 | `GET /v1/clinic/me` | Product name, clinic name, and whether the demo panel may be shown (`demo.enabled`) |
 | `GET /v1/clinic/patients` | One line per patient, those needing a look first. Also `spark` (28 daily movement z-scores, null for missing days), `since` (oldest held item), `level` (highest held level) and `reason_short` (at most 6 words, from a fixed set) |
-| `GET /v1/clinic/patients/{id}` | Detail; `progress.band` gives the own-normal band for the charts. `activities` has per type (`focus`, `breathing`, `checkin`) the sessions with date, completed, headline `values` and their `z` against own normal (or null), the face summary with tracking quality, the checked session reading, and `counts` (offered, played when offered, played, finished) for the last 7 and 28 days. Each focus or breathing session has `face_source` (`raw`: computed by the server from frames, `summary`: sent by the phone, or null) and, for raw sessions, `raw` `{rate_hz, frames, tracked_share, channels}` (counts only, never the frames). `lanvi` has `xp` and `stage` (small facts, not clinical signals) |
+| `GET /v1/clinic/patients/{id}` | Detail; `progress.band` gives the own-normal band for the charts. `activities` has per type (`focus`, `breathing`, `checkin`) the sessions with date, completed, headline `values` and their `z` against own normal (or null), the face summary with tracking quality, the checked session reading, and `counts` (offered, played when offered, played, finished) for the last 7 and 28 days. Each focus or breathing session has `face_source` (`raw`: computed by the server from frames, `summary`: sent by the phone, or null) and, for raw sessions, `raw` `{rate_hz, frames, tracked_share, channels}` (counts only, never the frames), and `frames_reading` (below). `lanvi` has `xp` and `stage` (small facts, not clinical signals) |
 | `GET /v1/clinic/patients/{id}/trace` | The decision trace; every chain has a `headline` (at most 6 words) and an `outcome` (`attention_opened`, `attention_raised`, `attention_closed`, `suggested`, `message_sent`, `refused`, `nothing`) |
 | `GET /v1/clinic/patients/{id}/rounds/{round_id}` | Round detail; `usual_round` (or null) gives a usual round of the same mode for the second trail |
 | `GET /v1/clinic/patients/{id}/activities/{activity_id}/face-raw` | Research download: the stored raw frames of one session as the phone sent them, plus `frames`, `channel_count`, `tracked_frames`. 404 when the session has no frames. Each download is audited (activity id only, no values) |
 | `POST /v1/clinic/attention/{id}/ack` | The Acknowledge button |
-| `/v1/demo/...`, `/v1/review/run` | The demo panel, only for the demo clinic while demo mode is on. `POST /v1/demo/recompute-face {"patient_id"}` computes the face summary of every raw session of the patient again from the stored frames with the current thresholds and returns `{"patient_id", "recomputed": n}` |
+| `/v1/demo/...`, `/v1/review/run` | The demo panel, only for the demo clinic while demo mode is on. `POST /v1/demo/recompute-face {"patient_id"}` computes the face summary of every raw session of the patient again from the stored frames with the current thresholds and returns `{"patient_id", "recomputed": n}`. `POST /v1/demo/analyze {"patient_id", "activity_id", "what": "frames"}` runs the frame reading of one raw session now and returns its `frames_reading` (`what` defaults to `session`, the session reading) |
+
+### The frame reading (clinician only)
+
+For a focus or breathing session sent with `face_raw`, the level-2 model (Gemini, or the local stand-in) reads a reduced stream of the frames and code checks every item it reports against its own detection on the full-rate frames. It runs in the background after the activity is stored, only when level 2 is on (`FRAMES_READER=auto`, the default) and the patient allowed outside processing. What the model receives and must return: [`docs/face-raw.md`](../face-raw.md#what-a-model-sees). The face summary is computed by code either way and does not change. Nothing of it reaches the patient, attention, suggestions or lessons.
+
+Each focus or breathing session in `GET /v1/clinic/patients/{id}` has `frames_reading`, always with these keys:
+
+```json
+{"status": "ready", "reason": null, "read_by": "level2", "model": "gemini-...", "checked_by": "code",
+ "at": "2026-11-14T09:13:00+00:00",
+ "agreement": {"smiles_reported": 3, "smiles_confirmed": 2, "smiles_corrected": 1, "smiles_dropped": 0,
+               "smiles_missed": 0, "smiles_code": 3, "segments_reported": 1, "segments_confirmed": 1,
+               "blinks_model": 11, "blinks_code": 11, "moments_reported": 2, "moments_agree": 2,
+               "overall_replaced": 0},
+ "overall": {"expression": "still", "smiling": "often", "gaze": "mostly_up", "tracking": "good",
+             "confidence": "medium"},
+ "overall_checks": {"expression": {"model": "still", "code": "still", "status": "confirmed"}, "...": {}},
+ "blinks": {"model": 11, "code": 11, "status": "confirmed"},
+ "smiles": [{"start_s": 8.0, "end_s": 9.2, "reaches_eyes": true, "side": "both",
+             "status": "confirmed", "corrected": []}],
+ "segments": [{"start_s": 15.0, "end_s": 19.0, "what": "looking_down", "code_share": 1.0}],
+ "moments": [{"at_s": 7.0, "smiled": true, "model": true, "status": "confirmed"}],
+ "dropped": [{"item": "smile", "start_s": 40.0, "end_s": 41.0, "reason": "not_found_by_code"}]}
+```
+
+- `status`: `pending`, `ready`, `failed` (with `reason`: `no_reply`, `not_json_object`, `schema:...`, `time_outside_recording`, `end_not_after_start`, `input_refused`), `off` (level 2 off), `not_allowed` (no consent; nothing was sent) or `not_applicable` (no raw frames). Until `ready`, `agreement`, `overall`, `overall_checks` and `blinks` are null and the lists empty.
+- `smiles` and `segments` hold only the items code confirmed. A smile is `corrected` when code's `reaches_eyes` or `side` differed (the shown values are code's; `corrected` names the fields). `overall` shows code's word where the model's disagreed (`overall_checks` has both). `blinks` keeps the model's count with code's beside it. `moments.smiled` is code's answer, `model` the model's.
+- `dropped` reasons: `not_found_by_code`, `same_smile_twice` (smiles); `code_share_too_low`, `channel_missing`, `not_tracked`, `outside_recording` (segments); `not_a_sent_moment`, `not_tracked` (moments).
+- Never the frames. The exact exchange with the model (prompt, stream and reply) is kept with the other model exchanges for the clinician; the trace and the audit hold counts and codes only.
 
 ## Reference ratings and the association appraisal (clinician only)
 
@@ -259,4 +288,4 @@ Every write and every refusal is written to an audit log (codes and ids only, ne
 
 ## What the server does with the data (one paragraph)
 
-Each day is compared with the person's own normal (median and MAD of their earlier days, robust z-scores). Each activity is compared with the person's own earlier sessions of the same type (reaction time, errors, time played, good things, and the face summary when tracking was good). Watchers hold attention items (`deviation`, `novelty`, `silence`, `oddity`, `ignored`, `asked_for_help`, `low_notes`, and for activities `slower_reactions`, `face_flat`, `checkins_stopped`, `plans_not_done`, `not_played`) with a level `watch`, `attention` or `urgent` ("needs review today", never an emergency or a diagnosis). Activity signals alone stay at `watch`; they rise only while the daily data also shows a drop. Nothing about mood or the face is ever shown to the person. Code picks one action from a fixed catalog; the local model may only choose one of Lanvi's fixed lines for it (`engine/clinic_engine/data/lanvi_lines.json`), through an output gate, with the first line as the fallback. Learning builds an evidence table, and every lesson (from code or a model) is recomputed by code before it is used. Every model call, at both levels, passes an input gate (allowlisted, and for Gemini anonymized) and an output gate (strict JSON schema and content checks), in `engine/clinic_engine/mind/gates.py`.
+Each day is compared with the person's own normal (median and MAD of their earlier days, robust z-scores). Each activity is compared with the person's own earlier sessions of the same type (reaction time, errors, time played, good things, and the face summary when tracking was good). Watchers hold attention items (`deviation`, `novelty`, `silence`, `oddity`, `ignored`, `asked_for_help`, `low_notes`, and for activities `slower_reactions`, `face_flat`, `checkins_stopped`, `plans_not_done`, `not_played`) with a level `watch`, `attention` or `urgent` ("needs review today", never an emergency or a diagnosis). Activity signals alone stay at `watch`; they rise only while the daily data also shows a drop. Nothing about mood or the face is ever shown to the person. Code picks one action from a fixed catalog; the local model may only choose one of Lanvi's fixed lines for it (`engine/clinic_engine/data/lanvi_lines.json`), through an output gate, with the first line as the fallback. Learning builds an evidence table, and every lesson (from code or a model) is recomputed by code before it is used. Every model call, at both levels, passes an input gate (allowlisted, and for Gemini anonymized) and an output gate (strict JSON schema and content checks), in `engine/clinic_engine/mind/gates.py`. With consent, level 2 also reads a reduced stream of a session's raw face frames (the frame reading, clinician only); code checks every item it reports.

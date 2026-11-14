@@ -27,11 +27,18 @@ Levels:
   focus or breathing session with its face summary against earlier sessions
   (the session reading), when the patient allowed outside processing. Face
   numbers go to level 2 only in that pack; typed text never does.
+- level 2 also reads the raw face frames of one focus or breathing session
+  (the frame reading), under the same consent. That is the ONLY pack that
+  carries frames: a reduced stream (a few named channels, about 5 rows per
+  second, rounded, capped in length) built by frames_pack and checked by
+  check_frames_outbound. Never to level 1, never in any other task. Code
+  checks every item the model returns against its own detection.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import re
 import secrets
 import unicodedata
@@ -334,6 +341,93 @@ class InputGate:
                 raise GateError(GateRefusal("input", 2, "session_reading", "unrounded_number"))
         walk(payload)
 
+    # ---- frame reading (level 2 only) -------------------------------------------------
+
+    _FRAMES_CHAR_LIMIT = 80_000  # the JSON text of one pack
+
+    def frames_pack(self, rec: dict, raw: dict) -> Pack:
+        """The reduced stream of one session's raw frames (frame_reading.reduce).
+        The system message is data/frames_prompt.txt, the user message the JSON
+        object it describes. Numbers and fixed codes only."""
+        from .frame_reading import prompt_text, reduce
+        if rec.get("type") not in ("focus", "breathing"):
+            raise GateError(GateRefusal("input", 2, "frames_reading", "type_not_allowed"))
+        payload = reduce(raw, rec["type"])
+        self.check_frames_outbound(payload)
+        msgs = [{"role": "system", "content": prompt_text()},
+                {"role": "user", "content": json.dumps(payload, separators=(",", ":"))}]
+        return Pack(2, "frames_reading", msgs, payload)
+
+    def check_frames_outbound(self, payload: Any, max_frames: int | None = None) -> None:
+        """Allowlist for the frame reading: exactly the five keys, the activity
+        type, known channel names in their fixed order, rows of rounded numbers
+        in range, sizes within the limits. Anything else is refused."""
+        from . import frame_reading as fr
+        from .thresholds import T
+
+        def refuse(reason: str):
+            raise GateError(GateRefusal("input", 2, "frames_reading", reason))
+
+        def num(x) -> bool:
+            return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+
+        def rounded(x: float, nd: int) -> bool:
+            return abs(x * 10 ** nd - round(x * 10 ** nd)) <= 1e-6
+
+        cap = max_frames if max_frames is not None else T.frames_max_frames
+        if not isinstance(payload, dict) or set(payload) != set(fr.PAYLOAD_KEYS):
+            refuse("top_level_keys")
+        if payload["activity"] not in fr.ACTIVITIES:
+            refuse("string_not_allowed")
+        rate = payload["rate_hz"]
+        if not num(rate) or not 0 < rate <= 60 or not rounded(rate, 2):
+            refuse("rate_not_allowed")
+        ch = payload["channels"]
+        if not isinstance(ch, list) or not ch or any(not isinstance(c, str) for c in ch):
+            refuse("channels_not_allowed")
+        if any(c not in fr.CHANNELS for c in ch):
+            refuse("channel_not_allowed")
+        if len(set(ch)) != len(ch) or ch != [c for c in fr.CHANNELS if c in ch] or \
+                ch[-1] != "tracked" or "smile" not in ch:
+            refuse("channel_order")
+        frames = payload["frames"]
+        if not isinstance(frames, list) or not frames or len(frames) > cap:
+            refuse("frames_count")
+        angle = [c in fr.ANGLE_CHANNELS for c in ch]
+        for row in frames:
+            if not isinstance(row, list) or len(row) != len(ch):
+                refuse("row_shape")
+            for v, is_angle, name in zip(row, angle, ch):
+                if not num(v):
+                    refuse("value_not_a_number")
+                if name == "tracked":
+                    if v not in (0, 1) or isinstance(v, float):
+                        refuse("tracked_not_0_or_1")
+                elif is_angle:
+                    if not (-180 <= v <= 180 and rounded(v, 1)):
+                        refuse("angle_not_allowed")
+                elif not (0 <= v <= 1 and rounded(v, 2)):
+                    refuse("value_not_allowed")
+        moments = payload["moments_s"]
+        if not isinstance(moments, list) or len(moments) > 20:
+            refuse("moments_not_allowed")
+        limit = len(frames) / rate
+        for m in moments:
+            if not num(m) or not 0 <= m <= limit or not rounded(m, 1):
+                refuse("moment_not_allowed")
+        if len(json.dumps(payload, separators=(",", ":"))) > self._FRAMES_CHAR_LIMIT:
+            refuse("too_large")
+
+    def check_frames_pack(self, pack: Pack) -> None:
+        """Right before sending: the payload passes check_frames_outbound and the
+        messages are exactly the prompt file and that payload, nothing more."""
+        from .frame_reading import prompt_text
+        self.check_frames_outbound(pack.payload)
+        want = [{"role": "system", "content": prompt_text()},
+                {"role": "user", "content": json.dumps(pack.payload, separators=(",", ":"))}]
+        if pack.level != 2 or pack.images or pack.messages != want:
+            raise GateError(GateRefusal("input", 2, "frames_reading", "messages_not_allowed"))
+
     # ---- association appraisal (level 1 only) ----------------------------------------
 
     _ASSOC_KEYS = {"design", "reference", "rows", "data_notes", "caveat_codes", "type", "days",
@@ -495,6 +589,41 @@ class SessionReply(_Strict):
     from_session: int | None = Field(ge=-20, le=-1)
     confidence: Literal["low", "medium", "high"]
     evidence: list[SessionEvidence] = Field(max_length=8)
+
+
+class FramesSmile(_Strict):
+    start_s: float = Field(ge=0, le=10_000)
+    end_s: float = Field(ge=0, le=10_000)
+    reaches_eyes: bool | None
+    side: Literal["both", "left", "right"]
+
+
+class FramesSegment(_Strict):
+    start_s: float = Field(ge=0, le=10_000)
+    end_s: float = Field(ge=0, le=10_000)
+    what: Literal["looking_down", "brows_down", "inner_brows_raised", "head_down", "still_face",
+                  "eyes_closed", "not_tracked"]
+
+
+class FramesMoment(_Strict):
+    at_s: float = Field(ge=0, le=10_000)
+    smiled: bool
+
+
+class FramesOverall(_Strict):
+    expression: Literal["lively", "moderate", "still", "unclear"]
+    smiling: Literal["often", "sometimes", "rarely", "none", "unclear"]
+    gaze: Literal["mostly_up", "often_down", "unclear"]
+    tracking: Literal["good", "partly", "poor"]
+    confidence: Literal["low", "medium", "high"]
+
+
+class FramesReply(_Strict):
+    smiles: list[FramesSmile] = Field(max_length=30)
+    blinks: int = Field(ge=0, le=2000)
+    segments: list[FramesSegment] = Field(max_length=12)
+    moments: list[FramesMoment] = Field(max_length=20)
+    overall: FramesOverall
 
 
 class AssocRowReply(_Strict):
@@ -722,6 +851,38 @@ class OutputGate:
         refusals = [GateRefusal("output", 2, "session_reading",
                                 f"claim_dropped:{d['field']}:{d['reason']}") for d in dropped]
         return GateResult(True, {"reading": kept, "dropped": dropped}, refusals)
+
+    # ---- frame reading (level 2) -------------------------------------------------------
+
+    def frames_reading(self, raw: str | None, pack: Pack, frames: dict) -> GateResult:
+        """Strict shape and enums exactly as data/frames_prompt.txt defines them,
+        every time inside the recording; then every item checked by code against
+        its own detection on the full-rate frames (frame_reading.verify)."""
+        from .frame_reading import time_problem, verify
+
+        def refuse(reason: str) -> GateResult:
+            return GateResult(False, refusals=[GateRefusal("output", 2, "frames_reading", reason)])
+
+        if raw is None:
+            return refuse("no_reply")
+        raw = re.sub(r"^\s*<think>.*?</think>\s*", "", raw, flags=re.S)
+        obj = _parse_json_object(raw)
+        if obj is None:
+            return refuse("not_json_object")
+        try:
+            reply = FramesReply.model_validate(obj)
+        except ValidationError as exc:
+            first = exc.errors()[0]
+            return refuse("schema:" + first["type"] + ":" +
+                          ".".join(str(x) for x in first["loc"])[:40])
+        d = reply.model_dump()
+        problem = time_problem(d, pack.payload)
+        if problem:
+            return refuse(problem)
+        out = verify(d, frames, pack.payload)
+        refusals = [GateRefusal("output", 2, "frames_reading",
+                                f"item_dropped:{x['item']}:{x['reason']}") for x in out["dropped"]]
+        return GateResult(True, out, refusals)
 
     # ---- association appraisal (level 1) ---------------------------------------------
 

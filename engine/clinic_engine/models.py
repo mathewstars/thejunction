@@ -673,11 +673,17 @@ class AnalyzeIn(Strict):
     patient_id: ServerId
     round_id: Optional[ClientId] = Field(None, description="An AR round (earlier design).")
     activity_id: Optional[ClientId] = Field(None, description="A focus or breathing activity.")
+    what: Literal["session", "frames"] = Field(
+        "session", description="With activity_id: `session` runs the session reading, `frames` "
+                               "the frame reading (level 2 reads the raw face frames, code checks "
+                               "every item; the activity must have been sent with face_raw).")
 
     @model_validator(mode="after")
     def _one(self):
         if (self.round_id is None) == (self.activity_id is None):
             raise ValueError("give either round_id or activity_id")
+        if self.what == "frames" and self.activity_id is None:
+            raise ValueError("what=frames needs activity_id")
         return self
 
 
