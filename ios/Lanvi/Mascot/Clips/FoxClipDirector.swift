@@ -91,7 +91,7 @@ final class FoxClipDirector: ObservableObject {
         case .listening: return now == .listen ? .idle : FoxClip.listen.resolved
         case .sleepy:
             if now == .sleepy { return .idle }
-            return Bool.random() ? FoxClip.sleepy.resolved : .idle
+            return Int.random(in: 0..<3) == 0 ? FoxClip.sleepy.resolved : .idle
         case .calm: break
         }
         if idleLeft > 0 {
