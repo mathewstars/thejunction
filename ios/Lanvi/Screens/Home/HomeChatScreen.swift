@@ -58,6 +58,7 @@ struct HomeChatScreen: View {
                 ZStack {
                     HomeTailGlow(pose: pose, glow: 0.45, foxSize: 74)
                     LanviView(pose: pose, size: 74, bounceTrigger: bounce)
+                        .lanviMood(draft.isEmpty ? nil : .listening)
                 }
                 .frame(width: 96, height: 80)
                 Text("Lanvi")

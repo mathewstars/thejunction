@@ -82,6 +82,10 @@ struct HomeView: View {
     @State private var haptic = 0
     @State private var storyAutoAnswer: String?
     @State private var arrived = false
+    // The living fox: one-off reactions and where it looks.
+    @State private var reaction: LanviMood = .happy
+    @State private var reactTick = 0
+    @State private var look: UnitPoint?
 
     var body: some View {
         GeometryReader { geo in
@@ -95,6 +99,9 @@ struct HomeView: View {
                 ZStack {
                     HomeTailGlow(pose: pose, glow: store.glow, foxSize: L.fox, burst: burst, layer: .back)
                     LanviView(pose: pose, size: L.fox, bounceTrigger: bounce)
+                        .lanviReaction(reaction, trigger: reactTick)
+                        .lanviMood(restingMood)
+                        .lanviLookAt(look)
                         .onTapGesture { tapFox() }
                     HomeTailGlow(pose: pose, glow: store.glow, foxSize: L.fox, burst: burst, layer: .front)
                 }
@@ -200,7 +207,7 @@ struct HomeView: View {
         }
         .onChange(of: store.cheerTick) { _, _ in
             withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .cheer }
-            bounce &+= 1
+            react(.happy)
             burst = Date()
             haptic &+= 1
             Task {
@@ -209,6 +216,7 @@ struct HomeView: View {
             }
         }
         .onChange(of: isDoneToday) { _, _ in if !celebrating { settle() } }
+        .onChange(of: bubbleText) { _, _ in glanceAtBubble() }
         .onChange(of: scenePhase) { old, phase in
             if phase == .active, old == .background { welcomeBack() }
         }
@@ -358,6 +366,28 @@ struct HomeView: View {
     // MARK: State for the scene
 
     private var away: Bool { store.wandering?.state == .away && !celebrating }
+
+    /// The mood Lanvi holds at rest: sleepy late at night, otherwise the pose decides.
+    private var restingMood: LanviMood? {
+        guard !celebrating, store.wandering?.state != .back else { return nil }
+        let hour = Calendar.current.component(.hour, from: store.now)
+        return (hour >= 22 || hour < 5) ? .sleepy : nil
+    }
+
+    /// Play one reaction on the living fox (the idle keeps going underneath).
+    private func react(_ mood: LanviMood) {
+        reaction = mood
+        reactTick &+= 1
+    }
+
+    /// Eyes up to the bubble when Lanvi says something new, then back.
+    private func glanceAtBubble() {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { look = UnitPoint(x: 0.5, y: -0.35) }
+        Task {
+            try? await Task.sleep(for: .seconds(1.3))
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { look = nil }
+        }
+    }
     private var isDoneToday: Bool { if case .done = store.todayThing { return true } else { return false } }
 
     private func zoomSource(for c: Cover) -> String {
@@ -445,7 +475,7 @@ struct HomeView: View {
         Task {
             try? await Task.sleep(for: .milliseconds(1100))
             withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .surprised }
-            bounce &+= 1
+            react(.surprised)
             haptic &+= 1
         }
     }
@@ -454,7 +484,7 @@ struct HomeView: View {
     private func welcomeBack() {
         guard !celebrating, store.wandering?.state != .away else { return }
         withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .love }
-        bounce &+= 1
+        react(.happy)
         Task {
             try? await Task.sleep(for: .seconds(1.8))
             if !celebrating { settle() }
@@ -466,22 +496,23 @@ struct HomeView: View {
         let L = Layout(size: size, insets: insets, away: false)
         let tail = HomeTailGlow.tailOffset(pose: .cheer, foxSize: L.fox)
         let to = CGPoint(x: L.foxCenter.x + tail.x, y: L.foxCenter.y + tail.y)
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .surprised }
         if c.xpGained > 0 {
+            // Eyes lead: Lanvi looks down at the light coming up from the button.
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { look = UnitPoint(x: 0.45, y: 1.25) }
             stream = (CGPoint(x: size.width / 2, y: L.buttonY), to, Date())
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { showGrowth = true }
         }
         Task {
             if c.xpGained > 0 { try? await Task.sleep(for: .seconds(HomeLightStream.duration - 0.1)) }
-            // The light arrives: cheer, burst, +XP, the bar fills.
+            // The light arrives: a happy hop, the light opens, +XP, the bar fills.
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { look = nil }
             withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = c.xpGained > 0 ? .cheer : .love }
-            bounce &+= 1
+            react(.happy)
             burst = Date()
             haptic &+= 1
             if c.xpGained > 0 { pop = c }
             try? await Task.sleep(for: .milliseconds(800))
             stream = nil
-            bounce &+= 1
             try? await Task.sleep(for: .seconds(2.2))
             withAnimation(.easeOut(duration: 0.3)) { pop = nil }
             withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { showGrowth = false }
@@ -521,7 +552,8 @@ struct HomeView: View {
             }
         }
         if let what = value("-demoPlay"), let kind = ActivityKind(rawValue: what) {
-            try? await Task.sleep(for: .milliseconds(900))
+            // `-demoDelay 6`: a few seconds of idle life first (for recordings).
+            try? await Task.sleep(for: .seconds(value("-demoDelay").flatMap(Double.init) ?? 0.9))
             await store.finish(Self.sample(kind), kind: kind)
         }
         if let answer = value("-demoAnswer") {

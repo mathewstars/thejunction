@@ -2,48 +2,46 @@ import SwiftUI
 
 // MARK: - Light flowing into the tail
 
-/// After an activity: a stream of small comets flows from the card that was
-/// played up into Lanvi's tail, where the glow then rises.
+/// After an activity: one soft comet of light rises from the button along a
+/// gentle arc into Lanvi's tail, where the glow then grows.
 struct HomeLightStream: View {
     var from: CGPoint
     var to: CGPoint
     var start: Date
     static let duration: Double = 1.05
 
-    private static let colors = [Color(hex: 0x3EE6A8), Color(hex: 0x5CCBFF), Color(hex: 0x9B7BFF), Color(hex: 0xFF7FD0)]
-
     var body: some View {
         TimelineView(.animation) { context in
             Canvas { ctx, _ in
                 let age = context.date.timeIntervalSince(start)
-                guard age >= 0, age < Self.duration + 0.5 else { return }
-                // A gentle arc: up and over towards the tail.
-                let control = CGPoint(x: (from.x + to.x) / 2 + (to.x > from.x ? -60 : 60),
-                                      y: min(from.y, to.y) - 80)
-                for i in 0..<16 {
-                    let delay = Double(i) * 0.03
-                    let p = (age - delay) / Self.duration
-                    guard p > 0, p < 1 else { continue }
-                    let e = easeInOut(p)
-                    let wobble = CGFloat(sin(Double(i) * 1.7 + age * 9)) * 10 * CGFloat(1 - e)
-                    let color = Self.colors[i % Self.colors.count]
-                    // Comet: a head and a short fading tail behind it.
-                    for k in 0..<5 {
-                        let q = max(0, e - Double(k) * 0.025)
-                        var pt = bezier(from, control, to, q)
-                        pt.x += wobble
-                        let r = CGFloat(5.5 - Double(k)) * (k == 0 ? 1.0 : 0.8)
-                        let a = (1 - Double(k) * 0.2) * (p > 0.85 ? (1 - p) / 0.15 : 1)
-                        ctx.fill(Path(ellipseIn: CGRect(x: pt.x - r * 3, y: pt.y - r * 3, width: r * 6, height: r * 6)),
-                                  with: .radialGradient(Gradient(colors: [color.opacity(0.55 * a), .clear]),
-                                                        center: pt, startRadius: 0, endRadius: r * 3))
-                        var core = ctx
-                        core.blendMode = .plusLighter
-                        core.fill(Path(ellipseIn: CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2)),
-                                  with: .radialGradient(Gradient(colors: [.white.opacity(a), color.opacity(0.6 * a), .clear]),
-                                                        center: pt, startRadius: 0, endRadius: r))
-                    }
+                guard age >= 0, age < Self.duration + 0.2 else { return }
+                let p = min(age / Self.duration, 1)
+                let head = easeInOut(p)
+                let control = CGPoint(x: (from.x + to.x) / 2 + (to.x > from.x ? -70 : 70),
+                                      y: min(from.y, to.y) - 60)
+                let fadeOut = p > 0.9 ? (1 - p) / 0.1 : 1
+                var g = ctx
+                g.blendMode = .plusLighter
+                // The tail: many overlapping soft discs, so it reads as one ribbon of light.
+                let steps = 28
+                for k in stride(from: steps, through: 0, by: -1) {
+                    let lag = Double(k) / Double(steps) * 0.22
+                    let q = max(0, head - lag)
+                    let pt = bezier(from, control, to, q)
+                    let w = 1 - Double(k) / Double(steps)          // 1 at the head, 0 at the end
+                    let r = CGFloat(3 + 9 * w)
+                    let a = 0.10 + 0.35 * w * w
+                    let mint = Color(hex: 0x7CF5C4), violet = Color(hex: 0xA98BFF)
+                    let c = k < steps / 2 ? mint : violet
+                    g.fill(Path(ellipseIn: CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2)),
+                           with: .radialGradient(Gradient(colors: [c.opacity(a * fadeOut), c.opacity(0)]),
+                                                 center: pt, startRadius: 0, endRadius: r))
                 }
+                // The head: a small bright heart of light.
+                let hp = bezier(from, control, to, head)
+                g.fill(Path(ellipseIn: CGRect(x: hp.x - 7, y: hp.y - 7, width: 14, height: 14)),
+                       with: .radialGradient(Gradient(colors: [.white.opacity(0.9 * fadeOut), Color(hex: 0x7CF5C4).opacity(0)]),
+                                             center: hp, startRadius: 0, endRadius: 7))
             }
         }
         .allowsHitTesting(false)
@@ -55,7 +53,7 @@ struct HomeLightStream: View {
                        y: u * u * a.y + 2 * u * t * c.y + t * t * b.y)
     }
 
-    private func easeInOut(_ p: Double) -> Double { p < 0.5 ? 2 * p * p : 1 - pow(-2 * p + 2, 2) / 2 }
+    private func easeInOut(_ p: Double) -> Double { p < 0.5 ? 4 * p * p * p : 1 - pow(-2 * p + 2, 3) / 2 }
 }
 
 // MARK: - Growing up

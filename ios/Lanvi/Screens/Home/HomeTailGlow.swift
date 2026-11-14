@@ -98,6 +98,8 @@ struct HomeTailGlow: View, Animatable {
     /// Where the tail is, from the centre of the fox's square frame. The share
     /// of the picture comes from each pose's art.
     static func tailOffset(pose: LanviPose, foxSize s: CGFloat) -> CGPoint {
+        // The paper puppet knows where its own tail tip is.
+        if pose.isPuppet { return LanviView.puppetTailTip(foxSize: s) }
         let (fx, fy, aspect): (CGFloat, CGFloat, CGFloat) = {
             switch pose {
             case .cheer: return (0.13, 0.80, 953.0 / 1000)
