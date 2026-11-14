@@ -18,7 +18,7 @@ struct HomeMindScreen: View {
             let hill = geo.size.height * (compact ? 0.34 : 0.36)
             let fox: CGFloat = compact ? 110 : 132
             ZStack(alignment: .top) {
-                SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: hill)
+                PaintedWorld(scene: store.worldScene)
 
                 HStack(alignment: .bottom, spacing: 4) {
                     HomeSpeechBubble(text: say, pointAt: 0.92)
@@ -26,7 +26,6 @@ struct HomeMindScreen: View {
                         .padding(.bottom, fox * 0.55)
                         .animation(.spring(response: 0.45, dampingFraction: 0.7), value: say)
                     ZStack {
-                        HomeTailGlow(pose: pose, glow: 0.5, foxSize: fox)
                         LanviView(pose: pose, size: fox, bounceTrigger: bounce)
                     }
                     .frame(width: fox, height: fox)

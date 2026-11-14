@@ -19,10 +19,12 @@ struct HomeChatScreen: View {
 
     private let limit = 280
 
+    /// Type on the sky: navy on dawn and day, white at night.
+    private var onSky: Color { store.worldScene == .night ? .white : Theme.ink }
+
     var body: some View {
         ZStack(alignment: .top) {
-            SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: 2000)
-                .ignoresSafeArea()
+            PaintedWorld(scene: store.worldScene)
 
             VStack(spacing: 0) {
                 header
@@ -54,20 +56,20 @@ struct HomeChatScreen: View {
             Spacer()
             VStack(spacing: 2) {
                 ZStack {
-                    HomeTailGlow(pose: pose, glow: 0.45, foxSize: 74)
                     LanviView(pose: pose, size: 74, bounceTrigger: bounce)
+                        .lanviMood(draft.isEmpty ? nil : .listening)
                 }
                 .frame(width: 96, height: 80)
                 Text("Lanvi")
                     .font(Theme.rounded(17, .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(onSky)
                 Text("A little fox who listens")
                     .font(Theme.rounded(12, .bold))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(onSky.opacity(0.75))
             }
             Spacer()
             Button(action: onHelp) { Image(systemName: "lifepreserver.fill") }
-                .buttonStyle(HomeSkyRoundStyle())
+                .buttonStyle(HomeCornerRoundStyle())
                 .accessibilityLabel("Help")
         }
         .padding(.horizontal, 20)
@@ -167,7 +169,7 @@ struct HomeChatScreen: View {
                             Text("Lanvi couldn't hear this yet. Tap to try again.")
                         }
                         .font(Theme.rounded(13, .bold))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(onSky.opacity(0.85))
                     }
                     .buttonStyle(.plain)
                 }
@@ -229,7 +231,7 @@ struct HomeChatScreen: View {
             if left <= 40 {
                 Text("\(max(left, 0)) left")
                     .font(Theme.rounded(12, .bold))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(Theme.inkSecondary)
                     .padding(.trailing, 70)
                     .transition(.opacity)
             }
@@ -260,7 +262,7 @@ struct HomeChatScreen: View {
         .padding(.top, 10)
         .padding(.bottom, 8)
         .background(
-            LinearGradient(colors: [Theme.nightBottom.opacity(0), Theme.nightBottom.opacity(0.9)],
+            LinearGradient(colors: [Color.white.opacity(0), Color.white.opacity(0.75)],
                            startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
         )
@@ -277,7 +279,9 @@ struct HomeChatScreen: View {
 
     /// `-chatDemo <name>`: type a draft (`typing`), or play a short conversation (`talk`).
     private func runDemo() async {
-        if let demoMessage {
+        // The -demo walk-through sends one message by itself, then closes.
+        let walkthrough = ProcessInfo.processInfo.arguments.contains("-demo")
+        if let demoMessage = demoMessage ?? (walkthrough ? "The coffee outside was nice today" : nil) {
             try? await Task.sleep(for: .milliseconds(900))
             for ch in demoMessage {
                 draft.append(ch)
@@ -317,18 +321,17 @@ struct HomeChatScreen: View {
     }
 }
 
-/// A rounded bubble with a small tail at the bottom corner.
+/// A soft rounded bubble; the corner nearest the speaker is tucked in a little
+/// instead of a tail.
 private struct ChatBubbleShape: Shape {
     var mine: Bool
     func path(in rect: CGRect) -> Path {
-        var p = Path(roundedRect: rect, cornerRadius: 20, style: .continuous)
-        let x = mine ? rect.maxX - 14 : rect.minX + 14
-        let dir: CGFloat = mine ? 1 : -1
-        p.move(to: CGPoint(x: x - 8 * dir, y: rect.maxY - 1))
-        p.addQuadCurve(to: CGPoint(x: x + 14 * dir, y: rect.maxY + 6), control: CGPoint(x: x + 4 * dir, y: rect.maxY + 2))
-        p.addQuadCurve(to: CGPoint(x: x + 4 * dir, y: rect.maxY - 10), control: CGPoint(x: x + 8 * dir, y: rect.maxY - 2))
-        p.closeSubpath()
-        return p
+        UnevenRoundedRectangle(topLeadingRadius: 20,
+                               bottomLeadingRadius: mine ? 20 : 6,
+                               bottomTrailingRadius: mine ? 6 : 20,
+                               topTrailingRadius: 20,
+                               style: .continuous)
+            .path(in: rect)
     }
 }
 

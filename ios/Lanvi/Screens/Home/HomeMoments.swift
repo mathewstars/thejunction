@@ -1,63 +1,5 @@
 import SwiftUI
 
-// MARK: - Light flowing into the tail
-
-/// After an activity: a stream of small comets flows from the card that was
-/// played up into Lanvi's tail, where the glow then rises.
-struct HomeLightStream: View {
-    var from: CGPoint
-    var to: CGPoint
-    var start: Date
-    static let duration: Double = 1.05
-
-    private static let colors = [Color(hex: 0x3EE6A8), Color(hex: 0x5CCBFF), Color(hex: 0x9B7BFF), Color(hex: 0xFF7FD0)]
-
-    var body: some View {
-        TimelineView(.animation) { context in
-            Canvas { ctx, _ in
-                let age = context.date.timeIntervalSince(start)
-                guard age >= 0, age < Self.duration + 0.5 else { return }
-                // A gentle arc: up and over towards the tail.
-                let control = CGPoint(x: (from.x + to.x) / 2 + (to.x > from.x ? -60 : 60),
-                                      y: min(from.y, to.y) - 80)
-                for i in 0..<16 {
-                    let delay = Double(i) * 0.03
-                    let p = (age - delay) / Self.duration
-                    guard p > 0, p < 1 else { continue }
-                    let e = easeInOut(p)
-                    let wobble = CGFloat(sin(Double(i) * 1.7 + age * 9)) * 10 * CGFloat(1 - e)
-                    let color = Self.colors[i % Self.colors.count]
-                    // Comet: a head and a short fading tail behind it.
-                    for k in 0..<5 {
-                        let q = max(0, e - Double(k) * 0.025)
-                        var pt = bezier(from, control, to, q)
-                        pt.x += wobble
-                        let r = CGFloat(5.5 - Double(k)) * (k == 0 ? 1.0 : 0.8)
-                        let a = (1 - Double(k) * 0.2) * (p > 0.85 ? (1 - p) / 0.15 : 1)
-                        ctx.fill(Path(ellipseIn: CGRect(x: pt.x - r * 3, y: pt.y - r * 3, width: r * 6, height: r * 6)),
-                                  with: .radialGradient(Gradient(colors: [color.opacity(0.55 * a), .clear]),
-                                                        center: pt, startRadius: 0, endRadius: r * 3))
-                        var core = ctx
-                        core.blendMode = .plusLighter
-                        core.fill(Path(ellipseIn: CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2)),
-                                  with: .radialGradient(Gradient(colors: [.white.opacity(a), color.opacity(0.6 * a), .clear]),
-                                                        center: pt, startRadius: 0, endRadius: r))
-                    }
-                }
-            }
-        }
-        .allowsHitTesting(false)
-    }
-
-    private func bezier(_ a: CGPoint, _ c: CGPoint, _ b: CGPoint, _ t: Double) -> CGPoint {
-        let t = CGFloat(t), u = 1 - t
-        return CGPoint(x: u * u * a.x + 2 * u * t * c.x + t * t * b.x,
-                       y: u * u * a.y + 2 * u * t * c.y + t * t * b.y)
-    }
-
-    private func easeInOut(_ p: Double) -> Double { p < 0.5 ? 2 * p * p : 1 - pow(-2 * p + 2, 2) / 2 }
-}
-
 // MARK: - Growing up
 
 /// A short celebration when Lanvi reaches a new stage. Growth never goes back.
@@ -74,11 +16,12 @@ struct HomeGrowUpMoment: View {
             let w = geo.size.width
             let fox: CGFloat = min(240, w * 0.6)
             ZStack {
-                // A deep night of its own, so Home does not show through.
-                LinearGradient(colors: [Color(hex: 0x0D1A4A), Theme.nightTop, Color(hex: 0x2A3F9E)],
-                               startPoint: .top, endPoint: .bottom)
-                    .ignoresSafeArea()
-                    .opacity(shown ? 1 : 0)
+                // The painted night, a little deeper, so Home does not show through.
+                ZStack {
+                    PaintedWorld(scene: .night, snow: false)
+                    Theme.nightTop.opacity(0.35).ignoresSafeArea()
+                }
+                .opacity(shown ? 1 : 0)
 
                 // Rays of northern light turning slowly behind the fox.
                 TimelineView(.animation) { context in
@@ -127,7 +70,6 @@ struct HomeGrowUpMoment: View {
                 VStack(spacing: 14) {
                     Spacer()
                     ZStack {
-                        HomeTailGlow(pose: .cheer, glow: 1, foxSize: fox)
                         LanviView(pose: .cheer, size: fox, bounceTrigger: bounce)
                     }
                     .frame(width: w, height: fox * 1.3)
@@ -188,50 +130,6 @@ struct HomeGrowUpMoment: View {
     }
 
     private func frac(_ v: Double) -> Double { v - floor(v) }
-}
-
-// MARK: - Evening aurora
-
-/// Curtains of northern light above the hills in the evening: thin vertical
-/// strokes of green fading up into violet, swaying slowly, added as light.
-struct HomeAuroraBoost: View {
-    var strength: Double
-    var height: CGFloat
-
-    var body: some View {
-        TimelineView(.animation) { context in
-            let t = context.date.timeIntervalSinceReferenceDate
-            Canvas { ctx, size in
-                var g = ctx
-                g.blendMode = .plusLighter
-                g.addFilter(.blur(radius: 7))
-                let a = min(max(strength, 0), 1)
-                let base = height * 0.42
-                let step: CGFloat = 5
-                var x: CGFloat = -10
-                while x < size.width + 10 {
-                    let wave = sin(Double(x) * 0.011 + t * 0.22) * 34 + sin(Double(x) * 0.027 - t * 0.35) * 14
-                    let tall = 70 + 45 * (0.5 + 0.5 * sin(Double(x) * 0.019 + t * 0.4))
-                    let y0 = base + CGFloat(wave)
-                    let rect = CGRect(x: x, y: y0 - CGFloat(tall), width: step + 1, height: CGFloat(tall))
-                    let flicker = 0.75 + 0.25 * sin(Double(x) * 0.08 + t * 1.3)
-                    g.fill(Path(rect), with: .linearGradient(
-                        Gradient(stops: [
-                            .init(color: Color(hex: 0x3EE6A8).opacity(0.0), location: 0),
-                            .init(color: Color(hex: 0x9B7BFF).opacity(0.22 * a * flicker), location: 0.25),
-                            .init(color: Color(hex: 0x3EE6A8).opacity(0.5 * a * flicker), location: 0.85),
-                            .init(color: Color(hex: 0xB9FFE4).opacity(0.65 * a * flicker), location: 1),
-                        ]),
-                        startPoint: CGPoint(x: rect.midX, y: rect.minY),
-                        endPoint: CGPoint(x: rect.midX, y: rect.maxY)))
-                    x += step
-                }
-            }
-        }
-        .frame(height: height)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .ignoresSafeArea()
-    }
 }
 
 // MARK: - Zoom from the tapped card (iOS 18 and later; a normal slide on 17)

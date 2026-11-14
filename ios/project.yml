@@ -18,10 +18,15 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LanviServerURL: $(LANVI_SERVER_URL)
         LanviPairingCode: $(LANVI_PAIRING_CODE)
+        UIAppFonts:
+          - Nunito-SemiBold.ttf
+          - Nunito-Bold.ttf
+          - Nunito-ExtraBold.ttf
+          - Nunito-Black.ttf
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSHealthShareUsageDescription: "Lanvi reads how much you move and sleep: steps, walking speed, heart-rate variability and hours asleep. Never your messages, photos or location."
-        NSCameraUsageDescription: "Only if you say yes: during two games Lanvi watches your face and keeps a few numbers, like how often you smiled. Never a picture."
+        NSCameraUsageDescription: "Only if you say yes: during two games Lanvi reads how your face moves, as numbers only. Never a picture or video."
     entitlements:
       path: Lanvi/Lanvi.entitlements
       properties:
