@@ -19,16 +19,13 @@ try? FileManager.default.createDirectory(atPath: out, withIntermediateDirectorie
 let foxSize: CGFloat = 300
 let k = foxSize / Rig.canvas.height
 
-/// Where the left eye's centre lands, in points inside the fox's square.
+/// Where the left pupil's centre lands, in points inside the fox's square: the eye on
+/// its patch plus the moving pupil, through the head and whole-fox transforms.
 func pupil(_ f: RigFrame) -> CGPoint {
     let q = f.pose
-    // the eye rides its patch around the head sphere
-    let r = LanviArt.layer["face-patch-l"] ?? .zero
-    let px = LanviArt.px("head")
-    let patch = CGPoint(x: (r.midX - 0.5) * px.width, y: (r.midY - 0.5) * px.height)
-    let t = Rig.turn(Rig.sphere(patch), yaw: q.dirX * Rig.maxYaw, pitch: q.dirY * Rig.maxPitch)
-    let to = Rig.headPixels(t.p)
-    var e = Rig.headToCanvas(CGPoint(x: Rig.eyeL.x + q.eyeX + (to.x - patch.x), y: Rig.eyeL.y + q.eyeY + (to.y - patch.y)))
+    let placed = Rig.eyeOnPatch(left: true, dropY: 0, pose: q).eye
+    let off = Rig.pupil(left: true, pose: q)
+    var e = Rig.headToCanvas(CGPoint(x: placed.x + off.x * Rig.eyeScale, y: placed.y + off.y * Rig.eyeScale))
     // the head group: settle around the neck, tilt around the neck, shift
     let n = Rig.neck
     e = CGPoint(x: n.x + (e.x - n.x) * f.headSX, y: n.y + (e.y - n.y) * f.headSY)
@@ -160,5 +157,11 @@ write("follow", from: base - 0.5, seconds: 3.5) {
     }
     if $0.t >= base + 2.2 { steps.append(LookStep(at: base + 2.2, target: nil)) }
     $0.lookSteps = steps
+}
+// A finger dragged in a slow circle and in a figure of eight (a new place every frame).
+for path in [0, 1] {
+    write("follow-\(path == 0 ? "circle" : "eight")", from: base - 0.5, seconds: LanviMotion.followLength(path) + 2) {
+        $0.appearAt = .infinity; $0.follow = path; $0.followAt = base
+    }
 }
 print("wrote \(out)")

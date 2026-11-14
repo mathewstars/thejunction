@@ -69,6 +69,8 @@ struct LanviMotion {
     /// Each change springs from wherever the eyes and head are at that moment, so a
     /// new target mid-turn (or a finger being followed) never jumps.
     var lookSteps: [LookStep] = [LookStep(at: -100, target: nil)]
+    var follow: Int? = nil               // preview: a scripted finger path (`followPoint`)
+    var followAt: Double = -100
     var touch: LanviTouchAct? = nil      // the touch reaction playing
     var touchAt: Double = -100
     var touchSide: Double = 1            // -1 the viewer's left, +1 right
@@ -150,6 +152,12 @@ struct LanviMotion {
         let tailLift = lag(Self.tailKernel) { $0.rootY }
         f.tailBend = Self.soft(now.pose.tailCurl + 1.25 * tailBase - 0.16 * tailLift, 22)
 
+        // A turn travels on an arc: the head dips a little in the middle of it (a head turns
+        // on a neck) and tilts slightly into it.
+        let turnSpeed = (now.pose.dirX - past[2].pose.dirX) * 20
+        f.pose.headY += Self.soft(0.4 * turnSpeed * turnSpeed, 5)
+        f.pose.headTilt += Self.soft(1.2 * turnSpeed, 4)
+
         // The head stretches a hair as it rises and squashes as it settles.
         let settle = lag(Self.headKernel) { $0.rootY + $0.headY }
         let sq = Self.soft(settle * 0.0011, 0.035) - now.pose.headSquash
@@ -204,6 +212,9 @@ struct LanviMotion {
         if hops { hop(&p, x - hopAt, height: 120) }
         if withBlink { blink(x, &p, &face) }
         if loving, face.eyes == .open { face.eyes = .happy }
+        // The pupils carry every look now; the old looking-left/right/up pictures are
+        // never shown (a picture swap can only step, a pupil moves smoothly).
+        if face.eyes == .left || face.eyes == .right || face.eyes == .up { face.eyes = .open }
         rideNeck(x, &p)
 
         // Depth in miniature: a tilt turns the face a touch towards the low side.
@@ -307,7 +318,7 @@ struct LanviMotion {
             p.headY += 4 * nod * w; p.dirY += 0.1 * nod * w
         case .thinking:
             // Eyes up and to the side, head following, a slow tail swish.
-            p.dirX += 0.28 * w; p.dirY -= 0.32 * w; p.headTilt += 4 * w; p.eyeX += 5 * w; p.eyeY -= 2 * w
+            p.dirX += 0.28 * w; p.dirY -= 0.32 * w; p.headTilt += 4 * w; p.eyeX += 5 * w; p.eyeY -= 5 * w
             p.earL += 4 * w; p.mouthScale -= 0.12 * w
             p.tail += (7 * sin(2 * .pi * (x + s) / 3.7) + 3 * sin(2 * .pi * (x + s) / 5.9 + 0.8)) * w
             p.tailCurl += 4 * sin(2 * .pi * (x + s - 0.3) / 3.7) * w
@@ -319,24 +330,19 @@ struct LanviMotion {
     // MARK: Look
 
     /// Head direction, tilt, eye shift and eye set for a target in canvas units.
-    private static func lookPose(_ q: CGPoint?) -> (dx: Double, dy: Double, tilt: Double, ex: Double, ey: Double, shape: EyeShape?) {
-        guard let q else { return (0, 0, 0, 0, 0, nil) }
+    private static func lookPose(_ q: CGPoint?) -> (dx: Double, dy: Double, tilt: Double, ex: Double, ey: Double, cross: Double, shape: EyeShape?) {
+        guard let q else { return (0, 0, 0, 0, 0, 0, nil) }
         let dx = Double((q.x - eyesCenter.x) / Rig.unit), dy = Double((q.y - eyesCenter.y) / Rig.unit)
         let d = max(hypot(dx, dy), 1)
         // grows with distance; far targets saturate (the unit circle limit comes later)
         let dirX = dx / 650, dirY = dy / 650 * 0.8
-        let tilt = max(min(dx * 0.01, 5), -5)
-        let ex = dx / d * 6, ey = dy / d * 6
-        guard d > 70 else { return (dirX, dirY, tilt, ex * d / 70, ey * d / 70, .open) }
-        let a = atan2(-dy, dx) * 180 / .pi   // 0 = right, 90 = up
-        let shape: EyeShape
-        switch a {
-        case -40..<45: shape = .right
-        case 45..<135: shape = .up
-        case 135...180, -180 ..< -140: shape = .left
-        default: shape = .open   // looking down: open eyes, nudged down
-        }
-        return (dirX, dirY, tilt, ex, ey + (shape == .open ? 5 : 0), shape)
+        let tilt = max(min(dx * 0.006, 4), -4)
+        // the pupils point at it (full look from 70 units away), and converge a little on
+        // something close to the face
+        let reach = min(d / 70, 1)
+        let ex = dx / d * 6.5 * reach, ey = dy / d * 6 * reach
+        let cross = 3 * max(0, 1 - d / 260)
+        return (dirX, dirY, tilt, ex, ey, cross, .open)
     }
 
     /// Where the eyes look at time `x` (the latest change by then), nil = ahead.
@@ -345,27 +351,70 @@ struct LanviMotion {
         return lookSteps.first?.target
     }
 
+    /// A critically damped spring step (fast, no wobble): 95 % there after `response` s.
+    static func critical(_ t: Double, response: Double) -> Double {
+        guard t > 0 else { return 0 }
+        let w = 4.74 / response
+        return 1 - (1 + w * t) * exp(-w * t)
+    }
+
+    /// The head's answer to a new look: two frames the other way, a fast middle, about
+    /// 8 % past it, a soft settle.
+    static func headTurn(_ t: Double) -> Double {
+        -0.06 * Motion.bump(t, 0, 0.09) + Motion.spring(t - 0.05, response: 0.42, damping: 0.62)
+    }
+
     private func lookLayer(_ x: Double, _ p: inout Pose, _ face: inout Face) {
-        guard let first = lookSteps.first else { return }
-        // Each change adds its difference on its own spring (eyes in 80 ms; the head 0.1 s
-        // later), so the sum is continuous however often the target changes.
+        let steps = lookStepsAt(x)
+        guard let first = steps.first else { return }
+        // Each change adds its difference on its own spring, so the sum is continuous
+        // however often the target changes (a finger feeds one every frame). The pupils
+        // get there first (0.15 s, no wobble); the head follows on a slower spring.
         var prev = Self.lookPose(first.target)
-        var ex = prev.ex, ey = prev.ey, dx = prev.dx, dy = prev.dy, tilt = prev.tilt
-        var shape = prev.shape
-        for step in lookSteps.dropFirst() {
+        var ex = prev.ex, ey = prev.ey, cross = prev.cross, dx = prev.dx, dy = prev.dy, tilt = prev.tilt
+        for step in steps.dropFirst() {
             let lt = x - step.at
             if lt < 0 { break }
             let q = Self.lookPose(step.target)
-            let e = Motion.smooth(0, 0.08, lt)
-            let h = Motion.spring(lt - 0.1, response: 0.38, damping: 0.72)
-            ex += (q.ex - prev.ex) * e; ey += (q.ey - prev.ey) * e
+            let e = Self.critical(lt, response: 0.15)
+            let h = Self.headTurn(lt)
+            ex += (q.ex - prev.ex) * e; ey += (q.ey - prev.ey) * e; cross += (q.cross - prev.cross) * e
             dx += (q.dx - prev.dx) * h; dy += (q.dy - prev.dy) * h; tilt += (q.tilt - prev.tilt) * h
-            if lt >= 0.035 { shape = q.shape }
             prev = q
         }
-        if let shape, face.eyes == .open { face.eyes = shape }
-        p.eyeX += ex; p.eyeY += ey
+        p.eyeX += ex; p.eyeY += ey; p.eyeCross += cross
         p.dirX += dx; p.dirY += dy; p.headTilt += tilt
+    }
+
+    /// The look changes at time `x`: the real ones, or (preview) a scripted finger path
+    /// sampled every 1/60 s like a real drag.
+    func lookStepsAt(_ x: Double) -> [LookStep] {
+        guard let k = follow, x >= followAt else { return lookSteps }
+        let dur = Self.followLength(k)
+        let end = followAt + dur
+        if x - 1.6 > end { return lookSteps }
+        // older changes have settled: fold them into one starting point
+        let first = max(0, ceil((x - 1.6 - followAt) * 60)) / 60
+        var steps = [LookStep(at: -100, target: first > 0 ? Self.followPoint(k, first - 1 / 60) : lookTarget(followAt))]
+        var u = first
+        while u <= min(x - followAt, dur) {
+            steps.append(LookStep(at: followAt + u, target: Self.followPoint(k, u)))
+            u += 1 / 60
+        }
+        if x >= end { steps.append(LookStep(at: end, target: lookTarget(end))) }
+        return steps
+    }
+
+    /// Scripted finger paths: 0 a slow circle (6 s), 1 a figure of eight (8 s).
+    static func followLength(_ k: Int) -> Double { k == 0 ? 6 : 8 }
+    static func followPoint(_ k: Int, _ u: Double) -> CGPoint {
+        let c = CGPoint(x: eyesCenter.x, y: eyesCenter.y - 80)
+        if k == 0 {
+            let a = 2 * Double.pi * u / 6
+            return CGPoint(x: c.x + 900 * cos(a), y: c.y + 650 * sin(a))
+        }
+        let a = 2 * Double.pi * u / 8
+        return CGPoint(x: c.x + 950 * sin(a), y: c.y + 520 * sin(2 * a))
     }
 
     // MARK: Busy: when the fox is doing something, idle moments wait
@@ -382,6 +431,7 @@ struct LanviMotion {
         if let a = touch { b = max(b, window(touchAt, a.duration, x)) }
         b = max(b, petting ? Motion.smooth(pettingSince, pettingSince + 0.2, x) : window(pettingSince - 1.2, 1.2, x))
         b = max(b, window(hopAt, 1.3, x))
+        if let k = follow, x >= followAt - 0.05, x < followAt + Self.followLength(k) + 1 { b = 1 }
         if let last = lookSteps.last {
             let before = lookSteps.count > 1 ? lookSteps[lookSteps.count - 2].target : nil
             let l0 = before == nil ? 0.0 : 1, l1 = last.target == nil ? 0.0 : 1
