@@ -160,7 +160,7 @@ private struct HelpsChipStyle: ButtonStyle {
             .overlay(shape.stroke(on ? .white.opacity(0.25) : Theme.line, lineWidth: 2))
             .offset(y: pressed ? 4 : 0)
             .background(shape.fill(on ? Theme.brandEdge : Theme.line).offset(y: 4))
-            .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
+            .animation(LanviTiming.press, value: pressed)
             .sensoryFeedback(.impact(weight: .light), trigger: pressed)
     }
 }
