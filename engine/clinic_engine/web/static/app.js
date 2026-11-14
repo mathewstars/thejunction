@@ -165,6 +165,7 @@
   function parseHash() {
     const parts = (location.hash || "").replace(/^#\/?/, "").split("/").filter(Boolean);
     if (parts[0] === "demo") return { view: "demo", pid: null, tab: "overview" };
+    if (parts[0] === "tour") return { view: "tour", pid: null, tab: "overview" };
     if (parts[0] === "blueprint") { if (["research", "mind", "gemini", "learning"].indexOf(parts[1]) >= 0) S.bpTab = parts[1]; return { view: "blueprint", pid: null, tab: "overview" }; }
     if ((parts[0] === "p" || parts[0] === "patient") && parts[1]) {
       const tab = TABS.some((t) => t[0] === parts[2]) ? parts[2] : "overview";
@@ -193,7 +194,8 @@
     try {
       if (!S.me) S.me = await api("GET", "/v1/clinic/me");
       const r = S.route;
-      if (r.view === "patients" || r.view === "demo" || r.view === "blueprint") {
+      if (r.view === "tour") { /* the app video needs no data */ }
+      else if (r.view === "patients" || r.view === "demo" || r.view === "blueprint") {
         if (force || !S.list) S.list = await api("GET", "/v1/clinic/patients");
         if (r.view === "blueprint" && S.me.demo && S.me.demo.patient_id && (force || !S.bpAssoc)) {
           try { S.bpAssoc = await api("GET", "/v1/clinic/patients/" + encodeURIComponent(S.me.demo.patient_id) + "/associations"); } catch (e) { S.bpAssoc = null; }
@@ -226,6 +228,7 @@
   function showLogin(msg) {
     $("view").hidden = true; $("nav").hidden = true; $("who").hidden = true;
     $("view-login").hidden = false;
+    const lt = $("login-tour"); if (lt) { lt.appendChild(tourPanel()); lt.hidden = false; }
     const e = $("login-error"); e.textContent = msg || ""; e.hidden = !msg;
   }
   function signOut(msg) {
@@ -241,7 +244,7 @@
       S.token = out.session_token;
       try { sessionStorage.setItem("clinic_session", S.token); } catch (e) { /* storage may be blocked */ }
       $("login-pass").value = "";
-      $("view-login").hidden = true;
+      $("view-login").hidden = true; if ($("login-tour")) $("login-tour").hidden = true;
       onRoute();
     } catch (e) { showLogin(e.message); }
   });
@@ -250,7 +253,7 @@
   // ---------------------------------------------------------------- render
   function render() {
     if (!S.token) return;
-    $("view-login").hidden = true;
+    $("view-login").hidden = true; if ($("login-tour")) $("login-tour").hidden = true;
     const view = $("view");
     view.hidden = false;
     $("nav").hidden = false; $("who").hidden = false;
@@ -269,11 +272,13 @@
     $("nav-patients").toggleAttribute("aria-current", false);
     $("nav-demo").toggleAttribute("aria-current", false);
     $("nav-blueprint").toggleAttribute("aria-current", false);
-    (r.view === "demo" ? $("nav-demo") : r.view === "blueprint" ? $("nav-blueprint") : $("nav-patients")).setAttribute("aria-current", "page");
+    $("nav-tour").toggleAttribute("aria-current", false);
+    (r.view === "demo" ? $("nav-demo") : r.view === "blueprint" ? $("nav-blueprint") : r.view === "tour" ? $("nav-tour") : $("nav-patients")).setAttribute("aria-current", "page");
     const focusKey = document.activeElement && document.activeElement.getAttribute ? document.activeElement.getAttribute("data-key") : null;
     clear(view);
     if (r.view !== "patient" || !S.detail) clear($("subnav"));
-    if (r.view === "patients") view.appendChild(viewPatients());
+    if (r.view === "tour") view.appendChild(el("div", null, el("div", { class: "head" }, el("h1", null, "App video")), tourPanel()));
+    else if (r.view === "patients") view.appendChild(viewPatients());
     else if (r.view === "demo") view.appendChild(viewDemo());
     else if (r.view === "blueprint") view.appendChild(viewBlueprint());
     else view.appendChild(viewPatient());
@@ -394,7 +399,7 @@
       TOUR = el("section", { class: "panel tour" }, v, el("div", { class: "tour-text" },
         el("h2", null, "The app in one minute"),
         el("p", null, "What the patient sees: the fox, tonight's game, the evening check-in and the help screen. Recorded from the real app in the iOS simulator, with a narrator's voice."),
-        el("p", { class: "muted small" }, "The sessions below are what this page receives from that app. Example data; the narration is a generated voice. Captions are on the player.")));
+        el("p", { class: "muted small" }, "The clinician page receives its sessions from that app. Example data; the narration is a generated voice. Captions are on the player.")));
       TOUR.video = v;
     } else if (tourPlaying) {
       setTimeout(() => { if (TOUR.video.isConnected && TOUR.video.paused) TOUR.video.play().catch(() => {}); }, 0);

@@ -69,6 +69,7 @@ body.visitor #logout { display: none; }
 /* login */
 .login { max-width: 340px; margin: 60px auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 22px; }
 .login h1 { margin: 0 0 14px; font-size: 20px; }
+.login-tour { max-width: 620px; margin: -36px auto 60px; }
 .login form { display: grid; gap: 8px; }
 .login .login-help { margin: 14px 0 0; }
 .login label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
