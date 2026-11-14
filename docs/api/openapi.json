@@ -5487,6 +5487,17 @@
               }
             ],
             "description": "Raw ARKit frames; the server computes the face summary. Not with face."
+          },
+          "revontulet": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RevontuletIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only from Revontulet: the effort choices, tracing, pull and strokes. Without it the record means what it always did."
           }
         },
         "additionalProperties": false,
@@ -5503,7 +5514,7 @@
           "misses"
         ],
         "title": "FocusActivityIn",
-        "description": "Sparks and snow, about 45 seconds."
+        "description": "Sparks and snow (about 45 seconds), or Revontulet (about 90 seconds,\nwith `revontulet`)."
       },
       "HTTPValidationError": {
         "properties": {
@@ -6455,6 +6466,331 @@
           "patient_id"
         ],
         "title": "ReviewIn"
+      },
+      "RevontuletIn": {
+        "properties": {
+          "rounds": {
+            "items": {
+              "$ref": "#/components/schemas/RevontuletRound"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Rounds",
+            "description": "One per round where a fault line was picked, in order."
+          },
+          "strokes": {
+            "items": {
+              "$ref": "#/components/schemas/RevontuletStroke"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Strokes",
+            "description": "The strokes over the sleeping fox, in order."
+          },
+          "broke_through_s": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 600.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broke Through S",
+            "description": "Seconds from the start to the wall bursting; null if it never burst. At most duration_s + 1."
+          },
+          "fox_finished": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fox Finished",
+            "description": "True when time ran out and the fox's own spark broke the wall. Null if not sent."
+          },
+          "pt_per_cm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 400.0,
+                "minimum": 10.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pt Per Cm",
+            "description": "Screen points per centimetre on this phone, to turn points/s into cm/s."
+          },
+          "touch_radius_mean_pt": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 200.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Touch Radius Mean Pt",
+            "description": "Mean touch radius over the game, points. A stand-in for pressure."
+          },
+          "touch_radius_var": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Touch Radius Var",
+            "description": "Variance of the touch radius, points squared."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RevontuletIn",
+        "description": "What Revontulet measures beyond the focus record's taps and reaction\ntimes (docs/revontulet-measures.md). Numbers only: no touch paths, no\npositions, nothing that identifies a person. Stored with the activity and\nshown to the clinician; not yet used to judge a day, pick suggestions,\ncount XP or build the person's own normal.",
+        "examples": [
+          {
+            "broke_through_s": 52.4,
+            "fox_finished": false,
+            "pt_per_cm": 64.2,
+            "rounds": [
+              {
+                "bonus": false,
+                "choice_ms": 2310,
+                "effort": "easy",
+                "embers_hit": 0,
+                "embers_shown": 0,
+                "pull_hold_ms": 820,
+                "pull_pt": 96.5,
+                "trace_length_pt": 288.4,
+                "trace_lifts": 0,
+                "trace_mean_speed_pt_s": 174.8,
+                "trace_ms": 1650,
+                "trace_peak_speed_pt_s": 362.0,
+                "trace_start_ms": 1840
+              },
+              {
+                "bonus": true,
+                "choice_ms": 940,
+                "effort": "hard",
+                "embers_hit": 2,
+                "embers_shown": 2,
+                "pull_hold_ms": 540,
+                "pull_pt": 108.2,
+                "trace_length_pt": 279.3,
+                "trace_lifts": 0,
+                "trace_mean_speed_pt_s": 228.9,
+                "trace_ms": 1220,
+                "trace_peak_speed_pt_s": 455.0,
+                "trace_start_ms": 960
+              }
+            ],
+            "strokes": [
+              {
+                "length_pt": 410.0,
+                "mean_speed_pt_s": 282.8,
+                "ms": 1450
+              }
+            ],
+            "touch_radius_mean_pt": 21.3,
+            "touch_radius_var": 4.7
+          }
+        ]
+      },
+      "RevontuletRound": {
+        "properties": {
+          "effort": {
+            "type": "string",
+            "enum": [
+              "easy",
+              "hard"
+            ],
+            "title": "Effort",
+            "description": "The fault line picked: the thin low crack (easy) or the thick vein (hard)."
+          },
+          "choice_ms": {
+            "type": "integer",
+            "maximum": 120000.0,
+            "minimum": 0.0,
+            "title": "Choice Ms",
+            "description": "Fault lines shown to the tap that picked one."
+          },
+          "trace_start_ms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 120000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Start Ms",
+            "description": "The half-circle appearing to the first touch on it."
+          },
+          "trace_ms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 120000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Ms",
+            "description": "First touch on the half-circle to the light reaching its end. Null if not finished."
+          },
+          "trace_length_pt": {
+            "type": "number",
+            "maximum": 20000.0,
+            "minimum": 0.0,
+            "title": "Trace Length Pt",
+            "description": "Length of the finger's path while tracing, screen points (lifts left out).",
+            "default": 0
+          },
+          "trace_mean_speed_pt_s": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 20000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Mean Speed Pt S",
+            "description": "Path length over the time the finger was down, points/s."
+          },
+          "trace_peak_speed_pt_s": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 50000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Peak Speed Pt S",
+            "description": "Fastest the finger went while tracing (smoothed), points/s."
+          },
+          "trace_lifts": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Trace Lifts",
+            "description": "Times the finger lifted before the light reached the end.",
+            "default": 0
+          },
+          "pull_pt": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 2000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pull Pt",
+            "description": "How far the spark was pulled at the release, points. Null if never released."
+          },
+          "pull_hold_ms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 120000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pull Hold Ms",
+            "description": "How long the pull was held before the release."
+          },
+          "embers_shown": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Embers Shown",
+            "description": "Embers that flashed in the flight.",
+            "default": 0
+          },
+          "embers_hit": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Embers Hit",
+            "description": "Embers tapped in time. At most embers_shown.",
+            "default": 0
+          },
+          "bonus": {
+            "type": "boolean",
+            "title": "Bonus",
+            "description": "The surprise extra reward was given this round.",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "effort",
+          "choice_ms"
+        ],
+        "title": "RevontuletRound",
+        "description": "One round of Revontulet: the fault line picked, the half-circle traced,\nthe slingshot pull and the embers. Numbers only, no touch paths."
+      },
+      "RevontuletStroke": {
+        "properties": {
+          "ms": {
+            "type": "integer",
+            "maximum": 60000.0,
+            "minimum": 0.0,
+            "title": "Ms"
+          },
+          "length_pt": {
+            "type": "number",
+            "maximum": 20000.0,
+            "minimum": 0.0,
+            "title": "Length Pt",
+            "description": "Screen points."
+          },
+          "mean_speed_pt_s": {
+            "type": "number",
+            "maximum": 20000.0,
+            "minimum": 0.0,
+            "title": "Mean Speed Pt S",
+            "description": "Points per second."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ms",
+          "length_pt",
+          "mean_speed_pt_s"
+        ],
+        "title": "RevontuletStroke",
+        "description": "One slow stroke over the sleeping fox."
       },
       "RoundConfigRef": {
         "properties": {
