@@ -403,3 +403,4 @@ ul.plain.big li, .d.big { font-size: 14.5px; line-height: 1.45; }
 .bp-ex pre.raw { white-space: pre-wrap; }
 .bp-cap { font-size: 14px; color: var(--muted); max-width: 96ch; margin: 6px 0 0; }
 .bp-count { font-size: 14px; max-width: 96ch; margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
+.bp-gap { margin-top: 16px; }
