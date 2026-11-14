@@ -1,0 +1,119 @@
+{
+ "pictures": 40,
+ "first_seed": 7000,
+ "generated": true,
+ "models": {
+  "level1": "bleeding_edge",
+  "level2": "gemini-3.8-flash"
+ },
+ "worse": {
+  "pairs_read": 40,
+  "pairs_not_read": 0,
+  "flags": 107,
+  "lower_as_asked": 0,
+  "lower_after_floors": 0,
+  "second_reader_answered": 107,
+  "differs_from_rules": 12,
+  "cases": []
+ },
+ "rule": {
+  "pictures_read": 20,
+  "pictures_not_read": 0,
+  "rule_followed": 20,
+  "other_flags": 31,
+  "other_flags_moved_as_asked": 5,
+  "other_flags_moved_after_floors": 5,
+  "cases": [
+   {
+    "seed": 7000,
+    "kind": "low_notes",
+    "without_rule": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "second": "agree"
+    },
+    "with_rule": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "second": "agree"
+    }
+   },
+   {
+    "seed": 7010,
+    "kind": "novelty",
+    "without_rule": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "second": "agree"
+    },
+    "with_rule": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "second": "agree"
+    }
+   },
+   {
+    "seed": 7012,
+    "kind": "low_notes",
+    "without_rule": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "second": "agree"
+    },
+    "with_rule": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "second": "agree"
+    }
+   },
+   {
+    "seed": 7016,
+    "kind": "low_notes",
+    "without_rule": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "second": "agree"
+    },
+    "with_rule": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "second": "agree"
+    }
+   },
+   {
+    "seed": 7038,
+    "kind": "weak_rounds",
+    "without_rule": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "second": "agree"
+    },
+    "with_rule": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "second": "raise"
+    }
+   }
+  ]
+ }
+}

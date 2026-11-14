@@ -96,6 +96,8 @@ All give 422 `invalid_request`, with a message that names the position (never yo
 
 Re-sending the same record with the same frames is safe: the answer has `xp_gained: 0` and the frames are stored once. The same `id` with different frames is 409.
 
+The Lanvi app sends a record with frames through a session with a 90 s request timeout (the small calls get 6 s), because the body is 0.4 to 3 MB and an upload that times out is kept and fails the same way on every open. When the server refuses a record with frames (413 or 422), the app sends it once more without them, same id, so the activity itself is never lost; the reason is in the debug log (`lanvi-net:`). A reverse proxy in front of the engine must allow bodies above 4 MiB on this route (`deploy/apache-vhost.conf`).
+
 ## What the server computes
 
 The server computes the same summary an older phone sent as `face`, so everything after it (the person's own normal, the watchers, the session reading, the research appraisal) works as before. The thresholds live in `engine/clinic_engine/mind/thresholds.py`; the code in `engine/clinic_engine/mind/face_features.py`. The event rules follow the FaceMetrics research app in `facemetrics/`.

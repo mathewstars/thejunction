@@ -424,11 +424,13 @@ final class AppStore {
             await celebrate(out, kind: kind)
             markDone(kind, seconds: record.durationS, thing: thing)
         } catch let e as APIError where e.isTemporary {
+            LanviClient.log("activity \(record.type.rawValue) \(record.id) kept for later (\(e)), face frames: \(record.faceRaw?.samples.count ?? 0)")
             link = .offline
             celebrateOffline(kind: kind)
             markDone(kind, seconds: record.durationS, thing: thing)
         } catch {
             // Refused for good (shape, plausibility, reused id): drop it, still thank them.
+            LanviClient.log("activity \(record.type.rawValue) \(record.id) refused and dropped (\(error)), face frames: \(record.faceRaw?.samples.count ?? 0)")
             outbox.remove(id: record.id)
             celebrateOffline(kind: kind)
             markDone(kind, seconds: record.durationS, thing: thing)
@@ -473,8 +475,10 @@ final class AppStore {
                 _ = try await backend.send(item)
                 outbox.remove(id: item.id)
             } catch let e as APIError where e.isTemporary {
+                LanviClient.log("outbox: \(item.type.rawValue) \(item.id) still not through (\(e)); \(outbox.items.count) waiting")
                 return   // still offline: try again next open
             } catch {
+                LanviClient.log("outbox: \(item.type.rawValue) \(item.id) refused and dropped (\(error))")
                 outbox.remove(id: item.id)
             }
         }

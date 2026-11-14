@@ -18,7 +18,7 @@ from .repo import PatientRepo
 from .round_configs import ROUND_DURATION_S
 from .rounds import pick_round_config
 from .baseline import baseline_for
-from .thresholds import METRICS
+from .thresholds import METRICS, T
 from .watchers import LEVELS, View, compute_status, deviation_now, silent
 
 PATIENT_SUMMARY = {
@@ -188,6 +188,15 @@ def clinician_line(mind, repo: PatientRepo) -> dict:
     return _clinician_line(mind, repo)
 
 
+def _lowered_by_rule(mind, repo: PatientRepo, items: list[dict]) -> int:
+    if not mind.triage_on:
+        return 0
+    levels = (repo.get("mind/triage.json") or {}).get("levels") or {}
+    return sum(1 for i in items if (levels.get(i["id"]) or {}).get("clinic_rule_id")
+               and i.get("level_source") == "models"
+               and LEVELS.index(i["level"]) < LEVELS.index(i.get("rules_level", i["level"])))
+
+
 def _clinician_line(mind, repo: PatientRepo) -> dict:
     view = mind.build_view(repo)
     status = compute_status(view)
@@ -204,6 +213,8 @@ def _clinician_line(mind, repo: PatientRepo) -> dict:
         "level": LEVELS[top] if top >= 0 else None,
         "attention": [{"id": i["id"], "kind": i["kind"], "level": i["level"], "since": i["since"]}
                       for i in items],
+        # Flags whose level a clinic rule holds below what the fixed rules say.
+        "lowered_by_clinic_rule": _lowered_by_rule(mind, repo, items),
         "last_data_day": max(view.days) if view.days else None,
         "summary": _summary(view, status, items),
     }
@@ -319,7 +330,7 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
         # of the two model levels said per item (codes only).
         # The clinic's own rules for this person (free text; read by the local
         # model in the triage, never sent outside).
-        "clinic_rules": [{k: r.get(k) for k in ("id", "text", "at", "by")}
+        "clinic_rules": [{k: r.get(k) for k in ("id", "text", "at", "by", "expires_at")}
                          for r in mind.clinic_rules(repo)],
         "triage": {"mode": getattr(mind.settings, "triage_mode", "rules"),
                    **{k: (repo.get("mind/triage.json") or {}).get(k)
@@ -507,6 +518,15 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                 if t == "focus":
                     # Revontulet's own measures, as sent (numbers only), or null.
                     s["revontulet"] = a.get("revontulet")
+                    # The same game against the person's own earlier Revontulet
+                    # games (shown only; it does not judge the day).
+                    s["revontulet_own"] = None if not a.get("revontulet_features") else {
+                        "values": a["revontulet_features"], "z": a.get("revontulet_z") or {},
+                        "usual": a.get("revontulet_usual") or {},
+                        "start": a.get("revontulet_start") or {},
+                        "start_z": a.get("revontulet_start_z") or {},
+                        "earlier_games": a.get("revontulet_baseline_sessions", 0),
+                        "needed": T.revontulet_baseline_min, "unusual_z": T.revontulet_unusual_z}
             else:
                 s["good_things"] = [item(g, "good_things") for g in a.get("good_things") or []]
                 s["plan"] = item(a.get("plan"), "plans")

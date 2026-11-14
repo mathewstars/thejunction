@@ -862,6 +862,9 @@ _Date = date
 class ClinicRuleIn(Strict):
     text: str = Field(min_length=3, max_length=300,
                       description="The rule in the clinician's own words, for this one person.")
+    days: int = Field(14, ge=1, le=90, description="How many days the rule applies. After that "
+                                                    "it stops being read and the levels are "
+                                                    "set without it.")
 
     model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [
         {"text": "She visits her mother on Sundays and walks less; a low Sunday needs no attention."}]})
@@ -872,6 +875,7 @@ class ClinicRuleOut(BaseModel):
     text: str
     at: str
     by: Optional[str] = None
+    expires_at: Optional[str] = Field(None, description="When the rule stops applying.")
 
 
 class ClinicRulesOut(BaseModel):

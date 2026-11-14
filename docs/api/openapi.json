@@ -2489,7 +2489,7 @@
           "clinician"
         ],
         "summary": "Add a rule for this person, in the clinician's own words",
-        "description": "At most 10 rules per person, 3 to 300 characters each. The rule is read\nby the local model the next time the levels are set (at once when\n`TRIAGE_MODE=models`). The audit log records that a rule was added and its\nlength, never its text.",
+        "description": "At most 10 rules per person, 3 to 300 characters each. A rule applies\nfor `days` days (14 unless said otherwise, at most 90). The rule is read\nby the local model the next time the levels are set (at once when\n`TRIAGE_MODE=models`). The audit log records that a rule was added and its\nlength, never its text.",
         "operationId": "add_clinic_rule_v1_clinic_patients__patient_id__clinic_rules_post",
         "security": [
           {
@@ -4930,6 +4930,14 @@
             "minLength": 3,
             "title": "Text",
             "description": "The rule in the clinician's own words, for this one person."
+          },
+          "days": {
+            "type": "integer",
+            "maximum": 90.0,
+            "minimum": 1.0,
+            "title": "Days",
+            "description": "How many days the rule applies. After that it stops being read and the levels are set without it.",
+            "default": 14
           }
         },
         "additionalProperties": false,
@@ -4968,6 +4976,18 @@
               }
             ],
             "title": "By"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At",
+            "description": "When the rule stops applying."
           }
         },
         "type": "object",

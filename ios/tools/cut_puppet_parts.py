@@ -193,8 +193,10 @@ def save_asset(img, name):
 
 FACE = {
     # name: (box x0, y0, x1, y1, seed x, y, brightness test, grow px, soften px)
-    "face-patch-l": ((0.13, 0.28, 0.49, 0.585), (0.31, 0.45), lambda v: v > 205, 16, 5),
-    "face-patch-r": ((0.51, 0.28, 0.87, 0.585), (0.69, 0.45), lambda v: v > 205, 16, 5),
+    # the patches carry a wide rim of the fur around them (about 0.055 of the head's
+    # width): a head turn slides them up to 0.06, and the fill under them must never show
+    "face-patch-l": ((0.13, 0.28, 0.49, 0.585), (0.31, 0.45), lambda v: v > 205, 46, 7),
+    "face-patch-r": ((0.51, 0.28, 0.87, 0.585), (0.69, 0.45), lambda v: v > 205, 46, 7),
     "face-brow-l": ((0.26, 0.2, 0.43, 0.31), (0.342, 0.255), lambda v: v < 155, 8, 3),
     "face-brow-r": ((0.57, 0.2, 0.74, 0.31), (0.665, 0.255), lambda v: v < 155, 8, 3),
     "face-nose": ((0.4, 0.48, 0.6, 0.64), (0.5, 0.565), lambda v: v < 120, 12, 3),
@@ -216,7 +218,7 @@ def brightness(img):
     return Image.merge("RGB", (r, g, b)).convert("L", (0.3, 0.59, 0.11, 0))
 
 
-def feature_mask(img, box, seed, test, grow, soft, cut_bottom=True):
+def feature_mask(img, box, seed, test, grow, soft, cut_bottom=True, inside=0):
     """A soft mask of one painted marking: the pixels passing `test` inside `box` that
     touch `seed`, grown by `grow` px into the fur around it, softened by `soft` px."""
     W, H = img.size
@@ -240,8 +242,20 @@ def feature_mask(img, box, seed, test, grow, soft, cut_bottom=True):
     for _ in range(grow // 2):
         m = m.filter(ImageFilter.MaxFilter(5))
     if cut_bottom:
-        # a straight cut at the bottom of the box (the patches run into the white cheeks)
+        # the bottom of the box (where the patches run into the white cheeks): a soft fade
+        # over 45 px, so a sliding patch never shows a cut across the cheek fluff
         m.paste(0, (0, y1, W, H))
+        if inside:
+            ramp = Image.new("L", (1, H), 255)
+            for y in range(H):
+                ramp.putpixel((0, y), int(255 * (1 - smooth((y - (y1 - 45)) / 45))))
+            m = ImageChops.multiply(m, ramp.resize((W, H)))
+    if inside:
+        # keep the rim away from the outline and the cheek tufts at the head's sides
+        core = img.getchannel("A").point(lambda v: 255 if v > 250 else 0)
+        for _ in range(inside // 2):
+            core = core.filter(ImageFilter.MinFilter(5))
+        m = ImageChops.multiply(m, core)
     m = m.filter(ImageFilter.GaussianBlur(soft))
     return ImageChops.multiply(m, img.getchannel("A"))
 
@@ -502,7 +516,8 @@ def depth_layers(pieces, preview):
             pic.save(os.path.join(preview, name + ".png"))
 
     head = pieces["head"]
-    masks = {name: feature_mask(head, *spec) for name, spec in FACE.items()}
+    masks = {name: feature_mask(head, *spec, inside=30 if name.startswith("face-patch") else 0)
+             for name, spec in FACE.items()}
     # the patches never take the nose or brows with them
     nose_zone = masks["face-nose"].filter(ImageFilter.MaxFilter(9))
     brow_zone = ImageChops.lighter(masks["face-brow-l"], masks["face-brow-r"]).filter(ImageFilter.MaxFilter(9))

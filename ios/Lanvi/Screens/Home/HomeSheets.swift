@@ -69,6 +69,7 @@ struct HomePrimaryStyle: ButtonStyle {
     var fill: Color = Theme.brand
     var edge: Color = Theme.brandEdge
     var text: Color = .white
+    var padding: CGFloat = 14
 
     func makeBody(configuration: Configuration) -> some View {
         let pressed = configuration.isPressed
@@ -78,7 +79,7 @@ struct HomePrimaryStyle: ButtonStyle {
             .foregroundStyle(text)
             .lineLimit(1)
             .minimumScaleFactor(0.75)
-            .padding(.horizontal, 14)
+            .padding(.horizontal, padding)
             .frame(maxWidth: .infinity)
             .frame(height: 56)
             .background(shape.fill(fill))

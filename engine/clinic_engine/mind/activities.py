@@ -36,6 +36,10 @@ Z_FEATURES = {
     "breathing": ("time_played_s",),
     "checkin": ("good_things",),
 }
+# Revontulet's own measures, compared with the person's earlier Revontulet
+# games only (never with Sparks and snow). Kept apart from Z_FEATURES on
+# purpose: nothing here reaches the watchers or changes how a day is judged.
+REVONTULET_FEATURES = ("hard_share", "choice_ms", "trace_speed_cm_s", "stroke_speed_cm_s")
 
 
 # ---- 1. check -------------------------------------------------------------------------
@@ -107,6 +111,30 @@ def features(a: dict, th: Thresholds = T) -> dict:
     return f
 
 
+def revontulet_features(a: dict) -> dict | None:
+    """Four numbers from a game's `revontulet` object, or None without one:
+    the share of rounds where the harder crack was picked (only for a game with
+    all three rounds: one or two choices are too few to compare), the median
+    time to choose, and the mean tracing and stroking speeds in cm per second
+    (None when the phone did not send its points per centimetre)."""
+    rv = a.get("revontulet")
+    if not rv:
+        return None
+    rounds, strokes, per_cm = rv.get("rounds") or [], rv.get("strokes") or [], rv.get("pt_per_cm")
+
+    def speed(items: list[dict], key: str) -> float | None:
+        vals = [i[key] for i in items if i.get(key) is not None]
+        return round(sum(vals) / len(vals) / per_cm, 3) if vals and per_cm else None
+
+    choose = [r["choice_ms"] for r in rounds if r.get("choice_ms") is not None]
+    return {"hard_share": round(sum(r.get("effort") == "hard" for r in rounds) / len(rounds), 3)
+            if len(rounds) >= 3 else None,
+            "choice_ms": float(median(choose)) if choose else None,
+            "trace_speed_cm_s": speed(rounds, "trace_mean_speed_pt_s"),
+            # one stroke is too little to compare: the stroke speed needs two
+            "stroke_speed_cm_s": speed(strokes, "mean_speed_pt_s") if len(strokes) >= 2 else None}
+
+
 def face_quality(a: dict, th: Thresholds = T) -> str:
     face = a.get("face")
     if not face:
@@ -157,5 +185,28 @@ def process_activity(a: dict, previous: list[dict], th: Thresholds = T) -> dict:
         face_z = {name: _z(a["face"].get(name), base.get("face." + name)) for name in FACE_FIELDS}
     usual = {k: {"median": round(v["median"], 3), "scale": round(v["scale"], 3), "n": v["n"]}
              for k, v in base.items()}
-    return {**a, "features": f, "face_quality": fq, "z": z, "face_z": face_z, "usual": usual,
-            "baseline_sessions": sum(1 for p in previous if p["type"] == a["type"])}
+    out = {**a, "features": f, "face_quality": fq, "z": z, "face_z": face_z, "usual": usual,
+           "baseline_sessions": sum(1 for p in previous if p["type"] == a["type"])}
+    rvf = revontulet_features(a)
+    if rvf is not None:
+        # Own normal over the earlier Revontulet games only. A record without
+        # the object gets none of these keys and is stored as it always was.
+        every = [p["revontulet_features"] for p in previous if p.get("revontulet_features")]
+        earlier = every[-th.activity_baseline_max:]
+        # Two references. The moving one: the games just before this one. The
+        # fixed one: the person's start, which a slow slide cannot drag along.
+        start = (every[th.revontulet_start_from:th.revontulet_start_to]
+                 if len(every) >= th.revontulet_start_to else [])
+        rv_usual, rv_z, rv_start, rv_start_z = {}, {}, {}, {}
+        for name in REVONTULET_FEATURES:
+            for games, usual, zs in ((earlier, rv_usual, rv_z), (start, rv_start, rv_start_z)):
+                vals = [e[name] for e in games if e.get(name) is not None]
+                b = _stats(vals, name, th) if len(vals) >= th.revontulet_baseline_min else None
+                zs[name] = _z(rvf.get(name), b)
+                if b:
+                    usual[name] = {"median": round(b["median"], 3), "scale": round(b["scale"], 3),
+                                   "n": b["n"]}
+        out.update(revontulet_features=rvf, revontulet_z=rv_z, revontulet_usual=rv_usual,
+                   revontulet_start=rv_start, revontulet_start_z=rv_start_z,
+                   revontulet_baseline_sessions=len(earlier))
+    return out
