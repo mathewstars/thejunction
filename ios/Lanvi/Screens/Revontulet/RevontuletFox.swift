@@ -13,6 +13,8 @@ struct RevontuletFox: View, Equatable {
     var look: UnitPoint?
     var yawnTick: Int
     var petTick: Int
+    /// Held while a stroke asks for it (the third stroke: eyes closed happily).
+    var petMood: LanviMood? = nil
 
     var body: some View {
         // One puppet plays every act, so the fox never jumps between them.
@@ -28,7 +30,7 @@ struct RevontuletFox: View, Equatable {
             // Asleep: it yawns (the moment below), then its eyes close and stay closed (the
             // closed crescent eyes `.okay` holds), breathing on. A true sleeping face would
             // need a held closed-eyes mood from Mascot/ (asked in for-main.md).
-            .lanviMood(act == .sleeping ? .okay : nil)
+            .lanviMood(act == .sleeping ? .okay : petMood)
             .lanviMoment(.yawn, trigger: yawnTick)
             .lanviLookAt(act == .sleeping ? nil : look)
             .lanviTouch(.head, hold: 1.5, trigger: petTick)
