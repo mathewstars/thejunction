@@ -4,24 +4,24 @@ import SwiftUI
 enum TodayCopy {
     static func button(_ k: ActivityKind) -> String {
         switch k {
-        case .breathing: return "Breathe together · 1 min"
-        case .focus: return "Catch sparks · 45 sec"
-        case .checkin: return "Three good things · 1 min"
+        case .breathing: return "Sit with me a minute · 1 min"
+        case .focus: return "Break the ice with me · 90 sec"
+        case .checkin: return "Tell me three good things · 1 min"
         }
     }
 
     static func title(_ k: ActivityKind) -> String {
         switch k {
-        case .breathing: return "Breathe with me"
-        case .focus: return "Catch sparks with me"
+        case .breathing: return "Sit with me a minute"
+        case .focus: return "Break the ice with me"
         case .checkin: return "Tell me three good things"
         }
     }
 
     static func duration(_ k: ActivityKind) -> String {
         switch k {
-        case .breathing: return "1 minute"
-        case .focus: return "45 seconds"
+        case .breathing: return "1 minute, the calm one"
+        case .focus: return "90 seconds"
         case .checkin: return "1 minute, before bed"
         }
     }
@@ -36,7 +36,7 @@ enum TodayCopy {
 
     static func icon(_ k: ActivityKind) -> String {
         switch k {
-        case .focus: return "sparkles"
+        case .focus: return "snowflake"
         case .breathing: return "wind"
         case .checkin: return "moon.stars.fill"
         }
@@ -115,7 +115,15 @@ struct HomeQuietRoundStyle: ButtonStyle {
 
 /// The three activities as three large rows. Always there, never locked.
 struct HomeMoreSheet: View {
+    /// The activity already on Home's button (left out here), if any.
+    var onButton: ActivityKind? = nil
     var onPick: (ActivityKind) -> Void
+
+    /// Revontulet and the check-in (whichever is not on the button), then Breathe,
+    /// the calm one. Sparks and snow is no longer offered.
+    private var rows: [ActivityKind] {
+        [ActivityKind.focus, .checkin].filter { $0 != onButton } + [.breathing]
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -125,7 +133,7 @@ struct HomeMoreSheet: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 28)
                 .padding(.bottom, 8)
-            ForEach(ActivityKind.allCases) { k in
+            ForEach(rows) { k in
                 Button { onPick(k) } label: {
                     HStack(spacing: 16) {
                         ZStack {
