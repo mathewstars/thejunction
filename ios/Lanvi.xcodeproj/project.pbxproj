@@ -87,6 +87,7 @@
 		E044BA2BBFDCB474374856BB /* HealthTypeCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1CB7C86C24141AF8D7F012 /* HealthTypeCatalog.swift */; };
 		E2E8D980A111E7995312B471 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5278EF530C0374EA70D2B2B /* HealthKitManager.swift */; };
 		E2EA7F75523F7FE49830A106 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */; };
+		EAB2CA0CC53591BEAF4BCAEB /* PerfProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8603229F7AA339B7123C7D1C /* PerfProbe.swift */; };
 		EC579C3478D378C5BFB7C6E5 /* HealthSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63DA8488EFBF26C7B0DF5DCB /* HealthSync.swift */; };
 		EDAB3E53B21FBF2A45578C8D /* LanviClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */; };
 		EEDB19C869011580DA5780AC /* BreatheView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E9EB5764D665F8A8B7399B /* BreatheView.swift */; };
@@ -195,6 +196,7 @@
 		84158FA0F8C7B4E9A416B47C /* ChatLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatLink.swift; sourceTree = "<group>"; };
 		84FCE02422EF7AD37B7EF8F0 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		85FD261A32144F8643C6EE7E /* LocalStatistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStatistics.swift; sourceTree = "<group>"; };
+		8603229F7AA339B7123C7D1C /* PerfProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerfProbe.swift; sourceTree = "<group>"; };
 		87C90F6628A3C4C92BF26F7B /* RevontuletPainter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevontuletPainter.swift; sourceTree = "<group>"; };
 		883989149D83098DC4D7155A /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
 		8863592B90900967DE7CA797 /* LanviPuppet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviPuppet.swift; sourceTree = "<group>"; };
@@ -448,6 +450,7 @@
 			children = (
 				883989149D83098DC4D7155A /* AppStore.swift */,
 				A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */,
+				8603229F7AA339B7123C7D1C /* PerfProbe.swift */,
 			);
 			path = State;
 			sourceTree = "<group>";
@@ -732,6 +735,7 @@
 				3483B1C13131906BB13DF27E /* LanviTouch.swift in Sources */,
 				F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */,
 				DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */,
+				EAB2CA0CC53591BEAF4BCAEB /* PerfProbe.swift in Sources */,
 				29E67CCEC71332BFCD470B39 /* RescueView.swift in Sources */,
 				6ED5E6C6908681928159A9E4 /* RevontuletArt.swift in Sources */,
 				459FA66B974721DC4E098E60 /* RevontuletAutoPlay.swift in Sources */,

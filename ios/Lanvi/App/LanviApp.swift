@@ -85,6 +85,13 @@ struct RootView: View {
                 }
             }
         }
+        #if DEBUG
+        .onAppear {
+            PerfProbe.shared.rootShown(screen.map { "screen \($0)" } ?? "step \(step)")
+            FrameMeter.shared.start()
+        }
+        .onChange(of: step) { _, s in FrameMeter.mark("step \(s)") }
+        #endif
         .task {
             // Pair and load while the welcome is showing.
             await store.start()
