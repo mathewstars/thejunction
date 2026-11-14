@@ -35,9 +35,12 @@ async def pair(body: PairIn, request: Request):
 @router.post("/daily", response_model=DailyOut, responses=AUTH_ERRORS,
              summary="Upload one day or a batch of history")
 async def daily(body: DailyIn, request: Request, p: Principal = Depends(device_only)):
-    """Upsert by date. Values that cannot be true (negative, absurd, future
-    dates, conflicting duplicates in one batch) are rejected per day, logged,
-    and never used for the baseline."""
+    """Merged by date: a field left out of a day keeps the value the server
+    holds (a watch may sync sleep or HRV late), a changed field replaces it,
+    and a day identical to the stored one is accepted but not written again.
+    So the phone may re-send recent days on every open. Values that cannot be
+    true (negative, absurd, future dates, conflicting duplicates in one batch)
+    are rejected per day, logged, and never used for the baseline."""
     days = [d.model_dump(mode="json") for d in body.days]
     return await service.ingest_days(ctx_of(request), p, days, rid_of(request))
 

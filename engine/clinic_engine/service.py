@@ -105,7 +105,8 @@ async def ingest_days(ctx: Ctx, p: Principal, days: list[dict], rid: str) -> dic
         by_date: dict[str, list[dict]] = {}
         for d in days:
             by_date.setdefault(d["date"], []).append(d)
-        accepted, rejected = [], []
+        have = repo.days()
+        accepted, rejected, changed = [], [], []
         for ds, group in sorted(by_date.items()):
             reason = None
             if any(g != group[0] for g in group[1:]):
@@ -118,20 +119,34 @@ async def ingest_days(ctx: Ctx, p: Principal, days: list[dict], rid: str) -> dic
                          {"at": now.isoformat(), "date": ds, "reason": reason})
                 _audit(ctx, p, "day", "refused", reason, rid, date=ds)
                 continue
-            repo.put(f"days/{ds}.json", {**rec, "received_at": now.isoformat(),
+            # Merge, never replace: a value the upload leaves out (a watch that has not
+            # synced last night yet, a phone without a watch) keeps what is stored, so
+            # re-sending a day is always safe. Seeded example days are replaced whole.
+            old = have.get(ds) or {}
+            if old.get("example"):
+                old = {}
+            merged = {k: old.get(k) if rec.get(k) is None else rec[k] for k in DAY_FIELDS}
+            if old and all(old.get(k) == merged[k] for k in DAY_FIELDS):
+                accepted.append(ds)  # nothing new: not written again, no reading scheduled
+                continue
+            repo.put(f"days/{ds}.json", {"date": ds, **merged, "received_at": now.isoformat(),
                                          "example": False, "source": "device"})
             accepted.append(ds)
-        if accepted:
-            _audit(ctx, p, "day", "ok", None, rid, days=len(accepted), last=accepted[-1])
+            changed.append(ds)
+        if changed:
+            _audit(ctx, p, "day", "ok", None, rid, days=len(changed), last=changed[-1])
             xp.sync(repo, now)
-        await ctx.mind.publish("day", p.clinic_id, p.patient_id, days=len(accepted),
-                               last_day=accepted[-1] if accepted else "none",
+        await ctx.mind.publish("day", p.clinic_id, p.patient_id, days=len(changed),
+                               last_day=changed[-1] if changed else "none",
                                rejected=len(rejected))
         status = _status(ctx, repo)
-    if accepted:
+    if changed:
         # Clinician-only, behind the consent: level 2 reads the daily numbers again.
         await ctx.mind.schedule_days_reading(repo)
     return {"accepted": accepted, "rejected": rejected, "status": status}
+
+
+DAY_FIELDS = ("steps", "walking_speed_m_s", "hrv_ms", "sleep_h")
 
 
 # The four HealthKit types the mind compares with the person's own normal, and
@@ -187,11 +202,10 @@ async def ingest_health(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
     changed = []
     for ds, new in sorted(fill.items()):
         old = have.get(ds) or {}
-        rec = {"date": ds, **{k: old.get(k) for k in ("steps", "walking_speed_m_s", "hrv_ms",
-                                                      "sleep_h")}, **new}
+        rec = {"date": ds, **{k: old.get(k) for k in DAY_FIELDS}, **new}
         if rec["steps"] is None:
             continue  # a day record needs steps
-        if any(rec[k] != old.get(k) for k in ("steps", "walking_speed_m_s", "hrv_ms", "sleep_h")):
+        if any(rec[k] != old.get(k) for k in DAY_FIELDS):
             changed.append(rec)
     out = {"accepted": [], "rejected": []}
     if changed:

@@ -37,8 +37,15 @@ final class HealthTests: XCTestCase {
 
         let fourDaysAgo = HealthCalendar.key(HealthCalendar.addDays(-4, to: today))
         let later = HealthSync.window(lastSent: fourDaysAgo, today: today)
-        // Two days before the last one sent (a watch may sync late), through yesterday.
-        XCTAssertEqual(HealthCalendar.key(later.first), HealthCalendar.key(HealthCalendar.addDays(-6, to: today)))
+        // Fourteen days before the last one sent (a watch may sync sleep and HRV late), through yesterday.
+        XCTAssertEqual(HealthSync.resendDays, 14)
+        XCTAssertEqual(HealthCalendar.key(later.first), HealthCalendar.key(HealthCalendar.addDays(-18, to: today)))
+        XCTAssertEqual(later.last, HealthCalendar.addDays(-1, to: today))
+
+        // Never further back than the history itself.
+        let longAgo = HealthCalendar.key(HealthCalendar.addDays(-395, to: today))
+        let edge = HealthSync.window(lastSent: longAgo, today: today)
+        XCTAssertEqual(HealthCalendar.calendar.dateComponents([.day], from: edge.first, to: today).day, 400)
     }
 
     func testSampleDaysAreBelievableAndNeverToday() async {

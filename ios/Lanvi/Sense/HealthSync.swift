@@ -82,7 +82,9 @@ final class HealthSync {
     private enum Key {
         static let asked = "lanvi.health.asked"
         static let allowed = "lanvi.health.allowed"
-        static func sent(_ scope: String) -> String { "lanvi.health.sent.\(scope)" }
+        /// "v2": installs that sent their history before the server merged days send it
+        /// once more, so sleep and HRV reach the days that went out without them.
+        static func sent(_ scope: String) -> String { "lanvi.health.sent.v2.\(scope)" }
     }
 
     private let defaults = UserDefaults.standard
@@ -219,14 +221,20 @@ final class HealthSync {
     }
 
     /// Which days to ask Health for. Never sent: the history (up to 400 days).
-    /// Otherwise from two days before the last one sent, because a watch may sync
-    /// last night's sleep late; re-sending is safe.
+    /// Otherwise the last `resendDays` before the last one sent, through yesterday:
+    /// a watch may sync sleep and HRV days late, and the phone can be away from the
+    /// watch for a while. Re-sending is safe: the server merges each day into what
+    /// it holds, a field left out keeps its stored value, an unchanged day is not
+    /// written again.
     static func window(lastSent: String?, today: Date) -> (first: Date, last: Date) {
         let yesterday = HealthCalendar.addDays(-1, to: today)
         let oldest = HealthCalendar.addDays(-maxDays, to: today)
         guard let key = lastSent, let sent = HealthCalendar.date(key) else { return (oldest, yesterday) }
-        return (max(oldest, HealthCalendar.addDays(-2, to: sent)), yesterday)
+        return (max(oldest, HealthCalendar.addDays(-resendDays, to: sent)), yesterday)
     }
+
+    /// How many days before the last sent one go out again on every open.
+    static let resendDays = 14
 
     private func markSent(_ key: String, scope: String?) {
         if let scope { defaults.set(key, forKey: Key.sent(scope)) } else { demoSent = key }
