@@ -91,6 +91,14 @@ final class RevontuletArt {
 
     /// When each facet fell out (by index).
     private(set) var fallAt: [Int: Double] = [:]
+    /// Each fallen facet's broken rim, worked out once when it falls: three weights of edge
+    /// (thin, middle, thick) as one path each, the chips, and the stars seen through it.
+    struct Rim {
+        var edges: [(path: Path, width: CGFloat, lit: Double)]
+        var chips: Path
+        var stars: [(p: CGPoint, len: CGFloat, phase: Double)]
+    }
+    private(set) var rims: [Int: Rim] = [:]
     /// Each shard's push when its facet falls or the wall bursts.
     private(set) var push: [CGVector]
     private(set) var cracks: [[Crack]] = []
@@ -331,6 +339,7 @@ final class RevontuletArt {
                 near.sort { $0.d < $1.d }
                 for (n, item) in near.prefix(hit.pieces).enumerated() {
                     fallAt[item.i] = hit.time + 0.08 + 0.07 * Double(n)
+                    rims[item.i] = Self.rim(of: facets[item.i], index: item.i)
                 }
                 for (i, s) in shards.enumerated() where fallAt[s.facet] != nil && push[i] == .zero {
                     let dx = s.center.x - hit.point.x, dy = s.center.y - hit.point.y
@@ -357,6 +366,51 @@ final class RevontuletArt {
             }
             strokesSeen += 1
         }
+    }
+
+    /// A broken, uneven, lit edge for a hole: pieces of edge of three weights (some missing),
+    /// small chips, and a few stars inside.
+    private static func rim(of f: Facet, index i: Int) -> Rim {
+        var buckets = [Path(), Path(), Path()]
+        var lits = [0.0, 0.0, 0.0], counts = [0, 0, 0]
+        var chips = Path()
+        let pts = f.points
+        var n = 0
+        func noise(_ a: Int, _ k: Double) -> Double { abs(sin(Double(a) * k) * 43758.5453).truncatingRemainder(dividingBy: 1) }
+        for k in 0..<pts.count {
+            let a = pts[k], b = pts[(k + 1) % pts.count]
+            for piece in 0..<3 {
+                n += 1
+                let r1 = noise(i * 31 + n, 12.9898), r2 = noise(i * 17 + n, 78.233)
+                guard r1 > 0.34 else { continue }
+                let u0 = CGFloat(piece) / 3, u1 = CGFloat(piece + 1) / 3
+                let p0 = CGPoint(x: a.x + (b.x - a.x) * u0, y: a.y + (b.y - a.y) * u0)
+                let p1 = CGPoint(x: a.x + (b.x - a.x) * u1, y: a.y + (b.y - a.y) * u1)
+                let bucket = r2 < 0.45 ? 0 : r2 < 0.8 ? 1 : 2
+                buckets[bucket].move(to: p0)
+                buckets[bucket].addLine(to: p1)
+                lits[bucket] += 0.2 + 0.7 * r1 * r1
+                counts[bucket] += 1
+                if r2 > 0.55 {
+                    let m = CGPoint(x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2)
+                    chips.move(to: CGPoint(x: m.x - 3, y: m.y - 1))
+                    chips.addLine(to: CGPoint(x: m.x + 1, y: m.y - 4))
+                    chips.addLine(to: CGPoint(x: m.x + 3, y: m.y + 2))
+                    chips.closeSubpath()
+                }
+            }
+        }
+        let widths: [CGFloat] = [1.6, 4, 7.5]
+        let edges = (0..<3).filter { counts[$0] > 0 }.map { (path: buckets[$0], width: widths[$0], lit: lits[$0] / Double(counts[$0])) }
+        var stars: [(p: CGPoint, len: CGFloat, phase: Double)] = []
+        let box = f.path.boundingRect
+        for k in 0..<6 {
+            let dk = Double(i * 7 + k)
+            let fx = noise(Int(dk * 3 + 1), 12.9898), fy = noise(Int(dk * 5 + 2), 78.233)
+            let p = CGPoint(x: box.minX + box.width * CGFloat(fx), y: box.minY + box.height * CGFloat(fy))
+            if f.path.contains(p) { stars.append((p: p, len: CGFloat(2 + 2.5 * fy), phase: dk)) }
+        }
+        return Rim(edges: edges, chips: chips, stars: stars)
     }
 
     /// When the larger shards of the burst land in the snow, in seconds after the burst,

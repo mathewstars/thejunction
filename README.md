@@ -25,7 +25,7 @@ You need a Mac with Xcode and an iPhone. The face numbers need a phone with Face
 2. Under Signing & Capabilities choose your own team, pick your iPhone and press Run.
 3. There is nothing to link for now: every install connects to the shared test profile on lanvi.app. Play a game or do the evening check-in, then open "Team test P" on the clinician page to see it arrive.
 
-The demo login above is public, so anyone can see what an install sends (games, face numbers and, if you allow it, Apple Health days). Do not allow Apple Health on a phone whose data you want to keep private. More about the app: [`ios/README.md`](ios/README.md).
+Everyone who has the demo login can see what an install sends (games, face numbers and, if you allow it, Apple Health days). Do not allow Apple Health on a phone whose data you want to keep private. More about the app: [`ios/README.md`](ios/README.md).
 
 ## Two things to look at
 

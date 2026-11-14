@@ -23,7 +23,7 @@ struct RevontuletEngine: Equatable {
     /// Where the two embers sit along a hard path, and when the spark reaches each.
     static let emberU = [0.36, 0.7]
     static let emberT = [0.85, 1.45]
-    static let impactHold = 0.95        // the next lines light while the debris still falls
+    static let impactHold = 0.75        // the next lines light while the debris still falls
     static let breakDelay = 0.55        // the breaking impact's cracks race before the burst
     static let celebrateDelay = 0.8     // the burst, then the fox's celebration
     static let warmthDelay = 4.2        // three calm seconds for the smile, then the warmth
@@ -308,7 +308,7 @@ struct RevontuletEngine: Equatable {
         case .sling where pulling:
             pulling = false
             let level = Double(hypot(pull.dx, pull.dy) / layout.maxPull)
-            if level < 0.16 {
+            if level < 0.1 {
                 pull = .zero
                 ev.append(.pullLetGo)
             } else {
@@ -327,7 +327,7 @@ struct RevontuletEngine: Equatable {
     private mutating func choose(at p: CGPoint, now: Double) -> [RevontuletEvent] {
         let f = layout.faults(round: round)
         let de = Self.distance(p, to: f.easy), dh = Self.distance(p, to: f.hard)
-        let reach = layout.size.width * 0.2
+        let reach = layout.size.width * 0.24
         guard min(de, dh) < reach else { return [] }
         let effort: RevontuletEffort = de < dh ? .easy : .hard
         records[round].effort = effort
@@ -372,7 +372,7 @@ struct RevontuletEngine: Equatable {
         }
         guard near else { return ev }
         // The light follows the finger forwards; it never skips ahead and never goes back.
-        if spot.s >= progress - 0.1, spot.s <= progress + 0.24 {
+        if spot.s >= progress - 0.1, spot.s <= progress + 0.32 {
             progress = min(1, max(progress, spot.s))
         }
         let stepNow = Int(progress * 12)
