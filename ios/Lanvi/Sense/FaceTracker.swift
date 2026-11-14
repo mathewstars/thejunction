@@ -75,6 +75,12 @@ final class FaceTracker: NSObject, @unchecked Sendable {
     /// Stops tracking and gives the frames, or nil when there is nothing trustworthy.
     /// `seconds` is the activity's `duration_s`: only that much of the end is kept.
     func finish(seconds: Double?) -> API.FaceRaw? {
+        finishAnchored(seconds: seconds)?.raw
+    }
+
+    /// As `finish`, plus the ARKit time (`ARFrame.timestamp`) of the first kept frame,
+    /// so the game moments can be lined up with the frames (`SensorSession`).
+    func finishAnchored(seconds: Double?) -> (raw: API.FaceRaw, firstTime: Double)? {
         #if canImport(ARKit) && !targetEnvironment(simulator)
         session?.pause()
         session?.delegate = nil
@@ -86,7 +92,7 @@ final class FaceTracker: NSObject, @unchecked Sendable {
                 recorder = FaceRawRecorder()   // forget the frames once handed over
             }
             guard running, !spoiled else { return nil }
-            return recorder.faceRaw(lastSeconds: seconds.map { $0 + 1 })
+            return recorder.faceRawAnchored(lastSeconds: seconds.map { $0 + 1 })
         }
     }
 

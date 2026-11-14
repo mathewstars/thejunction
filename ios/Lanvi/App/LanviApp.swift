@@ -22,8 +22,11 @@ struct LanviApp: App {
 ///   moment, growing up, done for today, a wandering and its story, a word with
 ///   Lanvi. Always uses the offline demo data.
 /// - `-screen <name>`: open one screen straight away: `home`, `whathelps`,
-///   `focus`, `breathe`, `checkin`, `checkin-plan`, `puppet`.
+///   `focus`, `breathe`, `checkin`, `checkin-plan`, `puppet`, `watch` (the
+///   "open Lanvi on your Apple Watch" screen).
 /// - `-offline`: use the offline demo data even when a server is configured.
+/// - `-watchAsk`: show the Apple Watch waiting screen before a game even without a
+///   watch (simulator screenshots). See `ios/WATCH.md`.
 /// - Screenshot moments on Home: see `DemoBackend` and `HomeView.runDemo`.
 struct RootView: View {
     private enum Step { case welcome, helps, home }
@@ -52,6 +55,8 @@ struct RootView: View {
                 BreatheView { _ in }
             case "puppet":
                 LanviPuppetPreview()   // judge the living fox on its own
+            case "watch":
+                WatchGateView(kind: .focus, onSkip: {}, onClose: {})
             case let s? where s.hasPrefix("checkin"):
                 CheckinView.preview(s)
             default:
@@ -70,6 +75,9 @@ struct RootView: View {
             }
         }
         .task {
+            // The Apple Watch link listens from launch, so samples queued on the watch
+            // arrive even when no game is open (ios/WATCH.md).
+            WatchLink.shared.activate()
             // Pair and load while the welcome is showing.
             await store.start()
         }

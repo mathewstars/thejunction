@@ -84,15 +84,22 @@ final class FaceSense {
         shared.tracker?.mark()
     }
 
+    /// The ARKit time of the first frame in the `face_raw` last attached; nil when none
+    /// was. Read by `SensorSession.attach` to set `sensors.face_offset_ms`.
+    private(set) var lastFaceAnchorUptime: Double?
+
     /// The game ended with a record: stop and attach the raw frames, if any were tracked.
     func attach(to record: API.ActivityIn) -> API.ActivityIn {
+        lastFaceAnchorUptime = nil
         guard let t = tracker else { return record }
         tracker = nil
         isOn = false
         var r = record
         guard r.type == .focus || r.type == .breathing,
-              let raw = t.finish(seconds: r.durationS) else { return r }
+              let anchored = t.finishAnchored(seconds: r.durationS) else { return r }
+        let raw = anchored.raw
         r.faceRaw = raw
+        lastFaceAnchorUptime = anchored.firstTime
         #if DEBUG
         print("lanvi-sense: face_raw \(raw.samples.count) frames at \(raw.rateHz) Hz, \(raw.tracked?.filter { $0 == 1 }.count ?? raw.samples.count) tracked, \(raw.momentsMs?.count ?? 0) moments")
         #endif

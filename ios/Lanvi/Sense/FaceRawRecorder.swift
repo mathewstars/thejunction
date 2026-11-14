@@ -103,11 +103,28 @@ struct FaceRawRecorder {
     /// `lastSeconds` keeps only the end of the recording (the server refuses frames
     /// lasting much longer than the activity's `duration_s`).
     func faceRaw(lastSeconds: Double? = nil) -> API.FaceRaw? {
+        faceRawAnchored(lastSeconds: lastSeconds)?.raw
+    }
+
+    /// The time (ARKit's clock, `ARFrame.timestamp`) of the first kept row: the anchor
+    /// that lines the frames up with the game moments (`SensorSession`).
+    func firstKeptTime(lastSeconds: Double? = nil) -> Double? {
         guard let t0 = firstTime, !rows.isEmpty else { return nil }
+        return t0 + Double(keptStart(lastSeconds: lastSeconds)) / Double(rateHz)
+    }
+
+    private func keptStart(lastSeconds: Double?) -> Int {
         var start = 0
         if let keep = lastSeconds, keep.isFinite, keep > 0 {
             start = max(0, rows.count - Int((keep * Double(rateHz)).rounded(.up)))
         }
+        return start
+    }
+
+    /// `face_raw` plus the ARKit time of its first row.
+    func faceRawAnchored(lastSeconds: Double? = nil) -> (raw: API.FaceRaw, firstTime: Double)? {
+        guard let t0 = firstTime, !rows.isEmpty else { return nil }
+        let start = keptStart(lastSeconds: lastSeconds)
         let keptRows = Array(rows[start...])
         let keptTracked = Array(tracked[start...])
         guard keptTracked.contains(1) else { return nil }
@@ -118,9 +135,10 @@ struct FaceRawRecorder {
             .filter { $0 >= firstKept && $0 <= lastKept }
             .map { Int((($0 - firstKept) * 1000).rounded()) }
             .prefix(Self.maxMoments)
-        return API.FaceRaw(rateHz: rateHz, channels: Self.channels, samples: keptRows,
-                           tracked: keptTracked.allSatisfy { $0 == 1 } ? nil : keptTracked,
-                           momentsMs: momentsMs.isEmpty ? nil : Array(momentsMs))
+        let raw = API.FaceRaw(rateHz: rateHz, channels: Self.channels, samples: keptRows,
+                              tracked: keptTracked.allSatisfy { $0 == 1 } ? nil : keptTracked,
+                              momentsMs: momentsMs.isEmpty ? nil : Array(momentsMs))
+        return (raw, firstKept)
     }
 
     private mutating func appendEmpty() {

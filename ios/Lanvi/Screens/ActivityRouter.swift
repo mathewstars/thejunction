@@ -2,6 +2,12 @@ import SwiftUI
 
 /// The one place Home opens an activity: each case shows the real screen and
 /// turns the screen's result into the record the server takes.
+///
+/// Around every activity sits one `SensorSessionHost` (`ios/WATCH.md`): it gives the
+/// activity its id before it starts, waits for the Apple Watch when there is one, hears
+/// every `GameMoments` event, and at the end puts the watch's heart data and the moments
+/// on the record (`sensors`) next to the face frames (`face_raw`, `FaceSenseHost`).
+/// The games themselves are unchanged.
 struct ActivityRouter: View {
     var kind: ActivityKind
     var checkinOptions: API.CheckinOptionsOut?
@@ -12,21 +18,38 @@ struct ActivityRouter: View {
     var onDone: (API.ActivityIn?) -> Void
 
     var body: some View {
-        switch kind {
-        case .focus:
-            FaceSenseHost {
-                FocusGameView { result in onDone(result.map { FaceSense.shared.attach(to: Self.record($0)) }) }
+        SensorSessionHost(kind: kind, onClose: { onDone(nil) }) { session in
+            switch kind {
+            case .focus:
+                FaceSenseHost {
+                    FocusGameView { result in finish(result.map(Self.record), session: session) }
+                }
+            case .breathing:
+                FaceSenseHost {
+                    BreatheView { result in finish(result.map(Self.record), session: session) }
+                }
+            case .checkin:
+                checkin(session: session)
             }
-        case .breathing:
-            FaceSenseHost {
-                BreatheView { result in onDone(result.map { FaceSense.shared.attach(to: Self.record($0)) }) }
-            }
-        case .checkin:
-            checkin
         }
     }
 
-    private var checkin: some View {
+    /// The face frames first (they stop the camera), then the watch's last samples
+    /// (a short wait), then the record goes to Home with the session's id.
+    private func finish(_ record: API.ActivityIn?, session: SensorSession) {
+        guard let record else {
+            session.cancel()
+            onDone(nil)
+            return
+        }
+        let withFace = FaceSense.shared.attach(to: record)
+        Task { @MainActor in
+            await session.end()
+            onDone(session.attach(to: withFace, faceAnchorUptime: FaceSense.shared.lastFaceAnchorUptime))
+        }
+    }
+
+    private func checkin(session: SensorSession) -> some View {
         let options = checkinOptions.map {
             CheckinOptions(goodThings: $0.goodThings.map { CheckinOption(id: $0.id, label: $0.label) },
                            plans: $0.plans.map { CheckinOption(id: $0.id, label: $0.label) })
@@ -36,7 +59,7 @@ struct ActivityRouter: View {
             CheckinPlanQuestion(checkinId: $0.checkinId, planId: $0.planId, options: options)
         }
         var view = CheckinView(options: options, askAboutPlan: question) { result in
-            onDone(result.map(Self.record))
+            finish(result.map(Self.record), session: session)
         }
         view.onHelp = onHelp
         return view

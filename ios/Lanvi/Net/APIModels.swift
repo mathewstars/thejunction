@@ -177,9 +177,47 @@ enum API {
         var goodThings: [CheckinItem]?
         var plan: CheckinItem?
         var planDone: PlanDone?
+        // every type: the watch's heart data and the game moments (ios/WATCH.md)
+        var sensors: Sensors?
 
         /// A fresh id the server accepts (8 to 64 of A-Z a-z 0-9 _ -).
         static func newId() -> String { UUID().uuidString.lowercased() }
+    }
+
+    /// `sensors` on an activity record: heart rate and HRV from the Apple Watch, every
+    /// game moment, and the clock anchor that lines them up with the face frames.
+    /// Times are milliseconds from the record's `started_at`. See `ios/WATCH.md`.
+    struct Sensors: Codable, Equatable {
+        var clock: SensorClock
+        var watch: SensorWatch?
+        /// `[t_ms, bpm]` rows, oldest first, on the wall clock (HealthKit's own times).
+        var heartRate: [[Double]]?
+        /// `[t_ms, sdnn_ms]` rows, whenever the watch produced one. Often empty.
+        var hrvSdnn: [[Double]]?
+        var moments: [SensorMoment]?
+        /// The first face frame's time from `started_at`, on the monotonic clock. nil without face frames.
+        var faceOffsetMs: Int?
+    }
+
+    struct SensorClock: Codable, Equatable {
+        /// `CACurrentMediaTime()` at `started_at`: the same clock as `ARFrame.timestamp`.
+        var startedUptimeS: Double
+    }
+
+    struct SensorWatch: Codable, Equatable {
+        var source: String        // "apple_watch"
+        var workout: Bool         // HKWorkoutSession with a live builder
+        var startedMs: Int        // when the watch began, from started_at
+    }
+
+    /// One game moment (`GameMoments`): its name, the time on both clocks, and the small
+    /// number it carried (reaction ms, breath number, finished 1/0) or the check-in step.
+    struct SensorMoment: Codable, Equatable {
+        var name: String
+        var tMs: Int
+        var wallMs: Int
+        var value: Int?
+        var step: String?
     }
 
     /// Raw face frames (`docs/face-raw.md`): the server computes every face measure.
