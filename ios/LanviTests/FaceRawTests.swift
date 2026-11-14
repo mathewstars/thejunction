@@ -190,3 +190,46 @@ final class FaceRawTests: XCTestCase {
         try API.encoder.encode(a).write(to: out)
     }
 }
+
+/// A record with face frames is the one big body the app sends. When the server
+/// refuses it, the record goes again without the frames (same id), so the game is
+/// never lost; a temporary failure keeps the whole record for the outbox.
+final class FaceSendTests: XCTestCase {
+    private func record(frames: Int) -> API.ActivityIn {
+        var r = API.ActivityIn(id: API.ActivityIn.newId(), type: .breathing,
+                               startedAt: API.isoString(Date()), durationS: 60,
+                               completed: true, endedBy: .finished, timePlayedS: 60, breathsCompleted: 6)
+        if frames > 0 {
+            let row = [Double](repeating: 0.1, count: FaceRawRecorder.channels.count)
+            r.faceRaw = API.FaceRaw(rateHz: 30, channels: FaceRawRecorder.channels,
+                                    samples: Array(repeating: row, count: frames), tracked: nil, momentsMs: nil)
+        }
+        return r
+    }
+
+    func testRefusedFramesGoAgainWithoutThemSameId() {
+        let sent = record(frames: 1800)
+        let plain = LanviClient.withoutFaceFallback(after: APIError.rejected("body_too_large"), sent: sent)
+        XCTAssertNotNil(plain)
+        XCTAssertNil(plain?.faceRaw)
+        XCTAssertEqual(plain?.id, sent.id)
+        XCTAssertEqual(plain, sent.withoutFaceRaw)
+        XCTAssertNotNil(LanviClient.withoutFaceFallback(after: APIError.rejected("invalid_request"), sent: sent))
+    }
+
+    func testOnlyARefusalOfARecordWithFramesDropsThem() {
+        let sent = record(frames: 1800)
+        XCTAssertNil(LanviClient.withoutFaceFallback(after: APIError.offline, sent: sent), "temporary: keep the frames for the outbox")
+        XCTAssertNil(LanviClient.withoutFaceFallback(after: APIError.server, sent: sent))
+        XCTAssertNil(LanviClient.withoutFaceFallback(after: APIError.conflict, sent: sent), "the server has a record under this id")
+        XCTAssertNil(LanviClient.withoutFaceFallback(after: APIError.rejected("invalid_request"), sent: record(frames: 0)),
+                     "no frames: nothing to drop, the refusal stands")
+    }
+
+    func testARecordWithFramesIsABigBody() throws {
+        let small = try API.encoder.encode(record(frames: 0))
+        let big = try API.encoder.encode(record(frames: 45 * 30))
+        XCTAssertLessThan(small.count, LanviClient.bigBodyBytes)
+        XCTAssertGreaterThan(big.count, LanviClient.bigBodyBytes, "45 s of frames goes through the upload session")
+    }
+}

@@ -915,7 +915,91 @@
   // Code's fixed rule and the level-2 model read the same numbers. The bars
   // come from the stored reading; the curve is the audited raw download.
   const FR = { onset: 0.25 };
+  // Revontulet over time. Above: in how many of a game's three rounds the harder crack was chosen.
+  // Below: tracing speed, with the range of the games before each one shaded (the moving reference)
+  // and a dashed line at the middle of the person's start, games 3 to 12 (the fixed reference).
+  // One point is one game. Drawn from 4 games on.
+  function revontuletChart(games) {
+    const own0 = games[0].revontulet_own || {}, cut = own0.unusual_z || 2.5, start = own0.start || {};
+    const seen = {};
+    let dens = null, phone = 0;   // a new screen density is a new phone: the references start again there
+    const g = games.slice().reverse().map((x) => {
+      const rv = x.revontulet, rounds = rv.rounds || [], own = x.revontulet_own || {};
+      const sp = rounds.map((r) => r.trace_mean_speed_pt_s).filter((v) => typeof v === "number");
+      const day = String(x.date).slice(0, 10), k = seen[day] = (seen[day] || 0) + 1;   // a second game on a day sits a little later
+      if (rv.pt_per_cm) { if (dens !== null && Math.abs(rv.pt_per_cm - dens) > 0.5) phone += 1; dens = rv.pt_per_cm; }
+      return { t: Date.parse(day + "T00:00:00Z") + (k - 1) * 4 * 36e5, date: x.date, phone: phone,
+        hard: rounds.length >= 3 ? rounds.filter((r) => r.effort === "hard").length : null,  // a game cut short has too few choices
+        z: own.z || {}, u: own.usual || {},
+        speed: sp.length && rv.pt_per_cm ? sp.reduce((s, v) => s + v, 0) / sp.length / rv.pt_per_cm : null };
+    }).filter((p) => !isNaN(p.t) && (p.hard !== null || p.speed !== null));
+    if (g.length < 4) return null;
+    const sv = g.map((p) => p.speed).filter((v) => v !== null), lower = sv.length >= 2;
+    const narrow = window.innerWidth < 640;
+    const W = narrow ? 430 : 1000, PL = narrow ? 44 : 64, PR = 12, AT = 26, AH = 62, BT = AT + AH + 50, BH = narrow ? 96 : 116;
+    const H = (lower ? BT + BH : AT + AH) + 26;
+    const t0 = g[0].t, span = Math.max(1, g[g.length - 1].t - t0);
+    const x = (p) => PL + ((p.t - t0) / span) * (W - PL - PR);
+    const ya = (v) => AT + (1 - v / 3) * AH;
+    const lo = lower ? Math.floor(Math.min.apply(null, sv) - 0.3) : 0, hi = lower ? Math.ceil(Math.max.apply(null, sv) + 0.3) : 1;
+    const yb = (v) => BT + (1 - (Math.max(lo, Math.min(hi, v)) - lo) / ((hi - lo) || 1)) * BH;
+    const off = (z) => typeof z === "number" && Math.abs(Math.round(z * 10) / 10) >= cut;
+    const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "chart rv", role: "img",
+      "aria-label": "Above, in how many of a game's three rounds the harder crack was chosen, for " + g.length + " games." + (lower ? " Below, the speed of tracing the half circle in centimetres per second. The shaded area is the range of the games before each one, the dashed line is the middle of this person's start, and games outside the shaded range are yellow." : "") });
+    const title = (y, text) => s.appendChild(svg("text", { x: 0, y: y, class: "rv-t" }, text));
+    const lastPhone = g[g.length - 1].phone, since = g.find((p) => p.phone === lastPhone), moved = lastPhone > 0;
+    const dashed = (y, text) => {   // the start belongs to the newest phone, so the line begins at its first game
+      s.appendChild(svg("line", { x1: moved ? x(since) : PL, y1: y, x2: W - PR, y2: y, class: "rv-start" }));
+      if (text) s.appendChild(svg("text", { x: W - PR - 4, y: y - 5, "text-anchor": "end" }, text));
+    };
+    // above: harder crack chosen (left empty when no game has all three rounds)
+    const ga = g.filter((p) => p.hard !== null);
+    if (ga.length) title(AT - 10, "Harder crack chosen, of the game’s 3 rounds");
+    if (ga.length) [0, 1, 2, 3].forEach((v) => {
+      s.appendChild(svg("line", { x1: PL, y1: ya(v), x2: W - PR, y2: ya(v), class: "axis" }));
+      if (v === 0 || v === 3) s.appendChild(svg("text", { x: PL - 12, y: ya(v) + 4, "text-anchor": "end" }, narrow ? String(v) : v + " of 3"));
+    });
+    if (ga.length && start.hard_share) dashed(ya(start.hard_share.median * 3), narrow ? "start" : moved ? "start on this phone, games 3 to 12" : "start, games 3 to 12");
+    s.appendChild(svg("polyline", { class: "line rv-thin", points: ga.map((p) => x(p).toFixed(1) + "," + ya(p.hard).toFixed(1)).join(" ") }));
+    ga.forEach((p) => s.appendChild(svg("circle", { class: "pt", cx: x(p), cy: ya(p.hard), r: narrow ? 3 : 4 },
+      svg("title", null, dayShort(p.date) + ": harder crack in " + p.hard + " of 3"))));
+    // below: tracing speed
+    if (lower) {
+      title(BT - 12, "Tracing speed, cm/s");
+      const have = g.filter((p) => p.u.trace_speed_cm_s && p.speed !== null);
+      if (have.length >= 2) {
+        const edge = (p, sign) => yb(p.u.trace_speed_cm_s.median + sign * cut * p.u.trace_speed_cm_s.scale);
+        s.appendChild(svg("polygon", { class: "normal", points: have.map((p) => x(p).toFixed(1) + "," + edge(p, 1).toFixed(1))
+          .concat(have.slice().reverse().map((p) => x(p).toFixed(1) + "," + edge(p, -1).toFixed(1))).join(" ") }));
+        s.appendChild(svg("text", { x: x(have[0]) + 4, y: Math.max(BT + 10, edge(have[0], 1) - 6) }, narrow ? "recent range" : "range of the games before each one"));
+        const kx = W - PR - (narrow ? 132 : 232);
+        s.appendChild(svg("circle", { class: "pt pt-high", cx: kx, cy: BT - 16, r: 4 }));
+        s.appendChild(svg("text", { x: kx + 9, y: BT - 12 }, narrow ? "outside the shaded range" : "outside the shaded range, faster or slower"));
+      }
+      [lo, hi].forEach((v) => {
+        s.appendChild(svg("line", { x1: PL, y1: yb(v), x2: W - PR, y2: yb(v), class: "axis" }));
+        s.appendChild(svg("text", { x: PL - 12, y: yb(v) + 4, "text-anchor": "end" }, String(v)));
+      });
+      if (start.trace_speed_cm_s) dashed(yb(start.trace_speed_cm_s.median), null);
+      const runs = []; let cur = [];
+      g.forEach((p) => { if (p.speed === null || (cur.length && cur[cur.length - 1].phone !== p.phone)) { if (cur.length) runs.push(cur); cur = []; } if (p.speed !== null) cur.push(p); });
+      g.forEach((p, i) => { if (i && g[i - 1].phone !== p.phone) {   // speeds before and after a new phone do not compare
+        s.appendChild(svg("line", { x1: x(p) - 6, y1: BT, x2: x(p) - 6, y2: BT + BH, class: "rv-start" }));
+        s.appendChild(svg("text", { x: x(p) - 2, y: BT + BH - 6 }, "new phone"));
+      } });
+      if (cur.length) runs.push(cur);
+      runs.forEach((r) => s.appendChild(svg("polyline", { class: "line", points: r.map((p) => x(p).toFixed(1) + "," + yb(p.speed).toFixed(1)).join(" ") })));
+      g.forEach((p) => { if (p.speed !== null) s.appendChild(svg("circle", { class: off(p.z.trace_speed_cm_s) ? "pt pt-high" : "pt", cx: x(p), cy: yb(p.speed), r: narrow ? 3 : 4 },
+        svg("title", null, dayShort(p.date) + ": " + num(p.speed, 1) + " cm/s"))); });
+    }
+    const ticks = narrow ? [0, g.length - 1] : [0, Math.round((g.length - 1) / 3), Math.round(2 * (g.length - 1) / 3), g.length - 1];
+    ticks.filter((v, i, a) => a.indexOf(v) === i).forEach((i, k, a) => s.appendChild(svg("text", { x: x(g[i]), y: H - 6,
+      "text-anchor": k === 0 ? "start" : k === a.length - 1 ? "end" : "middle" }, dayShort(g[i].date))));
+    return s;
+  }
   // Revontulet's own measures (docs/revontulet-measures.md): stored and shown, not used to judge a day.
+  // Two movement speeds are compared per game with the games before it; the choice of the harder crack
+  // has three values a game, so it is only ever judged over several games.
   function revontuletPanel(sessions) {
     const got = sessions.filter((x) => x.revontulet);
     if (!got.length) return null;
@@ -923,50 +1007,114 @@
     const median = (a) => { if (!a.length) return null; const s = a.slice().sort((p, q) => p - q), h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
     const vals = (list, k) => list.map((r) => r[k]).filter((v) => typeof v === "number");
     const sum = (list, k) => list.reduce((s, r) => s + (r[k] || 0), 0);
+    const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
     // Speeds are shown in cm/s only; without the phone's points per centimetre there is no honest unit.
-    const speed = (v, rv) => (v === null || !rv.pt_per_cm ? null : num(v / rv.pt_per_cm, 1) + "\u00a0cm/s");
+    const speed = (v, rv) => (v === null || !rv.pt_per_cm ? null : num(v / rv.pt_per_cm, 1) + " cm/s");
     const facts = (x) => {
       const rv = x.revontulet, rounds = rv.rounds || [], strokes = rv.strokes || [];
       const choose = median(vals(rounds, "choice_ms"));
       const traced = rounds.filter((r) => typeof r.trace_mean_speed_pt_s === "number" || typeof r.trace_ms === "number");
       const wall = rv.fox_finished === true ? "by the game, time ran out"
-        : rv.broke_through_s != null ? (rv.fox_finished === false ? "by the person, " : "") + "after " + num(rv.broke_through_s) + "\u00a0s"
+        : rv.broke_through_s != null ? (rv.fox_finished === false ? "by the person, " : "") + "after " + num(rv.broke_through_s) + " s"
         : rv.fox_finished === false || x.completed === false ? "not broken" : null;
       return { rounds: rounds.length, hard: rounds.filter((r) => r.effort === "hard").length,
-        choose: choose === null ? null : num(choose / 1000, 1) + "\u00a0s",
+        choose: choose === null ? null : num(choose / 1000, 1) + " s",
         trace: speed(mean(vals(rounds, "trace_mean_speed_pt_s")), rv), traced: traced.length, lifts: sum(traced, "trace_lifts"),
         noSize: !rv.pt_per_cm && vals(rounds, "trace_mean_speed_pt_s").length > 0, strokeNoSize: !rv.pt_per_cm && vals(strokes, "mean_speed_pt_s").length > 0,
         shown: sum(rounds, "embers_shown"), hit: sum(rounds, "embers_hit"),
         strokes: strokes.length, stroke: speed(mean(vals(strokes, "mean_speed_pt_s")), rv), wall: wall };
     };
+    const own0 = got[0].revontulet_own || {}, cut = own0.unusual_z || 2.5, needed = own0.needed || 8;
+    const zOf = (x, k) => { const o = x.revontulet_own; return o && o.z && typeof o.z[k] === "number" ? Math.round(o.z[k] * 10) / 10 : null; };
+    // Only the two speeds are compared game by game. [word when higher, word when lower].
+    const WORDS = { trace_speed_cm_s: ["faster", "slower"], stroke_speed_cm_s: ["faster", "slower"] };
+    const far = (z) => (Math.abs(z) > 3 ? "more than 3" : signed(z));
+    const against = (x, k) => { const z = zOf(x, k); return z === null ? null : Math.abs(z) >= cut ? WORDS[k][z > 0 ? 0 : 1] + " than recent" : "within recent range"; };
+    // The fixed reference beside the moving one: far from the person's start, said in words only.
+    const fromStart = (x, k) => { const o = x.revontulet_own, z = o && o.start_z && typeof o.start_z[k] === "number" ? Math.round(o.start_z[k] * 10) / 10 : null;
+      return z !== null && Math.abs(z) >= cut ? WORDS[k][z > 0 ? 0 : 1] + " than start" : null; };
+    const subOf = (x, k) => {
+      const a = against(x, k), b = fromStart(x, k), z = zOf(x, k);
+      if (!a && !b) return null;
+      const off = a && a !== "within recent range";
+      const text = off && b ? (a.split(" ")[0] === b.split(" ")[0] ? a + " and than start" : a + ", " + b) : off ? a : b || a;
+      return el("span", { class: "sub", title: z === null ? null : "Against the recent games: " + far(z) + " of their usual spread" }, text);
+    };
     const dash = (v, why) => (v === null || v === undefined ? el("span", { class: "muted", title: why || null }, why ? "not known" : "–") : v);
-    const last = facts(got[0]);
-    const said = [];
-    if (last.rounds) said.push("chose the harder crack in " + last.hard + " of " + last.rounds + " " + (last.rounds === 1 ? "round" : "rounds"));
-    if (last.trace) said.push("traced the half circle at " + last.trace + " on average");
-    if (last.strokes) said.push("stroked the fox " + last.strokes + " " + (last.strokes === 1 ? "time" : "times"));
-    const wallSaid = got[0].revontulet.fox_finished === true ? " Time ran out, so the game broke the wall."
-      : got[0].revontulet.broke_through_s != null ? (got[0].revontulet.fox_finished === false ? " The person broke the wall after " : " The wall was broken after ") + num(got[0].revontulet.broke_through_s) + "\u00a0s."
-      : last.wall === "not broken" ? " The wall was not broken." : "";
-    const lines = [el("p", { class: "readout" }, el("b", null, "Last Revontulet game, " + dayShort(got[0].date) + ": "),
-      said.length ? "the person " + said.join(", ") + "." : "no round was played.", wallSaid, got[0].completed === false ? " The game was not finished." : null),
-      el("p", { class: "muted small" }, "In this 90-second game the person picks one of two cracks in an ice wall three times (the harder one gives a bigger reward), traces a half circle with a finger, taps the embers that flash after picking the harder crack, and at the end strokes a sleeping fox. If time runs out, the game breaks the wall for them.")];
+    const lines = [];
+    if (got[0].example) lines.push(el("p", { class: "readout muted" }, el("b", null, "Generated example. "),
+      "No person played these games. The fall in harder choices and tracing speed from week five was written into the generator, together with a rising questionnaire score. It is not a sign that such a link exists, and it is far cleaner than real play would be."));
+    // The finding, if there is one: the last three games against the person's start (or, with fewer games, against all before).
+    const pool = (list) => {
+      const rs = [].concat.apply([], list.map((x) => ((x.revontulet.rounds || []).length >= 3 ? x.revontulet.rounds : [])));
+      const sp = list.map((x) => { const rv = x.revontulet, v = vals(rv.rounds || [], "trace_mean_speed_pt_s"); return v.length && rv.pt_per_cm ? mean(v) / rv.pt_per_cm : null; }).filter((v) => v !== null);
+      return { rounds: rs.length, hard: rs.filter((r) => r.effort === "hard").length, speed: mean(sp) };
+    };
+    // As in the engine, the references count only games on the newest game's phone.
+    const d0 = got[0].revontulet.pt_per_cm, onPhone = (x) => !d0 || !x.revontulet.pt_per_cm || Math.abs(x.revontulet.pt_per_cm - d0) <= 0.5;
+    const mine = got.filter(onPhone), chrono = got.slice().reverse();
+    // One rule for the headline: the start as soon as the engine has one (from the 13th game), else all games before.
+    // With one or two games after the start the choices are too few (3 or 6), so only the tracing speed is said.
+    const mineChrono = mine.slice().reverse();
+    const hasStart = Object.keys(own0.start || {}).length > 0 && mine.length > 12, late = Math.min(3, mine.length - 12);
+    const ref = hasStart ? { n: late, list: mineChrono.slice(2, 12), lead: (late === 1 ? "Last game" : "Last " + late + " games") + " against this person’s start" + (mine.length < got.length ? " on this phone" : "") + " (games 3 to 12): ", word: "start" }
+      : mine.length >= 6 ? { n: 3, list: mine.slice(3), lead: "Last 3 games against the " + (mine.length - 3) + " before" + (mine.length < got.length ? " on this phone" : "") + ": ", word: "before" } : null;
+    if (ref) {
+      const now = pool(mine.slice(0, ref.n)), was = pool(ref.list), parts = [];
+      if (ref.n >= 3 && now.rounds && was.rounds) parts.push("harder crack in " + now.hard + " of " + plural(now.rounds, "round", "rounds") + " (" + ref.word + ": " + was.hard + " of " + was.rounds + ")");
+      if (now.speed !== null && was.speed !== null) parts.push("tracing at " + num(now.speed, 1) + "\u00a0cm/s (" + ref.word + ": " + num(was.speed, 1) + "\u00a0cm/s)");
+      if (parts.length) lines.push(el("p", { class: "readout" }, el("b", null, ref.lead), parts.join(", ") + "."));
+    }
+    const zNow = Object.keys(WORDS).map((k) => [k, zOf(got[0], k)]).filter((p) => p[1] !== null);
+    const NAME = { trace_speed_cm_s: "tracing speed", stroke_speed_cm_s: "stroke speed" };
+    const f0 = (got[0].revontulet_own && got[0].revontulet_own.values) || {};
+    const hasSpeed = Object.keys(WORDS).some((k) => typeof f0[k] === "number");
+    const SAY = { trace_speed_cm_s: "traced ", stroke_speed_cm_s: "stroked the fox " };
+    const unusual = zNow.filter((p) => Math.abs(p[1]) >= cut).map((p) => SAY[p[0]] + WORDS[p[0]][p[1] > 0 ? 0 : 1]);
+    const earlier = own0.earlier_games || 0;
+    lines.push(el("p", { class: "readout" }, el("b", null, "Last game, " + dayShort(got[0].date) + ", against the games just before it: "),
+      zNow.length ? (unusual.length ? "the person " + unusual.join(" and ") + " than in those games." : zNow.map((p) => NAME[p[0]]).join(" and ") + (zNow.length > 1 ? " were" : " was") + " within the recent range.")
+          + (["trace_speed_cm_s", "stroke_speed_cm_s"].some((k) => fromStart(got[0], k)) ? " Against the start: " + ["trace_speed_cm_s", "stroke_speed_cm_s"].filter((k) => fromStart(got[0], k)).map((k) => (k === "trace_speed_cm_s" ? "tracing " : "stroking ") + fromStart(got[0], k).replace(" than start", "")).join(", ") + "." : "")
+        : earlier < needed ? "not enough earlier games yet (" + earlier + " of the " + needed + " needed)."
+        : hasSpeed ? "too few earlier games with a speed to compare." : "this game has no speed to compare."));
+    lines.push(el("p", { class: "muted small" }, "In this 90-second game the person picks one of two cracks in an ice wall three times (the harder one gives a bigger reward), traces a half circle with a finger, taps the embers that flash after picking the harder crack, and at the end strokes a sleeping fox. If time runs out, the game breaks the wall for them."));
+    // A different screen density than in the last game that sent one means another phone: speeds before and after do not compare.
+    const newPhone = {};
+    let known = null;
+    chrono.forEach((x) => { const b = x.revontulet.pt_per_cm; if (!b) return; if (known !== null && Math.abs(known - b) > 0.5) newPhone[x.id] = true; known = b; });
     const row = (x) => {
       const f = facts(x);
       return el("tr", null,
-        el("td", { class: "num nowrap" }, dayShort(x.date), x.completed === false ? el("span", { class: "sub" }, "not finished") : null),
+        el("td", { class: "num nowrap" }, dayShort(x.date), x.completed === false ? el("span", { class: "sub" }, "not finished") : null,
+          newPhone[x.id] ? el("span", { class: "sub" }, "new phone") : null),
         el("td", null, dash(f.wall)),
         el("td", { class: "r num" }, f.rounds ? f.hard + " of " + f.rounds : dash(null)),
         el("td", { class: "r num" }, dash(f.choose)),
-        el("td", { class: "r num" }, dash(f.trace, f.noSize ? "phone size not sent" : null)),
+        el("td", { class: "r num" }, dash(f.trace, f.noSize ? "phone size not sent" : null), subOf(x, "trace_speed_cm_s")),
         el("td", { class: "r num" }, f.traced ? f.lifts : dash(null)),
-        el("td", { class: "r num" }, f.shown ? f.hit + " of " + f.shown : f.rounds && !f.hard ? el("span", { class: "muted" }, "no hard shot") : dash(null)),
-        el("td", { class: "r num" }, f.strokes ? f.strokes + (f.strokes === 1 ? " stroke" : " strokes") + (f.stroke ? ", " + f.stroke : f.strokeNoSize ? ", speed not known" : "") : dash(null)));
+        el("td", { class: "r num" }, f.shown ? f.hit + " of " + f.shown : f.rounds && !f.hard ? el("span", { class: "muted" }, "easy cracks only") : dash(null)),
+        el("td", { class: "r num" }, f.strokes ? plural(f.strokes, "stroke", "strokes") + (f.stroke ? ", " + f.stroke : f.strokeNoSize ? ", speed not known" : "") : dash(null), subOf(x, "stroke_speed_cm_s")));
     };
-    return panel("Revontulet: choices and finger movement", got.length, lines,
+    const rc = revontuletChart(got);
+    const fold = (title, ...paras) => el("details", { class: "more" }, el("summary", null, title), paras.map((p) => el("p", { class: "muted small" }, p)));
+    return panel("Revontulet: choices and finger movement", got.length, lines, rc,
+      rc ? el("p", { class: "muted small" }, "One point is one game. Shaded: the range of this person’s games before each one (up to 20). Dashed: the middle of their start, games 3 to 12" + (mine.length < got.length ? " on the newest phone" : "") + ". Yellow means different from the recent games, faster or slower. It does not mean worse.") : null,
       table(["Date", "Wall broken", { t: "Harder crack", r: 1 }, { t: "Time to choose", r: 1 }, { t: "Tracing speed", r: 1 },
         { t: "Finger lifts", r: 1 }, { t: "Embers tapped", r: 1 }, { t: "Fox strokes", r: 1 }], got.map(row), null, { id: "revontulet" }),
-      el("p", { class: "muted small" }, "Read these as a record, not a result. Tracing speed is how fast the finger moved along the half circle, and finger lifts counts how often it left the screen before the end. Time to choose is the middle value of the rounds, and speeds are averages over the rounds that were traced. A speed shows as not known when the phone did not send its screen size. Each game has only three rounds, so one choice changes the count a lot, and no usual range is known for any of these numbers. It is also not known whether higher or lower is better. They do not change how the day is judged, and they have not been tested as a measure of mood."));
+      el("p", { class: "muted small" }, "A record, not a result. A change here is a reason to ask the person, not a sign of relapse. Getting used to the game changes these numbers too. They do not change how the day is judged and have not been tested as a measure of mood."),
+      fold("How to read these numbers",
+        "Tracing and stroke speed are compared, game by game, with this person’s own Revontulet games just before (at least " + needed + ", at most 20). A game " + cut + " or more of their usual spread away from the middle of those games, faster or slower, gets a label. The " + needed + " games and the cut of " + cut + " were picked on generated games, not on people. On generated games where nothing changes, the share that still got a label depended on how much play varies from game to game: almost none at the example’s spread. When games vary twice as much, about 7 in 100 against each reference and 10 in 100 against one or the other. At three times, about 9 in 100 against each and 13 in 100 against one or the other. Three labelled games in a row came to about 1 in 100 unchanged people in 24 games at twice the spread and 3 or 4 in 100 at three times. Nobody has measured how much real play varies. Real play also has odd games and slow drifts from day to day, which the generated games do not. Both add labels, and drifts add runs of them. One yellow point means little. Look for several games in a row.",
+        "The slide written into the example shows what each reference is for. Against the start, nearly every game of its last two weeks got a label, and still 8 in 10 when games vary three times as much. Against the recent games it was 7 in 10 at the example’s spread and under 2 in 10 at three times, because the recent games slide along. The example’s slide is large: tracing falls by more than a third. A smaller change would be caught less often, and we have not measured how often.",
+        "No yellow does not mean all is well. After a slow change the lower values count as recent, which is why the start (games 3 to 12; the first two are practice) is shown as a second reference that does not move. The start is only where this person began. It is not a healthy level: for someone who started just after treatment, the start may be their worst weeks. People keep getting faster for many games as they learn the game, so faster than start is expected. A run of labels against the start can also come from an odd start alone.",
+        "The harder crack is chosen three times a game, so one game says nothing; it is only compared over several games, in the line above the chart. With 9 choices, two or three more or fewer can be chance. Time to choose is the middle value of the rounds, and speeds are averages over the rounds that were traced. A stroke speed is compared only when there were at least two strokes.",
+        "Slower tracing can also mean more careful tracing: the game does not yet measure how closely the line was followed. The game asks for slow strokes, so slower stroking may only mean the person did as asked.",
+        "Things other than mood that change these numbers: getting used to the game (many people stop picking the harder crack once the bigger reward is no longer new), the 90-second limit (the easy crack can simply be the faster way to finish), time of day, tiredness, medicines that slow or calm, which hand and finger, holding the phone or laying it down, cold hands, a new screen cover, and doing something else while playing. Speeds are only comparable for one person on one phone.",
+        "A row marked “new phone” is the first game on a screen drawn at a different density; from that game on, both references start again and count only games on that phone. A new phone with the same density is not noticed."),
+      fold("Where these measures come from",
+        "The choice of the harder crack follows a laboratory task with about fifty choices. In 2009, among 61 students, those who reported less pleasure chose the harder option a little less often, on some questionnaires and not on others (Treadway and others, PLoS ONE). In 2012 a small study found fewer hard choices in 20 people with depression than in 15 others (Treadway and others, Journal of Abnormal Psychology). Most of those patients were taking medicine for depression, and among the patients a higher depression score did not go with fewer hard choices. Later studies do not all agree.",
+        "Slowed movement that other people can see is one of the listed signs of depression. Whether finger speed on a phone shows it is not known. The tracing idea came from a 2025 study in which 20 young people with depression and 20 without wrote the letter l over and over; from three measures of the writing movement a program sorted 33 of the 40 correctly (Džepina and others, Applied Sciences; we read its summary, not the full paper). That was handwriting, not tracing a half circle with a finger, and its summary does not say the result was tried on a second group.",
+        "Stroke speed follows a 2025 study of 78 people playing phone games, where slower swipes went with higher depression scores in one of the games (Chitale and others, JMIR Mental Health). That study tried hundreds of measures without correcting for it and calls itself exploratory.",
+        "These studies compared different people at one moment. None followed one person over weeks, which is what this panel does. Revontulet has three choices and a few seconds of tracing with a finger, and nobody has tested it."));
   }
   function framesPanel(sessions, agreement) {
     const ready = sessions.filter((x) => x.frames_reading && x.frames_reading.status === "ready");
@@ -1413,16 +1561,19 @@
   }
 
   // ---- blueprint: the mind (what decides whether the clinic should look at someone)
+  // BP_TRIAGE_CHECK is filled from clinic_engine/triage_check.py (generated pictures, real models).
+  // Numbers from docs/checks/triage-check-2026-11-14.json.
   function bpMind(wrap) {
-    wrap.appendChild(el("p", { class: "lead" }, "The mind is the part of the server that decides whether the clinic should look at someone, and how soon. It has three layers. Fixed rules notice that something changed. Two models weigh how much it matters. Plain code guards both: it decides what a model may see and what a model may decide."));
+    wrap.appendChild(el("p", { class: "lead" }, "The mind is the part of the server that decides whether the clinic should look at someone, and how soon. It has three layers. Fixed rules notice that something changed and open a flag. Two models weigh how much it matters. Plain code guards both: it decides what a model may see, what a model may decide, and what a model cannot undo."));
+    wrap.appendChild(el("p", { class: "lead" }, "What a model cannot undo: a request for help, and a flag the fixed rules hold at “needs review today”. Neither model can lower those, and no model can put any flag more than one step below the fixed rules. Only a rule written by a clinician can go lower, and the flag then shows the rule, who wrote it and until when."));
     const W = 960, H = 150, BW = 176, BH = 96, GAP = 19;
     const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "bp", role: "img",
-      "aria-label": "The mind in five steps: something arrives, watchers in code open a flag, two models set its level, code guards the answer, the clinic sees it." });
+      "aria-label": "The mind in five steps: something arrives, fixed rules in code open a flag, two models set its level, code guards the answer, the clinic sees it." });
     const boxes = [["1", "Something arrives", ["a day, a game, a note;", "or five minutes pass", "with nothing new"], "code"],
-      ["2", "Watchers · code", ["fixed rules compare with", "the person's own normal", "and open or close a flag"], "code"],
-      ["3", "Two readers", ["the local model sets each", "flag's level; Gemini agrees,", "raises or lowers"], "model"],
-      ["4", "Guard · code", ["fixed form only; a request", "for help stays urgent; the", "rules' level if no answer"], "code"],
-      ["5", "The clinic", ["the list is ordered by", "level; one message when", "a flag needs review today"], "code"]];
+      ["2", "Fixed rules · code", ["compare with the person's", "own normal and open", "or close a flag"], "code"],
+      ["3", "Two models", ["the local model sets each", "flag's level; Gemini agrees,", "raises or lowers"], "model"],
+      ["4", "Guard · code", ["fixed form only; floors", "under the models; help", "stays urgent"], "code"],
+      ["5", "The clinic", ["the list is ordered by", "level; one message when a", "flag first needs review"], "code"]];
     boxes.forEach(([n, t, lines, cls], i) => {
       const x = 2 + i * (BW + GAP), y = 26;
       s.appendChild(svg("rect", { x, y, width: BW, height: BH, rx: 10, class: "bp-box " + cls }));
@@ -1435,31 +1586,17 @@
       }
     });
     wrap.appendChild(el("section", { class: "panel" }, el("figure", { class: "bp-fig" }, s,
-      el("figcaption", { class: "bp-cap" }, "The amber box is the two models; the others are plain code. The models never start anything: they are asked only after a watcher has opened a flag, and again when the picture changes."))));
+      el("figcaption", { class: "bp-cap" }, "The amber box is the two models; the others are plain code. The models never start anything: they are asked only after the fixed rules have opened a flag, and again when the picture changes. A flag the fixed rules put at “needs review today” is reported at once, before any model is asked; messages go out in clinic hours, where the clinic has switched them on."))));
 
     const cellRow = (r) => el("tr", null, r.map((v) => el("td", null, v)));
     wrap.appendChild(panel("Who may do what", null, table(["Layer", "Decides", "Cannot"], [
-      ["Watchers (fixed rules)", "Which flags exist: they alone open one and close it when the change is gone.", "Say how much a flag matters once the models have answered."],
-      ["The local model, on the clinic's own hardware", "The level of every open flag: watch, attention, or needs review today, with one of ten fixed reasons. It reads the clinic's own rules for this person.", "Open or close a flag, write any text, or change the level of a request for help."],
-      ["Gemini, outside, only when the patient's record allows it", "Agree, raise or lower each level by one step.", "See a name, a date or any words; move a level that follows the clinic's rule; change a request for help."],
-      ["Guarding code", "What each model is sent, the form of its answer, and what happens when no model answers: then the fixed rules' own level stands.", "Be argued with: an answer outside the form is refused and written to the log."]
+      ["Fixed rules (the watchers)", "Which flags exist, and each flag's own level, which is always kept and shown. A flag closes when the change is gone or a clinician acknowledges it; a request for help closes only by a clinician.", "Be overruled downwards from “needs review today” by a model."],
+      ["The local model (on this server it runs on our own machine; in a clinic, on the clinic's hardware)", "The level of every open flag: watch, attention, or needs review today, with one of ten fixed reasons. It reads the clinic's own rules for this person and says which flag a rule applies to.", "Open or close a flag, write any text, change a request for help, or by itself go below the two floors."],
+      ["Gemini, outside, only when the patient's record allows it", "Agree, raise or lower each level by one step.", "See a name, a date or any words; move a level that follows a clinic rule; change a request for help; go below the floors."],
+      ["Guarding code", "What each model is sent, the form of its answer, the two floors, and what happens when no model answers for the current picture: the fixed rules' level applies at the next pass, within five minutes, up or down.", "Be argued with: an answer outside the form is refused and written to the log."]
     ].map(cellRow), "bp-table", { plain: true })));
 
-    wrap.appendChild(panel("What the watchers notice", null, el("div", { class: "bp-say" },
-      el("p", null, "Each watcher is one fixed rule. Everything is compared with the person's own normal: the median and usual spread of their last 28 days, leaving out the newest five so that a drop does not move the yardstick it is measured with."),
-      table(["Flag", "Opens when"], [
-        ["Movement drop", "at least 3 of the last 5 days are clearly below own normal in steps and walking speed (2 are enough when reactions or the face also changed)"],
-        ["One unusual day", "a single day very far from normal, either way"],
-        ["No data", "3 days without any daily data"],
-        ["Asked for help", "a note sounds like a request for help: a fixed word list catches it even when no model runs"],
-        ["Low mood in notes", "several notes labelled low"],
-        ["Offers unanswered", "3 offers in a row left without an answer"],
-        ["Slower reactions, less facial movement", "2 of the last 3 games clearly off the person's own normal"],
-        ["Check-ins stopped, plans not done", "no check-in for 3 days after a habit of them; 3 plans in a row not carried out"],
-        ["Noticed by the model, confirmed by code", "Gemini found a slow decline or fading smiles that the rules above missed, and code confirmed it in the numbers"]
-      ].map(cellRow), "bp-table", { plain: true }))));
-
-    // What the two readers decided for the example patient, read live from the server.
+    // What the two models decided for the example patient, read live from the server.
     const d = S.bpDetail, tri = (d && d.triage) || {}, lv = tri.levels || {};
     const LV = { watch: "watch", attention: "attention", urgent: "needs review today" };
     const RS = { several_signals_agree: "several signals agree", single_weak_signal: "one weak signal", deep_and_held: "deep and held", held_long: "held for long", getting_better: "getting better",
@@ -1470,33 +1607,60 @@
       table(["Flag", "Fixed rules alone", "Local model", "Gemini", "Level shown to the clinic"], open.map((i) => { const t = lv[i.id]; return el("tr", null,
         el("td", null, kind(i.kind)), el("td", null, LV[t.rules_level] || "–"),
         el("td", null, t.level1 ? LV[t.level1] + " (" + (RS[t.reason1] || t.reason1) + ")" : "no answer"),
-        el("td", null, t.verdict2 ? ({ agree: "agrees", raise: "raises", lower: "lowers" }[t.verdict2]) : "not asked"),
-        el("td", null, t.level !== t.rules_level ? el("b", null, LV[t.level]) : LV[t.level], t.fixed_by_rule ? " (fixed by rule)" : "")); }), "bp-table", { plain: true }),
-      el("p", { class: "muted small" }, "Read from the server as this page loaded. Example data; bold marks a level the models set differently from the fixed rules."))
+        el("td", null, t.verdict2 ? ({ agree: "agrees", raise: "raises", lower: "lowers" }[t.verdict2]) + (t.reason2 && t.reason2 !== t.reason1 ? " (" + (RS[t.reason2] || t.reason2) + ")" : "") : "not asked"),
+        el("td", null, t.level !== t.rules_level ? el("b", null, LV[t.level] + " ≠ rules") : LV[t.level], t.fixed_by_rule ? " (fixed by rule)" : t.held_by_floor ? " (held by the floor)" : "")); }), "bp-table", { plain: true }),
+      el("p", null, "Read from the server as this page loaded; example data. Both models are shown the fixed rules' level, and Gemini is shown the local model's answer, so agreement here is expected and is not evidence that the levels are right. Across all example patients on the evening of 14 November 2026 there were 15 such flags: the models set 1 differently from the fixed rules (a movement drop raised to needs review today), and 1 more was lowered by a clinic rule."))
       : el("p", { class: "muted small" }, tri.mode === "models" ? "No open flags on the example patient right now." : "On this server the levels are set by the fixed rules alone (model triage is switched off).");
-    wrap.appendChild(panel("How the two readers weigh a flag", null, el("div", { class: "bp-say" },
-      el("p", null, "Both readers get the same picture of one person: every open flag (its kind, the days it has been held, the level the fixed rules would give, and the flag's own numbers), the last 14 days of movement against own normal, and three counts. Numbers and fixed codes only."),
-      el("p", null, "The local model answers first. Gemini then sees the picture together with that answer and can move each level by one step. A request for help is part of the picture, so both weigh everything else knowing about it, but its own level cannot be changed.")), live));
+    wrap.appendChild(panel("How the two models weigh a flag", null, el("div", { class: "bp-say wide" },
+      el("p", null, "Both models get the same picture of one person: every open flag (its kind, the days it has been held, the level the fixed rules give it, and the flag's own numbers), the last 14 days of movement against own normal, and three counts. Numbers and fixed codes only."),
+      el("p", null, "The local model answers first. Gemini then sees the picture together with that answer and can move each level by one step. The second reader is the smaller power on purpose: it is the one outside the clinic, and it never sees the clinician's rules. A request for help is part of the picture, so both weigh everything else knowing about it, but its own level cannot be changed.")), live));
 
-    wrap.appendChild(panel("The clinic's own rules, in plain words", null, el("div", { class: "bp-say" },
+    wrap.appendChild(panel("The clinic's own rules, in plain words", null, el("div", { class: "bp-say wide" },
       el("p", null, "A clinician can write a rule for one person the way they would say it to a colleague, for example: “She is on a planned two-week rest after knee surgery. Lower movement is expected and only needs watching.”"),
       el("ul", { class: "plain" },
-        el("li", null, "The local model reads the rule when it sets the levels. A level that follows a rule is not moved by Gemini: the clinician outranks the second reader."),
+        el("li", null, "The local model decides which flag a rule applies to; when it says so, Gemini cannot move that level. Code checks that the rule exists, not that it was read the way its author meant. So the flag shows the rule's words, its author and date, the level the fixed rules alone would give, and whether Gemini, which does not see the rule, would raise it."),
+        el("li", null, "A rule ends by itself after 14 days. While a rule holds a flag below the fixed rules' level, the patient list marks that person “lowered by clinic rule”, so a lowered flag is marked in the list."),
         el("li", null, "The words stay on the clinic's server. Gemini is told only that a level follows a clinic rule."),
-        el("li", null, "A rule changes levels and nothing else. It cannot open or close a flag, cannot lower a request for help, and nothing of it reaches the patient."),
+        el("li", null, "A rule changes levels, and with them the order of the list and whether a message is sent. One exception, on the safe side: if the fixed rules later raise a rule-lowered flag to “needs review today”, the message goes out once before the rule is applied again. A rule cannot open or close a flag, cannot lower a request for help, and nothing of it reaches the patient."),
         el("li", null, "It is written on the patient's Overview page, under “The clinic's rules for this person”.")))));
 
-    wrap.appendChild(el("div", { class: "grid even" },
-      panel("What we checked", null, el("ul", { class: "plain" },
-        el("li", null, "The automatic tests cover the guard: the form of every answer, the request for help staying urgent whatever a model or a rule says, the rules' level standing when no model answers, and the clinician's words never leaving the server."),
-        el("li", null, "On this server, with the real models, on 14 November 2026: a rule written in English and the same rule in Slovak each lowered one flag for one example patient; a rule about something she does not have changed nothing; removing the rule restored the level."),
-        el("li", null, "Four repeated runs on the same picture gave the same levels, for two example patients."))),
-      panel("What we did not check", null, el("ul", { class: "plain" },
-        el("li", null, "Whether the levels the models set are the ones a clinician would set. Nobody has compared them."),
-        el("li", null, "Whether a model reads every rule the way its author meant it. Three rules on one example patient is not a test of that."),
-        el("li", null, "Stability beyond those eight runs."),
-        el("li", null, "The models can also lower a flag. That is a choice we made the evening before the deadline; one setting puts the levels back on the fixed rules alone.")))));
-    wrap.appendChild(panel("See it", null, el("p", { class: "bp-cap" }, "Open a patient: under “Needs attention” each flag shows what the local model said, what Gemini said, and what the fixed rules alone would say. The Timeline shows each call to a model with exactly what was sent and what came back.")));
+    wrap.appendChild(panel("What we checked", null, el("div", { class: "bp-say wide" },
+      el("p", null, "A check on 40 generated pictures, read by the real models on 14 November 2026. Each picture was read as it is, read a second time, and read strictly worse: the same flags, the movement drop deeper and longer, more low notes. 107 flags in all. No patient data; the pictures have the form the server sends and carry the level the fixed rules would give."),
+      table(["Question", "Result"], [
+        ["Does worse ever mean lower?", "No: 0 of 107 flags ended lower in the worse picture, as the models asked and after the floors."],
+        ["Do the models respond to severity, or repeat the level they are shown?", "They respond, unevenly. For 88 flags the fixed rules give the same level in both pictures: the models set 38 higher and none lower. 25 of those end above the fixed rules' level (15 movement drops, 10 unusual days); 13 only return to the fixed rules' level after the models had lowered them. Offers unanswered never rose (0 of 13) and low notes once (1 of 14), although more low notes was part of “worse”. For the other 19 the fixed rules themselves rise; the models went up with 17."],
+        ["How do the models differ from the fixed rules?", "In the pictures as they are, on 18 of 107 flags: 5 raised (3 movement drops, 2 unusual days), 13 lowered by one step (9 weak sessions, 2 less facial movement, 1 low notes, 1 slower reactions). Lowering a supporting signal while a movement drop is held is the opposite of what the fixed rules do. We do not know which is right."],
+        ["Does the second reader change anything?", "Almost never: across all 372 flag readings in the check Gemini agreed 370 times and raised twice, both on a repeat read. On these pictures it is a second signature, not a second opinion."],
+        ["Is the same picture read the same way twice?", "Mostly: 6 of 107 flags got a different level on the second read, each by one step, in 5 of 40 pictures. Four came from the local model, although it runs at temperature 0, and two from Gemini raising. In 2 pictures the movement drop moved between attention and needs review today, so one read decided whether a message would go out. The server reads each picture once and keeps that answer."],
+        ["Is a clinic rule followed, and only where it applies?", "One rule about the movement drop, on 20 pictures: the local model named it on the movement drop 20 times, set that flag to watch 20 times, and never named it on another flag. Of 31 other flags, 4 changed level (2 up, 2 down). Repeat reads alone move about 6 in 100, so 4 of 31 is more than we can call noise and less than we can call an effect."]
+      ].map((r) => { const cut = r[1].indexOf(r[1].match(/[:.]/)[0]) + 1; return el("tr", null, el("td", null, r[0]), el("td", null, el("b", null, r[1].slice(0, cut)), r[1].slice(cut))); }), "bp-table", { plain: true }),
+      el("h3", { class: "fr-h" }, "Also checked"),
+      el("ul", { class: "plain" },
+        el("li", null, "The script is clinic_engine/triage_check.py; every reading is in docs/checks/triage-check-2026-11-14.json in the repository."),
+        el("li", null, "The automatic tests cover the guard: the form of every answer, the request for help staying urgent whatever a model or a rule says, the two floors, the fixed rules' level coming back when no model answers, a rule ending by itself, and the clinician's words never leaving the server."),
+        el("li", null, "By hand on this server, 14 November 2026, not kept as a script: a rule in English and the same rule in Slovak each lowered one flag for one example patient; a rule about something she does not have changed nothing; removing it restored the level.")))));
+    wrap.appendChild(panel("What we did not check", null, el("div", { class: "bp-say wide" }, el("ul", { class: "plain" },
+      el("li", null, "Whether the levels the models set are the ones a clinician would set. Nobody has compared them; that needs clinicians and is part of the proposed study."),
+      el("li", null, "Whether a model reads every rule the way its author meant it. One rule on generated pictures and three on one example patient is not a test of that."),
+      el("li", null, "Whether Gemini as second reader ever disagrees usefully. In the check it agreed on 370 of 372 flag readings, and on the example patients every time."),
+      el("li", null, "A rule that is wrong or written to silence someone. The system limits it (14 days, a mark in the list, never a request for help) and shows it; it does not judge it.")))));
+    wrap.appendChild(panel("What the fixed rules notice", null, el("div", { class: "bp-say wide" },
+      el("p", null, "Seventeen kinds of flag, grouped below, each opened and closed by code. Everything is compared with the person's own normal: the median and usual spread of their last 28 days, leaving out the newest five so that a drop does not move the yardstick it is measured with. Three of them (slowing down, slower reactions, less facial movement) also count a model's reading of a recording once code has confirmed it in the numbers."),
+      table(["Flag", "Opens when"], [
+        [kind("deviation"), "at least 3 of the last 5 days are clearly below own normal in steps and walking speed (2 are enough when reactions, the face or the sessions also changed)"],
+        [kind("novelty"), "a single day very far from normal, either way"],
+        [kind("silence"), "3 days without any daily data"],
+        [kind("asked_for_help"), "a note sounds like a request for help: a fixed word list catches it even when no model runs"],
+        [kind("low_notes"), "2 notes labelled low within 5 days"],
+        [kind("ignored") + ", " + kind("not_played").toLowerCase(), "3 offers in a row left without an answer, or 3 offered activities not played"],
+        [kind("slower_reactions") + ", " + kind("face_flat").toLowerCase(), "2 of the last 3 games clearly off the person's own normal"],
+        [kind("checkins_stopped") + ", " + kind("plans_not_done").toLowerCase(), "no check-in for 3 days after a habit of them; 3 plans in a row not carried out"],
+        [kind("weak_rounds") + ", " + kind("fading").toLowerCase() + ", " + kind("stopped_early").toLowerCase() + ", " + kind("round_mismatch").toLowerCase(), "the movement game: rounds below the person's own normal, slowing within a round, stopping early, or the game and the daily data pointing opposite ways"],
+        [kind("oddity"), "the phone sent a record the server refused as impossible"],
+        [kind("model_noticed"), "Gemini found a slow decline or fading smiles that the rules above missed, and code confirmed it in the numbers"]
+      ].map(cellRow), "bp-table", { plain: true }))));
+
+    wrap.appendChild(panel("See it", null, el("p", null, "Open a patient: under “Needs attention” each flag shows what the local model said, what Gemini said, and what the fixed rules alone would say. The Timeline shows each call to a model with what was sent and what came back. One setting on the server puts all levels back on the fixed rules alone.")));
   }
 
   // ---- blueprint: what Gemini does (the page to send a Gemini-track judge to)
@@ -1620,10 +1784,10 @@
         "only objections, each one of three codes: weak evidence, contradicts recent days, too broad.",
         "does not add that lesson in this run. This is the one place where Gemini's answer is acted on without code testing it against numbers, and all it can do is hold a lesson back. It cannot add or change one.",
         [go2(anna, "mind", "Anna Korhonen → Learned"), ", “How it learns”, and the Blueprint section of the same name."]),
-      job("5", "Weighs each flag for the clinic, as the second of two readers", "not measured yet",
+      job("5", "Weighs each flag for the clinic, as the second of two readers", "agreed with the local model on 370 of 372 generated flag readings: so far a second signature, not a second opinion",
         "the open flags of one person (kind, days held, the rules' level, the flag's own numbers), the last 14 days of movement against own normal, and what the local model answered. No name, date or text. A request for help is part of that picture, without the person's words; its own level is urgent by rule.",
         "for every flag: agree, raise or lower, with one of ten fixed reasons.",
-        "applies it: the flag's level moves by one step from the local model's level. This is a decision by the models, not checked against numbers. What code keeps is the list of flags, the level of a request for help (always urgent, whatever a model answers), and the fixed rules' own level, which is shown beside it and stands whenever no model answers.",
+        "applies it within two floors: the flag's level moves by one step from the local model's level, but no model can lower a flag the fixed rules hold at needs review today, or put any flag more than one step below the fixed rules. This is a decision by the models, not checked against numbers. What code keeps is the list of flags, the level of a request for help (always urgent, whatever a model answers), and the fixed rules' own level, which is shown beside it and applies whenever no model answers. The check and its results are in the Blueprint section “The mind”.",
         [go2(anna, "overview", "Anna Korhonen → Overview"), ", the list “Needs attention”: under each flag, what each model said and what the rules alone would say."])),
       el("p", { class: "small" }, "Still switched on in the server, from an earlier design: a reading of a movement round, which sends the path of the phone in metres and two small drawings of that path seen from above (no photo). The app no longer sends rounds.")));
 

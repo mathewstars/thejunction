@@ -39,57 +39,24 @@ struct FoxStage {
     }
 }
 
-/// Lanvi settled into the snow: a soft contact shadow tinted to the scene's
-/// light, the paws a few points into the snow behind a small drift drawn in the
-/// scene's own snow colour, and a little cooler and dimmer at night. Place it in
-/// a full-screen ZStack (top-left origin).
+/// Lanvi on his place in the clearing. Nothing is drawn under or in front of
+/// the paws (no shadow, no drift): the captain wants the painting as it is.
+/// He is a little cooler and dimmer at night. Place it in a full-screen ZStack
+/// (top-left origin).
 struct GroundedFox<Fox: View>: View {
     var stage: FoxStage
     var scene: WorldScene
     @ViewBuilder var fox: () -> Fox
 
-    /// How far the paws sink into the snow.
+    /// How far the paws sit into the snow.
     private var sink: CGFloat { stage.fox * 0.025 }
 
     var body: some View {
         let w = stage.fox
-        let feet = stage.feetY
-        ZStack(alignment: .topLeading) {
-            // Contact shadow on the snow, matched to the scene's light.
-            Ellipse()
-                .fill(RadialGradient(colors: [shadowColor.opacity(shadowStrength), shadowColor.opacity(0)],
-                                     center: .center, startRadius: 0, endRadius: w * 0.36))
-                .frame(width: w * 0.78, height: w * 0.12)
-                .position(x: stage.foxCenter.x, y: feet + sink * 0.4)
-
-            fox()
-                .colorMultiply(scene == .night ? Color(red: 0.86, green: 0.88, blue: 0.97) : .white)
-                .frame(width: w, height: w)
-                .position(x: stage.foxCenter.x, y: stage.foxCenter.y + sink)
-
-            // A small drift of snow in front of the paws, so he sits in it, not on it.
-            Ellipse()
-                .fill(LinearGradient(colors: [snow.opacity(0), snow.opacity(0.95), snow],
-                                     startPoint: .top, endPoint: .bottom))
-                .frame(width: w * 0.46, height: w * 0.075)
-                .blur(radius: 1.5)
-                .position(x: stage.foxCenter.x, y: feet + sink * 0.6)
-                .allowsHitTesting(false)
-        }
-        .frame(width: stage.size.width, height: stage.size.height, alignment: .topLeading)
+        fox()
+            .colorMultiply(scene == .night ? Color(red: 0.86, green: 0.88, blue: 0.97) : .white)
+            .frame(width: w, height: w)
+            .position(x: stage.foxCenter.x, y: stage.foxCenter.y + sink)
+            .frame(width: stage.size.width, height: stage.size.height, alignment: .topLeading)
     }
-
-    private var snow: Color {
-        switch scene {
-        case .dawn: return Color(hex: 0xFBF3F2)
-        case .day: return Color(hex: 0xF3F7FF)
-        case .night: return Color(hex: 0xC9D3F0)
-        }
-    }
-
-    private var shadowColor: Color {
-        scene == .night ? Color(hex: 0x0D1B52) : Color(hex: 0x4E66A8)
-    }
-
-    private var shadowStrength: Double { scene == .night ? 0.45 : 0.28 }
 }

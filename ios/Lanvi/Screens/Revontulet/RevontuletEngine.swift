@@ -30,6 +30,10 @@ struct RevontuletEngine: Equatable {
     static let strokesFrom = 0.6        // after the warmth begins, strokes count
     static let strokesWanted = 3
     static let sleepAfterStrokes = 1.0
+    /// The goodnight: the fox glides into sleep, then the game waits for Continue. If nothing
+    /// is touched for this long it hands back by itself, so nobody is ever stuck.
+    static let asleepAfter = 1.0
+    static let continueSafety = 30.0
     /// Lead-ins: the half-circle after a choice, the sling after the trace.
     static let arcLead = 0.22
     static let slingLead = 0.08
@@ -68,6 +72,11 @@ struct RevontuletEngine: Equatable {
 
     // Flight and the wall
     private(set) var flight: RevontuletFlight?
+    /// While a first-time coach shows the first embers, the flight's own time slows almost
+    /// to a stop (`slowRate`); `flightDebt` is the time it has fallen behind the real clock.
+    private(set) var slowSince: Double?
+    private(set) var flightDebt: Double = 0
+    static let slowRate = 0.05
     private(set) var impacts: [RevontuletImpact] = []
     private(set) var skyLight: Double = 0
     private(set) var burstAt: Double?
@@ -118,9 +127,26 @@ struct RevontuletEngine: Equatable {
     var broken: Bool { burstAt != nil }
     var strokesCounted: Int { strokes.count }
 
+    /// The flight's own clock: the real clock, less the time spent slowed.
+    func flightClock(_ now: Double) -> Double {
+        now - flightDebt - (slowSince.map { max(0, now - $0) * (1 - Self.slowRate) } ?? 0)
+    }
+
+    /// Time slows almost to a stop (a coach is showing an ember); `resumeFlight` lets it run.
+    mutating func slowFlight(at now: Double) {
+        guard beat == .flight, slowSince == nil else { return }
+        slowSince = now
+    }
+
+    mutating func resumeFlight(at now: Double) {
+        guard let s = slowSince else { return }
+        flightDebt += max(0, now - s) * (1 - Self.slowRate)
+        slowSince = nil
+    }
+
     /// Where the spark is right now (resting, pulled, or in the air).
     func sparkPoint(_ now: Double) -> CGPoint {
-        if let f = flight, beat == .flight { return f.point(at: now) }
+        if let f = flight, beat == .flight { return f.point(at: flightClock(now)) }
         return CGPoint(x: layout.anchor.x + pull.dx, y: layout.anchor.y + pull.dy)
     }
 
@@ -141,20 +167,34 @@ struct RevontuletEngine: Equatable {
         case .interrupt:
             guard beat != .done, startUptime != nil else { return ev }
             if stroking { ev += endStroke(at: now) }
+            let asleep = beat == .sleep && completed
             beat = .done
             beatStart = now
-            endAt = now
-            completed = false
-            interrupted = true
-            ev.append(.ended(completed: false))
+            if !asleep {
+                endAt = now
+                completed = false
+                interrupted = true
+            }
+            ev.append(.ended(completed: asleep))
+        case .finish:
+            // Continue, once the fox is asleep.
+            guard beat == .sleep, completed else { return ev }
+            beat = .done
+            beatStart = now
+            ev.append(.ended(completed: true))
         case .close:
+            resumeFlight(at: now)
             guard beat != .done else { return ev }
             if stroking { ev += endStroke(at: now) }
+            // Closing on the goodnight, once asleep, is a finished game.
+            let asleep = beat == .sleep && completed
             beat = .done
             beatStart = now
-            endAt = now
-            completed = false
-            ev.append(.ended(completed: false))
+            if !asleep {
+                endAt = now
+                completed = false
+            }
+            ev.append(.ended(completed: asleep))
         case let .down(p, r):
             noteRadius(r)
             // One finger plays. A second finger landing while one is down is ignored (unless
@@ -211,13 +251,6 @@ struct RevontuletEngine: Equatable {
             return [.pullStarted]
         case .flight:
             return tapEmber(p, at: now)
-        case .sleep:
-            // Goodnight: a touch anywhere ends it at once (it ends by itself within 3 s anyway).
-            endAt = now
-            beat = .done
-            beatStart = now
-            completed = true
-            return [.ended(completed: true)]
         case .warmth:
             guard let w = warmthAt, now >= w + Self.strokesFrom, strokes.count < Self.strokesWanted else { return [] }
             stroking = true
@@ -391,6 +424,8 @@ struct RevontuletEngine: Equatable {
             f.emberMissed = [false, false]
         }
         flight = f
+        flightDebt = 0
+        slowSince = nil
         pull = .zero
         setBeat(.flight, at: now)
         var ev: [RevontuletEvent] = [.released(round: round, level: level)]
@@ -408,6 +443,8 @@ struct RevontuletEngine: Equatable {
         let control = CGPoint(x: from.x + layout.size.width * 0.12, y: (from.y + to.y) / 2 - 30)
         flight = RevontuletFlight(launch: now, from: from, control: control, to: to,
                                   duration: Self.foxFlight, hard: false, foxOwn: true)
+        flightDebt = 0
+        slowSince = nil
         pull = .zero
         staleTouch = true
         setBeat(.flight, at: now)
@@ -418,7 +455,8 @@ struct RevontuletEngine: Equatable {
 
     private mutating func tapEmber(_ p: CGPoint, at now: Double) -> [RevontuletEvent] {
         guard var f = flight, f.hard else { return [] }
-        let t = now - f.launch
+        let fc = flightClock(now)
+        let t = fc - f.launch
         var best: (i: Int, d: CGFloat)?
         for i in f.emberU.indices where f.emberHitAt[i] == nil && !f.emberMissed[i] {
             guard t >= f.emberT[i] - RevontuletFlight.emberLead - RevontuletFlight.emberEarly,
@@ -428,14 +466,14 @@ struct RevontuletEngine: Equatable {
         }
         guard let hit = best else { return [] }
         let shown = f.launch + f.emberT[hit.i] - RevontuletFlight.emberLead
-        let ms = Self.ms(now - shown)
+        let ms = Self.ms(fc - shown)
         f.emberHitAt[hit.i] = now
         if f.emberShownAt[hit.i] == nil {
             f.emberShownAt[hit.i] = shown
             records[round].embersShown += 1
         }
         flight = f
-        records[round].emberHits.append(.init(index: hit.i, reactionMs: ms, uptime: now))
+        records[round].emberHits.append(.init(index: hit.i, reactionMs: ms, uptime: now, coached: slowSince != nil))
         return [.emberHit(index: hit.i, reactionMs: ms)]
     }
 
@@ -457,8 +495,9 @@ struct RevontuletEngine: Equatable {
 
     /// Once nothing can change the landing, fix it and say so (for scheduled haptics).
     private mutating func settle(_ now: Double) -> [RevontuletEvent] {
-        guard var f = flight, f.planned == nil, now >= f.settledAt, let t0 = startUptime else { return [] }
-        let at = f.launch + f.duration
+        guard slowSince == nil, var f = flight, f.planned == nil, flightClock(now) >= f.settledAt,
+              let t0 = startUptime else { return [] }
+        let at = f.launch + f.duration + flightDebt
         let p = plan(for: f, landing: at - t0)
         f.planned = p
         flight = f
@@ -504,21 +543,22 @@ struct RevontuletEngine: Equatable {
         let t = now - t0
 
         if beat == .flight, var f = flight {
+            let fc = flightClock(now)
             for i in f.emberU.indices {
                 let shown = f.launch + f.emberT[i] - RevontuletFlight.emberLead
-                if f.emberShownAt[i] == nil, now >= shown {
+                if f.emberShownAt[i] == nil, fc >= shown {
                     f.emberShownAt[i] = shown
                     records[round].embersShown += 1
                     ev.append(.emberShown(index: i))
                 }
-                if f.emberHitAt[i] == nil, !f.emberMissed[i], now > f.launch + f.emberT[i] + RevontuletFlight.emberGrace {
+                if f.emberHitAt[i] == nil, !f.emberMissed[i], fc > f.launch + f.emberT[i] + RevontuletFlight.emberGrace {
                     f.emberMissed[i] = true
                     ev.append(.emberMissed(index: i))
                 }
             }
             flight = f
             ev += settle(now)
-            if now >= f.launch + f.duration { ev += land(at: f.launch + f.duration) }
+            if slowSince == nil, fc >= f.launch + f.duration { ev += land(at: f.launch + f.duration + flightDebt) }
         }
 
         if beat == .impact, let last = impacts.last {
@@ -569,13 +609,17 @@ struct RevontuletEngine: Equatable {
             pulling = false
             tracing = false
             setBeat(.sleep, at: s)
-            endAt = min(s + 3.4, t0 + Self.cap)
+            endAt = min(s + Self.asleepAfter, t0 + Self.cap)
             ev.append(.sleep)
         }
-        if beat == .sleep, let e = endAt, now >= e {
-            beat = .done
-            beatStart = e
+        // Asleep: the game is complete (its record ends here), and it waits for Continue.
+        if beat == .sleep, let e = endAt, now >= e, !completed {
             completed = true
+            ev.append(.asleep)
+        }
+        if beat == .sleep, completed, let e = endAt, now >= e + Self.continueSafety {
+            beat = .done
+            beatStart = now
             ev.append(.ended(completed: true))
         }
         return ev

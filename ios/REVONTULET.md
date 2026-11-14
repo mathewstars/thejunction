@@ -38,7 +38,7 @@ Every instant is kept as a date and as `CACurrentMediaTime()` seconds (the face 
 | `correct_taps` | launches + embers lit |
 | `wrong_taps` | 0 (there is nothing wrong to tap) |
 | `misses` | embers that flashed and passed |
-| `reaction_ms` | only the ember taps, flash to finger (each 0 to 10,000); an easy-only game sends `[]` |
+| `reaction_ms` | only the ember taps, flash to finger (each 0 to 10,000); an easy-only game sends `[]`. The server computes the session's median from 2 or more of them (the spread from 4), where Sparks and snow needs 5, because a game has at most 6 ember taps and a first-time coach's taps stay out |
 | `duration_s`, `completed`, `ended_by` | as for every activity; leaving the app mid-game is `interrupted` |
 
 Everything else rides in one optional object, `revontulet`, fixed by the contract agreed with the server side (`data/lanvi-game-data/contract.md` in the firstmate home). Built in `RevontuletMeasures.swift`; every value is clamped to the contract's range.

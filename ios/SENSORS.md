@@ -49,6 +49,8 @@ Sent as `face_raw` on the `focus` or `breathing` record to `POST /v1/activities`
 
 Never sent or stored: the camera image, video, the face mesh, landmarks. No face, no tracking, an interruption or a phone without TrueDepth: no `face_raw`, and the game is unchanged.
 
+Sending: a record with frames is 0.4 to 3 MB, so `LanviClient` posts it through a session with a 90 s request timeout (the small calls keep 6 s). A refused record with frames (413, 422) goes once more without them, same id, so the activity itself always arrives (`LanviClient.withoutFaceFallback`). In a debug build the console says what happened: `lanvi-sense: face_raw N frames ...` when frames were attached, `lanvi-net: ...` when a send failed or was retried, and nothing between them means the tracker gave no frames (no yes, camera off in Settings, an interruption, or the face not in view).
+
 ## Checked here
 
 - 19 unit tests (`ios/LanviTests/FaceRawTests.swift`, `HealthTests.swift`): the channel list equals the one in `docs/face-raw.md`, 60 Hz frames become 30 Hz rows, gaps stay in time, limits and trimming, the JSON keys, Peter's output to server days including a night across midnight.

@@ -31,10 +31,15 @@ struct RevontuletAutoPlay {
 
     /// Waits are multiplied by `pace` (the self-test plays fast and slow people).
     let pace: Double
+    /// Extra seconds in round one, so a forced first-time coach can be seen (the film).
+    let coachPause: Double
+    private var emberSeen: [Int: Double] = [:]
+    private var emberTapped: Set<Int> = []
 
-    init(style: Style, seed: UInt64 = 7, pace: Double = 1) {
+    init(style: Style, seed: UInt64 = 7, pace: Double = 1, coachPause: Double = 0) {
         self.style = style
         self.pace = pace
+        self.coachPause = coachPause
         rng = Rng(seed: seed)
     }
 
@@ -58,6 +63,22 @@ struct RevontuletAutoPlay {
             if let l = lift { plan.insert(Step(at: now, input: l.input), at: 0) }
         }
         var out: [RevontuletInput] = []
+        // Embers are tapped by watching them, like a person: a moment after each one flashes
+        // (longer while a coach holds time still, so the film shows it).
+        if e.beat == .flight, let f = e.flight, f.hard, !f.foxOwn {
+            for i in f.emberU.indices where hitsEmber(i, round: e.round) && !emberTapped.contains(i) && f.emberShownAt[i] != nil {
+                let seen = emberSeen[i] ?? now
+                emberSeen[i] = seen
+                let wait = e.slowSince != nil && coachPause > 0 ? 1.2 : (0.22 + 0.12 * Double(i)) * pace
+                if now - seen >= wait {
+                    emberTapped.insert(i)
+                    let p = f.emberPoint(i)
+                    plan.insert(Step(at: now, input: .down(p, radius: nil)), at: 0)
+                    plan.append(Step(at: now + 0.08, input: .up(p)))
+                    plan.sort { $0.at < $1.at }
+                }
+            }
+        }
         while let first = plan.first, first.at <= now {
             plan.removeFirst()
             out.append(first.input)
@@ -81,19 +102,19 @@ struct RevontuletAutoPlay {
         if style == .idle && e.beat != .intro { return [] }
         switch e.beat {
         case .intro:
-            return [Step(at: now + 2.6, input: .start)]
+            return [Step(at: now + 2.6 + coachPause * 0.6, input: .start)]
 
         case .choice:
             let effort = effortFor(round: e.round)
             let target = L.target(round: e.round, effort: effort)
-            let wait: Double = (1.5 + 0.35 * Double(e.round)) * pace
+            let wait: Double = (1.5 + 0.35 * Double(e.round)) * pace + (e.round == 0 ? coachPause : 0)
             let at: Double = t0 + wait + rng.next() * 0.5
             return tap(jitter(target, 6), at: at)
 
         case .trace:
             let arc = e.arc
             var steps: [Step] = []
-            let start = t0 + (0.75 + rng.next() * 0.35) * pace
+            let start = t0 + (0.75 + rng.next() * 0.35) * pace + (e.round == 0 ? coachPause : 0)
             let duration = (1.35 + rng.next() * 0.5 + (style == .easy ? 0.5 : 0)) * max(0.6, min(pace, 2))
             // One lift halfway in the easy game's second round.
             let liftAt: Double? = (style == .easy && e.round == 1) ? 0.52 : nil
@@ -127,7 +148,7 @@ struct RevontuletAutoPlay {
             return steps
 
         case .sling:
-            let start = t0 + (0.55 + rng.next() * 0.3) * pace
+            let start = t0 + (0.55 + rng.next() * 0.3) * pace + (e.round == 0 ? coachPause : 0)
             let from = jitter(L.anchor, 4)
             // Mostly straight down and a little to one side, eased, then a short hold.
             let side = CGFloat(rng.next() - 0.5) * L.maxPull * 0.5
@@ -151,17 +172,14 @@ struct RevontuletAutoPlay {
             return steps
 
         case .flight:
-            guard let f = e.flight, f.hard, !f.foxOwn else { return [] }
-            var steps: [Step] = []
-            for i in f.emberU.indices where hitsEmber(i, round: e.round) {
-                let at = f.launch + f.emberT[i] - RevontuletFlight.emberLead + 0.22 + rng.next() * 0.18 * pace
-                steps += tap(jitter(f.emberPoint(i), 7), at: at)
-            }
-            return steps
+            emberSeen = [:]
+            emberTapped = []
+            return []
 
         case .warmth:
             guard let w = e.warmthAt, e.strokesCounted < RevontuletEngine.strokesWanted else { return [] }
             let start = max(t0, w + RevontuletEngine.strokesFrom) + ((e.strokesCounted == 0 ? 0.5 : 0.75) + rng.next() * 0.3) * pace
+                + (e.strokesCounted == 0 ? coachPause : 0)
             let sq = L.foxSquare(.warm)
             let dx: [CGFloat] = [-0.12, 0.1, -0.01]
             let x = sq.midX + dx[min(e.strokesCounted, 2)] * sq.width
@@ -182,10 +200,9 @@ struct RevontuletAutoPlay {
         case .burst where style == .close:
             return [Step(at: e.beatStart + 0.5, input: .close)]
 
-        case .sleep where style == .mixed || style == .hard:
-            // A tap anywhere on the goodnight ends it at once.
-            let p = CGPoint(x: L.size.width * 0.5, y: L.size.height * 0.4)
-            return tap(p, at: t0 + 1.1)
+        case .sleep:
+            // Presses Continue a moment after it appears.
+            return [Step(at: e.beatStart + RevontuletEngine.asleepAfter + 1.6, input: .finish)]
 
         default:
             return []

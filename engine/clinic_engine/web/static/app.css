@@ -153,6 +153,10 @@ tr.is-no_data td:first-child { box-shadow: inset 4px 0 0 var(--muted); }
 .chart .miss { stroke: var(--muted); stroke-width: 2; }
 .chart .hit { fill: transparent; cursor: pointer; }
 .chart .hit:hover, .chart .hit:focus { fill: transparent; outline: none; }
+.chart.rv { margin: 6px 0 2px; }
+.chart .rv-t { fill: var(--ink); font-size: 12px; font-weight: 700; }
+.chart .rv-thin { stroke: var(--muted); stroke-width: 1; }
+.chart .rv-start { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 5; }
 .chart .cursor { stroke: var(--sun); stroke-width: 1.5; pointer-events: none; }
 .chart .ep { rx: 3; }
 .chart .ep.l-urgent { fill: var(--ember-deep); }
@@ -409,3 +413,5 @@ ul.plain.big li, .d.big { font-size: 14.5px; line-height: 1.45; }
 .rule-add { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; }
 .rule-input { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 13px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; resize: vertical; }
 .rule-input:focus { outline: none; border-color: var(--muted); }
+
+.bp-say.wide, .bp-say.wide p, .bp-say.wide ul { max-width: none; }

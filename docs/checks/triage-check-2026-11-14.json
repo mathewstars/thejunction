@@ -1,0 +1,3448 @@
+{
+ "pictures": 40,
+ "first_seed": 7000,
+ "generated": true,
+ "models": {
+  "level1": "bleeding_edge",
+  "level2": "gemini-3.8-flash"
+ },
+ "worse": {
+  "pairs_read": 40,
+  "pairs_not_read": 0,
+  "rules_level_same": {
+   "flags": 88,
+   "lower_as_asked": 0,
+   "higher_as_asked": 38,
+   "lower_after_floors": 0,
+   "higher_after_floors": 38
+  },
+  "rules_level_raised": {
+   "flags": 19,
+   "lower_as_asked": 0,
+   "higher_as_asked": 17,
+   "lower_after_floors": 0,
+   "higher_after_floors": 17
+  }
+ },
+ "against_rules": {
+  "flags": 107,
+  "raised": 5,
+  "lowered": 13,
+  "held_by_floor": 0,
+  "raised_by_kind": {
+   "deviation": 3,
+   "novelty": 2
+  },
+  "lowered_by_kind": {
+   "slower_reactions": 1,
+   "weak_rounds": 9,
+   "low_notes": 1,
+   "face_flat": 2
+  }
+ },
+ "second_reader": {
+  "answered": 107,
+  "agree": 107,
+  "raise": 0,
+  "lower": 0
+ },
+ "repeat": {
+  "pictures": 40,
+  "flags": 107,
+  "differ_as_asked": 6,
+  "differ_after_floors": 6
+ },
+ "rule": {
+  "pictures_read": 20,
+  "pictures_not_read": 0,
+  "rule_named_on_drop": 20,
+  "drop_set_to": {
+   "watch": 20
+  },
+  "rule_named_on_other_flag": 0,
+  "other_flags": 31,
+  "other_flags_moved_as_asked": 4,
+  "other_flags_moved_after_floors": 4,
+  "moved_up": 2,
+  "moved_down": 2,
+  "moved_onto_rules_level": 3
+ },
+ "readings": [
+  {
+   "seed": 7000,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7001,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7002,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7003,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "raise"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "raise"
+    }
+   }
+  },
+  {
+   "seed": 7004,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7005,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7006,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7007,
+   "as_it_is": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7008,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7009,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7010,
+   "as_it_is": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7011,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7012,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7013,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7014,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7015,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7016,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7017,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7018,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7019,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7020,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7021,
+   "as_it_is": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7022,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7023,
+   "as_it_is": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7024,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7025,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7026,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7027,
+   "as_it_is": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7028,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7029,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7030,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7031,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7032,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7033,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7034,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7035,
+   "as_it_is": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "slower_reactions": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7036,
+   "as_it_is": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "urgent",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "ignored": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "novelty": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "watch",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7037,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "urgent",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7038,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "with_rule": {
+    "deviation": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": true,
+     "first": "watch",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  },
+  {
+   "seed": 7039,
+   "as_it_is": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   },
+   "worse": {
+    "deviation": {
+     "asked": "urgent",
+     "level": "urgent",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "urgent",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    }
+   },
+   "as_it_is_again": {
+    "deviation": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "face_flat": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "low_notes": {
+     "asked": "attention",
+     "level": "attention",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "attention",
+     "second": "agree"
+    },
+    "weak_rounds": {
+     "asked": "watch",
+     "level": "watch",
+     "rules_level": "attention",
+     "rule": false,
+     "first": "watch",
+     "second": "agree"
+    }
+   }
+  }
+ ]
+}

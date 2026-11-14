@@ -35,7 +35,12 @@ struct RevontuletView: View {
     // The screen.
     @State private var line = ""
     @State private var finger: CGPoint?
-    @State private var saidEmbers = false
+    @State private var coach: RevontuletCoachState?
+    /// This flight's embers are being coached (the first hard shot this player has made).
+    @State private var coachingEmbers = false
+    /// The goodnight's Continue button is showing.
+    @State private var continueShown = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.displayScale) private var displayScale
 
@@ -88,7 +93,7 @@ struct RevontuletView: View {
         return ZStack {
             PaintedWorld(scene: .night)
             TimelineView(.animation(minimumInterval: 1.0 / 60, paused: frozenAt != nil)) { _ in
-                let painter = RevontuletPainter(e: e, art: art, now: frozenAt ?? CACurrentMediaTime())
+                let painter = RevontuletPainter(e: e, art: art, now: frozenAt ?? CACurrentMediaTime(), coach: coach, reduceMotion: reduceMotion)
                 ZStack {
                     Canvas { ctx, size in
                         painter.sky(&ctx, size: size)
@@ -103,7 +108,10 @@ struct RevontuletView: View {
                         .position(Self.foxPoint(e))
                         .animation(.spring(response: 0.5, dampingFraction: 0.72), value: Self.foxPlace(e))
                         .animation(.spring(response: 1.1, dampingFraction: 0.9), value: e.beat == .warmth)
-                    Canvas { ctx, size in painter.front(&ctx, size: size) }
+                    Canvas { ctx, size in
+                        painter.front(&ctx, size: size)
+                        painter.coachLayer(&ctx, size: size)
+                    }
                 }
             }
         }
@@ -112,7 +120,11 @@ struct RevontuletView: View {
 
     private func overlay(_ e: RevontuletEngine) -> some View {
         let L = e.layout
-        let lineY: CGFloat = e.beat == .intro ? L.startY - 27 - 30 : L.lineY
+        let lineY: CGFloat = switch e.beat {
+        case .intro: L.startY - 27 - 30
+        case .sleep, .done: L.restLineY
+        default: L.lineY
+        }
         return ZStack {
             if e.beat == .intro {
                 // On the dark glass, where white reads clearly, with room around it.
@@ -127,13 +139,16 @@ struct RevontuletView: View {
                 .shadow(color: Color(red: 0.02, green: 0.05, blue: 0.16).opacity(0.7), radius: 14)
                 .position(x: L.size.width / 2, y: L.wall.minY + L.wall.height * 0.5)
                 .allowsHitTesting(false)
-                .transition(.opacity)
+                .transition(.opacity.animation(.easeOut(duration: 0.35)))
+            }
 
-                Button("Start") { feed(.start, at: CACurrentMediaTime()) }
-                    .buttonStyle(ChunkyButtonStyle())
-                    .padding(.horizontal, 24)
-                    .position(x: L.size.width / 2, y: L.startY)
-                    .transition(.opacity)
+            if let c = coach, c.endedAt == nil {
+                RevontuletCoachBubble(text: c.kind.words)
+                    .position(bubblePoint(c, e))
+                    .allowsHitTesting(false)
+                    .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.94)).animation(.easeOut(duration: 0.3).delay(0.12)),
+                                            removal: .opacity.animation(.easeOut(duration: 0.18))))
+                    .id(c.kind.rawValue + "\(c.ember)")
             }
 
             if !line.isEmpty {
@@ -160,6 +175,16 @@ struct RevontuletView: View {
                     .allowsHitTesting(false)
             }
 
+            // The end beat stays until the player continues: the app's own chunky button.
+            if continueShown, !handedBack {
+                Button("Continue") { continueTapped() }
+                    .buttonStyle(ChunkyButtonStyle())
+                    .padding(.horizontal, 24)
+                    .position(x: L.size.width / 2, y: L.startY)
+                    .transition(.opacity.combined(with: .offset(y: 14)).animation(.easeOut(duration: 0.4)))
+                    .accessibilityLabel("Continue")
+            }
+
             Button { close() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 17, weight: .heavy))
@@ -175,7 +200,8 @@ struct RevontuletView: View {
     private static func foxPlace(_ e: RevontuletEngine) -> RevontuletLayout.FoxPlace {
         switch e.beat {
         case .burst, .celebrate: return .full
-        case .warmth, .sleep, .done: return .warm
+        case .warmth: return .warm
+        case .sleep, .done: return .rest
         default: return .play
         }
     }
@@ -184,7 +210,7 @@ struct RevontuletView: View {
         switch foxPlace(e) {
         case .play: return e.layout.playFoxScale
         case .full: return 1
-        case .warm: return e.layout.warmFoxScale
+        case .warm, .rest: return e.layout.warmFoxScale
         }
     }
 
@@ -193,7 +219,30 @@ struct RevontuletView: View {
         case .play: return e.layout.playFoxCenter
         case .full: return e.layout.foxCenter
         case .warm: return e.layout.warmFoxCenter
+        case .rest: return e.layout.restFoxCenter
         }
+    }
+
+    /// Beside the spotlight, never over it, the fox or the words.
+    private func bubblePoint(_ c: RevontuletCoachState, _ e: RevontuletEngine) -> CGPoint {
+        let L = e.layout
+        let width = CGFloat(c.kind.words.count) * 9 + 40
+        var p: CGPoint
+        switch c.kind {
+        case .start: p = CGPoint(x: L.anchor.x, y: L.anchor.y - 92)
+        case .choice: p = CGPoint(x: L.size.width / 2, y: L.wall.minY + L.wall.height * 0.55)
+        case .trace: p = CGPoint(x: L.anchor.x, y: L.anchor.y - L.arcRadius - 62)
+        case .sling: p = CGPoint(x: L.anchor.x, y: L.anchor.y - 84)
+        case .embers:
+            let q = e.flight.flatMap { f in f.emberU.indices.contains(c.ember) ? f.emberPoint(c.ember) : nil } ?? L.anchor
+            p = CGPoint(x: q.x, y: q.y + 74)
+        case .stroke:
+            let sq = L.foxSquare(.warm)
+            p = CGPoint(x: sq.midX, y: sq.minY - 34)
+        }
+        p.x = min(max(p.x, width / 2 + 14), L.size.width - width / 2 - 14)
+        p.y = max(p.y, L.safeTop + 74)
+        return p
     }
 
     private func act(_ e: RevontuletEngine) -> RevontuletFox.Act {
@@ -208,6 +257,8 @@ struct RevontuletView: View {
 
     private func setUp(_ L: RevontuletLayout) {
         guard engine == nil, L.size.width > 10, L.size.height > 10 else { return }
+        let began = CACurrentMediaTime()
+        defer { print("revontulet: set up in \(Int((CACurrentMediaTime() - began) * 1000)) ms") }
         if ProcessInfo.processInfo.arguments.contains("-revontuletSelfTest") {
             let report = RevontuletSelfTest.run(layout: L)
             for f in report.failures.prefix(40) { print("revontulet selftest FAIL \(f)") }
@@ -220,7 +271,10 @@ struct RevontuletView: View {
         }
         engine = RevontuletEngine(layout: L)
         art = RevontuletArt(layout: L)
-        box.auto = RevontuletAutoPlay.fromArguments().map { RevontuletAutoPlay(style: $0) }
+        box.auto = RevontuletAutoPlay.fromArguments().map {
+            RevontuletAutoPlay(style: $0, coachPause: RevontuletCoachMemory.forced ? 2.2 : 0)
+        }
+        showCoach(.start, at: CACurrentMediaTime() + 0.6)
     }
 
     /// `-revontuletFreeze <beat>`: play the game on a made-up clock with the pretend finger
@@ -244,7 +298,24 @@ struct RevontuletView: View {
         frozenAt = now
         finger = auto.finger
         react(all, e, now: now)
+        continueShown = e.beat == .sleep && e.completed
+        if RevontuletCoachMemory.forced, let k = Self.coachFor(beat) {
+            coach = RevontuletCoachState(kind: k, since: now - 1.2)
+        }
         steerFox(e, now: now, force: true)
+    }
+
+    /// For coach stills (`-revontuletCoach -revontuletFreeze <beat>`).
+    private static func coachFor(_ b: RevontuletBeat) -> RevontuletCoachKind? {
+        switch b {
+        case .intro: return .start
+        case .choice: return .choice
+        case .trace: return .trace
+        case .sling: return .sling
+        case .flight: return .embers
+        case .warmth: return .stroke
+        default: return nil
+        }
     }
 
     private static func reached(_ b: RevontuletBeat, _ e: RevontuletEngine, _ now: Double) -> Bool {
@@ -252,8 +323,8 @@ struct RevontuletView: View {
         switch b {
         case .intro: return true
         case .choice: return e.beat == .choice && into > 1.3
-        case .trace: return e.beat == .trace && e.progress > 0.6
-        case .sling: return e.beat == .sling && hypot(e.pull.dx, e.pull.dy) > e.layout.maxPull * 0.8
+        case .trace: return e.beat == .trace && (RevontuletCoachMemory.forced ? into > 0.6 : e.progress > 0.6)
+        case .sling: return e.beat == .sling && (RevontuletCoachMemory.forced ? into > 0.4 : hypot(e.pull.dx, e.pull.dy) > e.layout.maxPull * 0.8)
         case .flight: return e.beat == .flight && (e.flight.map { now - $0.launch > 1.05 } ?? false)
         case .impact: return e.beat == .impact && into > 0.28
         case .burst: return e.beat == .burst && into > 0.7
@@ -286,12 +357,14 @@ struct RevontuletView: View {
                     return
                 }
                 events += e.handle(input, at: now)
+                if case .down = input { touchedDuringCoach(&e, at: now) }
             }
             if box.auto!.finger != finger { finger = box.auto!.finger }
         }
         events += e.tick(now)
         if e != engine { engine = e }
         if !events.isEmpty { react(events, e, now: now) }
+        tendCoach(now: now)
         steerFox(e, now: now)
         // Snow right under a stroking finger comes off at once.
         if e.beat == .warmth, e.stroking, let f = e.finger, let art {
@@ -306,6 +379,7 @@ struct RevontuletView: View {
         guard var e = engine, frozenAt == nil, !handedBack else { return }
         if box.auto != nil, input != .start { return }
         let events = e.handle(input, at: time)
+        if case .down = input { touchedDuringCoach(&e, at: time) }
         if e != engine { engine = e }
         if !events.isEmpty { react(events, e, now: time) }
     }
@@ -317,13 +391,18 @@ struct RevontuletView: View {
             switch event {
             case .started:
                 emit(.revontuletStarted)
+                RevontuletCoachMemory.learned(.start)
+                endCoach(at: now)
             case let .choiceShown(r):
-                say(r == 0 ? "Which crack shall we try?" : nil)
+                say(nil)
                 if r > 0 { foxReact(.curious) }
+                if r == 0 { showCoach(.choice, at: now + 0.35) }
             case let .chose(r, effort):
                 if !quiet { feel.choose(hard: effort == .hard) }
                 emit(.effortChosen(round: r + 1, effort: effort == .hard ? .hard : .easy))
-                say(r == 0 ? "Trace the light" : nil)
+                RevontuletCoachMemory.learned(.choice)
+                endCoach(at: now)
+                if r == 0, showCoach(.trace, at: e.beatStart + 0.12) { engine?.markCoached() }
             case .arcShown:
                 break
             case let .traceStarted(r):
@@ -332,36 +411,46 @@ struct RevontuletView: View {
                 if !quiet { feel.traceStep(s) }
             case let .traceEnded(r):
                 emit(.traceEnded(round: r + 1))
-                say(r == 0 ? "Pull it back and let go" : nil)
+                RevontuletCoachMemory.learned(.trace)
+                endCoach(at: now)
                 foxReact(.happy)
+                if r == 0 { showCoach(.sling, at: now + 0.2) }
             case .pullStarted:
                 if !quiet { feel.pull(0) }
+                foxReact(.listening)
             case let .pull(level):
                 if !quiet { feel.pull(level) }
             case .pullLetGo:
                 if !quiet { feel.pullEnded() }
             case let .released(r, level):
                 emit(.slingReleased(round: r + 1))
+                RevontuletCoachMemory.learned(.sling)
+                endCoach(at: now)
+                coachingEmbers = e.flight?.hard == true && RevontuletCoachMemory.needs(.embers)
                 if let f = e.flight, !quiet {
                     feel.snap(level)
+                    // Coached embers hold time still, so their ticks play when they flash.
                     feel.flight(kind: f.hard ? 1 : 0, launch: f.launch,
-                                emberShows: f.hard ? f.emberT.map { f.launch + $0 - RevontuletFlight.emberLead } : [])
+                                emberShows: f.hard && !coachingEmbers ? f.emberT.map { f.launch + $0 - RevontuletFlight.emberLead } : [])
                 }
-                if e.flight?.hard == true, !saidEmbers {
-                    saidEmbers = true
-                    say("Tap the embers!")
-                } else {
-                    say(nil)
-                }
+                say(nil)
             case .foxLaunched:
                 if !quiet { feel.flight(kind: 2, launch: now, emberShows: []) }
                 say("Let me help!")
                 foxReact(.proud)
-            case .emberShown:
-                break
-            case let .emberHit(_, ms):
+            case let .emberShown(i):
+                if coachingEmbers {
+                    if !quiet { feel.emberShown(i) }
+                    engine?.slowFlight(at: now)
+                    showCoach(.embers, at: now, ember: i)
+                }
+            case let .emberHit(i, ms):
                 if !quiet { feel.emberHit() }
                 emit(.emberHit(reactionMs: ms))
+                if coachingEmbers, coach?.kind == .embers, coach?.ember == i {
+                    engine?.resumeFlight(at: now)
+                    endCoach(at: now)
+                }
             case .emberMissed:
                 emit(.emberMissed)
             case let .landing(at, _, hard, hits, _, ribbon, burstAt):
@@ -369,6 +458,10 @@ struct RevontuletView: View {
             case let .impact(r, _, breaking):
                 art?.sync(e)
                 say(nil)
+                if coachingEmbers {
+                    RevontuletCoachMemory.learned(.embers)
+                    coachingEmbers = false
+                }
                 emit(.iceImpact(round: r + 1))
                 foxReact(.surprised)
                 if !breaking, !quiet {
@@ -401,7 +494,8 @@ struct RevontuletView: View {
                     }
                 }
             case .warmthBegan:
-                say("Brush the snow off me?")
+                say(nil)
+                showCoach(.stroke, at: now + RevontuletEngine.strokesFrom)
             case let .strokeBegan(n):
                 petTick += 1
                 if n >= 2 { foxReact(n == 2 ? .proud : .happy) }
@@ -410,6 +504,7 @@ struct RevontuletView: View {
             case let .strokeEnded(n, counted):
                 if !quiet { feel.purrEnded() }
                 if counted {
+                    RevontuletCoachMemory.learned(.stroke)
                     art?.sync(e)
                     emit(.foxStroked(number: n))
                     if !quiet { feel.snowOff() }
@@ -419,15 +514,62 @@ struct RevontuletView: View {
                 if !quiet { feel.sleep() }
                 yawnTick += 1
                 say("Thank you. Goodnight.")
+            case .asleep:
+                withAnimation(.easeOut(duration: 0.4)) { continueShown = true }
             case let .ended(completed):
                 emit(.revontuletEnded(finished: completed))
-                if completed, !quiet {
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(0.4))
-                        if let e = engine { handBack(e) }
-                    }
-                }
+                // Continue, or the safety net: hand back at once (closing hands back itself).
+                if completed, !quiet, let e = engine { handBack(e) }
             }
+        }
+    }
+
+    // MARK: The first-time coach
+
+    /// Shows the coach for a move the player has not done yet. True when it is showing.
+    @discardableResult
+    private func showCoach(_ k: RevontuletCoachKind, at time: Double, ember: Int = 0) -> Bool {
+        guard frozenAt == nil, RevontuletCoachMemory.needs(k) else { return false }
+        coach = RevontuletCoachState(kind: k, since: time, ember: ember)
+        if !quiet {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(max(0, time - CACurrentMediaTime())))
+                if coach?.kind == k, coach?.endedAt == nil { feel.coachTick() }
+            }
+        }
+        return true
+    }
+
+    private func endCoach(at time: Double) {
+        guard var c = coach, c.endedAt == nil else { return }
+        c.endedAt = max(time, c.since)
+        coach = c
+    }
+
+    /// A finger landed: the coach melts away (and time runs again for a held ember).
+    private func touchedDuringCoach(_ e: inout RevontuletEngine, at time: Double) {
+        guard let c = coach, c.endedAt == nil, time >= c.since else { return }
+        if c.kind == .embers { e.resumeFlight(at: time) }
+        endCoach(at: time)
+    }
+
+    /// Lets go of a coach whose beat has passed, and of a held ember after a while.
+    private func tendCoach(now: Double) {
+        guard let c = coach, let e = engine else { return }
+        if let end = c.endedAt, now - end > 0.3 { coach = nil; return }
+        guard c.endedAt == nil else { return }
+        let beat: RevontuletBeat? = switch c.kind {
+        case .start: .intro
+        case .choice: .choice
+        case .trace: .trace
+        case .sling: .sling
+        case .embers: .flight
+        case .stroke: .warmth
+        }
+        if let b = beat, e.beat != b, !(c.kind == .trace && e.beat == .choice) { endCoach(at: now); return }
+        if c.kind == .embers, now - c.since > (c.ember == 0 ? 2.5 : 1.5) {
+            engine?.resumeFlight(at: now)
+            endCoach(at: now)
         }
     }
 
@@ -500,6 +642,14 @@ struct RevontuletView: View {
             react(events, e, now: CACurrentMediaTime())
         }
         handBack(e)
+    }
+
+    /// Continue on the goodnight: the finished game goes back, once.
+    private func continueTapped() {
+        guard !handedBack, var e = engine else { return }
+        let events = e.handle(.finish, at: CACurrentMediaTime())
+        engine = e
+        react(events, e, now: CACurrentMediaTime())
     }
 
     private func interrupt() {

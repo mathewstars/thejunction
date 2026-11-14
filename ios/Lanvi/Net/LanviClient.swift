@@ -42,7 +42,14 @@ actor LanviClient: LanviBackend {
     private let base: URL
     private let pairingCode: String?
     private let session: URLSession
+    /// For the big bodies (a record with face frames is 0.4 to 3 MB): the 6 s of the small
+    /// calls is not enough for that upload on a slow link, and a call that times out is kept
+    /// in the outbox and fails the same way on every open, so the frames never arrive.
+    private let uploadSession: URLSession
     private var token: String?
+
+    /// Bodies above this go through `uploadSession`.
+    static let bigBodyBytes = 64 * 1024
 
     init(base: URL, pairingCode: String?) {
         self.base = base
@@ -51,6 +58,11 @@ actor LanviClient: LanviBackend {
         cfg.timeoutIntervalForRequest = 6
         cfg.waitsForConnectivity = false
         self.session = URLSession(configuration: cfg)
+        let big = URLSessionConfiguration.ephemeral
+        big.timeoutIntervalForRequest = 90
+        big.timeoutIntervalForResource = 180
+        big.waitsForConnectivity = false
+        self.uploadSession = URLSession(configuration: big)
         self.token = TokenKeychain.token(for: base)
     }
 
@@ -83,9 +95,38 @@ actor LanviClient: LanviBackend {
         do {
             return try await call("POST", "/v1/activities", body: first)
         } catch {
-            guard let plain = RevontuletSendGate.shared.retry(after: error, sent: first) else { throw error }
-            return try await call("POST", "/v1/activities", body: plain)
+            guard let plain = RevontuletSendGate.shared.retry(after: error, sent: first) else {
+                return try await resendWithoutFace(after: error, sent: first)
+            }
+            do {
+                return try await call("POST", "/v1/activities", body: plain)
+            } catch {
+                return try await resendWithoutFace(after: error, sent: plain)
+            }
         }
+    }
+
+    /// The face frames are the big, optional part of a record. When the server refuses a
+    /// record that carries them (413 too large, 422 a shape it does not take), the record
+    /// goes once more without them, same id, so the game itself is never lost and the
+    /// reason is in the log. Any other error is passed on as it is.
+    private func resendWithoutFace(after error: Error, sent: API.ActivityIn) async throws -> API.ActivityOut {
+        guard let plain = Self.withoutFaceFallback(after: error, sent: sent) else { throw error }
+        Self.log("activities: \(sent.type.rawValue) \(sent.id) refused with face_raw (\(error)); sending it again without the frames")
+        return try await call("POST", "/v1/activities", body: plain)
+    }
+
+    /// The record to send again without the frames, or nil when the failure had nothing to do
+    /// with them (no frames, or a temporary error that keeps the record in the outbox).
+    static func withoutFaceFallback(after error: Error, sent: API.ActivityIn) -> API.ActivityIn? {
+        guard sent.faceRaw != nil, case APIError.rejected = error else { return nil }
+        return sent.withoutFaceRaw
+    }
+
+    static func log(_ s: String) {
+        #if DEBUG
+        print("lanvi-net: \(s)")
+        #endif
     }
 
     func checkinOptions() async throws -> API.CheckinOptionsOut {
@@ -146,21 +187,27 @@ actor LanviClient: LanviBackend {
         var req = URLRequest(url: base.appendingPathComponent(path))
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Accept")
+        var bodyBytes = 0
         if let body {
-            req.httpBody = try API.encoder.encode(body)
+            let encoded = try API.encoder.encode(body)
+            bodyBytes = encoded.count
+            req.httpBody = encoded
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
         if auth, let token { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
 
         let data: Data
         let response: URLResponse
+        let big = bodyBytes > Self.bigBodyBytes
         do {
-            (data, response) = try await session.data(for: req)
+            (data, response) = try await (big ? uploadSession : session).data(for: req)
         } catch {
+            if big { Self.log("\(method) \(path): \(bodyBytes / 1024) KB did not get through (\(error.localizedDescription))") }
             throw APIError.offline
         }
         guard let http = response as? HTTPURLResponse else { throw APIError.offline }
         guard (200..<300).contains(http.statusCode) else {
+            if big { Self.log("\(method) \(path): \(bodyBytes / 1024) KB answered \(http.statusCode)") }
             throw Self.error(status: http.statusCode, data: data)
         }
         do {

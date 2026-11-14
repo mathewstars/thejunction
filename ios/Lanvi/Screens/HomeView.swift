@@ -271,11 +271,14 @@ struct HomeView: View {
         case .game(let k):
             mainRow(TodayCopy.button(k), short: TodayCopy.shortButton(k)) { open(.activity(k)) }
         case .realWorld(let s):
-            HStack(spacing: 16) {
+            // The same row as always (More and the chat at the ends), the two answers between.
+            HStack(spacing: 10) {
+                moreButton
                 Button("I did it") { Task { await store.answerSuggestion(s, didIt: true) } }
-                    .buttonStyle(HomePrimaryStyle())
+                    .buttonStyle(HomePrimaryStyle(padding: 8))
                 Button("Not today") { Task { await store.answerSuggestion(s, didIt: false) } }
-                    .buttonStyle(HomePrimaryStyle(fill: .white, edge: Theme.line, text: Theme.brand))
+                    .buttonStyle(HomePrimaryStyle(fill: .white, edge: Theme.line, text: Theme.brand, padding: 8))
+                chatButton
             }
         case .done:
             // Done for today is never a dead end: the same row as before, and the

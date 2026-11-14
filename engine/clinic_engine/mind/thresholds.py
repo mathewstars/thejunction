@@ -59,7 +59,24 @@ class Thresholds:
     # feature, robust median and MAD over the person's earlier sessions.
     activity_baseline_min: int = 5  # earlier sessions of the same type before any z
     activity_baseline_max: int = 20
+    # Revontulet's own normal (shown to the clinician only). Stricter than the
+    # other games because a game gives few numbers: 8 earlier games before any
+    # comparison, and 2.5 either way before the page calls a game unusual. Set
+    # with revontulet_check on generated games, at up to three times the
+    # example's game-to-game spread: with 2.5 an unchanged person gets a label on
+    # 0 to 10% of games against one reference, 0 to 13% against either (it was
+    # 15 to 17% against one at 2.0 once games vary twice as much,
+    # and 37% with 5 games, 1.5 and a label on time to choose as well).
+    revontulet_baseline_min: int = 8
+    revontulet_unusual_z: float = 2.5
+    # The fixed reference: the person's start, games 3 to 12 (the first two are practice).
+    revontulet_start_from: int = 2
+    revontulet_start_to: int = 12
     activity_min_reactions: int = 5  # a focus session needs this many reaction times
+    # Revontulet gives few: three rounds, two embers on a hard round, so at most six
+    # ember taps a game, and none on an easy-only game. One hard round with both
+    # embers lit is enough for a median; the spread still needs four.
+    revontulet_min_reactions: int = 2
     reaction_min_ms: int = 120  # faster taps are anticipations; left out of the median
     # A face summary enters a baseline only when tracking was good enough.
     # A low-quality summary is stored and shown, never used.
@@ -313,6 +330,9 @@ ROUND_MIN_SCALE = {
 ACTIVITY_MIN_SCALE = {
     "median_reaction_ms": 40.0, "reaction_spread_ms": 25.0, "error_rate": 0.05,
     "time_played_s": 5.0, "good_things": 0.5,
+    # Revontulet: with three rounds one choice is a third; the floor keeps a single
+    # different choice inside the usual range (0.33 / 0.25 = 1.3) and two outside it.
+    "hard_share": 0.25, "choice_ms": 150.0, "trace_speed_cm_s": 0.15, "stroke_speed_cm_s": 0.2,
     "smile_rate_per_min": 0.5, "smile_intensity": 0.05, "facial_activity": 0.05,
     "blink_rate_per_min": 2.0, "look_down_share": 0.05, "head_tilt_deg": 2.0,
     "smile_time_share": 0.03, "eye_smile_share": 0.05, "smile_response_share": 0.1,
