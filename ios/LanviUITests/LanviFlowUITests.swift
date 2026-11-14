@@ -87,7 +87,7 @@ final class LanviFlowUITests: XCTestCase {
 
         tap(app.buttons, "home.speech", "home.bubble")
         pause(1.8)
-        let field = app.textFields["Write to Lanvi"].firstMatch
+        let field = app.textFields.matching(NSPredicate(format: "label == %@ OR placeholderValue == %@", "Write to Lanvi", "Write to Lanvi")).firstMatch
         if field.waitForExistence(timeout: 4) {
             event("chat.field")
             field.tap()
@@ -166,7 +166,7 @@ final class LanviFlowUITests: XCTestCase {
     /// Run with the on-screen keyboard on (simulator: ConnectHardwareKeyboard off).
     func test4ChatKeyboard() {
         launch(["-senseScreen", "none", "-screen", "home", "-demoOpen", "chat"])
-        let field = app.textFields["Write to Lanvi"].firstMatch
+        let field = app.textFields.matching(NSPredicate(format: "label == %@ OR placeholderValue == %@", "Write to Lanvi", "Write to Lanvi")).firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 6))
         let kb = app.keyboards.firstMatch
         func up() { field.tap(); XCTAssertTrue(kb.waitForExistence(timeout: 3), "keyboard up") }
