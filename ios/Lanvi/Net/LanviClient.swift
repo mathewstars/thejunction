@@ -48,7 +48,7 @@ actor LanviClient: LanviBackend {
         self.base = base
         self.pairingCode = pairingCode
         let cfg = URLSessionConfiguration.ephemeral
-        cfg.timeoutIntervalForRequest = 12
+        cfg.timeoutIntervalForRequest = 6
         cfg.waitsForConnectivity = false
         self.session = URLSession(configuration: cfg)
         self.token = TokenKeychain.token(for: base)

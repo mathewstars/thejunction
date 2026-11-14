@@ -150,7 +150,7 @@ at(75.5, lambda d: still("chart_end.png", d, z0=1.0, z1=1.07, fx=1.0, fy=0.5, ta
 at(77.1, lambda d: clip(K("k5"), d, ss=0.2, zoom=1.9, fx=0.12, fy=0.8))                                   # the boots alone
 at(78.6, lambda d: clip(K("k4"), d, ss=0.2, cap=("cap_help.png", 2.3)))                                   # "At one a.m. she writes: I need help."
 at(83.5, lambda d: windows(K("k7"), d, [("w_tg.png", 0.3, d + 0.3)], ss=0.4))                             # "Her words go straight to her clinic": the real alert
-at(87.1, lambda d: windows(K("k8"), d, [("w_anna.png", 0.5, 4.6)], tag="tag_morning.png", dim=0.0, fout=0.9))       # the nurse calls; her profile on the clinician page comes up over the morning
+at(87.1, lambda d: windows(K("k8"), d, [("w_anna.png", 0.5, 4.6)], dim=0.0, fout=0.9))       # the nurse calls; her profile on the clinician page comes up over the morning
 # 7 the name and the motto: spoken, and on screen
 at(98.6, lambda d: card("c_brand6.png", d, fade=0.8))
 END = 108.6
@@ -172,8 +172,25 @@ for i, (t, fn) in enumerate(T):
 open("list6.txt", "w").write("".join(f"file 'seg6/{i:03d}.mp4'\n" for i in range(1, n[0] + 1)))
 run(["-f", "concat", "-safe", "0", "-i", "list6.txt", "-c", "copy", "silent6.mp4"])
 FOX, BRAND = T[5][0], T[-1][0]
-fc = (f"[1:v]format=rgba,fade=t=in:st={FOX}:d=0.6:alpha=1,fade=t=out:st={BRAND - 0.6}:d=0.6:alpha=1[lg];"
-      f"[0:v][lg]overlay=0:0:shortest=0[v1];[v1]fade=t=out:st={END - 1.2}:d=1.2[v];[2:a]afade=t=out:st={END - 1.2}:d=1.2,apad=whole_dur={END}[a]")
-run(["-i", "silent6.mp4", "-loop", "1", "-t", str(END), "-i", "logo_corner.png", "-i", "track6.m4a", "-filter_complex", fc,
-     "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-t", str(END), "film6.mp4"])
+# Subtitles: every spoken line, at the times of the take itself. Lines that a card already shows in full, the big
+# "I need help." caption and the closing frame (which carries the motto) are not doubled.
+SUBS = [
+ (0.6, 2.9, "The clinic door closes behind Anna."), (3.2, 6.0, "Her treatment for depression is over."), (6.9, 9.9, "The next appointment is six weeks away."),
+ (11.8, 14.4, "On the way home, she finds him."), (14.4, 17.2, "A fox cub, alone in the snow."), (18.1, 20.0, "She takes him home."), (20.7, 23.0, "He lives in her phone now."),
+ (24.5, 27.6, "Every day she does one small thing for him."), (28.3, 31.1, "Some days, she would stay in bed."), (31.5, 33.9, "For him, she gets up."),
+ (42.5, 44.9, "Her reactions in his game."), (45.6, 48.9, "How her face moves when she breathes with him."), (49.2, 50.6, "Her steps."),
+ (60.8, 64.2, "Every week, the clinic\u2019s questionnaire."), (64.6, 70.8, "In this example, when her score climbs, the other lines fall."), (71.4, 74.4, "That is the pattern we would look for."),
+ (75.5, 77.4, "Then, November."), (78.3, 80.6, "At one a.m. she writes:"), (83.5, 86.4, "Her words go straight to her clinic."),
+ (87.1, 91.0, "The next morning, her nurse calls."), (91.7, 93.5, "\u201cAnna, I read your note.\u201d"), (94.2, 95.9, "\u201cI\u2019m here.\u201d"),
+]
+os.makedirs("subs", exist_ok=True); SF = ImageFont.truetype(F, 30)
+ins = ["-i", "silent6.mp4", "-loop", "1", "-t", str(END), "-i", "logo_corner.png", "-i", "track6.m4a"]
+fc = (f"[1:v]format=rgba,fade=t=in:st={FOX}:d=0.6:alpha=1,fade=t=out:st={BRAND - 0.6}:d=0.6:alpha=1[lg];[0:v][lg]overlay=0:0:shortest=0[s0];")
+for i, (a, b, txt) in enumerate(SUBS):
+    im = Image.new("RGBA", (1280, 720), (0, 0, 0, 0)); g = ImageDraw.Draw(im); w = g.textlength(txt, font=SF); x = (1280 - w) / 2
+    g.rounded_rectangle((x - 18, 664, x + w + 18, 710), 10, fill=(6, 10, 16, 215)); g.text((x, 670), txt, font=SF, fill=(255, 255, 255, 255)); im.save(f"subs/{i:02d}.png")
+    ins += ["-loop", "1", "-t", str(END), "-i", f"subs/{i:02d}.png"]
+    fc += f"[s{i}][{i+3}:v]overlay=0:0:enable='between(t,{a},{b})'[s{i+1}];"
+fc += f"[s{len(SUBS)}]fade=t=out:st={END - 1.2}:d=1.2[v];[2:a]afade=t=out:st={END - 1.2}:d=1.2,apad=whole_dur={END}[a]"
+run(ins + ["-filter_complex", fc, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-t", str(END), "film6.mp4"])
 print(round(dur_of("film6.mp4"), 2), "s,", n[0], "shots, picture", round(dur_of("silent6.mp4"), 2))
