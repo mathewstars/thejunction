@@ -185,7 +185,15 @@ final class LanviFlowUITests: XCTestCase {
             XCTAssertTrue(kb.waitForExistence(timeout: 3), "keyboard up before tap at \(y)")
             pause(0.8)
             let before = firstMessage.frame.minY
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.62, dy: y)).tap()
+            // With the keyboard up, the screen below the text box is the keyboard
+            // itself: the heights are taken within the visible chat, from the top
+            // of the screen to just above the text box.
+            let screenH = app.frame.height
+            let visible = field.frame.minY - 14
+            let point = app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: app.frame.width * 0.62, dy: visible * y))
+            _ = screenH
+            point.tap()
             let gone = NSPredicate(format: "exists == false")
             let ok = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: gone, object: kb)], timeout: 1.5)
             XCTAssertEqual(ok, .completed, "one tap at \(Int(y * 100))% puts the keyboard away")
