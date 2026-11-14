@@ -517,7 +517,9 @@ def escalate(items: list[dict], view: View, why: dict[str, str] | None = None) -
       the deviation open one low day earlier (see deviation_need); they never
       open a deviation alone.
     - asked_for_help is always "urgent".
-    Levels never go down while an item is held.
+    These rules never lower a level while an item is held. With
+    TRIAGE_MODE=models the two model levels can, within the floors in
+    mind/triage.py.
 
     `why`, when given, receives {item_id: rule code} naming the rule that set
     each level (for the decision trace; it never changes the result).
