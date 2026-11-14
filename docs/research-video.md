@@ -2,7 +2,26 @@
 
 A short second video that explains only the research idea: can a phone notice when someone is getting worse again? It is for the research track and for anyone who has never heard of a PHQ-9. The main two-minute pitch video is a different piece and is not covered here.
 
-Status: a draft script and shot list. Nothing has been generated or recorded yet.
+Status on Saturday 14 November, evening: the plan below was built once (two versions) and judged too slow. The current cut is **the rescue film**, described in the next section; the older plan is kept below it for the shot prompts and the wording rules, which still hold.
+
+## The rescue film (current cut)
+
+One story, under two minutes, cut fast: the clinic door closes behind Anna; on the way home she finds an abandoned Arctic fox kit and takes him in; every day she does one small thing for him; what she does not know is that he keeps watch over her (steps, smiles, reactions, numbers only, beside the clinic's weekly score); in November the lines turn and at one at night she writes "I need help"; her clinician's phone lights up; the honest close (Anna is an example, nobody knows yet, the study we want to run); last line: "She thought she was saving a fox. He kept the light on for her."
+
+How it is made, so anyone can rebuild it (`video/`):
+
+| File | Does |
+|---|---|
+| `video/build.py` | The shot list, keyed to times on the soundtrack. Uses a generated clip where one exists and otherwise the still with a slow move, moves every cut onto a beat, checks each shot's length, and joins picture and sound. |
+| `video/beats.py` | Finds the beats of the soundtrack (`beats.json`). |
+| `video/chart.py` | Draws the chart that builds itself, from the example patient's series as the server returns it (`anna.json`). |
+| `video/track.json` | The narration with the time of each sentence. |
+
+Not in the repository, because they are large or generated: the stills and clips (Higgsfield: stills first, then each still turned into a 5-second clip, 720p), and the soundtrack (Suno Speech, one take with voice and music; long pauses shortened and the whole take played 1.3 times faster). `build.py` expects them beside it in `stills/`, `clips/` and `track.m4a`, and the earlier clips and overlays one folder up.
+
+Rules kept from the first plan: generated footage only tells the story and is labelled "Illustrative footage, generated"; every chart and screen is real and labelled "Example data"; no claim that the phone detects or predicts anything. In the app the fox is rescued once and never suffers because of the person (`docs/game-design-rescue.md`).
+
+Open before it is final: someone has to listen to the soundtrack (the joins where pauses were shortened, and whether "Anna" is said clearly), and the clips can be rendered again at a higher quality once the cut is approved.
 
 ## What it must do
 
