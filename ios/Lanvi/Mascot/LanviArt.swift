@@ -57,13 +57,13 @@ enum LanviArt {
     /// Depth layers cut from a part (face markings, chest bib, bands of the tail and
     /// ears): where each sits in its part's picture, as shares (x, y, width, height).
     static let layer: [String: CGRect] = [
-        "face-patch-l": CGRect(x: 0.06150, y: 0.23899, width: 0.46740, height: 0.35247),
-        "face-patch-r": CGRect(x: 0.47355, y: 0.24032, width: 0.46617, height: 0.35113),
+        "face-patch-l": CGRect(x: 0.06150, y: 0.21362, width: 0.50185, height: 0.37784),
+        "face-patch-r": CGRect(x: 0.43911, y: 0.21362, width: 0.50062, height: 0.37784),
         "face-brow-l": CGRect(x: 0.28659, y: 0.20961, width: 0.11685, height: 0.08678),
         "face-brow-r": CGRect(x: 0.60886, y: 0.20961, width: 0.11439, height: 0.08812),
         "face-nose": CGRect(x: 0.42681, y: 0.50601, width: 0.14883, height: 0.12150),
         "body-bib": CGRect(x: 0.24533, y: 0.14449, width: 0.50000, height: 0.48927),
-        "head-base-l": CGRect(x: 0.00369, y: 0.00401, width: 0.53998, height: 0.85714),
+        "head-base-l": CGRect(x: 0.00369, y: 0.00401, width: 0.61747, height: 0.85714),
         "head-base-r": CGRect(x: 0.46494, y: 0.00401, width: 0.53137, height: 0.85714),
         "eye-white-l": CGRect(x: 0.01523, y: 0.01571, width: 0.90863, height: 0.96859),
         "eye-iris-l": CGRect(x: 0.27919, y: 0.15707, width: 0.68528, height: 0.78534),
