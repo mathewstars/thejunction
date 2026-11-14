@@ -843,7 +843,9 @@
     c.appendChild(svg("text", { class: "lane", x: L - 8, y: lane(1) + 17, "text-anchor": "end" }, "Model"));
     codeBars.forEach((b) => bar("code", b.a, b.b, 0, "Code: smile, " + span(b) + (b.missed ? " (the model did not report it)" : "")));
     f.smiles.forEach((b) => bar("same", b.start_s, b.end_s, 1, "Model: smile, " + span(b) + ". Code found the same smile" + (b.corrected && b.corrected.length ? "; code corrected " + b.corrected.map((w) => words(w).toLowerCase()).join(" and ") : "") + "."));
-    f.faint_smiles.forEach((b) => bar("faint", b.start_s, b.end_s, 1, b.status === "brief"
+    f.faint_smiles.forEach((b) => bar("faint", b.start_s, b.end_s, 1, b.status === "inside_long"
+      ? "Model: smile, " + span(b) + ", peak " + num(b.peak, 2) + ". The fixed rule counted a far longer stretch here as one smile; code confirmed a clear rise and return inside it."
+      : b.status === "brief"
       ? "Model: brief smile, " + span(b) + ". Peak " + num(b.peak, 2) + ": above the fixed rule's level, but shorter than the rule's minimum length. Code confirmed the rise in the numbers."
       : "Model: faint smile, " + span(b) + ". Peak " + num(b.peak, 2) + ", under the fixed rule; it rises " + num(b.rise, 2) + " above the resting level around it, and code confirmed that rise in the numbers."));
     dropped.forEach((b) => bar("drop", b.start_s, b.end_s, 1, "Model: reported a smile, " + span(b) + ". Dropped by code: " + words(b.reason).toLowerCase() + "."));
@@ -853,6 +855,7 @@
     const lines = [el("p", { class: "readout" }, el("b", null, model), " reported " + n(ag.smiles_reported || 0, "smile", "smiles") + ". Code's fixed rule found " + n(ag.smiles_code || 0, "smile", "smiles") + "; " + (ag.smiles_matched || 0) + " are the same.")];
     if (ag.smiles_faint) lines.push(el("p", { class: "readout fr-faint" }, el("b", null, n(ag.smiles_faint, "faint smile", "faint smiles")), " reported by the model only: under the fixed rule, above this person's own resting level, and code confirmed the rise in the numbers."));
     if (ag.smiles_brief) lines.push(el("p", { class: "readout fr-faint" }, el("b", null, n(ag.smiles_brief, "brief smile", "brief smiles")), " reported by the model only: too short for the fixed rule's minimum length; code confirmed the rise in the numbers."));
+    if (ag.smiles_inside_long) lines.push(el("p", { class: "readout fr-faint" }, el("b", null, n(ag.smiles_inside_long, "smile", "smiles")), " reported by the model inside a far longer stretch that the fixed rule counted as one smile; code confirmed each rise and return in the numbers."));
     const notIn = ag.smiles_not_in_numbers || 0, poor = ag.smiles_poor_match || 0;
     if (notIn || poor || ag.smiles_missed) lines.push(el("p", { class: "readout" },
       (notIn ? n(notIn, "reported smile is", "reported smiles are") + " not in the numbers, and code dropped " + (notIn === 1 ? "it. " : "them. ") : "") +
@@ -882,7 +885,7 @@
     const legend = el("ul", { class: "legend" },
       el("li", null, el("span", { class: "fr-key code" }), "code's fixed rule"),
       el("li", null, el("span", { class: "fr-key same" }), "model, same smile as code"),
-      el("li", null, el("span", { class: "fr-key faint" }), "model only: faint, rise confirmed by code"),
+      el("li", null, el("span", { class: "fr-key faint" }), "model only: rise confirmed by code"),
       el("li", null, el("span", { class: "fr-key drop" }), "model only: dropped by code"));
     let over = null;
     if (agreement && agreement.sessions) {
@@ -891,7 +894,7 @@
         factTile(String(agreement.sessions), "sessions read by the model"),
         factTile(pct(agreement.smile_recall), "of code's smiles also reported by the model (" + agreement.smiles_matched + " of " + agreement.smiles_code + ")"),
         factTile(pct(agreement.smile_precision), "of the model's smiles at code's level also found by code"),
-        factTile(String((agreement.smiles_faint || 0) + (agreement.smiles_brief || 0)), "faint or brief smiles: model only, rise confirmed"),
+        factTile(String((agreement.smiles_faint || 0) + (agreement.smiles_brief || 0) + (agreement.smiles_inside_long || 0)), "smiles from the model only, rise confirmed by code"),
         factTile(String(agreement.smiles_not_in_numbers || 0), "reported smiles not in the numbers, dropped by code"),
         factTile(agreement.smile_start_error_s === null ? "–" : num(agreement.smile_start_error_s, 2) + " s", "mean difference in where a smile starts (the model marks the rise, the rule the crossing)"));
     }

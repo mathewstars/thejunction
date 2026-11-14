@@ -131,7 +131,8 @@ def test_a_correct_reading_is_confirmed_item_by_item():
     assert fr_["dropped"] == []
     assert fr_["agreement"] == {
         "smiles_reported": 3, "smiles_confirmed": 3, "smiles_corrected": 0, "smiles_matched": 3,
-        "smiles_faint": 0, "smiles_brief": 0, "smiles_dropped": 0, "smiles_not_in_numbers": 0,
+        "smiles_faint": 0, "smiles_brief": 0, "smiles_inside_long": 0, "smiles_dropped": 0,
+        "smiles_not_in_numbers": 0,
         "smiles_poor_match": 0, "smiles_missed": 0, "smiles_code": 3,
         "smile_precision": 1.0, "smile_recall": 1.0, "smile_start_error_s": 0.0,
         "segments_reported": 1, "segments_confirmed": 1,
@@ -283,6 +284,32 @@ def test_the_faint_rule_does_not_take_a_step_a_twitch_or_a_repeat_for_a_smile():
     assert [x["status"] for x in f] == ["brief"] and f[0]["peak"] == 0.6
     ag = r.value["agreement"]
     assert ag["smiles_faint"] == 0 and ag["smiles_brief"] == 1 and ag["smile_precision"] == 1.0
+
+
+def test_a_clear_smile_inside_an_over_long_smile_of_the_fixed_rule_is_kept_apart():
+    # A mouth that rests at 0.27, above the fixed onset: code sees one smile from
+    # start to end. Two real smiles (to 0.6) are in it.
+    raw = make_raw(seconds=45, seed=3)
+    _with(raw, 0, 45 * 30, 0.27)
+    _with(raw, 300, 45, 0.6)
+    _with(raw, 900, 45, 0.6)
+    view = fr.code_view(raw)
+    assert len(view["smiles"]) == 1 and view["smiles"][0]["end_s"] - view["smiles"][0]["start_s"] > 40
+    one = {"reaches_eyes": None, "side": "both"}
+    said = reply(smiles=[{"start_s": 10.0, "end_s": 11.5, **one}, {"start_s": 30.0, "end_s": 31.5, **one},
+                         {"start_s": 20.0, "end_s": 21.5, **one}], moments=[], segments=[])
+    r = check(said, raw)
+    kept = r.value["reading"]["faint_smiles"]
+    assert [(k["start_s"], k["status"]) for k in kept] == [(10.0, "inside_long"), (30.0, "inside_long")]
+    assert r.value["dropped"] == [{"item": "smile", "start_s": 20.0, "end_s": 21.5,
+                                   "reason": "poor_overlap"}]  # nothing rises there
+    ag = r.value["agreement"]
+    assert ag["smiles_inside_long"] == 2 and ag["smiles_poor_match"] == 1
+    # A part of an honest long smile is still a poor match, not a smile of its own.
+    grin = _with(make_raw(seconds=45, seed=3), 300, 300, 0.6)
+    r = check(reply(smiles=[{"start_s": 13.0, "end_s": 14.5, **one}], moments=[], segments=[]), grin)
+    assert r.value["reading"]["faint_smiles"] == []
+    assert r.value["dropped"][0]["reason"] == "poor_overlap"
 
 
 def test_slivers_and_far_too_wide_spans_are_not_the_same_smile():

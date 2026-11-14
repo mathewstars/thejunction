@@ -58,7 +58,7 @@ Lanvi is a little Arctic fox whose tail glows. In Finland the northern lights ar
 
 Only during Sparks and snow and Breathe with Lanvi, and only if the person allowed the camera.
 
-Per activity the app sends a short summary, no raw frames:
+Per activity the app sends (the face part is now raw frames of numbers, never a picture, and the server computes the face measures below; see `docs/face-raw.md`):
 
 - how often and how much the person smiled
 - overall facial activity (how much the face moved)
