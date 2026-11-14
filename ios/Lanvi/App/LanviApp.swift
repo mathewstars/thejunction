@@ -11,7 +11,13 @@ struct LanviApp: App {
             let d = UserDefaults.standard
             for k in d.dictionaryRepresentation().keys where k.hasPrefix("lanvi.") { d.removeObject(forKey: k) }
         }
-        _store = State(initialValue: AppStore())
+        let store = AppStore()
+        _store = State(initialValue: store)
+        // Decode today's painted world (and the night of the first run) off the main
+        // thread now, so no screen decodes it while it opens.
+        var worlds = [store.worldScene]
+        if !UserDefaults.standard.bool(forKey: "lanvi.welcomed") { worlds.append(.night) }
+        WorldPictures.shared.preload(worlds)
     }
 
     var body: some Scene {
