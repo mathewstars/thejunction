@@ -334,8 +334,9 @@ struct EyeDraw: Equatable {
     /// The open eye and its lid. Once the lid covers the eye, it gives way at once to the
     /// shut eye's painted lashes (a fade would show a see-through ring for a frame or two).
     var eyeOpacity: Double { kind == .lidded && down < 0.8 ? 1 : 0 }
-    /// The shut eye's painted lashes.
-    var lashOpacity: Double { kind == .lidded ? Motion.smooth(0.7, 0.8, down) : 0 }
+    /// The shut eye's painted lashes (from the same moment the eye gives way: the lashes
+    /// are never drawn over the lid).
+    var lashOpacity: Double { kind == .lidded && down >= 0.8 ? 1 : 0 }
     /// The normal open eyes, lids fully open, every layer at full opacity.
     var isNormalOpen: Bool { kind == .lidded && down < 0.001 }
 }
