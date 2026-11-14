@@ -886,6 +886,59 @@
   // Code's fixed rule and the level-2 model read the same numbers. The bars
   // come from the stored reading; the curve is the audited raw download.
   const FR = { onset: 0.25 };
+  // Revontulet's own measures (docs/revontulet-measures.md): stored and shown, not used to judge a day.
+  function revontuletPanel(sessions) {
+    const got = sessions.filter((x) => x.revontulet);
+    if (!got.length) return null;
+    const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
+    const median = (a) => { if (!a.length) return null; const s = a.slice().sort((p, q) => p - q), h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
+    const vals = (list, k) => list.map((r) => r[k]).filter((v) => typeof v === "number");
+    const sum = (list, k) => list.reduce((s, r) => s + (r[k] || 0), 0);
+    // Speeds are shown in cm/s only; without the phone's points per centimetre there is no honest unit.
+    const speed = (v, rv) => (v === null || !rv.pt_per_cm ? null : num(v / rv.pt_per_cm, 1) + "\u00a0cm/s");
+    const facts = (x) => {
+      const rv = x.revontulet, rounds = rv.rounds || [], strokes = rv.strokes || [];
+      const choose = median(vals(rounds, "choice_ms"));
+      const traced = rounds.filter((r) => typeof r.trace_mean_speed_pt_s === "number" || typeof r.trace_ms === "number");
+      const wall = rv.fox_finished === true ? "by the game, time ran out"
+        : rv.broke_through_s != null ? (rv.fox_finished === false ? "by the person, " : "") + "after " + num(rv.broke_through_s) + "\u00a0s"
+        : rv.fox_finished === false || x.completed === false ? "not broken" : null;
+      return { rounds: rounds.length, hard: rounds.filter((r) => r.effort === "hard").length,
+        choose: choose === null ? null : num(choose / 1000, 1) + "\u00a0s",
+        trace: speed(mean(vals(rounds, "trace_mean_speed_pt_s")), rv), traced: traced.length, lifts: sum(traced, "trace_lifts"),
+        noSize: !rv.pt_per_cm && vals(rounds, "trace_mean_speed_pt_s").length > 0, strokeNoSize: !rv.pt_per_cm && vals(strokes, "mean_speed_pt_s").length > 0,
+        shown: sum(rounds, "embers_shown"), hit: sum(rounds, "embers_hit"),
+        strokes: strokes.length, stroke: speed(mean(vals(strokes, "mean_speed_pt_s")), rv), wall: wall };
+    };
+    const dash = (v, why) => (v === null || v === undefined ? el("span", { class: "muted", title: why || null }, why ? "not known" : "–") : v);
+    const last = facts(got[0]);
+    const said = [];
+    if (last.rounds) said.push("chose the harder crack in " + last.hard + " of " + last.rounds + " " + (last.rounds === 1 ? "round" : "rounds"));
+    if (last.trace) said.push("traced the half circle at " + last.trace + " on average");
+    if (last.strokes) said.push("stroked the fox " + last.strokes + " " + (last.strokes === 1 ? "time" : "times"));
+    const wallSaid = got[0].revontulet.fox_finished === true ? " Time ran out, so the game broke the wall."
+      : got[0].revontulet.broke_through_s != null ? (got[0].revontulet.fox_finished === false ? " The person broke the wall after " : " The wall was broken after ") + num(got[0].revontulet.broke_through_s) + "\u00a0s."
+      : last.wall === "not broken" ? " The wall was not broken." : "";
+    const lines = [el("p", { class: "readout" }, el("b", null, "Last Revontulet game, " + dayShort(got[0].date) + ": "),
+      said.length ? "the person " + said.join(", ") + "." : "no round was played.", wallSaid, got[0].completed === false ? " The game was not finished." : null),
+      el("p", { class: "muted small" }, "In this 90-second game the person picks one of two cracks in an ice wall three times (the harder one gives a bigger reward), traces a half circle with a finger, taps the embers that flash after picking the harder crack, and at the end strokes a sleeping fox. If time runs out, the game breaks the wall for them.")];
+    const row = (x) => {
+      const f = facts(x);
+      return el("tr", null,
+        el("td", { class: "num nowrap" }, dayShort(x.date), x.completed === false ? el("span", { class: "sub" }, "not finished") : null),
+        el("td", null, dash(f.wall)),
+        el("td", { class: "r num" }, f.rounds ? f.hard + " of " + f.rounds : dash(null)),
+        el("td", { class: "r num" }, dash(f.choose)),
+        el("td", { class: "r num" }, dash(f.trace, f.noSize ? "phone size not sent" : null)),
+        el("td", { class: "r num" }, f.traced ? f.lifts : dash(null)),
+        el("td", { class: "r num" }, f.shown ? f.hit + " of " + f.shown : f.rounds && !f.hard ? el("span", { class: "muted" }, "no hard shot") : dash(null)),
+        el("td", { class: "r num" }, f.strokes ? f.strokes + (f.strokes === 1 ? " stroke" : " strokes") + (f.stroke ? ", " + f.stroke : f.strokeNoSize ? ", speed not known" : "") : dash(null)));
+    };
+    return panel("Revontulet: choices and finger movement", got.length, lines,
+      table(["Date", "Wall broken", { t: "Harder crack", r: 1 }, { t: "Time to choose", r: 1 }, { t: "Tracing speed", r: 1 },
+        { t: "Finger lifts", r: 1 }, { t: "Embers tapped", r: 1 }, { t: "Fox strokes", r: 1 }], got.map(row), null, { id: "revontulet" }),
+      el("p", { class: "muted small" }, "Read these as a record, not a result. Tracing speed is how fast the finger moved along the half circle, and finger lifts counts how often it left the screen before the end. Time to choose is the middle value of the rounds, and speeds are averages over the rounds that were traced. A speed shows as not known when the phone did not send its screen size. Each game has only three rounds, so one choice changes the count a lot, and no usual range is known for any of these numbers. It is also not known whether higher or lower is better. They do not change how the day is judged, and they have not been tested as a measure of mood."));
+  }
   function framesPanel(sessions, agreement) {
     const ready = sessions.filter((x) => x.frames_reading && x.frames_reading.status === "ready");
     const waiting = sessions.filter((x) => x.frames_reading && /^(pending|failed|not_allowed)$/.test(x.frames_reading.status));
@@ -1048,6 +1101,7 @@
         el("td", { class: "r num" }, x.values && x.values.error_rate != null ? Math.round(x.values.error_rate * 100) + " %" : "–"),
         faceCell(x.face), readCell(x.reading))), null, { filter: 1 })));
     if (sub === "focus" || sub === "breathing") { const fp = framesPanel(recent(A[sub]), A.frames_agreement); if (fp) wrap.appendChild(fp); }
+    if (sub === "focus") { const rp = revontuletPanel(recent(A.focus)); if (rp) wrap.appendChild(rp); }
     if (sub === "breathing") wrap.appendChild(panel("Breathing", A.breathing.sessions.length, table(["Date", "Finished", { t: "Time", r: 1 }, "Face", "Model reading"],
       recent(A.breathing).map((x) => el("tr", null, el("td", { class: "num" }, dayShort(x.date)), el("td", null, yes(x.completed)),
         el("td", { class: "r num" }, x.values && x.values.time_played_s != null ? num(x.values.time_played_s) + " s" : "–"), faceCell(x.face), readCell(x.reading))), null, { filter: 1 })));
