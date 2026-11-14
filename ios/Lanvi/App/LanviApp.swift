@@ -62,6 +62,7 @@ struct RootView: View {
                 WhatHelpsView(demo: demo) {}
             case "focus":
                 FocusGameView { print("focus: done \(String(describing: $0))") }
+            case "revontulet": RevontuletView { print("revontulet: done \(String(describing: $0))") }
             case "breathe":
                 BreatheView { _ in }
             case "puppet":

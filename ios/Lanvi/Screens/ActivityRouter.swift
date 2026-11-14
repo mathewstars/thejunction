@@ -11,11 +11,18 @@ struct ActivityRouter: View {
     /// nil when the person closed it before anything happened.
     var onDone: (API.ActivityIn?) -> Void
 
+    /// The game the `focus` activity opens: Revontulet. Set to false to bring back Sparks and snow.
+    static let focusIsRevontulet = true
+
     var body: some View {
         switch kind {
         case .focus:
             FaceSenseHost {
-                FocusGameView { result in onDone(result.map { FaceSense.shared.attach(to: Self.record($0)) }) }
+                if Self.focusIsRevontulet {
+                    RevontuletView { result in onDone(result.map { FaceSense.shared.attach(to: Self.record($0)) }) }
+                } else {
+                    FocusGameView { result in onDone(result.map { FaceSense.shared.attach(to: Self.record($0)) }) }
+                }
             }
         case .breathing:
             FaceSenseHost {
@@ -63,6 +70,21 @@ struct ActivityRouter: View {
                               completed: r.completed, endedBy: r.completed ? .finished : .userStopped,
                               correctTaps: r.correctTaps, wrongTaps: r.wrongTaps, misses: r.misses,
                               reactionMs: Array(r.reactionMs.prefix(min(200, taps))).map { min(max($0, 0), 10_000) })
+    }
+
+    /// Revontulet as a `focus` record, with exactly the fields `focus` has today (the server
+    /// refuses unknown ones; everything else stays on the phone in the result):
+    /// correct taps = launches + embers lit; wrong taps = 0 (there is nothing wrong to tap);
+    /// misses = embers that flashed and passed; reactions = per launch, the half-circle
+    /// appearing to the first touch on it, then per lit ember, its flash to the tap.
+    static func record(_ r: RevontuletResult) -> API.ActivityIn {
+        let duration = max(0, r.endedAt.timeIntervalSince(r.startedAt))
+        let correct = r.launches + r.embersHit
+        return API.ActivityIn(id: API.ActivityIn.newId(), type: .focus,
+                              startedAt: API.isoString(r.startedAt), durationS: (duration * 10).rounded() / 10,
+                              completed: r.completed, endedBy: r.completed ? .finished : .userStopped,
+                              correctTaps: correct, wrongTaps: 0, misses: max(0, r.embersShown - r.embersHit),
+                              reactionMs: Array(r.reactionMs.prefix(min(200, correct))).map { min(max($0, 0), 10_000) })
     }
 
     static func record(_ r: BreatheResult) -> API.ActivityIn {

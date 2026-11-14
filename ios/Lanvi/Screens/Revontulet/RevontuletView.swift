@@ -1,0 +1,501 @@
+import SwiftUI
+import QuartzCore
+
+/// Revontulet ("fox fires"): 90 seconds with no way to lose. Three times: pick a fault line
+/// in a pane of dark ice, trace a half-circle to charge the fox's spark, sling it into the
+/// ice. The third impact bursts the wall and the aurora fills the sky; the fox celebrates,
+/// you brush the snow off its fur, it falls asleep, and the game hands back its result.
+///
+/// `onDone` gets the result when the fox is asleep, or when the person closes it early
+/// (`completed == false`); nil only when closed before Start. See `ios/REVONTULET.md`.
+///
+/// Launch arguments (read here only): `-revontuletAuto [mixed|hard|easy|idle]` plays itself;
+/// `-revontuletFreeze <beat>` opens frozen on one beat for stills.
+struct RevontuletView: View {
+    /// How far the view eases in on the fox for the warmth beat.
+    static let warmthZoom: CGFloat = 1.42
+
+    private let onDone: (RevontuletResult?) -> Void
+
+    init(onDone: @escaping (RevontuletResult?) -> Void) {
+        self.onDone = onDone
+    }
+
+    @State private var engine: RevontuletEngine?
+    @State private var art: RevontuletArt?
+    @State private var box = Box()
+    @State private var feel = RevontuletFeel()
+    @State private var frozenAt: Double?
+    @State private var quiet = false
+    @State private var handedBack = false
+    // The fox's direction.
+    @State private var reaction: LanviMood = .curious
+    @State private var reactionTick = 0
+    @State private var look: UnitPoint?
+    @State private var yawnTick = 0
+    @State private var petTick = 0
+    // The screen.
+    @State private var line = ""
+    @State private var finger: CGPoint?
+    @State private var zoomed = false
+    @State private var saidEmbers = false
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// Not drawn from: the pretend finger and a frame counter, kept out of SwiftUI's sight.
+    private final class Box {
+        var auto: RevontuletAutoPlay?
+        var frame = 0
+    }
+
+    private static let freezeBeat: RevontuletBeat? = {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-revontuletFreeze"), i + 1 < args.count else { return nil }
+        return RevontuletBeat(rawValue: args[i + 1])
+    }()
+
+    var body: some View {
+        GeometryReader { outer in
+            let insets = outer.safeAreaInsets
+            GeometryReader { geo in
+                let L = RevontuletLayout(size: geo.size, safeTop: insets.top, safeBottom: insets.bottom)
+                ZStack {
+                    if let engine, let art {
+                        scene(engine, art)
+                            .scaleEffect(zoomed ? Self.warmthZoom : 1,
+                                         anchor: UnitPoint(x: L.foxCenter.x / max(1, L.size.width), y: L.foxCenter.y / max(1, L.size.height)))
+                            .animation(.spring(response: 1.9, dampingFraction: 0.95), value: zoomed)
+                        RevontuletTouchSurface { input, time in feed(input, at: time) }
+                        overlay(engine)
+                    } else {
+                        PaintedWorld(scene: .night)
+                    }
+                }
+                .onAppear { setUp(L) }
+                .onChange(of: geo.size) { _, _ in setUp(L) }
+            }
+            .ignoresSafeArea()
+        }
+        .task { await run() }
+        .onAppear { feel.start() }
+        .onDisappear { feel.stop() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { feel.start() } else { feel.stop() }
+        }
+    }
+
+    // MARK: Layers
+
+    private func scene(_ e: RevontuletEngine, _ art: RevontuletArt) -> some View {
+        let L = e.layout
+        return ZStack {
+            PaintedWorld(scene: .night)
+            TimelineView(.animation(minimumInterval: 1.0 / 60, paused: frozenAt != nil)) { _ in
+                let painter = RevontuletPainter(e: e, art: art, now: frozenAt ?? CACurrentMediaTime())
+                ZStack {
+                    Canvas { ctx, size in painter.sky(&ctx, size: size) }
+                    // The frosted glass: the painted sky behind the standing ice, blurred.
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .environment(\.colorScheme, .dark)
+                        .mask { Canvas { ctx, _ in painter.standing(&ctx) } }
+                    Canvas { ctx, size in painter.ice(&ctx, size: size) }
+                    RevontuletFox(act: act(e), size: L.foxSize, reaction: reaction, reactionTick: reactionTick,
+                                  look: look, yawnTick: yawnTick, petTick: petTick)
+                        .equatable()
+                        .frame(width: L.foxSize, height: L.foxSize)
+                        .position(L.foxCenter)
+                    Canvas { ctx, size in painter.front(&ctx, size: size) }
+                }
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func overlay(_ e: RevontuletEngine) -> some View {
+        let L = e.layout
+        let h = L.size.height
+        let lineY: CGFloat = switch e.beat {
+        case .intro: L.feetY + 30
+        case .warmth, .sleep, .done: h - L.safeBottom - 40
+        default: L.feetY + (h - L.safeBottom - L.feetY) * 0.45
+        }
+        return ZStack {
+            if e.beat == .intro {
+                VStack(spacing: 6) {
+                    Text("Revontulet")
+                        .font(Theme.rounded(44, .black))
+                        .foregroundStyle(.white)
+                        .shadow(color: RevontuletColor.teal.opacity(0.55), radius: 18)
+                    Text("FOX FIRES")
+                        .font(Theme.rounded(14, .heavy))
+                        .tracking(3)
+                        .foregroundStyle(.white.opacity(0.72))
+                }
+                .position(x: L.size.width / 2, y: L.wall.minY + L.wall.height * 0.36)
+                .allowsHitTesting(false)
+                .transition(.opacity)
+
+                Button("Start") { feed(.start, at: CACurrentMediaTime()) }
+                    .buttonStyle(ChunkyButtonStyle())
+                    .padding(.horizontal, 24)
+                    .position(x: L.size.width / 2, y: h - L.safeBottom - 16 - 27)
+                    .transition(.opacity)
+            }
+
+            if !line.isEmpty {
+                Text(line)
+                    .font(Theme.rounded(20, .heavy))
+                    .foregroundStyle(Theme.ink)
+                    .shadow(color: .white.opacity(0.8), radius: 8)
+                    .multilineTextAlignment(.center)
+                    .id(line)
+                    .transition(.opacity.combined(with: .offset(y: 5)))
+                    .position(x: L.size.width / 2, y: lineY)
+                    .allowsHitTesting(false)
+            }
+
+            if let finger {
+                Circle()
+                    .fill(.white.opacity(0.28))
+                    .overlay(Circle().stroke(.white.opacity(0.75), lineWidth: 2))
+                    .frame(width: 36, height: 36)
+                    .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+                    .position(finger)
+                    .allowsHitTesting(false)
+            }
+
+            Button { close() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 17, weight: .heavy))
+                    .foregroundStyle(.white)
+            }
+            .buttonStyle(RevontuletCloseStyle())
+            .accessibilityLabel("Close")
+            .position(x: 20 + 22, y: L.safeTop + 6 + 22)
+        }
+        .animation(.easeInOut(duration: 0.4), value: e.beat == .intro)
+    }
+
+    private func act(_ e: RevontuletEngine) -> RevontuletFox.Act {
+        switch e.beat {
+        case .celebrate: return .celebrating
+        case .sleep, .done: return .sleeping
+        default: return .playing
+        }
+    }
+
+    // MARK: Setting up
+
+    private func setUp(_ L: RevontuletLayout) {
+        guard engine == nil, L.size.width > 10, L.size.height > 10 else { return }
+        if let beat = Self.freezeBeat {
+            freeze(L, at: beat)
+            return
+        }
+        engine = RevontuletEngine(layout: L)
+        art = RevontuletArt(layout: L)
+        box.auto = RevontuletAutoPlay.fromArguments().map { RevontuletAutoPlay(style: $0) }
+        say("Help me light up the sky?")
+    }
+
+    /// `-revontuletFreeze <beat>`: play the game on a made-up clock with the pretend finger
+    /// until that beat, then hold the picture there.
+    private func freeze(_ L: RevontuletLayout, at beat: RevontuletBeat) {
+        var e = RevontuletEngine(layout: L, seed: 42)
+        let a = RevontuletArt(layout: L)
+        var auto = RevontuletAutoPlay(style: beat == .flight ? .hard : .mixed)
+        var now = 1000.0
+        var all: [RevontuletEvent] = []
+        while now < 1100 {
+            for input in auto.step(e, now: now) { all += e.handle(input, at: now) }
+            all += e.tick(now)
+            a.sync(e)
+            if Self.reached(beat, e, now) { break }
+            now += 1.0 / 60
+        }
+        quiet = true
+        engine = e
+        art = a
+        frozenAt = now
+        finger = auto.finger
+        if beat == .intro { say("Help me light up the sky?") }
+        react(all, e, now: now)
+        steerFox(e, now: now, force: true)
+    }
+
+    private static func reached(_ b: RevontuletBeat, _ e: RevontuletEngine, _ now: Double) -> Bool {
+        let into = now - e.beatStart
+        switch b {
+        case .intro: return true
+        case .choice: return e.beat == .choice && into > 1.3
+        case .trace: return e.beat == .trace && e.progress > 0.6
+        case .sling: return e.beat == .sling && hypot(e.pull.dx, e.pull.dy) > e.layout.maxPull * 0.8
+        case .flight: return e.beat == .flight && (e.flight.map { now - $0.launch > 1.05 } ?? false)
+        case .impact: return e.beat == .impact && into > 0.28
+        case .burst: return e.beat == .burst && into > 0.7
+        case .celebrate: return e.beat == .celebrate && into > 1.0
+        case .warmth: return e.beat == .warmth && e.stroking && e.strokesCounted >= 1
+        case .sleep: return e.beat == .sleep && into > 1.5
+        case .done: return e.beat == .done
+        }
+    }
+
+    // MARK: Running
+
+    private func run() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .milliseconds(16))
+            step(CACurrentMediaTime())
+        }
+    }
+
+    private func step(_ now: Double) {
+        guard var e = engine, frozenAt == nil, !handedBack else { return }
+        box.frame &+= 1
+        var events: [RevontuletEvent] = []
+        if box.auto != nil {
+            for input in box.auto!.step(e, now: now) { events += e.handle(input, at: now) }
+            if box.auto!.finger != finger { finger = box.auto!.finger }
+        }
+        events += e.tick(now)
+        if e != engine { engine = e }
+        if !events.isEmpty { react(events, e, now: now) }
+        steerFox(e, now: now)
+        // Snow right under a stroking finger comes off at once.
+        if e.beat == .warmth, e.stroking, let f = e.finger, let art {
+            let L = e.layout
+            let k = zoomed ? Self.warmthZoom : 1
+            let p = CGPoint(x: L.foxCenter.x + (f.x - L.foxCenter.x) / k, y: L.foxCenter.y + (f.y - L.foxCenter.y) / k)
+            let before = art.speckGone.count
+            art.brush(near: p, at: now)
+            if art.speckGone.count > before { feel.snowOff() }
+        }
+    }
+
+    /// A real finger (from the touch surface) or the Start button.
+    private func feed(_ input: RevontuletInput, at time: Double) {
+        guard var e = engine, frozenAt == nil, !handedBack else { return }
+        if box.auto != nil, input != .start { return }
+        let events = e.handle(input, at: time)
+        if e != engine { engine = e }
+        if !events.isEmpty { react(events, e, now: time) }
+    }
+
+    // MARK: Reacting: haptics, moments, the fox, the words
+
+    private func react(_ events: [RevontuletEvent], _ e: RevontuletEngine, now: Double) {
+        for event in events {
+            switch event {
+            case .started:
+                emit(.revontuletStarted)
+            case let .choiceShown(r):
+                say(r == 0 ? "Which crack shall we try?" : nil)
+                if r > 0 { foxReact(.curious) }
+            case let .chose(r, effort):
+                if !quiet { feel.choose(hard: effort == .hard) }
+                emit(.effortChosen(round: r + 1, effort: effort == .hard ? .hard : .easy))
+                say(r == 0 ? "Trace the light" : nil)
+            case .arcShown:
+                break
+            case let .traceStarted(r):
+                emit(.traceStarted(round: r + 1))
+            case let .traceStep(s):
+                if !quiet { feel.traceStep(s) }
+            case let .traceEnded(r):
+                emit(.traceEnded(round: r + 1))
+                say(r == 0 ? "Pull it back and let go" : nil)
+                foxReact(.happy)
+            case .pullStarted:
+                if !quiet { feel.pull(0) }
+            case let .pull(level):
+                if !quiet { feel.pull(level) }
+            case .pullLetGo:
+                if !quiet { feel.pullEnded() }
+            case let .released(r, level):
+                emit(.slingReleased(round: r + 1))
+                if let f = e.flight, !quiet {
+                    feel.snap(level)
+                    feel.flight(kind: f.hard ? 1 : 0, launch: f.launch,
+                                emberShows: f.hard ? f.emberT.map { f.launch + $0 - RevontuletFlight.emberLead } : [])
+                }
+                if e.flight?.hard == true, !saidEmbers {
+                    saidEmbers = true
+                    say("Tap the embers!")
+                } else {
+                    say(nil)
+                }
+            case .foxLaunched:
+                if !quiet { feel.flight(kind: 2, launch: now, emberShows: []) }
+                say("Let me help!")
+                foxReact(.proud)
+            case .emberShown:
+                break
+            case let .emberHit(_, ms):
+                if !quiet { feel.emberHit() }
+                emit(.emberHit(reactionMs: ms))
+            case .emberMissed:
+                emit(.emberMissed)
+            case let .landing(at, _, hard, hits, _, ribbon, burstAt):
+                if !quiet { feel.landing(at: at, hard: hard, embersHit: hits, ribbon: ribbon, burstAt: burstAt) }
+            case let .impact(r, _, breaking):
+                art?.sync(e)
+                emit(.iceImpact(round: r + 1))
+                foxReact(.surprised)
+                if !breaking, !quiet {
+                    let pleased: LanviMood = e.impacts.last?.hard == true ? .proud : .happy
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(0.95))
+                        guard let b = engine?.beat, b == .impact || b == .choice else { return }
+                        foxReact(pleased)
+                    }
+                }
+            case .shattered:
+                art?.sync(e)
+                emit(.iceShattered)
+                if !quiet { FaceSense.mark() }
+                say(nil)
+                foxReact(.surprised)
+            case .celebrate:
+                emit(.foxCelebrates)
+                if !quiet {
+                    FaceSense.mark()
+                    feel.celebrate()
+                }
+                foxReact(.happy)
+                say("We did it!")
+                if !quiet {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(2.4))
+                        guard engine?.beat == .celebrate else { return }
+                        foxReact(.happy)
+                    }
+                }
+            case .warmthBegan:
+                zoomed = true
+                say("Brush the snow off me?")
+            case .strokeBegan:
+                petTick += 1
+            case let .strokeMoved(speed):
+                if !quiet { feel.purr(speed: speed) }
+            case let .strokeEnded(n, counted):
+                if !quiet { feel.purrEnded() }
+                if counted {
+                    art?.sync(e)
+                    emit(.foxStroked(number: n))
+                    if !quiet { feel.snowOff() }
+                    if n == 1 { say(nil) }
+                }
+            case .sleep:
+                if !quiet { feel.sleep() }
+                yawnTick += 1
+                say("Thank you. Goodnight.")
+            case let .ended(completed):
+                emit(.revontuletEnded(finished: completed))
+                if completed, !quiet {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(0.4))
+                        if let e = engine { handBack(e) }
+                    }
+                }
+            }
+        }
+    }
+
+    private func emit(_ m: GameMoment) {
+        guard !quiet else { return }
+        GameMoments.emit(m)
+    }
+
+    private func say(_ text: String?) {
+        let t = text ?? ""
+        guard t != line else { return }
+        withAnimation(.easeInOut(duration: 0.45)) { line = t }
+    }
+
+    private func foxReact(_ mood: LanviMood) {
+        reaction = mood
+        reactionTick += 1
+    }
+
+    /// Where the fox looks: at the fault lines while choosing, the light while tracing, the
+    /// spark in the sling and in the air, the hit, then straight at you.
+    private func steerFox(_ e: RevontuletEngine, now: Double, force: Bool = false) {
+        guard force || box.frame % 3 == 0 else { return }
+        let L = e.layout
+        let into = now - e.beatStart
+        var target: CGPoint?
+        switch e.beat {
+        case .choice:
+            let f = L.faults(round: e.round)
+            let cycle = into < 5 ? into : 5 + (into - 5).truncatingRemainder(dividingBy: 6)
+            if cycle < 1.1 { target = f.easy[f.easy.count / 2] }
+            else if cycle < 2.3 { target = f.hard[f.hard.count / 2] }
+            else if cycle >= 7 && cycle < 8.2 { target = f.easy[f.easy.count / 2] }
+            else if cycle >= 8.2 && cycle < 9.4 { target = f.hard[f.hard.count / 2] }
+        case .trace:
+            target = e.tracing ? e.finger : e.arc.point(e.progress, reversed: e.reversed)
+        case .sling, .flight:
+            target = e.sparkPoint(now)
+        case .impact:
+            if into < 0.7 { target = e.impacts.last?.point }
+        case .warmth:
+            if e.stroking { target = e.finger }
+        default:
+            target = nil
+        }
+        let s = L.foxSize
+        let u = target.map { UnitPoint(x: ($0.x - (L.foxCenter.x - s / 2)) / s, y: ($0.y - (L.foxCenter.y - s / 2)) / s) }
+        let moved: Bool
+        switch (u, look) {
+        case (nil, nil): moved = false
+        case let (a?, b?): moved = abs(a.x - b.x) > 0.02 || abs(a.y - b.y) > 0.02
+        default: moved = true
+        }
+        if moved { look = u }
+    }
+
+    // MARK: Ending
+
+    private func close() {
+        guard !handedBack else { return }
+        guard var e = engine, e.startUptime != nil else {
+            handedBack = true
+            feel.stop()
+            onDone(nil)
+            return
+        }
+        if e.beat != .done {
+            let events = e.handle(.close, at: CACurrentMediaTime())
+            engine = e
+            react(events, e, now: CACurrentMediaTime())
+        }
+        handBack(e)
+    }
+
+    private func handBack(_ e: RevontuletEngine) {
+        guard !handedBack else { return }
+        handedBack = true
+        feel.stop()
+        let result = e.result()
+        if box.auto != nil, let r = result {
+            print("revontulet: result completed=\(r.completed) launches=\(r.launches) embers=\(r.embersHit)/\(r.embersShown) reactions=\(r.reactionMs) strokes=\(r.strokes.count) foxFinished=\(r.foxFinishedWall)")
+        }
+        onDone(result)
+    }
+}
+
+/// The one close button every game has: chunky, round, blue, top-left.
+private struct RevontuletCloseStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        let pressed = configuration.isPressed
+        configuration.label
+            .frame(width: 44, height: 44)
+            .background(Circle().fill(Color(hex: 0x3A5BC7)))
+            .overlay(Circle().stroke(.white.opacity(0.22), lineWidth: 1.5))
+            .offset(y: pressed ? 4 : 0)
+            .background(Circle().fill(Theme.nightTop).offset(y: 4))
+            .contentShape(Circle())
+            .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: pressed)
+    }
+}
