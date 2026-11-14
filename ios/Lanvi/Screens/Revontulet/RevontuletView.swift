@@ -54,6 +54,13 @@ struct RevontuletView: View {
         var furFrom: CGPoint?
     }
 
+    /// `-revontuletFreezeRound N`: freeze the beat in round N (0, 1, 2) for stills of each round.
+    private static let freezeRound: Int = {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-revontuletFreezeRound"), i + 1 < args.count else { return 0 }
+        return Int(args[i + 1]) ?? 0
+    }()
+
     private static let freezeBeat: RevontuletBeat? = {
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: "-revontuletFreeze"), i + 1 < args.count else { return nil }
@@ -334,6 +341,7 @@ struct RevontuletView: View {
 
     private static func reached(_ b: RevontuletBeat, _ e: RevontuletEngine, _ now: Double) -> Bool {
         let into = now - e.beatStart
+        if [RevontuletBeat.choice, .trace, .sling, .flight, .impact].contains(b), e.round != freezeRound { return false }
         switch b {
         case .intro: return true
         case .choice: return e.beat == .choice && into > 1.3

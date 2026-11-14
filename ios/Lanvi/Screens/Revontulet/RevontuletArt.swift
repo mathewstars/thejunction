@@ -251,8 +251,10 @@ final class RevontuletArt {
         var fs: [(easy: Fault, hard: Fault)] = []
         for round in 0..<3 {
             let f = layout.faults(round: round)
+            // The vein grows round by round: round three's is the big one.
+            let veinWidth: CGFloat = [9, 12, 16][round], veinBranches = [3, 4, 6][round]
             fs.append((Self.fault(f.easy, width: 3, branches: 1, seed: Double(round), rng: &rng),
-                       Self.fault(f.hard, width: 11, branches: 4, seed: Double(round) + 7, rng: &rng)))
+                       Self.fault(f.hard, width: veinWidth, branches: veinBranches, seed: Double(round) + 7, rng: &rng)))
         }
         faults = fs
 
