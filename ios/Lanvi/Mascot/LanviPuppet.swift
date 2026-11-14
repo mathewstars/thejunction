@@ -30,6 +30,9 @@ struct LanviPuppet: View {
     private var k: CGFloat { size / Rig.canvas.height }
     private var mu: CGFloat { k * Rig.unit }
     private var held: LanviMood { moodOverride ?? pose.puppetMood }
+    /// Between the hind feet, where the fox stands (0...1 of the canvas).
+    private static let feet = UnitPoint(x: (Rig.body.center.x - Rig.frame.minX) / Rig.canvas.width, y: 0.995)
+
     private var canvasOrigin: CGPoint {
         CGPoint(x: (size - Rig.canvas.width * k) / 2, y: size - Rig.canvas.height * k)
     }
@@ -41,6 +44,7 @@ struct LanviPuppet: View {
                 shadow(f)
                 rig(f)
                     .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k)
+                    .scaleEffect(x: f.rootSX, y: f.rootSY, anchor: Self.feet)
                     .offset(x: f.rootX * mu, y: f.rootY * mu)
             }
             .frame(width: size, height: size, alignment: .bottom)
