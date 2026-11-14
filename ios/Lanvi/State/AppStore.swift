@@ -417,6 +417,9 @@ final class AppStore {
                                   startedWandering: out.wandering == .away && t.lanvi.wandering.state != .away)
         // Let Lanvi's happy hop start, then the numbers move.
         try? await Task.sleep(for: .milliseconds(out.xpGained > 0 ? 500 : 300))
+        #if DEBUG
+        FrameMeter.mark("xp numbers move")
+        #endif
         withAnimation(.spring(response: 1.1, dampingFraction: 0.82)) {
             t.lanvi.xp = out.xpTotal
             t.lanvi.stage = out.stage

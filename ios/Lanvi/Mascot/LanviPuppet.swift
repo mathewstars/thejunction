@@ -10,6 +10,7 @@ struct LanviPuppet: View {
     @Environment(\.lanviMood) private var moodOverride
     @Environment(\.lanviReactionRequest) private var reactionRequest
     @Environment(\.lanviLook) private var lookUnit
+    @Environment(\.lanviMouth) private var mouthOverride
     @Environment(\.lanviDebugFreeze) private var freeze
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -44,7 +45,11 @@ struct LanviPuppet: View {
 
     var body: some View {
         TimelineView(.animation) { context in
-            let f = motion(at: context.date.timeIntervalSinceReferenceDate).frame()
+            let f: RigFrame = {
+                var f = motion(at: context.date.timeIntervalSinceReferenceDate).frame()
+                if let m = mouthOverride { f.mouth = m }   // talking: swap the existing mouths only
+                return f
+            }()
             let _ = LanviFrameLog.shared?.record(date: context.date, f)
             ZStack(alignment: .bottom) {
                 shadow(f)
