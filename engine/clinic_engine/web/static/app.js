@@ -1598,11 +1598,11 @@
         el("td", null, t.level !== t.rules_level ? el("b", null, LV[t.level] + " ≠ rules") : LV[t.level], t.fixed_by_rule ? " (fixed by rule)" : t.held_by_floor ? " (held by the floor)" : "")); }), "bp-table", { plain: true }),
       el("p", null, "Read from the server as this page loaded; example data. Both models are shown the fixed rules' level, and Gemini is shown the local model's answer, so agreement here is expected and is not evidence that the levels are right. Across all example patients on 14 November 2026 the models set 1 of 13 flags differently from the fixed rules (a movement drop raised to needs review today); one more was lowered by a clinic rule."))
       : el("p", { class: "muted small" }, tri.mode === "models" ? "No open flags on the example patient right now." : "On this server the levels are set by the fixed rules alone (model triage is switched off).");
-    wrap.appendChild(panel("How the two models weigh a flag", null, el("div", { class: "bp-say" },
+    wrap.appendChild(panel("How the two models weigh a flag", null, el("div", { class: "bp-say wide" },
       el("p", null, "Both models get the same picture of one person: every open flag (its kind, the days it has been held, the level the fixed rules give it, and the flag's own numbers), the last 14 days of movement against own normal, and three counts. Numbers and fixed codes only."),
       el("p", null, "The local model answers first. Gemini then sees the picture together with that answer and can move each level by one step. The second reader is the smaller power on purpose: it is the one outside the clinic, and it never sees the clinician's rules. A request for help is part of the picture, so both weigh everything else knowing about it, but its own level cannot be changed.")), live));
 
-    wrap.appendChild(panel("The clinic's own rules, in plain words", null, el("div", { class: "bp-say" },
+    wrap.appendChild(panel("The clinic's own rules, in plain words", null, el("div", { class: "bp-say wide" },
       el("p", null, "A clinician can write a rule for one person the way they would say it to a colleague, for example: “She is on a planned two-week rest after knee surgery. Lower movement is expected and only needs watching.”"),
       el("ul", { class: "plain" },
         el("li", null, "The local model decides which flag a rule applies to; when it says so, Gemini cannot move that level. Code checks that the rule exists, not that it was read the way its author meant. So the flag shows the rule's words, its author and date, the level the fixed rules alone would give, and whether Gemini, which does not see the rule, would raise it."),
@@ -1620,7 +1620,7 @@
         ["Does the second reader change anything?", "Almost never: across all 372 flag readings in the check Gemini agreed 370 times and raised twice, both on a repeat read. On these pictures it is a second signature, not a second opinion."],
         ["Is the same picture read the same way twice?", "Mostly: 6 of 107 flags got a different level on the second read, each by one step, in 5 of 40 pictures. Four came from the local model, although it runs at temperature 0, and two from Gemini raising. In 2 pictures the movement drop moved between attention and needs review today, so one read decided whether a message would go out. The server reads each picture once and keeps that answer."],
         ["Is a clinic rule followed, and only where it applies?", "One rule about the movement drop, on 20 pictures: the local model named it on the movement drop 20 times, set that flag to watch 20 times, and never named it on another flag. Of 31 other flags, 4 changed level (2 up, 2 down). Repeat reads alone move about 6 in 100, so 4 of 31 is more than we can call noise and less than we can call an effect."]
-      ].map((r) => el("tr", null, r.map((v) => el("td", null, v)))), "bp-table", { plain: true }),
+      ].map((r) => { const cut = r[1].indexOf(r[1].match(/[:.]/)[0]) + 1; return el("tr", null, el("td", null, r[0]), el("td", null, el("b", null, r[1].slice(0, cut)), r[1].slice(cut))); }), "bp-table", { plain: true }),
       el("h3", { class: "fr-h" }, "Also checked"),
       el("ul", { class: "plain" },
         el("li", null, "The script is clinic_engine/triage_check.py; every reading is in docs/checks/triage-check-2026-11-14.json in the repository."),
@@ -1631,7 +1631,7 @@
       el("li", null, "Whether a model reads every rule the way its author meant it. One rule on generated pictures and three on one example patient is not a test of that."),
       el("li", null, "Whether Gemini as second reader ever disagrees usefully. In the check it agreed on 370 of 372 flag readings, and on the example patients every time."),
       el("li", null, "A rule that is wrong or written to silence someone. The system limits it (14 days, a mark in the list, never a request for help) and shows it; it does not judge it.")))));
-    wrap.appendChild(panel("What the fixed rules notice", null, el("div", { class: "bp-say" },
+    wrap.appendChild(panel("What the fixed rules notice", null, el("div", { class: "bp-say wide" },
       el("p", null, "Seventeen kinds of flag, grouped below, each opened and closed by code. Everything is compared with the person's own normal: the median and usual spread of their last 28 days, leaving out the newest five so that a drop does not move the yardstick it is measured with. Three of them (slowing down, slower reactions, less facial movement) also count a model's reading of a recording once code has confirmed it in the numbers."),
       table(["Flag", "Opens when"], [
         [kind("deviation"), "at least 3 of the last 5 days are clearly below own normal in steps and walking speed (2 are enough when reactions, the face or the sessions also changed)"],
