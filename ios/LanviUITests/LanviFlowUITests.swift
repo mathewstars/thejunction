@@ -229,20 +229,29 @@ final class LanviFlowUITests: XCTestCase {
         let help = app.buttons["Help"].firstMatch
         XCTAssertTrue(help.waitForExistence(timeout: 6))
         pause(1.5)
-        var foxRect: CGRect?
+        // Where the fox stands on Help (measured once, before any timing).
+        help.tap()
+        let fox = app.otherElements["help.fox"].firstMatch
+        XCTAssertTrue(fox.waitForExistence(timeout: 3), "Help's fox element")
+        let foxRect = fox.frame
+        app.buttons["Close"].firstMatch.tap()
+        pause(1.2)
         var worst = 0.0
         for round in 1...20 {
             help.tap()
             let t0 = Date()
-            if foxRect == nil {
-                let fox = app.otherElements["help.fox"].firstMatch
-                XCTAssertTrue(fox.waitForExistence(timeout: 2), "Help's fox element")
-                foxRect = fox.frame
+            let close = app.buttons["Close"].firstMatch
+            if !close.waitForExistence(timeout: 1.0) {
+                event("helpfox.retap.\(round)")
+                help.tap()
             }
+            // A screenshot takes a while to capture: a hit counts from the moment
+            // that screenshot started.
             var seenAt: Double?
-            while Date().timeIntervalSince(t0) < 1.5 {
-                if Self.darkShare(in: foxRect!, of: XCUIScreen.main.screenshot().image) > 0.04 {
-                    seenAt = Date().timeIntervalSince(t0)
+            while Date().timeIntervalSince(t0) < 2.0 {
+                let shotStart = Date().timeIntervalSince(t0)
+                if Self.darkShare(in: foxRect, of: XCUIScreen.main.screenshot().image) > 0.04 {
+                    seenAt = shotStart
                     break
                 }
             }
@@ -250,7 +259,6 @@ final class LanviFlowUITests: XCTestCase {
             worst = max(worst, at)
             event(String(format: "helpfox.%02d %.2f", round, at))
             XCTAssertLessThanOrEqual(at, 0.6, "round \(round): the fox on Help was on screen after \(at) s")
-            let close = app.buttons["Close"].firstMatch
             XCTAssertTrue(close.waitForExistence(timeout: 2))
             close.tap()
             // Every fourth round: open again at once, while Help is still closing.
