@@ -24,7 +24,7 @@ from zoneinfo import ZoneInfo
 from .config import Settings
 from .frames_reference import make_session
 from .mind import face_features as ff
-from .seed import create_patient, wipe_patient
+from .seed import create_patient, revontulet_game, wipe_patient
 from .service import _raw_object
 from .store import Store, make_store
 
@@ -61,6 +61,7 @@ def create(store: Store, clinic_id: str, tz_name: str, now: datetime, seed: int 
     tz = ZoneInfo(tz_name)
     today = now.astimezone(tz).date()
     rng = random.Random(seed)
+    rv = random.Random(seed + 3)  # Revontulet's measures only
     previous: list[dict] = []
     for k, (ago, wanted) in enumerate(SESSIONS):
         raw, _truth = make_session(seed * 100 + k, wanted=wanted, moments=True)
@@ -73,6 +74,9 @@ def create(store: Store, clinic_id: str, tz_name: str, now: datetime, seed: int 
              "correct_taps": n - 1, "wrong_taps": 1, "misses": rng.randint(1, 3),
              "reaction_ms": [int(max(200, rng.gauss(520, 55) * slow)) for _ in range(n)],
              "face": ff.summarize(raw), "face_source": "raw", "face_raw_info": ff.describe(raw)}
+        a.update(revontulet_game(rv, a["reaction_ms"], min(1.0, 0.08 * k)))
+        a["duration_s"] = 45.0  # the generated face frames are 45 s long
+        a["revontulet"].update(broke_through_s=round(rv.uniform(18, 26), 1), fox_finished=False)
         rec = process_activity(a, previous)
         rec.update(example=True, received_at=a["started_at"], content_sha256="example",
                    crisis=False, analysis={"status": "off"}, frames_reading={"status": "pending"})

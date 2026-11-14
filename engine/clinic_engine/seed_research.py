@@ -17,7 +17,8 @@ from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from .config import Settings
-from .seed import GOOD_THINGS, _day_values, _face, create_patient, wipe_patient
+from .seed import (GOOD_THINGS, _day_values, _face, create_patient, revontulet_game,
+                   wipe_patient)
 from .store import Store, make_store
 
 LABEL = "Example R-001"
@@ -43,6 +44,7 @@ def _simulate(store: Store, base: str, tz, now: datetime, plan: list[tuple[int, 
     from .mind.activities import process_activity
     today = now.astimezone(tz).date()
     rng, rx, noise = random.Random(seed), random.Random(seed + 1), random.Random(seed + 2)
+    rv = random.Random(seed + 3)  # Revontulet's measures only: the other draws stay as they were
     previous: list[dict] = []
     had_plan, n_act, n_rat, drift = False, 0, 0, 0.0
     for k, (ago, lvl) in enumerate(plan):
@@ -82,6 +84,10 @@ def _simulate(store: Store, base: str, tz, now: datetime, plan: list[tuple[int, 
                          reaction_ms=[int(max(200, rng.gauss(520, 55 + 40 * s) * (1 + 0.4 * s)))
                                       for _ in range(n)],
                          face=_face(rng, flat, rx))
+                # The game is Revontulet: harder cracks, ember taps and the two
+                # speeds follow the symptom level, like everything else here.
+                a.update(revontulet_game(rv, a["reaction_ms"], s, hard=0.9 - 0.35 * s,
+                                         hit=0.92 - 0.3 * s))
             elif typ == "breathing":
                 if noise.random() < 0.6 * s:
                     how = "user_stopped"

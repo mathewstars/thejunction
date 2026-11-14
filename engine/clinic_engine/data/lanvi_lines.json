@@ -8,9 +8,9 @@
       {"id": "breathing.3", "text": "Want to make my tail glow with a few slow breaths?"}
     ],
     "focus_game": [
-      {"id": "focus_game.1", "text": "Want to catch a few sparks with me?"},
-      {"id": "focus_game.2", "text": "Shall we play Sparks and snow for a little while?"},
-      {"id": "focus_game.3", "text": "Fancy a quick game of sparks before the snow?"}
+      {"id": "focus_game.1", "text": "Want to break the ice with me?"},
+      {"id": "focus_game.2", "text": "Shall we play Revontulet for a little while?"},
+      {"id": "focus_game.3", "text": "Fancy a quick game of fox fires?"}
     ],
     "checkin": [
       {"id": "checkin.1", "text": "Want to tell me three good things from today?"},
@@ -38,7 +38,7 @@
     "neutral": "Thank you. I keep your words safe."
   },
   "after_activity": {
-    "focus_done": "Thanks for playing with me. The sparks liked that.",
+    "focus_done": "Thanks for playing with me. The fox fires liked that.",
     "focus_stopped": "Thanks for playing. Every spark counts.",
     "breathing_done": "Nice.",
     "breathing_stopped": "Thank you for breathing with me.",
@@ -66,7 +66,7 @@
   ],
   "preferences_ack": {
     "moving": "Got it. I'll start with walks.",
-    "music": "Got it. I'll start with breathing and sparks.",
+    "music": "Got it. I'll start with breathing and Revontulet.",
     "people": "Got it. I'll start with reaching out to someone.",
     "quiet": "Got it. I'll start with quiet breathing.",
     "none": "Got it. We'll find out together."

@@ -17,7 +17,7 @@ from .audit import write_audit
 from .config import Settings
 from .mind import face_features, lines, xp
 from .mind import notes as note_logic
-from .mind.activities import check_activity, process_activity
+from .mind.activities import check_activity, played_to_the_end, process_activity
 from .mind.engine import Clock, Mind
 from .mind.gates import INPUT_GATE, OUTPUT_GATE, GateError
 from .mind.repo import PatientRepo
@@ -501,7 +501,7 @@ def after_activity_line(rec: dict, crisis: bool) -> dict:
     if rec["ended_by"] == "interrupted" and t != "checkin":
         return lines.after_activity("interrupted")
     if t in ("focus", "breathing"):
-        return lines.after_activity(f"{t}_done" if rec["ended_by"] == "finished" else f"{t}_stopped")
+        return lines.after_activity(f"{t}_done" if played_to_the_end(rec) else f"{t}_stopped")
     if rec.get("plan_done") == "yes":
         return lines.after_activity("plan_done_yes")
     if rec.get("plan_done") == "no":
