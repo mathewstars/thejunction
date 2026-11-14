@@ -47,9 +47,6 @@ enum Rig {
     /// The head turns low in its neck stub, under the chin, so tilting never opens a gap.
     static let head = Part(name: "head", center: CGPoint(x: 1086, y: 832), scale: 1.5, pivot: UnitPoint(x: 0.5, y: 0.85))
 
-    /// The tail's second joint (0...1 of the tail): the tip turns around it a beat late.
-    static let tailMid = UnitPoint(x: 0.55, y: 0.55)
-
     /// The fox's visual centre (head and body, not the tail), in master pixels. The
     /// view centres on this; the tail overhangs to the left.
     static let centerX: CGFloat = 1085
@@ -139,35 +136,103 @@ enum MouthShape: Equatable {
     }
 }
 
+// MARK: - Depth and bends (measured on the painted parts)
+
+extension Rig {
+    /// The head turns in space around this sphere: its centre and radii as shares of
+    /// the head picture (the round skull and face). The face markings (`LanviArt.layer`)
+    /// and the eyes and mouth move as points on it; the head's outline stays.
+    static let headSphereCenter = UnitPoint(x: 0.5, y: 0.467)
+    static let headSphereRadius = CGSize(width: 0.418, height: 0.387)
+    /// Head pixels (as `eyeL`, `mouthTop`) to sphere units (-1...1).
+    static func sphere(_ p: CGPoint) -> CGPoint {
+        let w = LanviArt.px("head").width, h = LanviArt.px("head").height
+        return CGPoint(x: (p.x + w / 2 - headSphereCenter.x * w) / (headSphereRadius.width * w),
+                       y: (p.y + h / 2 - headSphereCenter.y * h) / (headSphereRadius.height * h))
+    }
+    /// Sphere units back to head pixels from the head's centre.
+    static func headPixels(_ u: CGPoint) -> CGPoint {
+        let w = LanviArt.px("head").width, h = LanviArt.px("head").height
+        return CGPoint(x: u.x * headSphereRadius.width * w + headSphereCenter.x * w - w / 2,
+                       y: u.y * headSphereRadius.height * h + headSphereCenter.y * h - h / 2)
+    }
+    /// Biggest turn (radians) at a head direction of 1: about 19 degrees across, 14 up and down.
+    static let maxYaw = 0.33
+    static let maxPitch = 0.25
+
+    /// The chest bib swells around this point of the body picture when breathing in.
+    static let chestCenter = UnitPoint(x: 0.496, y: 0.36)
+
+    /// Where a point on the face sphere lands after the head turns (yaw, pitch in
+    /// radians), and how much the face is squeezed or opened there (x, y scale).
+    static func turn(_ u: CGPoint, yaw: Double, pitch: Double) -> (p: CGPoint, sx: CGFloat, sy: CGFloat) {
+        let h = Double.pi / 2
+        let x = Double(u.x), y = Double(u.y)
+        let ry = (1 - min(y * y, 0.999)).squareRoot()
+        let lon = asin(max(min(x / ry, 1), -1))
+        let lon2 = max(min(lon + yaw, h), -h)
+        let x2 = ry * sin(lon2)
+        let rx = (1 - min(x2 * x2, 0.999)).squareRoot()
+        let lat = asin(max(min(y / rx, 1), -1))
+        let lat2 = max(min(lat + pitch, h), -h)
+        let y2 = rx * sin(lat2)
+        let sx = cos(lon2) / max(cos(lon), 0.2)
+        let sy = cos(lat2) / max(cos(lat), 0.2)
+        return (CGPoint(x: x2, y: y2), CGFloat(max(min(sx, 1.4), 0.6)), CGFloat(max(min(sy, 1.4), 0.6)))
+    }
+}
+
 // MARK: - One frame of the puppet
 
-/// Everything that moves, for one frame. Angles in degrees, distances in motion units (`Rig.unit`).
-struct RigFrame {
-    var rootX: CGFloat = 0
-    var rootY: CGFloat = 0
-    /// The whole fox squashes and stretches from the feet (gently), so no part distorts.
-    var rootSX: CGFloat = 1
-    var rootSY: CGFloat = 1
-    /// The whole fox leans this many degrees around its feet (the happy wiggle).
-    var rootTilt: Double = 0
-    var bodySX: CGFloat = 1
-    var bodySY: CGFloat = 1
-    var headDX: CGFloat = 0
-    var headDY: CGFloat = 0
-    var headTilt: Double = 0
-    /// Positive = the ear flops outward, negative = perks up and in.
-    var earL: Double = 0
-    var earR: Double = 0
-    var earLStretch: CGFloat = 1
-    var earRStretch: CGFloat = 1
-    var tail: Double = 0
-    var tailTip: Double = 0
+/// One layer of motion. Every number is a change from the rest pose (0 = rest), so
+/// layers simply add up. Angles in degrees, distances in motion units (`Rig.unit`),
+/// scales as fractions (0.02 = 2 % bigger).
+struct Pose {
+    // The whole fox, around its feet.
+    var rootX = 0.0, rootY = 0.0, rootSX = 0.0, rootSY = 0.0, rootTilt = 0.0
+    // The body: stretch from the feet, chest swell, feet spread on landing.
+    var bodySX = 0.0, bodySY = 0.0, chest = 0.0, spread = 0.0
+    // The head: shift, tilt around the neck (degrees, + = clockwise), and where it faces.
+    var headX = 0.0, headY = 0.0, headTilt = 0.0
+    /// Where the head faces, -1...1: + x to the viewer's right, + y down.
+    var dirX = 0.0, dirY = 0.0
+    /// Ears: + = flops outward, - = perks up and in. Stretch along their length.
+    var earL = 0.0, earR = 0.0, earLS = 0.0, earRS = 0.0
+    /// Tail: base angle (+ = clockwise, the tail lifts) and curl along its length.
+    var tail = 0.0, tailCurl = 0.0
+    /// Eyes shift (head pixels), mouth size.
+    var eyeX = 0.0, eyeY = 0.0, mouthScale = 0.0
+
+    mutating func add(_ o: Pose, _ w: Double = 1) {
+        rootX += o.rootX * w; rootY += o.rootY * w; rootSX += o.rootSX * w; rootSY += o.rootSY * w
+        rootTilt += o.rootTilt * w
+        bodySX += o.bodySX * w; bodySY += o.bodySY * w; chest += o.chest * w; spread += o.spread * w
+        headX += o.headX * w; headY += o.headY * w; headTilt += o.headTilt * w
+        dirX += o.dirX * w; dirY += o.dirY * w
+        earL += o.earL * w; earR += o.earR * w; earLS += o.earLS * w; earRS += o.earRS * w
+        tail += o.tail * w; tailCurl += o.tailCurl * w
+        eyeX += o.eyeX * w; eyeY += o.eyeY * w; mouthScale += o.mouthScale * w
+    }
+}
+
+/// The face pictures for one moment.
+struct Face: Equatable {
     var eyes: EyeShape = .open
-    var eyeOpen: CGFloat = 1
-    var eyeDX: CGFloat = 0
-    var eyeDY: CGFloat = 0
     var mouth: MouthShape = .smile
-    var mouthScale: CGFloat = 1
+}
+
+/// Everything the puppet draws for one frame: the summed pose, the follow-through
+/// bends, and the face pictures with their cross-fade weights.
+struct RigFrame {
+    var pose = Pose()
+    /// Follow-through: how far the ear tips and the tail tip trail (degrees, + = clockwise).
+    var earLBend = 0.0, earRBend = 0.0, tailBend = 0.0
+    /// The head squashes a hair as it settles (scale around the neck).
+    var headSX = 1.0, headSY = 1.0
+    /// Eye and mouth pictures with weights (they cross-fade over three or four frames).
+    var eyes: [(EyeShape, Double)] = [(.open, 1)]
+    var mouths: [(MouthShape, Double)] = [(.smile, 1)]
+    var face = Face()
 }
 
 // MARK: - Small motion helpers
@@ -199,6 +264,34 @@ enum Motion {
         let x = phase - floor(phase)
         let v = x < 0.4 ? easeInOut(x / 0.4) : 1 - easeInOut((x - 0.4) / 0.6)
         return 2 * v - 1
+    }
+
+    /// 0 before `a`, 1 after `b`, eased (zero speed and zero acceleration at both ends).
+    static func smooth(_ a: Double, _ b: Double, _ x: Double) -> Double {
+        let c = min(max((x - a) / (b - a), 0), 1)
+        return c * c * c * (c * (c * 6 - 15) + 10)
+    }
+
+    /// A soft bump: 0 at `a`, 1 in the middle, 0 at `b` (sine squared, zero speed at the ends).
+    static func bump(_ x: Double, _ a: Double, _ b: Double) -> Double {
+        guard x > a, x < b else { return 0 }
+        let s = sin((x - a) / (b - a) * .pi)
+        return s * s
+    }
+
+    /// Rise from `a` to `b`, hold, fall from `c` to `d` (all eased, exactly 0 outside).
+    static func env(_ x: Double, _ a: Double, _ b: Double, _ c: Double, _ d: Double) -> Double {
+        smooth(a, b, x) * (1 - smooth(c, d, x))
+    }
+
+    /// Spring in at `start`, spring back out at `end`, and exactly 0 again by `end + settle`
+    /// (the springs are all but settled by then, so the cut-off is invisible).
+    static func pulse(_ x: Double, start: Double, end: Double, response: Double = 0.35,
+                      damping: Double = 0.6, back: Double? = nil, settle: Double = 0.9) -> Double {
+        guard x > start, x < end + settle else { return 0 }
+        let v = spring(x - start, response: response, damping: damping)
+            - spring(x - end, response: back ?? response * 1.2, damping: 0.75)
+        return v * (1 - smooth(end + settle - 0.25, end + settle, x))
     }
 
     static func easeOut(_ p: Double) -> Double { let c = min(max(p, 0), 1); return 1 - pow(1 - c, 3) }
