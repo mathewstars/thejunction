@@ -718,3 +718,28 @@ def test_week_to_week_change_separates_a_shared_drift_from_a_shared_movement():
     assert abs(b["change_rho"]) < 0.3                               # a steady drift does not follow the changes
     # per day (a proxy reference) the value is not computed
     assert A.row_stats("daily.steps", "lower", follows, ref, set())["change_rho"] is None
+
+
+def test_what_the_page_headline_rests_on_does_not_depend_on_the_model():
+    """The headline names measures by their strength label and passes over a measure the task
+    itself moves; the first chip prints the pattern. All three are code's, whatever is answered."""
+    rows = [_row("face.look_down_share", "face", "consistent", "moderate"),
+            _row("face.smile_intensity", "face", "consistent", "weak"),
+            _row("daily.steps", "daily", "consistent", "moderate"),
+            _row("checkin.good_things", "activity", "consistent", "weak"),
+            _row("focus.median_reaction_ms", "activity", "inconclusive", "negligible")]
+    code_ov = A.code_overall(rows, "rating", [], unit="rating", n_obs=13)
+    seen = set()
+    for strength in A.STRENGTHS:
+        for pattern in ("consistent_with_worse_state", "partly_consistent", "no_clear_relation",
+                        "insufficient_data"):
+            reply = {"rows": [{"key": r["key"], "agreement": r["agreement"], "strength": strength,
+                               "caveats": []} for r in rows],
+                     "overall": {**code_ov, "pattern": pattern}}
+            out, ov, _ = A.merge(reply, rows, code_ov, "rating", unit="rating", n_obs=13)
+            seen.add((tuple(r["strength"] for r in out), ov["pattern"], ov["independent_lines"],
+                      tuple(sorted(c["code"] for c in out[0]["caveats"]))))
+    assert len(seen) == 1
+    strengths, pattern, lines, look_down_caveats = next(iter(seen))
+    assert strengths == tuple(r["strength"] for r in rows) and pattern == code_ov["pattern"]
+    assert "task_confound" in look_down_caveats
