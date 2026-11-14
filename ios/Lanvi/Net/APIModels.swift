@@ -173,6 +173,8 @@ enum API {
         var breathsCompleted: Int?
         // focus and breathing
         var faceRaw: FaceRaw?
+        // focus and breathing, research only: fine movement per region (docs/face-fine.md)
+        var faceFine: FaceFine? = nil
         // checkin
         var goodThings: [CheckinItem]?
         var plan: CheckinItem?
@@ -192,9 +194,29 @@ enum API {
         var tracked: [Int]?
         var momentsMs: [Int]?
     }
+
+    /// Fine facial movement (`docs/face-fine.md`), research only: millimetres from the
+    /// person's own resting shape, per named region and frame. Computed on the phone;
+    /// no mesh, depth or coordinate is in it.
+    struct FaceFine: Codable, Equatable {
+        var source: String
+        var rateHz: Int
+        var regions: [String]
+        var samples: [[Double]]
+        var tracked: [Int]?
+        var noiseMm: Double?
+    }
 }
 
 extension API.ActivityIn {
+    /// The same record without the fine movement stream: the first thing left out when
+    /// the server refuses a record (a server that does not take `face_fine` yet).
+    var withoutFaceFine: API.ActivityIn {
+        var plain = self
+        plain.faceFine = nil
+        return plain
+    }
+
     /// The same record without the face frames: what goes out when the server refused
     /// the record with them, so the game itself is never lost (`LanviClient.send`).
     var withoutFaceRaw: API.ActivityIn {

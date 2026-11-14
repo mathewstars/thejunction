@@ -1,4 +1,5 @@
 import Foundation
+import simd
 
 /// Collects the raw face numbers of one game for `face_raw` (see `docs/face-raw.md`).
 /// The phone computes nothing from the face: one row per frame of the 52 ARKit blend
@@ -138,4 +139,217 @@ struct FaceRawRecorder {
         if a < -180 { a += 360 }
         return (a * 100).rounded() / 100
     }
+}
+
+// MARK: - Fine facial movement
+// Kept in this file (not its own) so the generated Xcode project needs no change.
+
+/// Fine facial movement for `face_fine` (see `docs/face-fine.md`): research only.
+///
+/// The ARKit face mesh is the shape of a face, so it never leaves the phone and is
+/// never stored. This is the one place where the phone computes from the face before
+/// it sends: for a few named regions and for every frame, ONE number, how far the
+/// region is from this person's own resting shape, in millimetres. The mesh is already
+/// in the face anchor's own coordinates, so the head's movement is out.
+///
+/// How it works:
+/// - The first `restFrames` tracked frames give the resting shape (per vertex, the
+///   median position). It stays in memory for this one game and is then forgotten.
+/// - Regions are found on that resting shape by where they lie on the face, as
+///   fractions of its width and height (`boxes`), not by fixed vertex numbers.
+/// - Each later frame: per region, the mean distance of its vertices from rest.
+/// - `noiseMm`: the mean of those numbers over the resting frames themselves, that is
+///   how much the numbers move when the face is (mostly) still.
+///
+/// The region boxes are a first guess and have not been checked on a device. In a
+/// DEBUG build `FaceSense` prints how many vertices each region caught.
+///
+/// Rows keep a steady `rateHz` on ARKit's clock exactly as `FaceRawRecorder` does, so
+/// the two streams of one game line up row by row.
+struct FaceFineRecorder {
+
+    /// A region as a box on the resting face: `u` runs from the person's right (0) to
+    /// their left (1), `v` from the chin (0) to the top of the mesh (1).
+    struct Box {
+        let name: String
+        let u: ClosedRange<Float>
+        let v: ClosedRange<Float>
+    }
+
+    /// The names are the server's fixed list (`docs/face-fine.md`).
+    static let boxes: [Box] = [
+        Box(name: "mouth_left", u: 0.52...0.68, v: 0.22...0.34),
+        Box(name: "mouth_right", u: 0.32...0.48, v: 0.22...0.34),
+        Box(name: "lip_upper", u: 0.42...0.58, v: 0.30...0.36),
+        Box(name: "lip_lower", u: 0.42...0.58, v: 0.20...0.27),
+        Box(name: "cheek_left", u: 0.65...0.85, v: 0.35...0.55),
+        Box(name: "cheek_right", u: 0.15...0.35, v: 0.35...0.55),
+        Box(name: "brow_left", u: 0.55...0.80, v: 0.72...0.82),
+        Box(name: "brow_right", u: 0.20...0.45, v: 0.72...0.82),
+        Box(name: "eyelid_left", u: 0.57...0.75, v: 0.60...0.69),
+        Box(name: "eyelid_right", u: 0.25...0.43, v: 0.60...0.69),
+        Box(name: "jaw", u: 0.38...0.62, v: 0.02...0.14),
+        Box(name: "nose", u: 0.44...0.56, v: 0.42...0.56),
+    ]
+    static let required = ["mouth_left", "mouth_right"]
+
+    /// 1.5 seconds at 30 Hz to learn the resting shape.
+    static let restFrames = 45
+    /// A region needs at least this many vertices to be sent.
+    static let minVertices = 3
+    /// Same limits as the raw frames (`FaceRawRecorder`).
+    static let maxSamples = 9_000
+    static let maxGapSlots = 300
+    /// The server takes 0 to 50 mm.
+    static let maxMm = 50.0
+
+    /// Off with the launch argument `-noFaceFine` (the raw frames are still sent).
+    static var isEnabled: Bool { !ProcessInfo.processInfo.arguments.contains("-noFaceFine") }
+
+    let rateHz: Int
+    private var rows: [[Double]] = []          // one value per box, in `boxes` order
+    private var tracked: [Int] = []
+    private var firstTime: Double?
+    private var early: [(slot: Int, vertices: [SIMD3<Float>])] = []
+    private var rest: [SIMD3<Float>]?
+    private var members: [[Int]] = []          // per box: vertex indices
+    private(set) var noiseMm: Double?
+
+    init(rateHz: Int = 30) {
+        self.rateHz = min(max(rateHz, 5), 60)
+    }
+
+    var isFull: Bool { rows.count >= Self.maxSamples }
+    var count: Int { rows.count }
+    /// Vertices each region caught, once the resting shape is known (for the log).
+    var regionSizes: [String: Int] {
+        Dictionary(uniqueKeysWithValues: zip(Self.boxes.map(\.name), members.map(\.count)))
+    }
+
+    /// One ARKit frame. `vertices` (metres, face anchor space) is asked for only when the
+    /// frame is kept, so a dropped frame costs nothing.
+    mutating func add(time: Double, tracked isTracked: Bool, vertices: () -> [SIMD3<Float>]) {
+        guard time.isFinite, !isFull else { return }
+        if firstTime == nil { firstTime = time }
+        guard let t0 = firstTime, time >= t0 else { return }
+        let slot = Int(((time - t0) * Double(rateHz)).rounded())
+        guard slot >= rows.count else { return }   // same slot again: keep the first
+
+        let missing = slot - rows.count
+        if missing > 0 {
+            for _ in 0..<min(missing, Self.maxGapSlots) where !isFull { appendEmpty() }
+            if missing > Self.maxGapSlots {
+                firstTime = time - Double(rows.count) / Double(rateHz)
+            }
+        }
+        guard !isFull else { return }
+        guard isTracked else { appendEmpty(); return }
+        let v = vertices()
+        guard !v.isEmpty else { appendEmpty(); return }
+
+        if let rest {
+            guard v.count == rest.count else { appendEmpty(); return }
+            rows.append(measure(v, against: rest))
+            tracked.append(1)
+        } else {
+            // Not yet known where the face rests: keep the frame until it is.
+            early.append((rows.count, v))
+            rows.append([Double](repeating: 0, count: Self.boxes.count))
+            tracked.append(1)
+            if early.count >= Self.restFrames { settle() }
+        }
+    }
+
+    /// The `face_fine` object, or nil when the resting shape was never learned (too few
+    /// tracked frames) or the mouth regions caught no vertices.
+    /// `lastSeconds` keeps only the end, as for the raw frames.
+    func faceFine(lastSeconds: Double? = nil) -> API.FaceFine? {
+        guard rest != nil, !rows.isEmpty else { return nil }
+        let active = Self.boxes.indices.filter { members[$0].count >= Self.minVertices }
+        let names = active.map { Self.boxes[$0].name }
+        guard Self.required.allSatisfy(names.contains) else { return nil }
+
+        var start = 0
+        if let keep = lastSeconds, keep.isFinite, keep > 0 {
+            start = max(0, rows.count - Int((keep * Double(rateHz)).rounded(.up)))
+        }
+        let keptTracked = Array(tracked[start...])
+        guard keptTracked.contains(1) else { return nil }
+        let keptRows = rows[start...].map { row in active.map { row[$0] } }
+        return API.FaceFine(source: "mesh", rateHz: rateHz, regions: names, samples: keptRows,
+                            tracked: keptTracked.allSatisfy { $0 == 1 } ? nil : keptTracked,
+                            noiseMm: noiseMm)
+    }
+
+    // MARK: The resting shape
+
+    /// Enough frames: learn the resting shape, find the regions on it, and measure the
+    /// frames that were waiting. The waiting vertices are then let go.
+    private mutating func settle() {
+        guard let n = early.first?.vertices.count, n > 0 else { early = []; return }
+        let frames = early.filter { $0.vertices.count == n }
+        var shape = [SIMD3<Float>](repeating: .zero, count: n)
+        var xs = [Float](repeating: 0, count: frames.count)
+        var ys = xs, zs = xs
+        for i in 0..<n {
+            for (k, f) in frames.enumerated() {
+                xs[k] = f.vertices[i].x; ys[k] = f.vertices[i].y; zs[k] = f.vertices[i].z
+            }
+            shape[i] = SIMD3(Self.median(xs), Self.median(ys), Self.median(zs))
+        }
+        rest = shape
+        members = Self.assign(shape)
+
+        var sum = 0.0, counted = 0
+        for f in frames {
+            let row = measure(f.vertices, against: shape)
+            rows[f.slot] = row
+            for (j, value) in row.enumerated() where members[j].count >= Self.minVertices {
+                sum += value; counted += 1
+            }
+        }
+        noiseMm = counted > 0 ? Self.round2(min(sum / Double(counted), 5)) : nil
+        early = []
+    }
+
+    /// Which vertices lie in which box of the resting face.
+    static func assign(_ shape: [SIMD3<Float>]) -> [[Int]] {
+        guard let first = shape.first else { return boxes.map { _ in [] } }
+        var lo = first, hi = first
+        for p in shape { lo = simd_min(lo, p); hi = simd_max(hi, p) }
+        let w = max(hi.x - lo.x, .leastNonzeroMagnitude)
+        let h = max(hi.y - lo.y, .leastNonzeroMagnitude)
+        var out = [[Int]](repeating: [], count: boxes.count)
+        for (i, p) in shape.enumerated() {
+            // +X in the face anchor's space is the person's own left.
+            let u = (p.x - lo.x) / w, v = (p.y - lo.y) / h
+            for (j, box) in boxes.enumerated() where box.u.contains(u) && box.v.contains(v) {
+                out[j].append(i)
+            }
+        }
+        return out
+    }
+
+    private func measure(_ v: [SIMD3<Float>], against shape: [SIMD3<Float>]) -> [Double] {
+        members.map { ids in
+            guard !ids.isEmpty else { return 0 }
+            var sum: Float = 0
+            for i in ids { sum += simd_distance(v[i], shape[i]) }
+            let mm = Double(sum / Float(ids.count)) * 1000
+            return mm.isFinite ? Self.round2(min(max(mm, 0), Self.maxMm)) : 0
+        }
+    }
+
+    private mutating func appendEmpty() {
+        rows.append([Double](repeating: 0, count: Self.boxes.count))
+        tracked.append(0)
+    }
+
+    static func median(_ values: [Float]) -> Float {
+        let s = values.sorted()
+        guard !s.isEmpty else { return 0 }
+        return s.count % 2 == 1 ? s[s.count / 2] : (s[s.count / 2 - 1] + s[s.count / 2]) / 2
+    }
+
+    static func round2(_ v: Double) -> Double { (v * 100).rounded() / 100 }
 }
