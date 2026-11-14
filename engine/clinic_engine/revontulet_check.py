@@ -12,7 +12,7 @@ Two questions, for the two measures the clinician page labels per game
 choose are judged over several games, never per game):
 
 1. A person who does not change (24 games, slide 0): what share of games from
-   the ninth on carry at least one "unusual" label (2.0 or more either way)?
+   the ninth on carry at least one "unusual" label (2.5 or more either way)?
 2. The example's slide (weeks five to eight): in the last two weeks, what share
    of games are labelled slower in tracing, against the moving range (the 20
    games before) and against the fixed start (games 3 to 12)?

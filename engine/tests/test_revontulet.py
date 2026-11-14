@@ -247,3 +247,7 @@ def test_the_rule_rarely_labels_an_unchanged_person_and_catches_the_example_slid
     assert out["unchanged_any_label"] < 0.06
     assert out["unchanged_people_three_in_a_row_recent"] < 0.02
     assert out["slide_last_two_weeks_tracing_slower_start"] > 0.95
+    # The harder row: games that vary three times as much from one to the next.
+    noisy = run(runs=300, spread=3.0)
+    assert noisy["unchanged_any_label"] < 0.18
+    assert noisy["slide_last_two_weeks_tracing_slower_start"] > 0.70

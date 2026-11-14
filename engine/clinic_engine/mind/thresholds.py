@@ -64,7 +64,8 @@ class Thresholds:
     # comparison, and 2.5 either way before the page calls a game unusual. Set
     # with revontulet_check on generated games, at up to three times the
     # example's game-to-game spread: with 2.5 an unchanged person gets a label on
-    # 0 to 10% of games (it was 15 to 17% at 2.0 once games vary twice as much,
+    # 0 to 10% of games against one reference, 0 to 13% against either (it was
+    # 15 to 17% against one at 2.0 once games vary twice as much,
     # and 37% with 5 games, 1.5 and a label on time to choose as well).
     revontulet_baseline_min: int = 8
     revontulet_unusual_z: float = 2.5
