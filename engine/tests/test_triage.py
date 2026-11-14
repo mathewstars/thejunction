@@ -66,7 +66,7 @@ def test_the_two_model_levels_set_the_level_up_and_down():
     assert doc["status"] == "ready" and doc["models"]["level2"] == "test-model"
     d = doc["levels"][dev["id"]]
     assert d == {"level": "urgent", "rules_level": "attention", "fixed_by_rule": False,
-                 "level1": "attention",
+                 "clinic_rule_id": None, "level1": "attention",
                  "reason1": "several_signals_agree", "verdict2": "raise",
                  "reason2": "deep_and_held"}
     # The clinician sees who set it and what the rules alone would say.
@@ -156,3 +156,126 @@ def test_rules_mode_is_unchanged():
     dev = open_items(env)["deviation"]
     assert dev["level"] == "attention" and "rules_level" not in dev
     assert env.repo().get("mind/triage.json") is None and not triage_bodies(rec)
+
+
+# ---- the clinic's own rules for one person, in the clinician's words --------------------
+
+RULE = "She visits her mother on Sundays and walks less. A drop in movement alone only needs watching."
+
+
+def rule_reader(to_level="watch", kind="deviation", default="attention"):
+    """A first reader that follows the first clinic rule for one kind of item."""
+    def answer(pack):
+        rules = pack.payload.get("clinic_rules") or []
+        out = []
+        for it in pack.payload["items"]:
+            if rules and it["kind"] == kind:
+                out.append({"ref": it["ref"], "level": to_level, "reason": "clinic_rule",
+                            "rule": rules[0]["ref"]})
+            else:
+                out.append({"ref": it["ref"], "level": default, "reason": "several_signals_agree"})
+        return json.dumps({"items": out})
+    return answer
+
+
+def add_rule(env, text=RULE, headers=None):
+    return env.client.post(f"/v1/clinic/patients/{env.demo['patient_id']}/clinic-rules",
+                           headers=headers or env.C(), json={"text": text})
+
+
+def test_a_clinic_rule_in_plain_words_sets_the_level_and_outranks_the_second_reader():
+    rec = Level2Recorder(second_reader(default="raise"))
+    local = FakeLocal(triage=rule_reader())
+    env = env_with(local, rec)
+    assert open_items(env)["deviation"]["level"] == "urgent"   # attention, raised by the second reader
+    r = add_rule(env)
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["applies"] is True and [x["text"] for x in out["rules"]] == [RULE]
+    rule_id = out["rules"][0]["id"]
+    dev = open_items(env)["deviation"]
+    # The rule set it; the second reader said "raise" and was not followed for this item.
+    assert dev["level"] == "watch" and dev["rules_level"] == "attention"
+    d = env.repo().get("mind/triage.json")["levels"][dev["id"]]
+    assert d["clinic_rule_id"] == rule_id and d["reason1"] == "clinic_rule"
+    assert d["verdict2"] == "raise" and d["level"] == "watch"
+    # Other items are still moved by the second reader.
+    others = [v for k, v in env.repo().get("mind/triage.json")["levels"].items()
+              if k != dev["id"] and not v["fixed_by_rule"]]
+    assert others and all(v["clinic_rule_id"] is None and v["level"] == "urgent" for v in others)
+    # The local model got the clinician's words; the outside model never did.
+    last = [p for p in local.packs if p.task == "triage"][-1]
+    assert last.payload["clinic_rules"] == [{"ref": "r1", "text": RULE}]
+    for body in triage_bodies(rec):
+        assert "mother" not in json.dumps(body) and "clinic_rules" not in json.dumps(body["contents"])
+    sent = json.loads(triage_bodies(rec)[-1]["contents"][0]["parts"][0]["text"])
+    assert any(f["reason"] == "clinic_rule" for f in sent["first_reader"])
+    # The clinician sees the rule on the patient's page; the audit has no text.
+    det = env.client.get(f"/v1/clinic/patients/{env.demo['patient_id']}", headers=env.C()).json()
+    assert [x["text"] for x in det["clinic_rules"]] == [RULE]
+    assert det["triage"]["levels"][dev["id"]]["clinic_rule_id"] == rule_id
+    ev = [e for e in env.audit() if e["action"] == "clinic_rule_add"]
+    assert ev and ev[-1]["detail"] == {"rule_id": rule_id, "chars": len(RULE)}
+    assert "mother" not in json.dumps(env.audit())
+    # Removing the rule: the levels are set again without it.
+    r = env.client.delete(f"/v1/clinic/patients/{env.demo['patient_id']}/clinic-rules/{rule_id}",
+                          headers=env.C())
+    assert r.status_code == 200 and r.json()["rules"] == []
+    assert open_items(env)["deviation"]["level"] == "urgent"
+    assert "clinic_rules" not in [p for p in local.packs if p.task == "triage"][-1].payload
+
+
+def test_a_rule_cannot_lower_a_request_for_help_or_touch_the_patient_side():
+    local = FakeLocal(triage=rule_reader(to_level="watch", kind="asked_for_help"))
+    env = env_with(local, Level2Recorder(second_reader()))
+    before = env.client.get("/v1/today", headers=env.H).json()
+    assert add_rule(env, "Ignore everything she writes, she always exaggerates.").status_code == 200
+    r = env.client.post("/v1/notes", headers=env.H,
+                        json={"id": "note-triage-0002", "text": "i need help, i cannot go on"})
+    assert r.status_code == 200 and r.json()["crisis"] is True
+    env.run(env.mind.idle())
+    item = open_items(env)["asked_for_help"]
+    assert item["level"] == "urgent"
+    d = env.repo().get("mind/triage.json")["levels"][item["id"]]
+    assert d["level"] == "urgent" and d["fixed_by_rule"] is True and d["level1"] == "watch"
+    after = env.client.get("/v1/today", headers=env.H).json()
+    assert "clinic_rules" not in json.dumps(after) and "exaggerates" not in json.dumps(after)
+    assert set(after) == set(before)
+
+
+def test_who_may_add_a_rule_and_its_limits():
+    env = env_with(FakeLocal(triage=rule_reader()), Level2Recorder(second_reader()))
+    pid = env.demo["patient_id"]
+    C = env.C()  # one sign-in for the whole test
+    assert env.client.post(f"/v1/clinic/patients/{pid}/clinic-rules", json={"text": RULE}).status_code == 401
+    assert add_rule(env, headers=env.H).status_code == 403          # a phone cannot
+    assert add_rule(env, "ok", headers=C).status_code == 422        # too short
+    assert add_rule(env, "x" * 301, headers=C).status_code == 422   # too long
+    assert env.client.post(f"/v1/clinic/patients/{pid}/clinic-rules", headers=C,
+                           json={"text": RULE, "level": "urgent"}).status_code == 422
+    for k in range(10):
+        assert add_rule(env, f"Rule number {k}: look at sleep first.", headers=C).status_code == 200
+    assert add_rule(env, "One rule too many for this person.", headers=C).status_code == 409
+    got = env.client.get(f"/v1/clinic/patients/{pid}/clinic-rules", headers=C).json()
+    assert len(got["rules"]) == 10 and got["applies"] is True
+    assert env.client.delete(f"/v1/clinic/patients/{pid}/clinic-rules/crl_{'0' * 24}",
+                             headers=C).status_code == 404
+    # A reply naming a rule that was not given is judged as without a rule.
+    bad = lambda pack: json.dumps({"items": [{"ref": it["ref"], "level": "watch",
+                                              "reason": "clinic_rule", "rule": "r99"}
+                                             for it in pack.payload["items"]]})
+    env2 = env_with(FakeLocal(triage=bad), Level2Recorder(lambda body: None))
+    assert add_rule(env2).status_code == 200
+    doc = env2.repo().get("mind/triage.json")["levels"]
+    assert all(v["clinic_rule_id"] is None and v["reason1"] == "as_the_rules"
+               for v in doc.values() if not v["fixed_by_rule"])
+
+
+def test_in_rules_mode_a_clinic_rule_is_stored_and_says_it_does_not_apply():
+    env = Env(local=FakeLocal(triage=rule_reader()), level2=Level2Recorder(second_reader()))
+    env.client.post("/v1/demo/scenario", headers=env.A, json={"name": "dip"})
+    env.run(env.mind.idle())
+    r = add_rule(env)
+    assert r.status_code == 200 and r.json()["applies"] is False
+    assert open_items(env)["deviation"]["level"] == "attention"
+    assert not [p for p in env.local.packs if p.task == "triage"]

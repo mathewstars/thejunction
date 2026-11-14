@@ -317,6 +317,10 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
                             for i in view.items],
         # Who sets the levels ("rules" or "models") and, with models, what each
         # of the two model levels said per item (codes only).
+        # The clinic's own rules for this person (free text; read by the local
+        # model in the triage, never sent outside).
+        "clinic_rules": [{k: r.get(k) for k in ("id", "text", "at", "by")}
+                         for r in mind.clinic_rules(repo)],
         "triage": {"mode": getattr(mind.settings, "triage_mode", "rules"),
                    **{k: (repo.get("mind/triage.json") or {}).get(k)
                       for k in ("status", "at", "models", "levels")}},

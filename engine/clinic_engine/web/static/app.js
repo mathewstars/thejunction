@@ -442,7 +442,7 @@
     });
     $("subnav").replaceChildren(tabs);  // the patient's sections live in the top bar
     const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, talk: tabTalk, research: tabResearch, mind: tabMind, log: tabLog }[S.route.tab](d, today);
-    if (S.route.tab === "overview" && body && body.appendChild) { const dp = daysPanel(d); if (dp) body.appendChild(dp); }
+    if (S.route.tab === "overview" && body && body.appendChild) { body.appendChild(clinicRulesPanel(d)); const dp = daysPanel(d); if (dp) body.appendChild(dp); }
     if (S.route.tab === "overview" && d.summary) wrap.appendChild(el("p", { class: "lead" },
       String(d.summary).replace(/\s*Last suggestion:[^.]*\.?/, "").replace(/held since/g, "flagged since").replace(/\b\d{4}-\d{2}-\d{2}\b/g, (m) => dayShort(m))));
     wrap.appendChild(el("div", { id: "tabpanel", role: "tabpanel", "aria-labelledby": "tab-" + S.route.tab }, body));
@@ -600,6 +600,29 @@
       } } }, "Acknowledge");
   }
 
+  // ---- the clinic's own rules for this person, in plain words
+  function clinicRulesPanel(d) {
+    const rules = d.clinic_rules || [], on = d.triage && d.triage.mode === "models";
+    const base = "/v1/clinic/patients/" + encodeURIComponent(S.route.pid) + "/clinic-rules";
+    const used = {};
+    Object.keys((d.triage && d.triage.levels) || {}).forEach((id) => { const r = d.triage.levels[id].clinic_rule_id; if (r) used[r] = (used[r] || 0) + 1; });
+    const input = el("textarea", { id: "clinic-rule-text", rows: 2, maxlength: 300, class: "rule-input", placeholder: "For example: She visits her mother on Sundays and walks less; a low Sunday alone needs no attention.", "aria-label": "A new rule for this person" });
+    const add = el("button", { type: "button", class: "btn btn-small", on: { click: async () => {
+      const text = input.value.trim();
+      if (text.length < 3) { flash("Write the rule first."); return; }
+      try { await api("POST", base, { text }); flash(""); S.detail = null; await refresh(); } catch (e) { flash(e.message); }
+    } } }, "Add rule");
+    const list = rules.length ? el("ul", { class: "attlist" }, rules.map((r) => el("li", null,
+      el("span", { class: "what" }, "“" + r.text + "”"),
+      el("span", { class: "muted since" }, dayShort(r.at) + (used[r.id] ? " · sets " + used[r.id] + (used[r.id] === 1 ? " level now" : " levels now") : on ? " · applies to nothing now" : "")),
+      el("button", { type: "button", class: "linklike small ack", "aria-label": "Remove this rule", on: { click: async () => {
+        try { await api("DELETE", base + "/" + encodeURIComponent(r.id)); S.detail = null; await refresh(); } catch (e) { flash(e.message); } } } }, "Remove")))) : empty("No rule written for this person.");
+    return panel("The clinic's rules for this person", rules.length || "", list, el("div", { class: "rule-add" }, input, add),
+      el("p", { class: "muted small tri-note" }, on
+        ? "Written in your own words. The local model reads the rules when the levels above are set, and a level that follows a rule is not moved by the second model. The words stay on the clinic's server. A rule can change levels only: it cannot lower a request for help, and it never reaches the patient."
+        : "Rules are stored, but nothing reads them while the levels are set by the fixed rules (model triage is off on this server)."));
+  }
+
   // ---- the day reading: two readers on the daily numbers from Apple Health
   // Code's fixed rule (each day against the person's own normal) and the
   // level-2 model read the same series. The series is the one that was sent.
@@ -721,6 +744,8 @@
     const triageLine = (i) => {
       const t = triLevels[i.id];
       if (tri.mode !== "models" || !t) return null;
+      const rule = t.clinic_rule_id ? (d.clinic_rules || []).find((r) => r.id === t.clinic_rule_id) : null;
+      if (rule) return el("span", { class: "sub tri" }, "Level set to " + LV[t.level] + " by the clinic's rule: “" + rule.text + "”. The fixed rules alone would say " + LV[t.rules_level] + ".");
       const one = t.level1 ? "the local model set " + LV[t.level1] + " (" + (RS[t.reason1] || words(t.reason1).toLowerCase()) + ")" : "the local model did not answer";
       const two = t.verdict2 ? "Gemini " + ({ agree: "agreed", raise: "raised it", lower: "lowered it" }[t.verdict2]) + " (" + (RS[t.reason2] || words(t.reason2).toLowerCase()) + ")" : "Gemini was not asked or did not answer";
       return el("span", { class: "sub tri" }, "Level set by the two models: " + one + "; " + two + ". The fixed rules alone would say " + LV[t.rules_level] + ".");

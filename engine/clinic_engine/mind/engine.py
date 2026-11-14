@@ -374,8 +374,15 @@ class Mind:
                             and a["type"] in ("focus", "breathing")),
             checkins_7d=sum(1 for a in view.activities if a["started_at"] >= cut7
                             and a["type"] == "checkin"),
-            today=view.today)
+            today=view.today, clinic_rules=self.clinic_rules(repo))
         return view, items, rules, payload, refs
+
+    @staticmethod
+    def clinic_rules(repo: PatientRepo) -> list[dict]:
+        """The clinic's own rules for this person, oldest first: free text
+        written by a clinician, read by level 1 in the triage, never sent out."""
+        return [r for r in (repo.get("mind/clinic_rules.json") or {}).get("rules", [])
+                if r.get("active", True)]
 
     @staticmethod
     def _triage_basis(payload: dict | None) -> str:
@@ -484,17 +491,21 @@ class Mind:
             return {"status": "no_models"}
         step = {"agree": 0, "raise": 1, "lower": -1}
         by_id = {it["id"]: it for it in items}
+        rule_ids = {f"r{i}": r["id"] for i, r in enumerate(self.clinic_rules(repo)[:10], 1)}
         decisions: dict[str, dict] = {}
         for ref, iid in refs.items():
             one, two = first.get(ref), second.get(ref)
             if one is None and two is None:
                 continue  # neither reader answered for this item: the rules' level stands
             base = one["level"] if one else rules[iid]
-            idx = LEVELS.index(base) + (step[two["verdict"]] if two else 0)
+            # A level that follows the clinic's own rule for this person is not
+            # moved by the second reader: the clinician outranks the model.
+            rule_id = rule_ids.get(one.get("rule")) if one else None
+            idx = LEVELS.index(base) + (step[two["verdict"]] if two and rule_id is None else 0)
             fixed = by_id[iid]["kind"] == "asked_for_help"  # urgent by rule, whatever was said
             decisions[iid] = {
                 "level": "urgent" if fixed else LEVELS[max(0, min(len(LEVELS) - 1, idx))],
-                "rules_level": rules[iid], "fixed_by_rule": fixed,
+                "rules_level": rules[iid], "fixed_by_rule": fixed, "clinic_rule_id": rule_id,
                 "level1": one["level"] if one else None, "reason1": one["reason"] if one else None,
                 "verdict2": two["verdict"] if two else None,
                 "reason2": two["reason"] if two else None}
