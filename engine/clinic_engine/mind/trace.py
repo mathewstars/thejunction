@@ -283,7 +283,7 @@ KIND_SHORT = {
     "face_flat": "Less facial movement", "checkins_stopped": "Check-ins stopped",
     "plans_not_done": "Plans not done", "model_noticed": "Noticed by the model",
 }
-ACTION_SHORT = {"breathing": "breathing", "focus_game": "Sparks and snow", "checkin": "check-in",
+ACTION_SHORT = {"breathing": "breathing", "focus_game": "Revontulet", "checkin": "check-in",
                 "walk_10min": "a walk", "daylight_10min": "daylight", "call_someone": "a call"}
 TRIGGER_SHORT = {
     "day": "Daily data", "activity": "Activity", "note": "Note", "feedback": "Answer",

@@ -29,42 +29,56 @@ PER_WEEK = (6, 4, 1)          # days before the end of each week
 # How far into the slide each week is (0 = as usual, 1 = the lowest week).
 SLIDE = (0.0, 0.0, 0.05, 0.0, 0.3, 0.6, 0.85, 1.0)
 PHQ9 = (5, 4, 5, 6, 8, 11, 13, 15)
-PT_PER_CM = 64.2
+# The scale of every number below is taken from nine real games played by one
+# team member on 14 November 2026 (an iPhone 15 Pro, indoors in the evening):
+# tracing at about 7 to 20 cm/s, strokes at 10 to 40 cm/s, one to three
+# seconds to choose, the wall bursting 15 to 40 seconds in. The story (the
+# slide, and how much it moves each number) is still made up.
+PT_PER_CM = 60.4
+TRACE_CM_S, STROKE_CM_S = 13.5, 19.5
 
 
-def _game(rng: random.Random, slide: float, spread: float = 1.0) -> dict:
+def _game(rng: random.Random, slide: float, spread: float = 1.0,
+          hard: float | None = None, hit: float | None = None) -> dict:
     """One game's `revontulet` object (the shape of models.RevontuletIn).
     `spread` widens how much the two speeds vary from game to game (1.0: the
-    example's 10% either way), for revontulet_check."""
+    example's 10% either way), for revontulet_check. `hard` and `hit` set the
+    chance of the harder crack and of tapping an ember, for the other example
+    people (seed.revontulet_game); left out, both follow the slide."""
+    p_hard = 0.8 - 0.7 * slide if hard is None else hard
+    p_hit = 0.9 - 0.3 * slide if hit is None else hit
     wob = lambda: rng.uniform(1 - 0.1 * spread, 1 + 0.1 * spread)  # noqa: E731
     rounds = []
     for _ in range(3):
-        hard = rng.random() < 0.8 - 0.7 * slide
+        hard = rng.random() < p_hard
         shown = 2 if hard else 0
-        speed = PT_PER_CM * (3.4 - 1.25 * slide) * wob()
-        ms = int(rng.uniform(1100, 1500) * (1 + 0.6 * slide))
+        speed = PT_PER_CM * TRACE_CM_S * (1 - 0.37 * slide) * wob()
+        ms = int(rng.uniform(320, 1000) * (1 + 0.6 * slide))
         rounds.append({
             "effort": "hard" if hard else "easy",
-            "choice_ms": int(rng.uniform(900, 1900) * (1 + 0.9 * slide)),
-            "trace_start_ms": int(rng.uniform(350, 800) * (1 + 0.5 * slide)),
+            "choice_ms": int(rng.uniform(600, 3400) * (1 + 0.9 * slide)),
+            "trace_start_ms": int(rng.uniform(250, 1500) * (1 + 0.5 * slide)),
             "trace_ms": ms, "trace_length_pt": round(speed * ms / 1000, 1),
             "trace_mean_speed_pt_s": round(speed, 1),
             "trace_peak_speed_pt_s": round(speed * rng.uniform(1.8, 2.2), 1),
-            "trace_lifts": 1 if rng.random() < 0.1 + 0.4 * slide else 0,
-            "pull_pt": round(rng.uniform(85, 115) * (1 - 0.2 * slide), 1),
-            "pull_hold_ms": int(rng.uniform(400, 800)),
+            "trace_lifts": 1 if rng.random() < 0.4 + 0.3 * slide else 0,
+            "pull_pt": round(rng.uniform(150, 164) * (1 - 0.2 * slide), 1),
+            "pull_hold_ms": int(rng.uniform(170, 320)),
             "embers_shown": shown,
-            "embers_hit": sum(rng.random() < 0.9 - 0.3 * slide for _ in range(shown)),
+            "embers_hit": sum(rng.random() < p_hit for _ in range(shown)),
             "bonus": hard and rng.random() < 0.3})
-    strokes = [{"ms": int(rng.uniform(1100, 1700)), "length_pt": round(rng.uniform(350, 430), 1),
-                "mean_speed_pt_s": round(PT_PER_CM * (4.6 - 1.4 * slide) * wob(), 1)}
-               for _ in range(rng.randint(1, 3))]
+    strokes = []
+    for _ in range(rng.randint(1, 3)):
+        ms, drift = int(rng.uniform(500, 5000)), rng.uniform(0.95, 1.05)
+        speed = PT_PER_CM * STROKE_CM_S * (1 - 0.3 * slide) * wob()
+        strokes.append({"ms": ms, "length_pt": round(min(20000.0, speed * ms / 1000 * drift), 1),
+                        "mean_speed_pt_s": round(speed, 1)})
     fox = rng.random() < 0.6 * slide
     return {"rounds": rounds, "strokes": strokes,
-            "broke_through_s": None if fox else round(rng.uniform(46, 62) + 14 * slide, 1),
+            "broke_through_s": None if fox else round(rng.uniform(15, 38) + 14 * slide, 1),
             "fox_finished": fox, "pt_per_cm": PT_PER_CM,
-            "touch_radius_mean_pt": round(rng.uniform(19, 23), 1),
-            "touch_radius_var": round(rng.uniform(3, 6), 1)}
+            "touch_radius_mean_pt": round(rng.uniform(24, 30), 1),
+            "touch_radius_var": round(rng.uniform(5, 40), 1)}
 
 
 def create(store: Store, clinic_id: str, tz_name: str, now: datetime, seed: int = 47) -> str:
@@ -94,7 +108,9 @@ def create(store: Store, clinic_id: str, tz_name: str, now: datetime, seed: int 
             started = datetime.combine(week_end - timedelta(days=back), time(17, 5 + k % 40), tzinfo=tz)
             a = {"id": f"example-revontulet-{k:03d}", "type": "focus",
                  "started_at": started.astimezone(timezone.utc).isoformat(), "suggestion_id": None,
-                 "duration_s": 90.0, "completed": True, "ended_by": "finished",
+                 "duration_s": 90.0 if rv["broke_through_s"] is None
+                 else min(90.0, round(rv["broke_through_s"] + 22.0, 1)),
+                 "completed": True, "ended_by": "finished",
                  "correct_taps": 3 + hits, "wrong_taps": 0, "misses": shown - hits,
                  "reaction_ms": [int(rng.gauss(430, 45) * (1 + 0.25 * SLIDE[week])) for _ in range(hits)],
                  "revontulet": rv}

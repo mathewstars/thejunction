@@ -20,11 +20,17 @@ FLAT_FACE = {"smile_rate_per_min": 0.6, "smile_intensity": 0.15, "facial_activit
 
 
 def slow_focus(aid="act-read-0001", face=FLAT_FACE, minutes_ago=30):
+    """A slow Revontulet game, the game the app plays (the example patient's
+    earlier games are Revontulet too, so it has an own normal to be read against)."""
+    rnd = {"effort": "hard", "choice_ms": 2400, "trace_start_ms": 900, "trace_ms": 2100,
+           "trace_length_pt": 280.0, "trace_mean_speed_pt_s": 133.0, "embers_shown": 2,
+           "embers_hit": 2}
     return {"id": aid, "type": "focus",
             "started_at": (NOW - timedelta(minutes=minutes_ago)).isoformat(),
-            "duration_s": 45.0, "completed": True, "ended_by": "finished",
-            "correct_taps": 17, "wrong_taps": 1, "misses": 2,
-            "reaction_ms": [740, 760, 780, 750, 770, 765, 755, 745, 790, 760, 775, 750],
+            "duration_s": 90.0, "completed": True, "ended_by": "finished",
+            "correct_taps": 9, "wrong_taps": 0, "misses": 0,
+            "reaction_ms": [740, 760, 780, 750, 770, 765],
+            "revontulet": {"rounds": [rnd, rnd, rnd], "strokes": [], "pt_per_cm": 64.2},
             "face": face}
 
 
@@ -74,7 +80,7 @@ def test_a_correct_reading_is_stored_checked_and_shown_safely():
     assert a["reading"]["reactions"] == "slower" and a["dropped"] == []
     assert len(a["reading"]["evidence"]) == 2
     r = env.client.get("/v1/activities/act-read-0001/reading", headers=env.H).json()
-    assert r == {"status": "ready", "line": PATIENT_LINES["focus"]}
+    assert r == {"status": "ready", "line": PATIENT_LINES["revontulet"]}
     # The clinician sees it, marked as read by a model and checked by code.
     d = env.client.get(f"/v1/clinic/patients/{env.demo['patient_id']}", headers=env.C()).json()
     s = next(x for x in d["activities"]["focus"]["sessions"] if x["id"] == "act-read-0001")

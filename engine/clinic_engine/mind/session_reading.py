@@ -15,6 +15,8 @@ background. With level 2 off the code-only path stands.
 
 from __future__ import annotations
 
+from .activities import game_kind, played_to_the_end
+
 REACTIONS = ("steady", "slower", "faster", "unclear")
 EXPRESSION = ("as_usual", "less_expressive", "more_expressive", "unclear")
 EYES = ("as_usual", "looking_down_more", "blinking_less", "blinking_more", "unclear")
@@ -32,6 +34,7 @@ VALUE_FIELDS = ("median_reaction_ms", "reaction_spread_ms", "error_rate", "time_
 # What the patient may see: one neutral line per type. Never a mood, a face or a score.
 PATIENT_LINES = {
     "focus": "Thanks for playing Sparks and snow with me.",
+    "revontulet": "Thanks for playing Revontulet with me.",
     "breathing": "Thanks for breathing with me.",
 }
 
@@ -50,7 +53,7 @@ def session_values(rec: dict) -> dict:
     """One session as the model may see it. Built from scratch, allowlist only."""
     f = rec.get("features") or {}
     face = rec.get("face") or {}
-    out: dict = {"type": rec["type"], "finished": rec["ended_by"] == "finished"}
+    out: dict = {"type": rec["type"], "finished": played_to_the_end(rec)}
     if rec["type"] == "focus":
         out.update(median_reaction_ms=_r(f.get("median_reaction_ms"), 0),
                    reaction_spread_ms=_r(f.get("reaction_spread_ms"), 0),
@@ -64,8 +67,9 @@ def session_values(rec: dict) -> dict:
 
 
 def earlier_sessions(rec: dict, previous: list[dict]) -> list[dict]:
-    same = [p for p in previous if p["type"] == rec["type"] and p["started_at"] < rec["started_at"]
-            and p.get("face_quality") == "good"]
+    # the same game only: a Revontulet game is never set beside Sparks and snow games
+    same = [p for p in previous if game_kind(p) == game_kind(rec)
+            and p["started_at"] < rec["started_at"] and p.get("face_quality") == "good"]
     return same[-EARLIER_MAX:]
 
 
