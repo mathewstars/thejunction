@@ -44,6 +44,7 @@ struct LanviPuppet: View {
     var body: some View {
         TimelineView(.animation) { context in
             let f = motion(at: context.date.timeIntervalSinceReferenceDate).frame()
+            let _ = LanviFrameLog.shared?.record(date: context.date, f)
             ZStack(alignment: .bottom) {
                 shadow(f)
                 rig(f)
