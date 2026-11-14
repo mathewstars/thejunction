@@ -262,6 +262,8 @@ select.pick { width: auto; max-width: 220px; appearance: none; padding-right: 26
 .hero-k { margin: 0 0 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .hero-t { margin: 0 0 12px; font-size: 26px; line-height: 1.2; font-weight: 700; max-width: 900px; }
 .hero-facts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.hero-facts .chip { white-space: normal; }
+.hero p.muted { max-width: 900px; margin: 0 0 10px; }
 .hero p.small { margin: 4px 0; }
 .viz { position: relative; }
 .tip { position: absolute; z-index: 6; pointer-events: none; min-width: 190px; max-width: 320px; padding: 8px 10px; font-size: 12px; background: var(--bg); border: 1px solid var(--muted); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
