@@ -25,6 +25,11 @@ struct FocusGameView: View {
     @State private var meltTick = 0
     @State private var touching = false
     @State private var poseToken = 0
+    /// What Lanvi says under its feet during the round. Changes now and then, never about doing badly.
+    @State private var line = "Tap the sparks"
+    @State private var lineAt = Date.distantPast
+    /// Sparks caught since the last one that drifted by.
+    @State private var streak = 0
 
     private let demo = ProcessInfo.processInfo.arguments.contains("-demo")
 
@@ -33,11 +38,11 @@ struct FocusGameView: View {
             let w = geo.size.width
             let h = geo.size.height
             let small = h < 700
-            let hill = h * (phase == .playing ? 0.80 : 0.50)
+            let hill = h * (phase == .playing ? 0.80 : phase == .finished && !small ? 0.57 : 0.50)
             let size: CGFloat = switch phase {
             case .intro: small ? 150 : 185
             case .playing: small ? 100 : 118
-            case .finished: small ? 160 : 200
+            case .finished: small ? 160 : 235
             }
             let feet = hill + 14
             let tail = CGPoint(x: w / 2 + size * 0.25, y: feet - size * 0.28)
@@ -73,6 +78,10 @@ struct FocusGameView: View {
                     .position(x: w / 2, y: feet - size / 2)
                     .allowsHitTesting(false)
 
+                if phase == .playing {
+                    tailFlare(size: size).position(tail)
+                }
+
                 content(width: w, height: h, hill: hill, feet: feet)
             }
         }
@@ -89,7 +98,7 @@ struct FocusGameView: View {
         let base: CGFloat = phase == .finished ? size * 1.5 : size * 0.7 + CGFloat(min(glow, 30)) * 3
         return Circle()
             .fill(RadialGradient(
-                colors: [FocusArt.sparkGold.opacity(phase == .intro ? 0.18 : 0.55), FocusArt.sparkWarm.opacity(0)],
+                colors: [FocusArt.gold.opacity(phase == .intro ? 0.18 : 0.5), FocusArt.ember.opacity(0)],
                 center: .center, startRadius: 0, endRadius: base / 2))
             .frame(width: base, height: base)
             .keyframeAnimator(initialValue: CGFloat(1), trigger: glow) { view, s in
@@ -97,6 +106,28 @@ struct FocusGameView: View {
             } keyframes: { _ in
                 SpringKeyframe(1.35, duration: 0.15, spring: .snappy)
                 SpringKeyframe(1, duration: 0.5, spring: .bouncy)
+            }
+            .blendMode(.plusLighter)
+            .allowsHitTesting(false)
+    }
+
+    /// The moment a spark's light lands, the tail flares bright and settles again.
+    private func tailFlare(size: CGFloat) -> some View {
+        Circle()
+            .fill(RadialGradient(colors: [FocusArt.core, FocusArt.gold.opacity(0.7), FocusArt.gold.opacity(0)],
+                                 center: .center, startRadius: 0, endRadius: size * 0.22))
+            .frame(width: size * 0.44, height: size * 0.44)
+            .keyframeAnimator(initialValue: FlareState(), trigger: glow) { view, f in
+                view.scaleEffect(f.scale).opacity(f.opacity)
+            } keyframes: { _ in
+                KeyframeTrack(\.opacity) {
+                    LinearKeyframe(0.95, duration: 0.06)
+                    CubicKeyframe(0, duration: 0.45)
+                }
+                KeyframeTrack(\.scale) {
+                    SpringKeyframe(1.3, duration: 0.12, spring: .snappy)
+                    CubicKeyframe(0.8, duration: 0.4)
+                }
             }
             .blendMode(.plusLighter)
             .allowsHitTesting(false)
@@ -138,11 +169,11 @@ struct FocusGameView: View {
             ZStack(alignment: .top) {
                 topBar(showTime: true)
                     .padding(.horizontal, 24)
-                Text(caughtTick == 0 ? "Tap the sparks" : "Lanvi loves these")
+                Text(line)
                     .font(Theme.rounded(17, .heavy))
                     .foregroundStyle(Theme.inkSecondary)
-                    .contentTransition(.opacity)
-                    .animation(.easeInOut(duration: 0.3), value: caughtTick == 0)
+                    .id(line)
+                    .transition(.opacity.combined(with: .offset(y: 4)))
                     .position(x: w / 2, y: feet + max(22, (h - feet) / 2))
                     .allowsHitTesting(false)
             }
@@ -151,7 +182,9 @@ struct FocusGameView: View {
 
         case .finished:
             VStack(spacing: 0) {
-                Spacer().frame(height: max(0, feet + 22))
+                // The words sit centred in the snow between Lanvi and the button.
+                Spacer().frame(height: max(0, feet + 10))
+                Spacer(minLength: 12)
                 Text("Lanvi's tail is glowing!")
                     .font(Theme.rounded(28, .heavy))
                     .foregroundStyle(Theme.ink)
@@ -236,6 +269,13 @@ struct FocusGameView: View {
         switch engine.tap(at: point, now: Date()) {
         case .caught(let ms):
             caughtTick += 1
+            streak += 1
+            if engine.correctTaps == 1 {
+                say("Ooh, warm!", always: true)
+            } else if streak.isMultiple(of: 4) {
+                say(["My tail feels warm", "Look at them glow", "So pretty", "More fox fires!", "That one sparkled"]
+                    .randomElement()!)
+            }
             if demo { print("focus: caught after \(ms) ms") }
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(FocusEngine.flightTime))
@@ -243,10 +283,20 @@ struct FocusGameView: View {
             }
         case .melted:
             meltTick += 1
+            say(["Brr, chilly!", "Snow likes to fall"].randomElement()!)
             if demo { print("focus: snowflake melted") }
         case .nothing:
             break
         }
+    }
+
+    /// Lanvi says something new under its feet; the old line fades out as the new one fades in.
+    /// Not more often than every few seconds, so it stays calm.
+    private func say(_ text: String, always: Bool = false) {
+        guard text != line, always || Date().timeIntervalSince(lineAt) > 3.5 else { return }
+        lineAt = Date()
+        if demo { print("focus: lanvi says \(text)") }
+        withAnimation(.easeInOut(duration: 0.45)) { line = text }
     }
 
     /// A spark's light reached the tail: the tail glows, Lanvi hops, and now and then shows some love.
@@ -292,7 +342,7 @@ struct FocusGameView: View {
         switch phase {
         case .intro:
             guard demo else { return }
-            try? await Task.sleep(for: .seconds(2.5))
+            try? await Task.sleep(for: .seconds(3.5))
             guard !Task.isCancelled else { return }
             start()
 
@@ -300,7 +350,25 @@ struct FocusGameView: View {
             guard let engine else { return }
             if demo { Task { await autoplay(engine) } }
             let end = engine.start.addingTimeInterval(FocusEngine.roundLength)
-            try? await Task.sleep(for: .seconds(max(0, end.timeIntervalSinceNow)))
+            var seenMisses = 0, seenSnow = 0, saidLastBit = false
+            // Watch the round a few times a second so Lanvi can comment on what drifts by.
+            while Date() < end {
+                try? await Task.sleep(for: .seconds(min(0.25, max(0, end.timeIntervalSinceNow))))
+                guard !Task.isCancelled else { return }
+                if engine.misses > seenMisses {
+                    seenMisses = engine.misses
+                    streak = 0
+                    if Int.random(in: 0..<3) == 0 { say(["Plenty more coming", "More are on the way"].randomElement()!) }
+                }
+                if engine.snowPassed > seenSnow {
+                    seenSnow = engine.snowPassed
+                    if Bool.random() { say(["Let it drift", "Bye, little snowflake", "Snow can fall"].randomElement()!) }
+                }
+                if !saidLastBit && end.timeIntervalSinceNow < 9 {
+                    saidLastBit = true
+                    say("A few more sparks", always: true)
+                }
+            }
             guard !Task.isCancelled else { return }
             finish()
 
@@ -382,4 +450,10 @@ private struct RoundChunkyStyle: ButtonStyle {
             .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
             .sensoryFeedback(.impact(weight: .light), trigger: pressed)
     }
+}
+
+/// Brightness and size of the tail flare.
+private struct FlareState {
+    var opacity: Double = 0
+    var scale: CGFloat = 0.8
 }
