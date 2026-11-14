@@ -38,6 +38,9 @@ struct RevontuletView: View {
     @State private var coach: RevontuletCoachState?
     /// This flight's embers are being coached (the first hard shot this player has made).
     @State private var coachingEmbers = false
+    /// A short punch of the whole scene on each impact (bigger for the vein).
+    @State private var punchTick = 0
+    @State private var punchSize: CGFloat = 4
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.displayScale) private var displayScale
@@ -62,6 +65,16 @@ struct RevontuletView: View {
                 ZStack {
                     if let engine, let art {
                         scene(engine, art)
+                            .keyframeAnimator(initialValue: CGFloat(1), trigger: punchTick) { content, k in
+                                content.scaleEffect(k)
+                            } keyframes: { _ in
+                                // A punch of a few points, eased out; it never lingers or shakes.
+                                KeyframeTrack {
+                                    CubicKeyframe(1 + punchSize / 400, duration: 0.05)
+                                    SpringKeyframe(1 - punchSize / 1600, duration: 0.12, spring: .snappy)
+                                    SpringKeyframe(1, duration: 0.3, spring: .smooth)
+                                }
+                            }
                         RevontuletTouchSurface { input, time in feed(input, at: time) }
                         overlay(engine)
                     } else {
@@ -436,9 +449,13 @@ struct RevontuletView: View {
                 emit(.emberMissed)
             case let .landing(at, _, hard, hits, _, ribbon, burstAt):
                 if !quiet { feel.landing(at: at, hard: hard, embersHit: hits, ribbon: ribbon, burstAt: burstAt) }
-            case let .impact(r, _, breaking):
+            case let .impact(r, pieces, breaking):
                 art?.sync(e)
                 say(nil)
+                if !quiet {
+                    punchSize = breaking ? 10 : CGFloat(3 + 1.5 * Double(pieces))
+                    punchTick += 1
+                }
                 if coachingEmbers {
                     RevontuletCoachMemory.learned(.embers)
                     coachingEmbers = false

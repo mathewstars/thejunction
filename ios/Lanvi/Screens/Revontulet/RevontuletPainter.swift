@@ -33,6 +33,10 @@ struct RevontuletPainter {
     private var L: RevontuletLayout { e.layout }
     private var since: Double { now - e.beatStart }
     private var burstAge: Double? { e.burstAt.map { now - $0 } }
+    /// 0 for the whole wall, rising by a third with each impact (eased in after the hit).
+    private var thinness: Double {
+        e.impacts.reduce(0) { $0 + min(1, max(0, (now - $1.time) / 0.8)) } / 3
+    }
 
     // MARK: - Sky (behind the ice)
 
@@ -133,9 +137,25 @@ struct RevontuletPainter {
         if let sky = art.frostedSky {
             g.draw(Image(decorative: sky, scale: 1), in: art.skyRect.offsetBy(dx: 3, dy: 5))
         }
-        // More light comes through after every impact.
+        // The wall thins with every impact: the real sky glows through more and more, so the
+        // player sees how close they are without a counter.
+        let thin = thinness
         let open = e.skyLight
-        g.fill(Path(wall), with: .color(RevontuletColor.iceDeep.opacity(0.22 * (1 - open))))
+        var through = g
+        through.opacity = 0.1 + 0.32 * thin
+        through.draw(ctx.resolve(Image("world-night")), in: art.skyRect)
+        // Faint shapes of the aurora drifting behind the glass.
+        var behind = g
+        behind.blendMode = .plusLighter
+        let shapes: [(Double, Double, Double, Color)] = [(0.2, 0.3, 0.05, RevontuletColor.green), (0.62, 0.22, 0.035, RevontuletColor.teal),
+                                                         (0.85, 0.42, 0.045, RevontuletColor.violet)]
+        for (k, sh) in shapes.enumerated() {
+            let fx: Double = sh.0 + 0.12 * sin(now * sh.2 + Double(k) * 1.9)
+            let fy: Double = sh.1 + 0.06 * sin(now * sh.2 * 1.6 + Double(k))
+            let c = CGPoint(x: L.size.width * CGFloat(fx), y: wall.minY + wall.height * CGFloat(fy))
+            softEllipse(&behind, c, rx: wall.width * 0.32, ry: wall.height * 0.1, [sh.3.opacity(0.1 + 0.16 * thin), sh.3.opacity(0.04 + 0.06 * thin)])
+        }
+        g.fill(Path(wall), with: .color(RevontuletColor.iceDeep.opacity(0.3 * (1 - thin))))
         // Shadow gathering toward the base.
         g.fill(Path(wall), with: .linearGradient(
             Gradient(colors: [.clear, Color.black.opacity(0.08), Color.black.opacity(0.34)]),
@@ -199,6 +219,10 @@ struct RevontuletPainter {
         for (i, f) in art.facets.enumerated() {
             guard let t = art.fallAt[i], now >= t else { continue }
             let fresh = max(0, 1 - (now - t) / 0.8)
+            // Thickness: the broken edge has a shaded side below its bright lip.
+            var side = ctx
+            side.translateBy(x: 1.5, y: 3)
+            side.stroke(f.path, with: .color(Color.black.opacity(0.32)), lineWidth: 4)
             g.stroke(f.path, with: .color(RevontuletColor.iceCold.opacity(0.12)), lineWidth: 6)
             g.stroke(f.path, with: .color(RevontuletColor.frost.opacity(0.26 + 0.4 * fresh)), lineWidth: 2.2)
             g.stroke(f.path, with: .color(Color.white.opacity(0.7)), lineWidth: 0.7)
@@ -386,10 +410,15 @@ struct RevontuletPainter {
         g.rotate(by: .radians(angle))
         let face = abs(flip)
         g.scaleBy(x: CGFloat(max(0.08, face) * scale), y: CGFloat(scale))
-        g.opacity = alpha * (0.5 + 0.35 * face)
+        g.opacity = alpha * (0.36 + 0.3 * face)
         g.draw(Image(decorative: image, scale: 2), in: s.bounds)
         g.opacity = alpha
         g.blendMode = .plusLighter
+        // The aurora bending in the glass: a band of its colours sliding as the piece turns.
+        let slide = CGFloat(sin(angle * 1.7 + s.phase)) * s.bounds.width
+        g.fill(s.local, with: .linearGradient(
+            Gradient(colors: [.clear, RevontuletColor.teal.opacity(0.22), RevontuletColor.violet.opacity(0.18), .clear]),
+            startPoint: CGPoint(x: s.bounds.minX + slide, y: s.bounds.minY), endPoint: CGPoint(x: s.bounds.maxX + slide, y: s.bounds.maxY)))
         g.fill(s.local, with: .color(RevontuletColor.frost.opacity(0.06 + 0.2 * pow(face, 3))))
         let catchLight = 0.3 + 0.7 * pow(abs(sin(angle * 1.2 + s.phase)), 2)
         let hue: Color = [RevontuletColor.green, RevontuletColor.teal, RevontuletColor.violet][s.hue]
@@ -423,6 +452,29 @@ struct RevontuletPainter {
                 g.fill(Path(ellipseIn: CGRect(x: hit.point.x - r, y: hit.point.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
                     Gradient(colors: [RevontuletColor.core.opacity(0.85 * k2), RevontuletColor.gold.opacity(0.45 * k2), RevontuletColor.amber.opacity(0.15 * k2), .clear]),
                     center: hit.point, startRadius: 0, endRadius: r))
+            }
+            // Light racing across the ice from the hit.
+            if t < 0.5, !hit.breaking {
+                let r = CGFloat(t / 0.5) * L.wall.width * 0.9
+                let k = 1 - t / 0.5
+                var sweep = g
+                sweep.clip(to: art.standing(at: now, burstAt: e.burstAt))
+                sweep.fill(Path(ellipseIn: CGRect(x: hit.point.x - r, y: hit.point.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
+                    Gradient(stops: [.init(color: .clear, location: 0.7), .init(color: RevontuletColor.frost.opacity(0.22 * k), location: 0.92),
+                                     .init(color: .clear, location: 1)]), center: hit.point, startRadius: 0, endRadius: max(r, 1)))
+            }
+            // Snow puffing off the wall's foot below the hit.
+            if t < 0.9 {
+                let foot = CGPoint(x: hit.point.x, y: L.wall.maxY - 20)
+                for i in 0..<(8 + hit.pieces * 3) {
+                    let a = -Double.pi / 2 + (Double(i % 7) - 3) * 0.35
+                    let sp = 40 + 26 * Double(i % 4)
+                    let q = CGPoint(x: foot.x + CGFloat(cos(a) * sp * t) + CGFloat((i % 5) - 2) * 9,
+                                    y: foot.y + CGFloat(sin(a) * sp * t + 120 * t * t))
+                    let o = (1 - t / 0.9) * 0.8
+                    let rr: CGFloat = 1.6 + CGFloat(i % 3)
+                    ctx.fill(Path(ellipseIn: CGRect(x: q.x - rr, y: q.y - rr, width: rr * 2, height: rr * 2)), with: .color(Color.white.opacity(o)))
+                }
             }
             for (i, m) in art.motes.enumerated() where i < 10 + hit.pieces * 4 {
                 guard t < m.life else { continue }
