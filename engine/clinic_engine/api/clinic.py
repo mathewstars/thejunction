@@ -88,9 +88,9 @@ async def patients(request: Request, p: Principal = Depends(clinician_only)):
     short plain summary. Built from data and thresholds only."""
     ctx = ctx_of(request)
     lines = []
-    for key in ctx.store.list(f"clinics/{p.clinic_id}/patients/"):
-        if key.endswith("/patient.json"):
-            pid = key.split("/")[3]
+    # The patient index, not a listing of every object the clinic holds.
+    for clinic_id, pid in ctx.mind.all_patients():
+        if clinic_id == p.clinic_id:
             lines.append(views.clinician_line(ctx.mind, ctx.mind.repo(p.clinic_id, pid)))
     order = {"urgent": 0, "attention": 1, "watch": 2, None: 3}
     status_order = {"outside": 0, "no_data": 1, "no_baseline": 2, "within": 3}

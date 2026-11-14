@@ -1,6 +1,7 @@
 """Shared test helpers. Everything is offline: models and outbound hosts are
 fakes (httpx.MockTransport for level 2 and Telegram)."""
 
+import os
 import asyncio
 import json
 import random
@@ -69,6 +70,9 @@ class Env:
     def __init__(self, local=None, level2=None, notifier=None, extra=0, **settings_kw):
         self.clock = FixedClock(NOW)
         self.store = MemoryStore()
+        if os.environ.get("TEST_PACKED_STORE"):  # run the whole suite on the packed layout
+            from clinic_engine.store import PackedStore
+            self.store = PackedStore(self.store)
         if level2 is not None:
             settings_kw.setdefault("outreach_mode", "gemini")
             settings_kw.setdefault("gemini_api_key", "test-key")

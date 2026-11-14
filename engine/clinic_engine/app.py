@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -251,6 +252,7 @@ def create_app(settings: Optional[Settings] = None, store: Optional[Store] = Non
                            allow_methods=["GET", "POST", "DELETE"],
                            allow_headers=["Authorization", "Content-Type"])
     app.add_middleware(Guard, max_body=settings.max_body_bytes)
+    app.add_middleware(GZipMiddleware, minimum_size=1024)  # the patient page is ~170 KB of JSON
     return app
 
 
