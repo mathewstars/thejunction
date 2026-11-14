@@ -259,7 +259,8 @@ private struct SnowShakeOff: View {
     var size: CGFloat
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60)) { context in
+        // Runs only once he wakes (before that it would redraw an empty canvas every frame).
+        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: start == nil)) { context in
             Canvas { ctx, _ in
                 guard let start else { return }
                 let age = context.date.timeIntervalSince(start)

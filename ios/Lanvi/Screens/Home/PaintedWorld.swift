@@ -45,6 +45,10 @@ struct WorldFrame {
 struct PaintedWorld: View {
     var scene: WorldScene
     var snow: Bool = true
+    /// Hold the snow, glints and shimmer still (Home sets it while a full screen
+    /// covers it, so nobody draws a hidden scene 60 times a second). The world's
+    /// clock never fast-forwards, so it carries on from where it was.
+    var still: Bool = false
 
     /// Debug only, `-noLife`: the painting without snow, glints or shimmer (to measure their cost).
     private static let lifeOff: Bool = {
@@ -72,7 +76,7 @@ struct PaintedWorld: View {
                     .transition(.opacity)
                 if scene == .dawn { DawnWarmth() }
                 if !Self.lifeOff {
-                    WorldLife(scene: scene, frame: WorldFrame(screen: size), snow: snow)
+                    WorldLife(scene: scene, frame: WorldFrame(screen: size), snow: snow, still: still)
                 }
             }
             .animation(.easeInOut(duration: 1.6), value: scene)
@@ -104,6 +108,7 @@ private struct WorldLife: View {
     var scene: WorldScene
     var frame: WorldFrame
     var snow: Bool
+    var still: Bool
 
     /// The painted stars in the night scene, as a share of the picture.
     private static let stars: [CGPoint] = [
@@ -113,12 +118,14 @@ private struct WorldLife: View {
     ]
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60)) { context in
+        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: still)) { context in
             // One shared, continuous clock for every scene: it advances at most
             // 1/30 s per frame, so a layer that was paused (under an overlay, in the
             // background) or just created never fast-forwards to catch up.
             let t = WorldClock.shared.now(context.date)
-            Canvas { ctx, size in
+            // Drawn off the main thread: a full-screen canvas redrawn every frame
+            // must not cost the main thread (taps, the fox) its frame time.
+            Canvas(rendersAsynchronously: true) { ctx, size in
                 if scene == .night { glints(&ctx, t: t); shimmer(&ctx, t: t) }
                 if snow { flakes(&ctx, size: size, t: t) }
             }
