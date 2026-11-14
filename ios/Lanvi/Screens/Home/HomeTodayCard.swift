@@ -6,6 +6,8 @@ import SwiftUI
 struct HomeTodayCard: View {
     var thing: TodayThing
     var compact: Bool
+    /// What Lanvi's bubble says, so the same sentence never shows twice.
+    var bubbleText: String = ""
     var onGo: (ActivityKind) -> Void
     var onStory: () -> Void
     var onAnswer: (Bool) -> Void
@@ -73,13 +75,12 @@ struct HomeTodayCard: View {
         switch thing {
         case .story: return "I brought you a story"
         case .game(let k): return Self.gameTitle(k)
-        case .realWorld(let s): return s.text
+        case .realWorld(let s): return Self.realTitle(s.action)
         case .done(let d): return d.restful ? "Resting is part of it too" : "That's our thing for today"
         }
     }
 
     private var titleSize: CGFloat {
-        if case .realWorld = thing { return compact ? 17 : 18 }
         return compact ? 21 : 23
     }
 
@@ -87,7 +88,7 @@ struct HomeTodayCard: View {
         switch thing {
         case .story: return "From my trip across Lapland"
         case .game(let k): return Self.gameDuration(k)
-        case .realWorld: return nil
+        case .realWorld(let s): return s.text == bubbleText ? "At your own pace" : s.text
         case .done(let d): return d.restful ? "I'll be right here." : (d.log.isEmpty ? nil : d.log)
         }
     }
@@ -97,6 +98,14 @@ struct HomeTodayCard: View {
         case .breathing: return "Breathe with me"
         case .focus: return "Catch sparks with me"
         case .checkin: return "Tell me three good things"
+        }
+    }
+
+    static func realTitle(_ action: String) -> String {
+        switch action {
+        case "walk_10min": return "A ten-minute walk"
+        case "daylight_10min": return "Ten minutes of daylight"
+        default: return "Call or message someone"
         }
     }
 

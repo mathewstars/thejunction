@@ -10,6 +10,7 @@
 		053EBA860422BF2F170DD9E5 /* APIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D93B9957583CC3DB996A3C8 /* APIModels.swift */; };
 		09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB97273333C0DBAE7FC11418 /* FocusEngine.swift */; };
 		0BEDEA33963AF45C85B22E0B /* HomeTailGlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 752F0D6EA04E94F9779AC997 /* HomeTailGlow.swift */; };
+		151BF5444E01D40CF03FB960 /* ChatLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84158FA0F8C7B4E9A416B47C /* ChatLink.swift */; };
 		1D2F0537C7AAB50875AA6F3B /* ActivityRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F685787902006429E41D5A7 /* ActivityRouter.swift */; };
 		20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CA1C956F7514A490E2C77E /* Theme.swift */; };
 		378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */; };
@@ -28,6 +29,7 @@
 		A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */; };
 		A969C737AD9639B403D5FDCE /* HomeTodayCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E23A0B45188373AB4F40627 /* HomeTodayCard.swift */; };
 		B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA73738285D12F12C9ADB24B /* Chunky.swift */; };
+		B366EDE9B773EEA90854B56A /* HomeChatScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */; };
 		B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B8C888729DE19EB41449A4 /* HomeOverlays.swift */; };
 		B50D10905664FAEB774A40AE /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 883989149D83098DC4D7155A /* AppStore.swift */; };
 		B6A861C26917D5B2F511CE9C /* BreatheResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B1F65C7973CFFB5D41825 /* BreatheResult.swift */; };
@@ -62,6 +64,7 @@
 		7726B251A5F3DA944BA275A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfig.swift; sourceTree = "<group>"; };
 		7D93B9957583CC3DB996A3C8 /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
+		84158FA0F8C7B4E9A416B47C /* ChatLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatLink.swift; sourceTree = "<group>"; };
 		84FCE02422EF7AD37B7EF8F0 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		856CB611495D91BE8B81E2D4 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		883989149D83098DC4D7155A /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
@@ -78,6 +81,7 @@
 		E4534A11EF57C9E6ACC5030B /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		E77620D747F3E1491FF87DCE /* CheckinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinView.swift; sourceTree = "<group>"; };
 		EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeChatScreen.swift; sourceTree = "<group>"; };
 		F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusGameView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -97,6 +101,7 @@
 			children = (
 				4A2759DCEF87679E894DADAF /* ActivityOutbox.swift */,
 				7D93B9957583CC3DB996A3C8 /* APIModels.swift */,
+				84158FA0F8C7B4E9A416B47C /* ChatLink.swift */,
 				575A49BAC44D679FBA763541 /* DemoBackend.swift */,
 				5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */,
 				7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */,
@@ -204,6 +209,7 @@
 		E4073053305CA28D4D60131E /* Home */ = {
 			isa = PBXGroup;
 			children = (
+				F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */,
 				252A074008D2696F20B23913 /* HomeMindScreen.swift */,
 				DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */,
 				15B8C888729DE19EB41449A4 /* HomeOverlays.swift */,
@@ -303,6 +309,7 @@
 				942A29C36871C91B6C4230BA /* BreathePieces.swift in Sources */,
 				B6A861C26917D5B2F511CE9C /* BreatheResult.swift in Sources */,
 				EEDB19C869011580DA5780AC /* BreatheView.swift in Sources */,
+				151BF5444E01D40CF03FB960 /* ChatLink.swift in Sources */,
 				70C6A7B3EB4DC1265714772A /* CheckinModels.swift in Sources */,
 				52849D842800BB2FC9D57F97 /* CheckinParts.swift in Sources */,
 				85913E78D8BD74C9E1F25A7E /* CheckinView.swift in Sources */,
@@ -312,6 +319,7 @@
 				09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */,
 				5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */,
 				45C0A7261327E95CF788718C /* FocusResult.swift in Sources */,
+				B366EDE9B773EEA90854B56A /* HomeChatScreen.swift in Sources */,
 				DD756509C515F4C1509219AD /* HomeMindScreen.swift in Sources */,
 				966709A0031A479E6D292413 /* HomeMoments.swift in Sources */,
 				B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */,

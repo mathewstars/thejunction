@@ -173,6 +173,28 @@ actor DemoBackend: LanviBackend {
         return API.FeedbackOut(ok: true)
     }
 
+    /// Offline chat: a few believable replies from the server's own fixed set.
+    func note(_ n: API.NoteIn) async throws -> API.NoteOut {
+        try await Task.sleep(for: .milliseconds(1100))
+        let t = n.text.lowercased()
+        if ["need help", "help me", "kill myself", "hurt myself"].contains(where: t.contains) {
+            return API.NoteOut(reply: .init(templateId: "help", text: "Thank you for telling me. You do not have to carry this alone. The help contacts are right here."),
+                               crisis: true, crisisBlock: Self.crisis, suggestion: nil)
+        }
+        if ["tired", "sad", "lonely", "rough", "bad"].contains(where: t.contains) {
+            return API.NoteOut(reply: .init(templateId: "low_2", text: "Thank you for sharing this. Let's go gently, one small thing at a time."),
+                               crisis: false, crisisBlock: nil,
+                               suggestion: Self.suggestion(for: "breathing"))
+        }
+        if ["good", "nice", "happy", "great", "walk", "coffee", "sun"].contains(where: t.contains) {
+            return API.NoteOut(reply: .init(templateId: "good", text: "That is lovely to hear. My tail is glowing."),
+                               crisis: false, crisisBlock: nil, suggestion: nil)
+        }
+        let neutral = [("ok", "Thank you. I am glad you told me."), ("neutral", "Thank you. I keep your words safe.")]
+        let pick = neutral[n.text.count % neutral.count]
+        return API.NoteOut(reply: .init(templateId: pick.0, text: pick.1), crisis: false, crisisBlock: nil, suggestion: nil)
+    }
+
     func rejectLesson(id: String) async throws -> API.StatusOut {
         guard lessons.contains(where: { $0.id == id }) else { throw APIError.notFound }
         lessons.removeAll { $0.id == id }

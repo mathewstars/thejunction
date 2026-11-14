@@ -249,6 +249,28 @@ enum API {
         var wandering: WanderingOut?
     }
 
+    // MARK: A few words (POST /v1/notes), used by the chat
+
+    /// `NoteIn`: the only free text the app sends. At most 280 characters.
+    struct NoteIn: Codable, Equatable {
+        var id: String
+        var text: String
+    }
+
+    /// `NoteReplyOut`: Lanvi's line, picked by the server.
+    struct NoteReplyOut: Codable, Equatable {
+        var templateId: String
+        var text: String
+    }
+
+    /// `NoteOut`.
+    struct NoteOut: Codable, Equatable {
+        var reply: NoteReplyOut
+        var crisis: Bool
+        var crisisBlock: CrisisBlock?
+        var suggestion: SuggestionOut?
+    }
+
     // MARK: Answer a suggestion (POST /v1/feedback)
 
     /// `FeedbackIn`. Idempotent by `id` (8 to 64 of A-Z a-z 0-9 _ -).

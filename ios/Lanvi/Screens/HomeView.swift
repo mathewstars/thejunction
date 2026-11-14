@@ -12,9 +12,10 @@ struct HomeView: View {
     @Namespace private var zoom
 
     private enum Cover: Identifiable {
-        case activity(ActivityKind), help, story, mind
+        case activity(ActivityKind), help, story, mind, chat
         var id: String {
             switch self {
+            case .chat: return "chat"
             case .activity(let k): return "activity-\(k.rawValue)"
             case .help: return "help"
             case .story: return "story"
@@ -32,11 +33,14 @@ struct HomeView: View {
         var cardsTop: CGFloat
         var compact: Bool
 
-        init(size: CGSize, away: Bool) {
+        init(size: CGSize, away: Bool, snowContent: CGFloat) {
             self.size = size
             compact = size.height < 700
-            // The horizon sits as low as the card, the chips and the growth bar allow.
-            hill = size.height * (compact ? 0.45 : 0.515)
+            let gap: CGFloat = compact ? 16 : 22
+            // The horizon sits as low as the card, the chips and the growth bar allow,
+            // so everything on the snow always ends above the home bar.
+            let fits = size.height - snowContent - gap - 6
+            hill = max(size.height * 0.34, min(size.height * (compact ? 0.47 : 0.53), fits))
             if away {
                 fox = compact ? 80 : 96
                 foxCenter = CGPoint(x: size.width * 0.78, y: hill - fox / 2 - 6)
@@ -44,7 +48,7 @@ struct HomeView: View {
                 fox = compact ? 140 : 196
                 foxCenter = CGPoint(x: size.width / 2, y: hill - fox / 2 + 14)
             }
-            cardsTop = hill + (compact ? 18 : 26)
+            cardsTop = hill + gap
         }
 
         var foxTop: CGFloat { foxCenter.y - fox / 2 }
@@ -63,6 +67,8 @@ struct HomeView: View {
     @State private var helpBlock: API.CrisisBlock?
     @State private var stream: (from: CGPoint, to: CGPoint, start: Date)?
     @State private var size: CGSize = .zero
+    /// Measured height of the card, chips and growth bar: the horizon is placed above it.
+    @State private var snowHeight: CGFloat = 330
     @State private var entrance: CGFloat = 0        // run-in offset when Lanvi comes back
     @State private var haptic = 0
     @State private var wasAway = false
@@ -73,7 +79,7 @@ struct HomeView: View {
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
-            let L = Layout(size: geo.size, away: away)
+            let L = Layout(size: geo.size, away: away, snowContent: snowHeight)
 
             ZStack(alignment: .top) {
                 SkyScene(top: sky.top, bottom: sky.bottom, hillTop: L.hill)
@@ -96,8 +102,28 @@ struct HomeView: View {
                 // What Lanvi says, above the fox.
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
-                    HomeSpeechBubble(text: bubbleText, pointAt: away ? 0.78 : 0.5)
-                        .animation(.spring(response: 0.45, dampingFraction: 0.7), value: bubbleText)
+                    Button { open(.chat) } label: {
+                        HomeSpeechBubble(text: bubbleText, pointAt: away ? 0.78 : 0.5)
+                            .overlay(alignment: .topTrailing) {
+                                // So people find it: the bubble opens a chat with Lanvi.
+                                HStack(spacing: 4) {
+                                    Image(systemName: "bubble.left.and.text.bubble.right.fill")
+                                        .font(.system(size: 11, weight: .bold))
+                                    Text("Talk to Lanvi")
+                                        .font(Theme.rounded(12, .heavy))
+                                }
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Capsule().fill(Theme.brand))
+                                .background(Capsule().fill(Theme.brandEdge).offset(y: 2))
+                                .offset(x: 6, y: -14)
+                            }
+                    }
+                    .buttonStyle(BubblePressStyle())
+                    .homeZoomSource("bubble", in: zoom)
+                    .animation(.spring(response: 0.45, dampingFraction: 0.7), value: bubbleText)
+                    .accessibilityHint("Opens a chat with Lanvi")
                 }
                 .frame(width: w - 40, height: max(L.foxTop - (L.compact ? 62 : 70) + (away ? 0 : 0), 60))
                 .padding(.top, L.compact ? 58 : 64)
@@ -135,8 +161,8 @@ struct HomeView: View {
                 .padding(.top, 6)
 
                 // On the snow: today's one thing, a little more, and how Lanvi is growing.
-                VStack(spacing: L.compact ? 12 : 16) {
-                    HomeTodayCard(thing: store.todayThing, compact: L.compact,
+                VStack(spacing: 12) {
+                    HomeTodayCard(thing: store.todayThing, compact: L.compact, bubbleText: bubbleText,
                                   onGo: { open(.activity($0)) },
                                   onStory: { open(.story) },
                                   onAnswer: { didIt in
@@ -156,6 +182,15 @@ struct HomeView: View {
                     .accessibilityHint("Shows what Lanvi has noticed")
                 }
                 .padding(.horizontal, 20)
+                .background {
+                    GeometryReader { g in
+                        Color.clear
+                            .onAppear { snowHeight = g.size.height }
+                            .onChange(of: g.size.height) { _, h in
+                                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { snowHeight = h }
+                            }
+                    }
+                }
                 .padding(.top, L.cardsTop)
 
                 if let stream {
@@ -236,6 +271,10 @@ struct HomeView: View {
             }
         case .mind:
             HomeMindScreen { cover = nil }
+        case .chat:
+            HomeChatScreen(onClose: { cover = nil },
+                           onHelp: { cover = .help },
+                           onActivity: { cover = .activity($0) })
         }
     }
 
@@ -254,6 +293,7 @@ struct HomeView: View {
         case .story: return "today"
         case .help: return "help"
         case .mind: return "mind"
+        case .chat: return "bubble"
         }
     }
 
@@ -337,7 +377,7 @@ struct HomeView: View {
 
     private func celebrate(_ c: HomeCelebration) {
         celebrating = true
-        let L = Layout(size: size, away: false)
+        let L = Layout(size: size, away: false, snowContent: snowHeight)
         let tail = HomeTailGlow.tailOffset(pose: .cheer, foxSize: L.fox)
         let to = CGPoint(x: L.foxCenter.x + tail.x, y: L.foxCenter.y + tail.y)
         withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .surprised }
@@ -388,6 +428,7 @@ struct HomeView: View {
             case "help": open(.help)
             case "story": open(.story)
             case "mind": open(.mind)
+            case "chat": open(.chat)
             default: if let k = ActivityKind(rawValue: what) { open(.activity(k)) }
             }
         }
@@ -456,6 +497,17 @@ private struct StoryBannerStyle: ButtonStyle {
             .background(shape.fill(Color(hex: 0x0E1E55)).offset(y: 4))
             .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
             .sensoryFeedback(.impact(weight: .light), trigger: pressed)
+    }
+}
+
+/// The speech bubble gives a little when pressed.
+private struct BubblePressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .offset(y: configuration.isPressed ? 2 : 0)
+            .animation(.spring(response: 0.18, dampingFraction: 0.7), value: configuration.isPressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed)
     }
 }
 

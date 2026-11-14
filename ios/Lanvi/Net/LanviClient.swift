@@ -32,6 +32,7 @@ protocol LanviBackend: Sendable {
     func answerWandering(id: String, answer: String) async throws -> API.WanderingAnswerOut
     func mind() async throws -> API.MindOut
     func feedback(_ f: API.FeedbackIn) async throws -> API.FeedbackOut
+    func note(_ n: API.NoteIn) async throws -> API.NoteOut
     func rejectLesson(id: String) async throws -> API.StatusOut
     func answerQuestion(id: String, answer: String) async throws -> API.StatusOut
 }
@@ -98,6 +99,10 @@ actor LanviClient: LanviBackend {
 
     func feedback(_ f: API.FeedbackIn) async throws -> API.FeedbackOut {
         try await call("POST", "/v1/feedback", body: f)
+    }
+
+    func note(_ n: API.NoteIn) async throws -> API.NoteOut {
+        try await call("POST", "/v1/notes", body: n)
     }
 
     func rejectLesson(id: String) async throws -> API.StatusOut {

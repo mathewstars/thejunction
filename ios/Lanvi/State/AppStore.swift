@@ -54,6 +54,12 @@ final class AppStore {
     private let forcedHour: Int?
     private(set) var days: DaysTogether
     private let daysFile: String?
+
+    // Chat with Lanvi: today's thread, kept on the phone for the day
+    private(set) var chat = ChatThread()
+    /// True only while a message is on its way to the server (the dots are honest).
+    private(set) var chatWaiting = false
+    private let chatFile: String?
     /// Changes when Lanvi should give a small cheer on Home (a real-world "I did it").
     private(set) var cheerTick = 0
 
@@ -89,13 +95,16 @@ final class AppStore {
             backend = LanviClient(base: url, pairingCode: config.pairingCode)
             daysFile = "days.json"
             days = DaysTogether.load("days.json")
+            chatFile = "chat.json"
+            chat = LanviDisk.load(ChatThread.self, "chat.json") ?? ChatThread()
             // Last known state, so an offline start still shows Lanvi as it was.
             if let cached = LanviDisk.load(API.TodayOut.self, "today.json") { apply(cached) }
         } else {
             mode = .demo
             backend = DemoBackend(arguments: arguments)
-            // The demo never writes the real days to disk; it starts from sample days.
+            // The demo never writes the real days or chat to disk; it starts from samples.
             daysFile = nil
+            chatFile = nil
             var d = DaysTogether()
             let past = value("-demoDays").flatMap(Int.init) ?? 11
             for i in stride(from: past, to: 0, by: -1) {
@@ -210,6 +219,68 @@ final class AppStore {
         } catch {
             feedbackOutbox.remove(id: f.id)
         }
+    }
+
+    // MARK: Chat
+
+    /// Opening the chat: a new day starts a fresh thread with Lanvi's line of the day.
+    func openChat() {
+        let key = DaysTogether.key(Date())
+        if chat.day != key {
+            chat = ChatThread(day: key, messages: [])
+        }
+        if chat.messages.isEmpty {
+            let opening = today?.lanvi.line.text ?? (line.isEmpty ? "Hi. The snow is quiet today." : line)
+            chat.messages.append(ChatMessage(id: "open-\(key)", from: .lanvi, text: opening))
+        }
+        saveChat()
+    }
+
+    /// Send one message. Lanvi's answer always comes from the server.
+    func sendChat(_ text: String) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let msg = ChatMessage(id: API.ActivityIn.newId(), from: .me, text: String(trimmed.prefix(280)), status: .sending)
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { chat.messages.append(msg) }
+        saveChat()
+        await deliver(msg.id)
+    }
+
+    /// Try a message marked "not sent" again (same id, so the server sees it once).
+    func retryChat(_ id: String) async {
+        guard let i = chat.messages.firstIndex(where: { $0.id == id }) else { return }
+        chat.messages[i].status = .sending
+        await deliver(id)
+    }
+
+    private func deliver(_ id: String) async {
+        guard let msg = chat.messages.first(where: { $0.id == id }) else { return }
+        chatWaiting = true
+        defer { chatWaiting = false }
+        do {
+            let reply = try await backend.sendMessage(id: msg.id, text: msg.text)
+            link = .online
+            if let i = chat.messages.firstIndex(where: { $0.id == id }) { chat.messages[i].status = .sent }
+            chatWaiting = false
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.72)) {
+                chat.messages.append(ChatMessage(id: "re-\(id)", from: .lanvi, text: reply.text,
+                                                 suggestion: reply.suggestion))
+            }
+            if let s = reply.suggestion, var t = today {
+                // Home's "For today" card shows it afterwards.
+                t.suggestion = s
+                today = t
+            }
+            if let block = reply.crisis { crisisNow = block }
+        } catch {
+            if case APIError.offline = error { link = .offline }
+            if let i = chat.messages.firstIndex(where: { $0.id == id }) { chat.messages[i].status = .failed }
+        }
+        saveChat()
+    }
+
+    private func saveChat() {
+        if let chatFile { LanviDisk.save(chat, chatFile) }
     }
 
     private func flushFeedback() async {
