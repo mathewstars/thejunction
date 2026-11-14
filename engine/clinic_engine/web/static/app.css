@@ -254,3 +254,39 @@ td.cav { position: relative; white-space: nowrap; }
 .tbar .search { width: min(240px, 100%); min-height: 30px; padding: 4px 12px; }
 select.pick { width: auto; max-width: 220px; appearance: none; padding-right: 26px; cursor: pointer; }
 .panel .scroll-x .tbar { position: sticky; left: 0; }
+.hero { border-color: var(--muted); }
+.hero-k { margin: 0 0 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.hero-t { margin: 0 0 12px; font-size: 26px; line-height: 1.2; font-weight: 700; max-width: 900px; }
+.hero-facts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.hero p.small { margin: 4px 0; }
+.viz { position: relative; }
+.tip { position: absolute; z-index: 6; pointer-events: none; min-width: 190px; max-width: 320px; padding: 8px 10px; font-size: 12px; background: var(--bg); border: 1px solid var(--muted); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+.tip-h { font-weight: 700; margin-bottom: 4px; }
+.tip-p { color: var(--muted); margin: 3px 0; }
+.tip-r { display: flex; justify-content: space-between; gap: 14px; }
+.tip-r span { color: var(--muted); }
+.tg, .fp { width: 100%; height: auto; display: block; }
+.tg-band { fill: var(--amber); opacity: 0.13; }
+.tg-t { fill: var(--ink); font-size: 14px; font-weight: 700; }
+.tg-s { fill: var(--muted); font-size: 12px; font-weight: 400; }
+.tg-v { fill: var(--ink); font-size: 12px; font-weight: 700; }
+.tg-ax { fill: var(--muted); font-size: 11.5px; }
+.tg-base, .fp-grid { stroke: var(--line); stroke-width: 1; }
+.tg-line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.tg-dot { fill: var(--muted); opacity: 0.7; }
+.tg-pt { fill: var(--ink); stroke: var(--panel); stroke-width: 2; }
+.tg-cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.fp-zero { stroke: var(--muted); stroke-width: 1; }
+.fp-hit { fill: transparent; }
+.fp-row:hover .fp-hit { fill: var(--panel-2); }
+.fp-l { fill: var(--ink); font-size: 13px; }
+.fp-v { fill: var(--ink); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fp-ci { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+.fp-pt { stroke: var(--panel); stroke-width: 2; }
+.fp-pt.k-cons, .dotk.k-cons { fill: var(--amber); background: var(--amber); }
+.fp-pt.k-opp, .dotk.k-opp { fill: var(--ember); background: var(--ember); }
+.fp-pt.k-inc { fill: var(--panel); stroke: var(--muted); }
+.dotk { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.dotk.k-inc { background: transparent; border: 2px solid var(--muted); box-sizing: border-box; }
+details.more.panel > summary { font-size: 14px; color: var(--ink); }
+details.more.panel[open] > summary { margin-bottom: 10px; }
