@@ -12,6 +12,13 @@ struct HomeMindScreen: View {
     @State private var busy: String?
     @State private var closing = false
 
+    /// Hide the fox for the close; if the same screen is shown again before it has
+    /// gone (opened again at once), the fox comes back by itself.
+    private func hideFoxForClose() {
+        closing = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { closing = false }
+    }
+
     var body: some View {
         GeometryReader { geo in
             let compact = geo.size.height < 700
@@ -46,7 +53,7 @@ struct HomeMindScreen: View {
                 .padding(.top, hill + 14)
 
                 HStack {
-                    HomeCloseButton { closing = true; onClose() }
+                    HomeCloseButton { hideFoxForClose(); onClose() }
                     Spacer()
                 }
                 .padding(.horizontal, 20)
