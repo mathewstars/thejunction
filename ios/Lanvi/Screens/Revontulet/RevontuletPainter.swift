@@ -27,6 +27,8 @@ struct RevontuletPainter {
     let e: RevontuletEngine
     let art: RevontuletArt
     let now: Double
+    var coach: RevontuletCoachState? = nil
+    var reduceMotion = false
 
     private var L: RevontuletLayout { e.layout }
     private var since: Double { now - e.beatStart }
@@ -473,8 +475,9 @@ struct RevontuletPainter {
         default: break
         }
         if let f = e.flight, e.beat == .flight {
-            trail(&ctx, f)
-            embers(&ctx, f)
+            let fnow = e.flightClock(now)
+            trail(&ctx, f, at: fnow)
+            embers(&ctx, f, at: fnow)
         }
         if let s = sparkState() {
             spark(&ctx, at: s.p, size: s.size, heat: s.heat)
@@ -487,20 +490,21 @@ struct RevontuletPainter {
     private func sparkState() -> (p: CGPoint, size: Double, heat: Double)? {
         switch e.beat {
         case .intro:
-            return (L.anchor, 0.55, 0.6)
+            return (L.anchor, 0.8 + 0.06 * sin(now * 2.2), 0.75)
         case .choice:
             let grow = e.round == 0 ? 1 : min(1, since / 0.3)
-            return (L.anchor, 0.55 * grow, 0.6)
+            return (L.anchor, 0.8 * grow, 0.75)
         case .trace:
-            return (L.anchor, 0.55 + 0.45 * e.progress, 0.6 + 0.4 * e.progress)
+            return (L.anchor, 0.8 + 0.5 * e.progress, 0.75 + 0.25 * e.progress)
         case .sling:
             let level = Double(hypot(e.pull.dx, e.pull.dy) / L.maxPull)
-            let pop = since < 0.25 ? 0.25 * (1 - since / 0.25) : 0
-            return (e.sparkPoint(now), 1 + pop + 0.1 * level, 1)
+            let pop = since < 0.25 ? 0.3 * (1 - since / 0.25) : 0
+            return (e.sparkPoint(now), 1.3 + pop + 0.15 * level, 1)
         case .flight:
             guard let f = e.flight else { return nil }
-            let lit = f.emberHitAt.enumerated().filter { $0.element != nil && now - f.launch >= f.emberT[$0.offset] }.count
-            return (f.point(at: now), f.foxOwn ? 1.1 : 1 + 0.18 * Double(lit), 1)
+            let fnow = e.flightClock(now)
+            let lit = f.emberHitAt.enumerated().filter { $0.element != nil && fnow - f.launch >= f.emberT[$0.offset] }.count
+            return (f.point(at: fnow), f.foxOwn ? 1.4 : 1.3 + 0.2 * Double(lit), 1)
         default:
             return nil
         }
@@ -639,7 +643,7 @@ struct RevontuletPainter {
             var thread = Path()
             thread.move(to: L.anchor)
             thread.addQuadCurve(to: spark, control: mid)
-            let w = CGFloat(max(0.9, 4.2 - 3.3 * level))
+            let w = CGFloat(1.6 + 2.6 * level)
             ctx.stroke(thread, with: .color(RevontuletColor.amber.opacity(0.35)), style: StrokeStyle(lineWidth: w * 2.4, lineCap: .round))
             g.stroke(thread, with: .color(RevontuletColor.gold.opacity(0.28 + 0.2 * level)), style: StrokeStyle(lineWidth: w * 3.2, lineCap: .round))
             g.stroke(thread, with: .color(RevontuletColor.core.opacity(0.85)), style: StrokeStyle(lineWidth: w, lineCap: .round))
@@ -649,11 +653,11 @@ struct RevontuletPainter {
             let to = L.target(round: e.round, effort: effort)
             let c = RevontuletLayout.flightControl(from: spark, to: to, pull: e.pull)
             let path = RevontuletFlight(launch: 0, from: spark, control: c, to: to, duration: 1, hard: false, foxOwn: false)
-            let a = 0.12 + 0.8 * level
+            let a = 0.15 + 0.85 * level
             for i in 0..<16 {
                 let u = 0.06 + 0.88 * Double(i) / 15
                 let p = path.bezier(u)
-                let r = CGFloat(2.4 - 1.2 * u)
+                let r = CGFloat((2.2 + 1.8 * level) * (1 - 0.45 * u))
                 let o = a * (1 - 0.55 * u) * (0.75 + 0.25 * sin(now * 5 - Double(i) * 0.6))
                 softEllipse(&ctx, p, rx: r * 2.6, ry: r * 2.6, [RevontuletColor.amber.opacity(0.5 * o), RevontuletColor.amber.opacity(0.15 * o)])
                 g.fill(Path(ellipseIn: CGRect(x: p.x - r * 2, y: p.y - r * 2, width: r * 4, height: r * 4)), with: .radialGradient(
@@ -664,7 +668,7 @@ struct RevontuletPainter {
     }
 
     /// The spark's trail: a tapering stroke of warm light and embers drifting down from it.
-    private func trail(_ ctx: inout GraphicsContext, _ f: RevontuletFlight) {
+    private func trail(_ ctx: inout GraphicsContext, _ f: RevontuletFlight, at now: Double) {
         var g = ctx
         g.blendMode = .plusLighter
         let span = 0.32
@@ -700,7 +704,7 @@ struct RevontuletPainter {
 
     /// The embers on the hard path: they flash ahead of the spark, a soft halo closing in on
     /// them as the spark comes; a lit one flares and waits to be swallowed.
-    private func embers(_ ctx: inout GraphicsContext, _ f: RevontuletFlight) {
+    private func embers(_ ctx: inout GraphicsContext, _ f: RevontuletFlight, at now: Double) {
         guard f.hard else { return }
         let t = now - f.launch
         var g = ctx
@@ -829,6 +833,7 @@ struct RevontuletPainter {
 
     /// After about four seconds of nothing, a soft ghost finger shows the gesture. It never blocks.
     private func hint(_ ctx: inout GraphicsContext) {
+        if let c = coach, c.visible(now) { return }
         let quiet = now - max(e.lastInputAt, e.beatStart + (e.beat == .warmth ? RevontuletEngine.strokesFrom : 0))
         guard quiet > 4, e.finger == nil else { return }
         let fade = min(1, (quiet - 4) / 0.6)
@@ -874,6 +879,142 @@ struct RevontuletPainter {
             center: p, startRadius: 0, endRadius: r))
         ctx.stroke(Path(ellipseIn: CGRect(x: p.x - r * 0.8, y: p.y - r * 0.8, width: r * 1.6, height: r * 1.6)),
                    with: .color(Color.white.opacity(0.35 * a)), lineWidth: 1.5)
+    }
+
+    // MARK: - The first-time coach
+
+    /// The veil with soft pools of light around the thing to touch, and the ghost fingertip
+    /// showing the move in a slow loop.
+    func coachLayer(_ ctx: inout GraphicsContext, size: CGSize) {
+        guard let c = coach else { return }
+        let a = c.alpha(now)
+        guard a > 0.001 else { return }
+        let t = now - c.since
+        var spots: [(CGPoint, CGFloat)] = []
+        switch c.kind {
+        case .start: spots = [(L.anchor, 74)]
+        case .choice:
+            let f = L.faults(round: e.round)
+            spots = [(f.easy[f.easy.count / 2], 70), (f.hard[f.hard.count / 2], 100)]
+        case .trace: spots = [(L.anchor, L.arcRadius + 58)]
+        case .sling: spots = [(CGPoint(x: L.anchor.x, y: L.anchor.y + L.maxPull * 0.4), L.maxPull * 0.62 + 50)]
+        case .embers:
+            if let f = e.flight, f.emberU.indices.contains(c.ember) { spots = [(f.emberPoint(c.ember), 64)] }
+        case .stroke:
+            let sq = L.foxSquare(.warm)
+            spots = [(CGPoint(x: sq.midX, y: sq.midY - sq.height * 0.05), sq.width * 0.52)]
+        }
+        // The veil: soft dark navy, about half strength, with feathered holes.
+        ctx.drawLayer { layer in
+            layer.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(red: 0.03, green: 0.05, blue: 0.16).opacity(c.kind.veil * a)))
+            layer.blendMode = .destinationOut
+            for (p, r) in spots {
+                layer.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
+                    Gradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(0.9), location: 0.55), .init(color: .clear, location: 1)]),
+                    center: p, startRadius: 0, endRadius: r))
+            }
+        }
+        // A warm rim of light around each pool, so the eye goes there (never on the fox).
+        var rim = ctx
+        rim.blendMode = .plusLighter
+        for (p, r) in spots where c.kind != .stroke {
+            rim.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
+                Gradient(stops: [.init(color: .clear, location: 0.6), .init(color: RevontuletColor.gold.opacity(0.1 * a), location: 0.82), .init(color: .clear, location: 1)]),
+                center: p, startRadius: 0, endRadius: r))
+        }
+        ghost(&ctx, c, t: reduceMotion ? 0 : t, alpha: a)
+    }
+
+    /// The ghost fingertip performing the move, slow enough to read once.
+    private func ghost(_ ctx: inout GraphicsContext, _ c: RevontuletCoachState, t: Double, alpha: Double) {
+        func ease(_ x: Double) -> Double { let k = min(1, max(0, x)); return k * k * (3 - 2 * k) }
+        switch c.kind {
+        case .start:
+            let loop = t.truncatingRemainder(dividingBy: 2.0)
+            let k = ease(loop / 0.6)
+            let p = CGPoint(x: L.anchor.x + CGFloat(1 - k) * 46, y: L.anchor.y + CGFloat(1 - k) * 64 + 6)
+            let fade = loop < 1.3 ? 1 : max(0, 1 - (loop - 1.3) / 0.4)
+            fingertip(&ctx, at: p, alpha: alpha * fade, press: loop > 0.6 && loop < 1.0 ? (loop - 0.6) / 0.4 : nil)
+        case .choice:
+            break
+        case .trace:
+            let loop = t.truncatingRemainder(dividingBy: 2.8)
+            let k = ease(loop / 1.7)
+            let arc = e.arc
+            var lit = Path()
+            let m = max(2, Int(40 * k))
+            for i in 0...m {
+                let q = arc.point(k * Double(i) / Double(m), reversed: e.reversed)
+                if i == 0 { lit.move(to: q) } else { lit.addLine(to: q) }
+            }
+            let fade = loop < 2.0 ? 1 : max(0, 1 - (loop - 2.0) / 0.5)
+            var g = ctx
+            g.blendMode = .plusLighter
+            g.stroke(lit, with: .color(RevontuletColor.gold.opacity(0.45 * alpha * fade)), style: StrokeStyle(lineWidth: 5, lineCap: .round))
+            fingertip(&ctx, at: arc.point(k, reversed: e.reversed), alpha: alpha * fade, press: nil)
+        case .sling:
+            let loop = t.truncatingRemainder(dividingBy: 3.0)
+            let down = ease((loop - 0.35) / 0.9)
+            let p = CGPoint(x: L.anchor.x, y: L.anchor.y + L.maxPull * 0.8 * CGFloat(down))
+            let lifted = loop > 1.55
+            if !lifted {
+                fingertip(&ctx, at: p, alpha: alpha, press: loop < 0.35 ? loop / 0.35 : nil)
+                var g = ctx
+                g.blendMode = .plusLighter
+                var th = Path()
+                th.move(to: L.anchor)
+                th.addLine(to: p)
+                g.stroke(th, with: .color(RevontuletColor.gold.opacity(0.4 * alpha * down)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+            } else if let effort = e.choice {
+                // Let go: a faint ghost of the spark flies toward the chosen line.
+                let u = min(1, (loop - 1.55) / 0.6)
+                let to = L.target(round: e.round, effort: effort)
+                let from = CGPoint(x: L.anchor.x, y: L.anchor.y + L.maxPull * 0.8)
+                let path = RevontuletFlight(launch: 0, from: from, control: RevontuletLayout.flightControl(from: from, to: to, pull: CGVector(dx: 0, dy: L.maxPull * 0.8)),
+                                            to: to, duration: 1, hard: false, foxOwn: false)
+                let q = path.bezier(1 - pow(1 - u, 2))
+                var g = ctx
+                g.opacity = alpha * (1 - u) * 0.6
+                spark(&g, at: q, size: 0.6, heat: 0.8)
+            }
+        case .embers:
+            guard let f = e.flight, f.emberU.indices.contains(c.ember) else { return }
+            let loop = t.truncatingRemainder(dividingBy: 1.3)
+            let p = f.emberPoint(c.ember)
+            let k = ease(loop / 0.45)
+            let q = CGPoint(x: p.x + CGFloat(1 - k) * 30, y: p.y + CGFloat(1 - k) * 44 + 4)
+            fingertip(&ctx, at: q, alpha: alpha, press: loop > 0.45 && loop < 0.85 ? (loop - 0.45) / 0.4 : nil)
+        case .stroke:
+            let loop = t.truncatingRemainder(dividingBy: 3.0)
+            let k = ease(loop / 1.9)
+            let sq = L.foxSquare(.warm)
+            let p = CGPoint(x: sq.midX - sq.width * 0.06, y: sq.minY + sq.height * (0.18 + 0.58 * CGFloat(k)))
+            let fade = loop < 2.2 ? 1 : max(0, 1 - (loop - 2.2) / 0.5)
+            fingertip(&ctx, at: p, alpha: alpha * fade, press: nil)
+        }
+    }
+
+    /// A soft fingertip of light: a glowing pad, a little tilted, and a ripple when it presses.
+    private func fingertip(_ ctx: inout GraphicsContext, at p: CGPoint, alpha: Double, press: Double?) {
+        guard alpha > 0.01 else { return }
+        var g = ctx
+        g.blendMode = .plusLighter
+        softEllipse(&g, p, rx: 34, ry: 34, [Color.white.opacity(0.16 * alpha), Color.white.opacity(0.05 * alpha)])
+        if let k = press {
+            let r = CGFloat(14 + 30 * k)
+            g.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
+                Gradient(stops: [.init(color: .clear, location: 0.55), .init(color: RevontuletColor.gold.opacity(0.5 * (1 - k) * alpha), location: 0.8),
+                                 .init(color: .clear, location: 1)]), center: p, startRadius: 0, endRadius: r))
+        }
+        var pad = ctx
+        pad.translateBy(x: p.x, y: p.y)
+        pad.rotate(by: .degrees(-18))
+        let squash: CGFloat = press != nil ? 0.9 : 1
+        let rect = CGRect(x: -10.5, y: -14 * squash, width: 21, height: 28 * squash)
+        pad.fill(Path(ellipseIn: rect), with: .radialGradient(
+            Gradient(colors: [Color.white.opacity(0.62 * alpha), Color.white.opacity(0.3 * alpha), Color.white.opacity(0.08 * alpha)]),
+            center: CGPoint(x: -2, y: -4), startRadius: 0, endRadius: 16))
+        pad.stroke(Path(ellipseIn: rect), with: .color(Color.white.opacity(0.4 * alpha)), lineWidth: 1)
     }
 
     private func press(_ ctx: inout GraphicsContext, at p: CGPoint, k: Double, alpha: Double) {
