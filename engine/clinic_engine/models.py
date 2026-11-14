@@ -950,6 +950,10 @@ class AssocRowOut(BaseModel):
                                         "against score), oriented like rho. Two series that only "
                                         "drift over the same weeks are high in rho and low here.")
     change_n: Optional[int] = Field(None, description="Pairs of neighbouring ratings behind change_rho.")
+    task_bound: bool = Field(False, description="The task itself moves this measure (looking down "
+                             "at the phone, head angle). Set by code from the key, whatever "
+                             "caveats a model adds; the page's headline passes over such a measure "
+                             "when another will do.")
     quality: Optional[float] = Field(None, description="Share of sessions (or days) usable.")
     agreement: Optional[Literal["consistent", "opposite", "inconclusive",
                                 "related_no_prediction"]] = None

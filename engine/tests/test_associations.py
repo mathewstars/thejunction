@@ -743,3 +743,30 @@ def test_what_the_page_headline_rests_on_does_not_depend_on_the_model():
     strengths, pattern, lines, look_down_caveats = next(iter(seen))
     assert strengths == tuple(r["strength"] for r in rows) and pattern == code_ov["pattern"]
     assert "task_confound" in look_down_caveats
+
+
+def test_task_bound_is_set_by_code_whatever_caveats_a_model_adds(env):
+    """A model that tags every face measure as depending on how the phone is held must not
+    change which measures the page's headline may name."""
+    from clinic_engine.mind.associations import _TASK_CONFOUND
+    C, pid = env.C(), env.demo["patient_id"]
+    out = env.client.post(f"/v1/clinic/patients/{pid}/associations/run", headers=C).json()
+    flags = {r["key"]: r["task_bound"] for r in out["rows"]}
+    assert flags and all(v == (k in _TASK_CONFOUND) for k, v in flags.items())
+    assert flags.get("face.look_down_share") is True and flags.get("face.smile_intensity") is False
+
+
+def test_a_measure_specific_caveat_is_kept_only_where_code_lists_it():
+    rows = [_row("face.look_down_share", "face", "consistent", "moderate"),
+            _row("face.smile_intensity", "face", "consistent", "weak"),
+            _row("daily.steps", "daily", "consistent", "moderate")]
+    code_ov = A.code_overall(rows, "rating", [], unit="rating", n_obs=13)
+    reply = {"rows": [{"key": r["key"], "agreement": r["agreement"], "strength": r["strength"],
+                       "caveats": ["task_confound", "single_person"]} for r in rows],
+             "overall": dict(code_ov)}
+    out, _, corrections = A.merge(reply, rows, code_ov, "rating", unit="rating", n_obs=13)
+    by = {r["key"]: [c["code"] for c in r["caveats"]] for r in out}
+    assert "task_confound" in by["face.look_down_share"]
+    assert "task_confound" not in by["face.smile_intensity"] and "task_confound" not in by["daily.steps"]
+    assert all("single_person" in v for v in by.values())            # a general caveat stays
+    assert sum(c["reason"] == "caveat_not_for_this_measure" for c in corrections) == 2

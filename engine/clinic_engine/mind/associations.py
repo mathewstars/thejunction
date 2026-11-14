@@ -61,6 +61,8 @@ EXTRA_NOTES = {
 
 # Code's own per-row caveats, by measure.
 _TASK_CONFOUND = {"face.look_down_share", "face.head_pitch_deg", "face.head_movement"}
+# Caveats tied to particular measures (see code_caveats); the others are general.
+_KEYED_CAVEATS = ("task_confound", "medication", "glasses_or_light", "fatigue_or_illness")
 _MEDICATION = {"face.facial_activity", "face.blink_rate_per_min", "face.blink_duration_ms",
                "focus.median_reaction_ms", "focus.reaction_spread_ms"}
 _GLASSES = {"face.eye_smile_share", "face.blink_rate_per_min", "face.blink_duration_ms",
@@ -748,8 +750,18 @@ def merge(reply: dict, code_rows: list[dict], code_ov: dict, ref_kind: str,
                 if STRENGTHS.index(m["strength"]) > STRENGTHS.index(cr["strength"])
                 else "strength_set_by_code")
             r.update(strength=cr["strength"], strength_source="code_corrected")
-        req, _ = code_caveats(r, ref_kind, th)
-        cav = [{"code": c, "by": "model"} for c in dict.fromkeys(m["caveats"])]
+        req, sug = code_caveats(r, ref_kind, th)
+        # A caveat that belongs to particular measures (how the phone is held,
+        # medication, glasses or light, tiredness) is kept from the model only on
+        # the measures code lists it for. Put on every row it says nothing, and
+        # on reaction time "how the phone is held" makes no sense.
+        mine = set(req) | set(sug)
+        said = list(dict.fromkeys(m["caveats"]))
+        for c in said:
+            if c in _KEYED_CAVEATS and c not in mine:
+                fix("row", r["key"], "caveat", c, None, "caveat_not_for_this_measure")
+        cav = [{"code": c, "by": "model"} for c in said
+               if not (c in _KEYED_CAVEATS and c not in mine)]
         have = {c["code"] for c in cav}
         cav += [{"code": c, "by": "code"} for c in req if c not in have]
         r["caveats"] = cav
@@ -797,16 +809,20 @@ def merge(reply: dict, code_rows: list[dict], code_ov: dict, ref_kind: str,
     by_row = {r["key"]: r for r in tested}
     min_n = min((by_row[k]["n"] for k in kept), default=0)
     cap = _confidence_cap(ref_kind, lines, min_n, th, unit, n_obs)
-    if CONFIDENCE.index(mo["confidence"]) <= CONFIDENCE.index(cap):
-        ov["confidence"], src["confidence"] = mo["confidence"], "model"
+    # Code's value, always, like the pattern: the page says confidence is set by
+    # code, and that has to hold with twenty ratings too.
+    code_conf = code_ov["confidence"]
+    if CONFIDENCE.index(code_conf) > CONFIDENCE.index(cap):
+        code_conf = cap
+    if mo["confidence"] == code_conf:
+        ov["confidence"], src["confidence"] = code_conf, "model"
     else:
-        code_conf = code_ov["confidence"]
-        if CONFIDENCE.index(code_conf) > CONFIDENCE.index(cap):
-            code_conf = cap
         ov["confidence"], src["confidence"] = code_conf, "code_corrected"
         fix("overall", None, "confidence", mo["confidence"], code_conf,
             "confidence_above_cap_for_" + ("proxy" if ref_kind == "proxy" else
-                                            "few_ratings" if cap == "low" else "data"))
+                                            "few_ratings" if cap == "low" else "data")
+            if CONFIDENCE.index(mo["confidence"]) > CONFIDENCE.index(cap)
+            else "confidence_set_by_code")
 
     # leads_reference: a claim of an early signal needs consistent rows that lead.
     if mo["leads_reference"] and not any((r.get("lead_days") or 0) < 0 for r in cons):
@@ -897,6 +913,10 @@ def assemble(ds: dict, rows: list[dict], overall: dict, corrections: list[dict],
     out_rows = []
     for r in rows:
         o = {k: r.get(k) for k in ROW_OUT}
+        # Set by code from the key, not from the caveat list: a model may add the
+        # phone-position caveat to every face measure, and the page's headline
+        # must still know which measures the task itself moves.
+        o["task_bound"] = r["key"] in _TASK_CONFOUND
         o["caveats"] = [{"code": c["code"], "text": note_text(c["code"]), "by": c["by"]}
                         for c in r.get("caveats", [])]
         out_rows.append(o)
