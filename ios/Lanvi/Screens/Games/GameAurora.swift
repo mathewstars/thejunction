@@ -70,7 +70,7 @@ enum GameAurora {
         let lvl = GameEase.clamp(level)
         let world = WorldFrame(screen: screen)
         var layer = ctx
-        layer.addFilter(.blur(radius: 1.4))
+        layer.addFilter(.blur(radius: 2.4))
         layer.drawLayer { g in
             for (bi, b) in bands.enumerated() {
                 let show = bi == 0 ? 1 : GameEase.step(b.appear, b.appear + 0.3, lvl)
@@ -132,7 +132,7 @@ enum GameAurora {
             let a = min(1, base * (0.74 + 0.26 * noise) * (1 + boost) * ends(um))
             guard a > 0.004 else { continue }
             let h0 = rayLength(u0, gain(u0)), h1 = rayLength(u1, gain(u1))
-            let drop: CGFloat = 5
+            let drop: CGFloat = 10
             var slice = Path()
             slice.move(to: CGPoint(x: p0.x, y: p0.y + drop))
             slice.addLine(to: CGPoint(x: p1.x + 0.5, y: p1.y + drop))
@@ -144,16 +144,20 @@ enum GameAurora {
             g.fill(slice, with: .linearGradient(
                 Gradient(stops: [
                     .init(color: b.low.opacity(0), location: 0),
-                    .init(color: b.low.opacity(a), location: 0.06),
-                    .init(color: b.low.opacity(a * 0.6), location: 0.3),
+                    .init(color: b.low.opacity(a * 0.55), location: 0.05),
+                    .init(color: b.low.opacity(a), location: 0.12),
+                    .init(color: b.low.opacity(a * 0.6), location: 0.34),
                     .init(color: b.high.opacity(a * 0.3), location: 0.62),
                     .init(color: b.high.opacity(0), location: 1),
                 ]),
                 startPoint: bottom, endPoint: top))
         }
 
-        // The bright lower hem, where real aurora is sharpest.
-        g.stroke(edgePath, with: .color(Color.white.opacity(0.18 * base)), lineWidth: 2)
+        // The bright lower hem, where real aurora is brightest: a soft glowing line, never a hard edge.
+        var hem = g
+        hem.addFilter(.blur(radius: 5))
+        hem.stroke(edgePath.applying(CGAffineTransform(translationX: 0, y: -6)),
+                   with: .color(b.low.opacity(0.45 * base)), style: StrokeStyle(lineWidth: 8, lineCap: .round))
 
         // Where new light just landed: a soft bloom on the edge.
         guard bi == 0 else { return }
