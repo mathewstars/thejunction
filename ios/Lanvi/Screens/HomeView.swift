@@ -154,6 +154,7 @@ struct HomeView: View {
                     .opacity(arrived && !showGrowth ? 1 : 0)
                     .offset(y: arrived ? 0 : 24)
 
+
                 if let stage = store.grewUp {
                     HomeGrowUpMoment(stage: stage) { store.grewUp = nil }
                         .transition(.opacity)
