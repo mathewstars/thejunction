@@ -64,7 +64,10 @@ struct BreatheView: View {
                     .frame(width: w, height: snowHeight)
                     .offset(y: snowTop)
 
-                Button { onDone(nil) } label: {
+                Button {
+                    if stage == .session { GameMoments.emit(.breatheEnded(finished: false)) }
+                    onDone(nil)
+                } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 17, weight: .heavy))
                         .foregroundStyle(.white)
@@ -169,6 +172,7 @@ struct BreatheView: View {
     /// person leaves, because the view goes away and takes this task with it.
     private func runSession() async {
         let startedAt = Date()
+        GameMoments.emit(.breatheStarted)
         breathsDone = 0
         progress = 0
         let breathLength = BreathePace.inhale + BreathePace.hold + BreathePace.exhale
@@ -180,10 +184,11 @@ struct BreatheView: View {
         }
         guard await wait(BreathePace.settle) else { return }
 
-        for _ in 0..<BreathePace.breaths {
+        for number in 1...BreathePace.breaths {
             withAnimation(.linear(duration: breathLength)) { progress = 1 }
 
             setPhase(.inhale)
+            GameMoments.emit(.breathIn(number: number))
             withAnimation(.easeInOut(duration: BreathePace.inhale)) {
                 breath = 0.95
                 aurora = 0.85
@@ -191,6 +196,7 @@ struct BreatheView: View {
             guard await wait(BreathePace.inhale) else { return }
 
             setPhase(.hold)
+            GameMoments.emit(.breathHold(number: number))
             withAnimation(.easeInOut(duration: BreathePace.hold)) {
                 breath = 1
                 aurora = 0.9
@@ -198,6 +204,7 @@ struct BreatheView: View {
             guard await wait(BreathePace.hold) else { return }
 
             setPhase(.exhale)
+            GameMoments.emit(.breathOut(number: number))
             withAnimation(.easeInOut(duration: BreathePace.exhale)) {
                 breath = 0
                 aurora = 0.1
@@ -217,6 +224,7 @@ struct BreatheView: View {
         result = BreatheResult(startedAt: startedAt, endedAt: endedAt,
                                breathsCompleted: breathsDone,
                                completed: breathsDone == BreathePace.breaths)
+        GameMoments.emit(.breatheEnded(finished: true))
         finish()
     }
 
