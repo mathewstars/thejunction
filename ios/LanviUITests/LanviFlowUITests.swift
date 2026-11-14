@@ -171,6 +171,48 @@ final class LanviFlowUITests: XCTestCase {
 
     /// The chat keyboard can always be put away, and the buttons still work.
     /// Run with the on-screen keyboard on (simulator: ConnectHardwareKeyboard off).
+    /// The captain: one quick tap anywhere outside the text box puts the keyboard
+    /// away, and does nothing else (no scroll jump, no screen change).
+    func test5ChatTapAnywhere() {
+        launch(["-senseScreen", "none", "-screen", "home", "-demoOpen", "chat"])
+        let field = app.textFields.matching(NSPredicate(format: "label == %@ OR placeholderValue == %@", "Write to Lanvi", "Write to Lanvi")).firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 6))
+        let kb = app.keyboards.firstMatch
+        let firstMessage = app.scrollViews.firstMatch.staticTexts.firstMatch
+        XCTAssertTrue(firstMessage.waitForExistence(timeout: 4), "a message is on screen")
+        for y in [0.15, 0.35, 0.55, 0.75] {
+            field.tap()
+            XCTAssertTrue(kb.waitForExistence(timeout: 3), "keyboard up before tap at \(y)")
+            pause(0.8)
+            let before = firstMessage.frame.minY
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.62, dy: y)).tap()
+            let gone = NSPredicate(format: "exists == false")
+            let ok = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: gone, object: kb)], timeout: 1.5)
+            XCTAssertEqual(ok, .completed, "one tap at \(Int(y * 100))% puts the keyboard away")
+            pause(1.0)
+            XCTAssertTrue(field.exists, "the chat is still open after a tap at \(Int(y * 100))%")
+            let after = firstMessage.frame.minY
+            XCTAssertEqual(after, before, accuracy: 2, "the chat did not scroll after a tap at \(Int(y * 100))%")
+            event(String(format: "tap.%02d kb=%@ dy=%.1f", Int(y * 100), ok == .completed ? "gone" : "UP", after - before))
+        }
+    }
+
+    /// The captain: a tap near the top of the chat opened the exercise. Taps on the
+    /// chat stay in the chat, with the keyboard down too.
+    func test6ChatTopTapsStayInChat() {
+        launch(["-senseScreen", "none", "-screen", "home", "-demoOpen", "chat"])
+        let field = app.textFields.matching(NSPredicate(format: "label == %@ OR placeholderValue == %@", "Write to Lanvi", "Write to Lanvi")).firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 6))
+        pause(1.0)
+        for y in [0.08, 0.15, 0.25, 0.40] {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.62, dy: y)).tap()
+            pause(1.2)
+            XCTAssertTrue(field.exists, "the chat is still showing after a tap at \(Int(y * 100))%")
+            XCTAssertFalse(app.buttons["Start"].exists, "no activity opened by a tap at \(Int(y * 100))%")
+            event(String(format: "top.%02d chat=%@", Int(y * 100), field.exists ? "yes" : "GONE"))
+        }
+    }
+
     func test4ChatKeyboard() {
         launch(["-senseScreen", "none", "-screen", "home", "-demoOpen", "chat"])
         let field = app.textFields.matching(NSPredicate(format: "label == %@ OR placeholderValue == %@", "Write to Lanvi", "Write to Lanvi")).firstMatch
