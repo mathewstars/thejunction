@@ -156,8 +156,8 @@ def fclip(k, d, ss=0.0, **kw):
 def over_once(k, png, d, ss=0.0):
     """Words over darkened footage at natural speed; when the clip ends the backdrop has already faded to the dark ground."""
     USED[k] = d if k not in USED else 1 / 0
-    o = out(); L = dur_of(C(k)) - 0.1 - ss; fo = min(d, L) - 0.9
-    vf = (f"[0:v]scale=1280:720,fps=24,eq=brightness=-0.22:saturation=0.8,gblur=sigma=3,tpad=stop_mode=clone:stop_duration=9,fade=t=out:st={fo:.3f}:d=0.8:color=0x0b131e[b];"
+    o = out(); L = dur_of(C(k)) - 0.1 - ss; assert L >= d, f"{k}: the clip ({L:.2f} s) ends before the card does ({d} s)"
+    vf = (f"[0:v]scale=1280:720,fps=24,eq=brightness=-0.22:saturation=0.8,gblur=sigma=3[b];"
           f"[b][1:v]overlay=0:0[w];[w][2:v]overlay=0:0[v]")
     run(["-ss", str(ss), "-i", C(k), "-i", png, "-i", f"{OLD}/tag_gen.png", "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
 def reveal(d):
@@ -168,6 +168,7 @@ def app_from_light(d):
 def nurse_shot(d):
     ss, _ = rule("nurse", d, 0.0)
     windows(C("nurse"), d, [("w_tg.png", 0.3, 2.7), ("w_anna.png", 2.5, d + 0.3)], ss=ss, wfade=0.5)
+GETUP_SS = 2.85
 # 1 she leaves the clinic; the next appointment
 at(0.0,  lambda d: fclip("exit", d, ss=0.2))
 at(4.0,  lambda d: fclip("card", d, ss=0.4))
@@ -178,10 +179,9 @@ at(12.5, lambda d: fclip("hold", d, ss=0.6, zoom=1.4, fx=0.05, fy=0.75))
 at(16.5, reveal)
 at(20.6, app_from_light)
 # 3 for him, she gets up
-at(22.6, lambda d: fclip("grey", d, ss=0.2))
-at(26.7, lambda d: fclip("curtains", d, ss=0.6))
+at(23.6, lambda d: fclip("getup", d, ss=GETUP_SS))          # one continuous shot: in bed, then she gets up; the app before it holds until the sentence is over
 # 4 she said yes; every moment with him is a number
-at(30.7, lambda d: over_once("sofa", "c_yes.png", d))
+at(30.7, lambda d: over_once("kitchen", "c_yes.png", d, ss=0.5))
 at(37.0, lambda d: measure_screen(A("home"), "v8/triple.mp4", d))
 at(44.3, lambda d: two_step_card("c8_num.png", "c8_gem.png", d, at2=2.2))
 # 5 the questionnaire beside the lines, one continuous shot
