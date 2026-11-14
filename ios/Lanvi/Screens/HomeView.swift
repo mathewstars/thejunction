@@ -106,6 +106,8 @@ struct HomeView: View {
                 }
                 .frame(width: L.fox * 2, height: L.fox * 2)
                 .position(x: L.foxCenter.x + entrance, y: L.foxCenter.y)
+                // Only moves when Lanvi sets off wandering or comes home; never every frame.
+                .animation(.spring(response: 0.7, dampingFraction: 0.8), value: away)
                 .accessibilityLabel("Lanvi")
                 .accessibilityHint("Shows how Lanvi is growing")
 
@@ -152,6 +154,7 @@ struct HomeView: View {
                 // The zoom source is the whole action area, which is always there:
                 // closing a screen must never zoom back into a button that is gone.
                 actions
+                    .animation(.spring(response: 0.55, dampingFraction: 0.8), value: store.todayThing)
                     .frame(width: w - 48)
                     .homeZoomSource("today", in: zoom)
                     .position(x: w / 2, y: L.buttonY)
@@ -165,8 +168,6 @@ struct HomeView: View {
                         .zIndex(10)
                 }
             }
-            .animation(.spring(response: 0.7, dampingFraction: 0.8), value: away)
-            .animation(.spring(response: 0.55, dampingFraction: 0.8), value: store.todayThing)
             .onAppear { size = geo.size; insets = geo.safeAreaInsets }
             .onChange(of: geo.size) { _, s in size = s; insets = geo.safeAreaInsets }
         }
@@ -202,7 +203,7 @@ struct HomeView: View {
             if new == .back, old != .back { runIn() } else if !celebrating { settle() }
         }
         .onChange(of: store.cheerTick) { _, _ in
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .cheer }
+            pose = .cheer
             react(.happy)
             haptic &+= 1
             Task {
@@ -382,10 +383,10 @@ struct HomeView: View {
 
     /// Eyes up to the bubble when Lanvi says something new, then back.
     private func glanceAtBubble() {
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { look = UnitPoint(x: 0.5, y: -0.35) }
+        look = UnitPoint(x: 0.5, y: -0.35)
         Task {
             try? await Task.sleep(for: .seconds(1.3))
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { look = nil }
+            look = nil
         }
     }
     private var isDoneToday: Bool { if case .done = store.todayThing { return true } else { return false } }
@@ -436,7 +437,9 @@ struct HomeView: View {
         }
     }
 
-    /// The resting pose for the state Lanvi is in and the time of day.
+    /// The resting pose for the state Lanvi is in and the time of day. Pose, mood and
+    /// look-at are set plainly: the puppet eases its own parts on its own clock, so
+    /// Home never wraps them in a second animation.
     private func settle() {
         let next: LanviPose
         switch store.wandering?.state {
@@ -454,7 +457,7 @@ struct HomeView: View {
             }
         }
         if next != pose {
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = next }
+            pose = next
         }
     }
 
@@ -475,7 +478,7 @@ struct HomeView: View {
         withAnimation(.easeOut(duration: 1.1)) { entrance = 0 }
         Task {
             try? await Task.sleep(for: .milliseconds(1100))
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .surprised }
+            pose = .surprised
             react(.surprised)
             haptic &+= 1
         }
@@ -484,7 +487,7 @@ struct HomeView: View {
     /// Opening the app again: Lanvi is pleased to see you.
     private func welcomeBack() {
         guard !celebrating, store.wandering?.state != .away else { return }
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .love }
+        pose = .love
         react(.happy)
         Task {
             try? await Task.sleep(for: .seconds(1.8))
