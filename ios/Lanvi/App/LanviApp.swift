@@ -20,7 +20,7 @@ struct LanviApp: App {
 ///   Welcome, what helps, Home, Breathe with Lanvi, the XP and glow moment,
 ///   growing up, a wandering and its story. Always uses the offline demo data.
 /// - `-screen <name>`: open one screen straight away: `home`, `whathelps`,
-///   `focus`, `breathe`.
+///   `focus`, `breathe`, `checkin`, `checkin-plan`.
 /// - `-offline`: use the offline demo data even when a server is configured.
 /// - Screenshot moments on Home: see `DemoBackend` and `HomeView.runDemo`.
 struct RootView: View {
@@ -48,6 +48,8 @@ struct RootView: View {
                 FocusGameView { print("focus: done \(String(describing: $0))") }
             case "breathe":
                 BreatheView { _ in }
+            case let s? where s.hasPrefix("checkin"):
+                CheckinView.preview(s)
             default:
                 switch step {
                 case .welcome:

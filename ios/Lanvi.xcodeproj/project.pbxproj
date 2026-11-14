@@ -17,8 +17,11 @@
 		45C0A7261327E95CF788718C /* FocusResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E369E41135184A2334A61A6 /* FocusResult.swift */; };
 		471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4534A11EF57C9E6ACC5030B /* HomeView.swift */; };
 		51DD8A76B382F693BF1DE2B8 /* TokenKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 561A37AABE894380B546DE42 /* TokenKeychain.swift */; };
+		52849D842800BB2FC9D57F97 /* CheckinParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */; };
 		5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */; };
+		70C6A7B3EB4DC1265714772A /* CheckinModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C049B0C402500302F08D494 /* CheckinModels.swift */; };
 		7E44533D8B224A540E1246AA /* WhatHelpsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55866B9F718B556BABB20541 /* WhatHelpsView.swift */; };
+		85913E78D8BD74C9E1F25A7E /* CheckinView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E77620D747F3E1491FF87DCE /* CheckinView.swift */; };
 		922984AB73EB11C13340245F /* HomeParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607DA0BDB68AC9211EAADA43 /* HomeParts.swift */; };
 		942A29C36871C91B6C4230BA /* BreathePieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29013F2F7831D454F4237DF1 /* BreathePieces.swift */; };
 		966709A0031A479E6D292413 /* HomeMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */; };
@@ -42,6 +45,7 @@
 		0E369E41135184A2334A61A6 /* FocusResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusResult.swift; sourceTree = "<group>"; };
 		11CA1C956F7514A490E2C77E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		15B8C888729DE19EB41449A4 /* HomeOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOverlays.swift; sourceTree = "<group>"; };
+		1C049B0C402500302F08D494 /* CheckinModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinModels.swift; sourceTree = "<group>"; };
 		248059A5DA624F501FEE521B /* Lanvi.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lanvi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		252A074008D2696F20B23913 /* HomeMindScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMindScreen.swift; sourceTree = "<group>"; };
 		29013F2F7831D454F4237DF1 /* BreathePieces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreathePieces.swift; sourceTree = "<group>"; };
@@ -67,8 +71,10 @@
 		BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviView.swift; sourceTree = "<group>"; };
 		CA73738285D12F12C9ADB24B /* Chunky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chunky.swift; sourceTree = "<group>"; };
 		CB97273333C0DBAE7FC11418 /* FocusEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusEngine.swift; sourceTree = "<group>"; };
+		CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinParts.swift; sourceTree = "<group>"; };
 		DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMoments.swift; sourceTree = "<group>"; };
 		E4534A11EF57C9E6ACC5030B /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		E77620D747F3E1491FF87DCE /* CheckinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinView.swift; sourceTree = "<group>"; };
 		EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusGameView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -164,6 +170,16 @@
 			path = .;
 			sourceTree = "<group>";
 		};
+		D1A262F183C53F9B7602400F /* Checkin */ = {
+			isa = PBXGroup;
+			children = (
+				1C049B0C402500302F08D494 /* CheckinModels.swift */,
+				CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */,
+				E77620D747F3E1491FF87DCE /* CheckinView.swift */,
+			);
+			path = Checkin;
+			sourceTree = "<group>";
+		};
 		D5318346F329C50845551088 /* State */ = {
 			isa = PBXGroup;
 			children = (
@@ -203,6 +219,7 @@
 				856CB611495D91BE8B81E2D4 /* WelcomeView.swift */,
 				55866B9F718B556BABB20541 /* WhatHelpsView.swift */,
 				0D7E93C8CF5FB597A3B43917 /* Breathe */,
+				D1A262F183C53F9B7602400F /* Checkin */,
 				DD50134CD3D249E677BC4BC0 /* Focus */,
 				E4073053305CA28D4D60131E /* Home */,
 			);
@@ -283,6 +300,9 @@
 				942A29C36871C91B6C4230BA /* BreathePieces.swift in Sources */,
 				B6A861C26917D5B2F511CE9C /* BreatheResult.swift in Sources */,
 				EEDB19C869011580DA5780AC /* BreatheView.swift in Sources */,
+				70C6A7B3EB4DC1265714772A /* CheckinModels.swift in Sources */,
+				52849D842800BB2FC9D57F97 /* CheckinParts.swift in Sources */,
+				85913E78D8BD74C9E1F25A7E /* CheckinView.swift in Sources */,
 				B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */,
 				C8EBD236C0121CE58A89C106 /* DemoBackend.swift in Sources */,
 				D8C2589303E6EFD2CBBF8440 /* FocusArt.swift in Sources */,

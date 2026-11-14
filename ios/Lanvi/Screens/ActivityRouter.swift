@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// The one place Home opens an activity. Each case shows the real screen when
-/// it exists on main, or a small stand-in until then, and turns the screen's
-/// result into the record the server takes. Swapping in a real screen is the
-/// few lines inside one case.
+/// The one place Home opens an activity: each case shows the real screen and
+/// turns the screen's result into the record the server takes.
 struct ActivityRouter: View {
     var kind: ActivityKind
     var checkinOptions: API.CheckinOptionsOut?
     var planToAsk: API.PlanToAsk?
+    /// Opens the Help screen (the check-in shows a Help chip).
+    var onHelp: (() -> Void)? = nil
     /// nil when the person closed it before anything happened.
     var onDone: (API.ActivityIn?) -> Void
 
@@ -18,8 +18,35 @@ struct ActivityRouter: View {
         case .breathing:
             BreatheView { result in onDone(result.map(Self.record)) }
         case .checkin:
-            StandInActivity(kind: .checkin, onDone: onDone)
+            checkin
         }
+    }
+
+    private var checkin: some View {
+        let options = checkinOptions.map {
+            CheckinOptions(goodThings: $0.goodThings.map { CheckinOption(id: $0.id, label: $0.label) },
+                           plans: $0.plans.map { CheckinOption(id: $0.id, label: $0.label) })
+        } ?? .sample
+        // A typed plan's words stay on the phone; without them the question is skipped.
+        let question = planToAsk.flatMap {
+            CheckinPlanQuestion(checkinId: $0.checkinId, planId: $0.planId, options: options)
+        }
+        var view = CheckinView(options: options, askAboutPlan: question) { result in
+            onDone(result.map(Self.record))
+        }
+        view.onHelp = onHelp
+        return view
+    }
+
+    static func record(_ r: CheckinResult) -> API.ActivityIn {
+        func item(_ i: CheckinItem) -> API.CheckinItem { API.CheckinItem(catalogId: i.catalogId, text: i.typedText) }
+        return API.ActivityIn(id: API.ActivityIn.newId(), type: .checkin,
+                              startedAt: API.isoString(r.startedAt),
+                              durationS: (r.durationSeconds * 10).rounded() / 10,
+                              completed: true, endedBy: .finished,
+                              goodThings: Array(r.goodThings.prefix(3)).map(item),
+                              plan: r.plan.map(item),
+                              planDone: API.PlanDone(rawValue: r.planDone.rawValue) ?? .notAsked)
     }
 
     // MARK: Screen results into server records
@@ -40,94 +67,5 @@ struct ActivityRouter: View {
                               startedAt: API.isoString(r.startedAt), durationS: (duration * 10).rounded() / 10,
                               completed: r.completed, endedBy: r.completed ? .finished : .userStopped,
                               timePlayedS: min(r.timePlayedS, duration), breathsCompleted: r.breathsCompleted)
-    }
-}
-
-// MARK: - Stand-ins until the real screens land
-
-/// A simple stand-in so Home, the send and the XP moment can be tested end to
-/// end. "Finish" reports a believable record of the activity's usual length.
-private struct StandInActivity: View {
-    var kind: ActivityKind
-    var onDone: (API.ActivityIn?) -> Void
-    @State private var bounce = 0
-
-    var body: some View {
-        GeometryReader { geo in
-            let hill = geo.size.height * 0.62
-            ZStack(alignment: .top) {
-                SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: hill)
-                LanviView(pose: pose, size: 200, bounceTrigger: bounce)
-                    .position(x: geo.size.width / 2, y: hill - 100 + 14)
-                    .onTapGesture { bounce += 1 }
-
-                VStack(spacing: 10) {
-                    Text(title)
-                        .font(Theme.rounded(30, .black))
-                        .foregroundStyle(.white)
-                    Text("Stand-in until the real screen lands")
-                        .font(Theme.rounded(15, .semibold))
-                        .foregroundStyle(.white.opacity(0.75))
-                }
-                .padding(.top, 90)
-
-                VStack(spacing: 14) {
-                    Spacer()
-                    Button("Finish") { onDone(record(completed: true)) }
-                        .buttonStyle(ChunkyButtonStyle())
-                    Button("Stop early") { onDone(record(completed: false)) }
-                        .buttonStyle(ChunkyButtonStyle(fill: .white, edge: Theme.line, text: Theme.brand))
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 16)
-
-                HStack {
-                    HomeCloseButton { onDone(nil) }
-                    Spacer()
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 6)
-            }
-        }
-    }
-
-    private var title: String {
-        switch kind {
-        case .focus: return "Sparks and snow"
-        case .breathing: return "Breathe with Lanvi"
-        case .checkin: return "Evening check-in"
-        }
-    }
-
-    private var pose: LanviPose {
-        switch kind {
-        case .focus: return .run
-        case .breathing: return .love
-        case .checkin: return .curious
-        }
-    }
-
-    private func record(completed: Bool) -> API.ActivityIn {
-        let seconds: Double = kind == .checkin ? 50 : (completed ? (kind == .focus ? 45 : 60) : 20)
-        let started = API.isoString(Date().addingTimeInterval(-seconds))
-        let ended: API.EndedBy = completed ? .finished : .userStopped
-        switch kind {
-        case .focus:
-            let correct = completed ? 18 : 8
-            return API.ActivityIn(id: API.ActivityIn.newId(), type: .focus, startedAt: started,
-                                  durationS: seconds, completed: completed, endedBy: ended,
-                                  correctTaps: correct, wrongTaps: 1, misses: 3,
-                                  reactionMs: (0..<correct).map { 480 + ($0 * 37) % 160 })
-        case .breathing:
-            return API.ActivityIn(id: API.ActivityIn.newId(), type: .breathing, startedAt: started,
-                                  durationS: seconds, completed: completed, endedBy: ended,
-                                  timePlayedS: seconds, breathsCompleted: Int(seconds / 10))
-        case .checkin:
-            return API.ActivityIn(id: API.ActivityIn.newId(), type: .checkin, startedAt: started,
-                                  durationS: seconds, completed: completed, endedBy: ended,
-                                  goodThings: completed ? [.init(catalogId: "walked"), .init(catalogId: "laughed")] : [],
-                                  plan: completed ? .init(catalogId: "coffee_outside") : nil,
-                                  planDone: .notAsked)
-        }
     }
 }

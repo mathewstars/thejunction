@@ -206,7 +206,8 @@ struct HomeView: View {
     @ViewBuilder private func coverContent(_ c: Cover) -> some View {
         switch c {
         case .activity(let kind):
-            ActivityRouter(kind: kind, checkinOptions: store.checkinOptions, planToAsk: store.planToAsk) { record in
+            ActivityRouter(kind: kind, checkinOptions: store.checkinOptions, planToAsk: store.planToAsk,
+                           onHelp: { cover = .help }) { record in
                 cover = nil
                 guard let record else { return }
                 Task { await store.finish(record, kind: kind) }
