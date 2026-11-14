@@ -306,6 +306,8 @@ struct RigFrame {
     var eyes: [(EyeShape, Double)] = [(.open, 1)]
     var mouths: [(MouthShape, Double)] = [(.smile, 1)]
     var face = Face()
+    /// How the eyes are drawn (the one decision the view follows).
+    var eyeDraw = EyeDraw()
 
     /// The eye under its lid: how much of the face it is (1 unless fading to happy or
     /// wide eyes) and how far the lid is down (0 open, 0.5 half, 1 shut), blended over
@@ -316,6 +318,25 @@ struct RigFrame {
         let d = w > 0.001 ? l.reduce(0) { $0 + $1.1 * $1.0.lidDown } / w : 0
         return (w, d)
     }
+}
+
+/// How the eyes are drawn in one frame. One eye set at a time, never two: the eye under
+/// its lid (open, a blink, half-closed, shut), or the happy arcs, or the wide eyes. A shut
+/// eye is the painted lashes on the face (the open eye and its lid fade out at the very
+/// end of shutting, so it never shows a blank pale disc in a ring).
+struct EyeDraw: Equatable {
+    enum Kind: Equatable { case lidded, happy, wide }
+    var kind: Kind = .lidded
+    /// The lid: 0 open, 0.5 half, 1 shut.
+    var down = 0.0
+    /// The wide eyes' pop as they open (extra size, settling to 0).
+    var pop = 0.0
+    /// The open eye and its lid.
+    var eyeOpacity: Double { kind == .lidded ? 1 - Motion.smooth(0.85, 1, down) : 0 }
+    /// The shut eye's painted lashes.
+    var lashOpacity: Double { kind == .lidded ? Motion.smooth(0.75, 0.9, down) : 0 }
+    /// The normal open eyes, lids fully open, every layer at full opacity.
+    var isNormalOpen: Bool { kind == .lidded && down < 0.001 }
 }
 
 extension EyeShape {
