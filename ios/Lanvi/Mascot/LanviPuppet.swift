@@ -372,6 +372,8 @@ struct LanviPuppet: View {
                 .resizable()
                 .interpolation(.high)
                 .frame(width: p.size.width * k, height: p.size.height * k)
+                // the outline squeezes a touch on the side it turns towards
+                .scaleEffect(x: 1 - 0.03 * abs(q.dirX), y: 1, anchor: q.dirX > 0 ? .leading : .trailing)
                 .position(x: p.size.width * k / 2, y: p.size.height * k / 2)
             ForEach(Self.markings, id: \.0) { name, depth, squeeze in
                 let c = layerCentre(name, p)

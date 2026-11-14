@@ -420,6 +420,7 @@ struct LanviMotion {
             let head = Motion.pulse(lt, start: 0.1, end: 1.15, response: 0.45, damping: 0.72, settle: 0.85)
             p.eyeX += 7 * side * eyes; p.eyeY -= 1 * eyes
             if eyes > 0.5, face.eyes == .open { face.eyes = side > 0 ? .right : .left }
+            returnBlink(lt, at: 1.05, &face)
             p.dirX += 0.42 * side * head; p.dirY -= 0.05 * head
             p.headTilt += 2.5 * side * head
             p.tail -= 2.5 * side * head
@@ -429,6 +430,7 @@ struct LanviMotion {
             let head = Motion.pulse(lt, start: 0.1, end: 1.1, response: 0.5, damping: 0.7, settle: 0.8)
             p.eyeX += 2 * side * eyes; p.eyeY -= 4 * eyes
             if eyes > 0.5, face.eyes == .open { face.eyes = .up }
+            returnBlink(lt, at: 1.0, &face)
             p.dirY -= 0.4 * head; p.dirX += 0.12 * side * head
             p.headTilt += 3 * side * head
             p.earL -= 3 * head; p.earR -= 3 * head
@@ -480,10 +482,18 @@ struct LanviMotion {
             p.dirY -= 0.12 * up; p.headY -= 2 * up; p.earL -= 4 * up; p.earR -= 4 * up
             let nod = Motion.bump(lt, 1.6, 2.0)
             p.headY += 2.5 * nod; p.dirY += 0.08 * nod
+            returnBlink(lt, at: 0.97, &face)
         case .yawn:
             yawn(&p, &face, yt: lt)
             if Motion.inside(lt, 1.55, 2.6), face.eyes == .open { face.eyes = .half }
         }
+    }
+
+    /// A quick blink as the eyes swing back (animators hide a big eye move, and the eye
+    /// picture changing back, inside a blink): half, shut, half, from `at`.
+    private func returnBlink(_ lt: Double, at a: Double, _ face: inout Face) {
+        guard lt >= a, lt < a + 0.17, [.open, .left, .right, .up, .wide].contains(face.eyes) else { return }
+        face.eyes = lt < a + 0.035 || lt >= a + 0.115 ? .half : .closed
     }
 
     /// An ear flick: out quickly, back with a small overshoot, exactly 0 after 3 x `d`.
