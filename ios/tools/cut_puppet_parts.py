@@ -33,7 +33,9 @@ What it does, in plain words:
    bib comes off the body so it can swell with each breath; the tail and ears are split
    into overlapping bands along their length (each fading in over the one before) so
    they can bend. Where a marking
-   came off, the head is filled with the fur around it.
+   came off (only the marking itself, not the rim of fur it carries), the head is filled
+   by growing the fur at the hole's edge inwards; each moving layer's rim is wider than
+   its largest slide, so a head turn only ever moves fur over the head's own fur.
 
 Only Pillow is needed. Re-run it whenever better art arrives.
 """
@@ -193,24 +195,33 @@ def save_asset(img, name):
 
 FACE = {
     # name: (box x0, y0, x1, y1, seed x, y, brightness test, grow px, soften px)
-    # the patches carry a wide rim of the fur around them (about 0.055 of the head's
-    # width): a head turn slides them up to 0.06, and the fill under them must never show
-    "face-patch-l": ((0.13, 0.28, 0.49, 0.585), (0.31, 0.45), lambda v: v > 205, 46, 7),
-    "face-patch-r": ((0.51, 0.28, 0.87, 0.585), (0.69, 0.45), lambda v: v > 205, 46, 7),
+    # the patches carry a wide rim of the fur around them (about 0.08 of the head's
+    # width): a head turn slides them up to 0.06 and squeezes them a touch, and what the
+    # head shows under a sliding rim must be its own fur, never the fill under the patch
+    "face-patch-l": ((0.13, 0.28, 0.49, 0.585), (0.31, 0.45), lambda v: v > 205, 66, 7),
+    "face-patch-r": ((0.51, 0.28, 0.87, 0.585), (0.69, 0.45), lambda v: v > 205, 66, 7),
     "face-brow-l": ((0.26, 0.2, 0.43, 0.31), (0.342, 0.255), lambda v: v < 155, 8, 3),
     "face-brow-r": ((0.57, 0.2, 0.74, 0.31), (0.665, 0.255), lambda v: v < 155, 8, 3),
-    "face-nose": ((0.4, 0.48, 0.6, 0.64), (0.5, 0.565), lambda v: v < 120, 12, 3),
+    # the nose slides a fifth further than the patches (it sits further forward): it
+    # carries a wide rim of the fur around it, wider than the hole the patches leave for
+    # it (`NOSE_HOLE`) plus that extra slide, so the head under it never shows
+    "face-nose": ((0.4, 0.48, 0.6, 0.64), (0.5, 0.565), lambda v: v < 120, 36, 6),
 }
+NOSE_HOLE = 12     # px around the nose that the patches leave to the nose
 BIB = ((0.24, 0.16, 0.76, 0.66), (0.496, 0.366), lambda v: v > 205, 12, 5)
 # Bands: drawn in order, each over the last (see `bands`).
 # Pivot (share of the part), distance measured in shares of `by` (width or
 # height), band centres from `a` to `b`, `n` bands. A band's bend weight grows evenly from 0
 # at the base to 1 at the tip, so neighbouring bands never differ by much.
+# Neighbouring bands turn apart by bend / (n - 1) and cross-fade over `RISE` of a band's
+# spacing; where they cross-fade both show, so a bend draws a faint second edge there.
+# Enough bands and a short cross-fade keep that edge under a pixel or so on a phone.
 BANDS = {
-    "tail": ((0.88, 0.66), "w", 0.16, 0.93, 12),
-    "ear-left": ((0.36, 0.8), "h", 0.1, 0.82, 10),
-    "ear-right": ((0.64, 0.8), "h", 0.1, 0.82, 10),
+    "tail": ((0.88, 0.66), "w", 0.16, 0.93, 18),
+    "ear-left": ((0.36, 0.8), "h", 0.1, 0.82, 15),
+    "ear-right": ((0.64, 0.8), "h", 0.1, 0.82, 15),
 }
+RISE = 0.5
 
 
 def brightness(img):
@@ -239,6 +250,7 @@ def feature_mask(img, box, seed, test, grow, soft, cut_bottom=True, inside=0):
             if n not in seen:
                 seen.add(n)
                 q.append(n)
+    marking = m.filter(ImageFilter.MaxFilter(9))     # the marking itself, 4 px wider
     for _ in range(grow // 2):
         m = m.filter(ImageFilter.MaxFilter(5))
     if cut_bottom:
@@ -257,7 +269,7 @@ def feature_mask(img, box, seed, test, grow, soft, cut_bottom=True, inside=0):
             core = core.filter(ImageFilter.MinFilter(5))
         m = ImageChops.multiply(m, core)
     m = m.filter(ImageFilter.GaussianBlur(soft))
-    return ImageChops.multiply(m, img.getchannel("A"))
+    return ImageChops.multiply(m, img.getchannel("A")), marking
 
 
 def inpaint(img, core):
@@ -293,6 +305,46 @@ def inpaint(img, core):
     return out
 
 
+def fill_from_edge(img, hole):
+    """Fill the `hole` pixels by growing the colours at its edge inwards, one ring of
+    pixels at a time (each new pixel the average of its filled neighbours). A strip of the
+    hole that a sliding layer uncovers then looks like the fur right beside it, never like
+    a pale blend of the whole face."""
+    rgb = img.convert("RGB")
+    W, H = rgb.size
+    hp, ap = hole.load(), img.getchannel("A").load()
+    src = rgb.load()
+    out = rgb.copy()
+    op = out.load()
+    known = [[hp[x, y] < 128 and ap[x, y] > 250 for x in range(W)] for y in range(H)]
+    todo = {(x, y) for y in range(H) for x in range(W) if hp[x, y] >= 128 and ap[x, y] > 0}
+    near = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
+    while todo:
+        ring = {}
+        for x, y in todo:
+            n, t = 0, [0, 0, 0]
+            for dx, dy in near:
+                u, v = x + dx, y + dy
+                if 0 <= u < W and 0 <= v < H and known[v][u]:
+                    c = op[u, v]
+                    t[0] += c[0]; t[1] += c[1]; t[2] += c[2]
+                    n += 1
+            if n:
+                ring[(x, y)] = (t[0] // n, t[1] // n, t[2] // n)
+        if not ring:
+            break
+        for (x, y), c in ring.items():
+            op[x, y] = c
+            known[y][x] = True
+        todo.difference_update(ring)
+    # soften the grown fill a touch (the rings leave faint streaks); the fur outside it
+    # keeps its own paint
+    soft = out.filter(ImageFilter.GaussianBlur(3))
+    res = Image.composite(soft, rgb, hole).convert("RGBA")
+    res.putalpha(img.getchannel("A"))
+    return res
+
+
 def layer(img, mask):
     """The part's pixels under `mask`, trimmed. Returns the picture and its box."""
     out = img.copy()
@@ -303,32 +355,47 @@ def layer(img, mask):
 
 def bands(img, pivot, by, a, b, n):
     """Overlapping bands around `pivot`, from the base outwards, made to be drawn one on
-    top of the next with plain layering: band i fades in over band i - 1 (which is solid
-    there) across [c - s/2, c + s/2], stays solid to the next band's fade-in, then fades
-    out under it. At rest that rebuilds the painted part exactly; bent, neighbouring bands
-    differ by one small step. Returns [(picture, box, bend weight)]."""
+    top of the next with plain layering: band i fades in over band i - 1 across
+    [c - RISE s/2, c + RISE s/2] and runs on under band i + 1 until that one is solid,
+    then fades out under it. Where the paint is see-through (the outline) a band thins
+    out under the next one, so the two together are exactly as see-through as the
+    painting (next r a over this l a gives a when l = (1 - r) / (1 - r a)). At rest that
+    rebuilds the painted part exactly; bent, neighbouring bands differ by one small step.
+    Returns [(picture, box, bend weight)]."""
     W, H = img.size
     unit = W if by == "w" else H
     px, py = pivot[0] * W, pivot[1] * H
-    reach = math.hypot(max(px, W - px), max(py, H - py))
-    dist = Image.new("L", img.size)
-    dp = dist.load()
-    for y in range(H):
-        for x in range(W):
-            dp[x, y] = min(255, int(math.hypot(x - px, y - py) / reach * 255))
     s = (b - a) / (n - 1)
+    al = img.getchannel("A").load()
+    dist = [[math.hypot(x - px, y - py) / unit for x in range(W)] for y in range(H)]
+
+    def rise(i, r):
+        return 1.0 if i == 0 else smooth((r - (a + i * s - RISE * s / 2)) / (RISE * s))
+
+    def fall(i, r):
+        return 1.0 if i == n - 1 else 1 - smooth((r - (a + i * s + 1.5 * s)) / (0.5 * s))
+
     out = []
     for i in range(n):
-        c = a + i * s
-
-        def weight(v, c=c, i=i):
-            r = v / 255 * reach / unit
-            rise = 1.0 if i == 0 else smooth((r - (c - s / 2)) / s)
-            fall = 1.0 if i == n - 1 else 1 - smooth((r - (c + 1.5 * s)) / (0.5 * s))
-            return int(round(255 * rise * fall))
-
-        mask = dist.point(weight)
+        mask = Image.new("L", img.size, 0)
+        mp = mask.load()
+        for y in range(H):
+            row = dist[y]
+            for x in range(W):
+                av = al[x, y]
+                if not av:
+                    continue
+                r = row[x]
+                w = rise(i, r) * fall(i, r)
+                if w <= 0:
+                    continue
+                if i < n - 1 and av < 255:
+                    nxt = rise(i + 1, r) * av / 255
+                    w = w if nxt >= 0.999 else min(w, (1 - rise(i + 1, r)) / (1 - nxt))
+                mp[x, y] = int(round(255 * w))
         pic, box = layer(img, mask)
+        if box is None:       # past the tip: nothing left to cut
+            break
         out.append((pic, box, i / (n - 1)))   # the bend grows evenly along the length
     return out
 
@@ -516,41 +583,58 @@ def depth_layers(pieces, preview):
             pic.save(os.path.join(preview, name + ".png"))
 
     head = pieces["head"]
-    masks = {name: feature_mask(head, *spec, inside=30 if name.startswith("face-patch") else 0)
-             for name, spec in FACE.items()}
+    cut = {name: feature_mask(head, *spec, inside=30 if name.startswith("face-patch") else 0)
+           for name, spec in FACE.items()}
+    masks = {name: m for name, (m, _) in cut.items()}
     # the patches never take the nose or brows with them
-    nose_zone = masks["face-nose"].filter(ImageFilter.MaxFilter(9))
+    nose_zone = feature_mask(head, *FACE["face-nose"][:3], NOSE_HOLE, 3)[0].filter(ImageFilter.MaxFilter(9))
     brow_zone = ImageChops.lighter(masks["face-brow-l"], masks["face-brow-r"]).filter(ImageFilter.MaxFilter(9))
     for side in ("face-patch-l", "face-patch-r"):
         masks[side] = ImageChops.subtract(masks[side], ImageChops.lighter(nose_zone, brow_zone))
+    # Under each marking the head is filled, but only where the marking itself was (not
+    # under its rim of fur): a turn slides the marking off its spot, and what it uncovers
+    # is then the head's own fur, exactly as painted. The fill grows in from the fur at the
+    # hole's edge, so even a strip of it that shows at the widest turn is plain fur.
     core = Image.new("L", head.size, 0)
     for name, m in masks.items():
         keep(name, *layer(head, m), head)
-        core = ImageChops.lighter(core, m.point(lambda v: 255 if v >= 254 else 0))
-    base = inpaint(head, core)
+        hole = ImageChops.multiply(m.point(lambda v: 255 if v >= 254 else 0), cut[name][1])
+        core = ImageChops.lighter(core, hole)
+    base = fill_from_edge(head, core)
     # where a marking is only partly there (its soft rim), the head keeps its own paint
     save_asset(base, "puppet-head-base")
     if preview:
         base.save(os.path.join(preview, "head-base.png"))
 
     body = pieces["body"]
-    bib = feature_mask(body, *BIB)
+    bib, bib_mark = feature_mask(body, *BIB)
     keep("body-bib", *layer(body, bib), body)
-    body_base = inpaint(body, bib.point(lambda v: 255 if v >= 254 else 0))
+    body_base = fill_from_edge(body, ImageChops.multiply(bib.point(lambda v: 255 if v >= 254 else 0), bib_mark))
     save_asset(body_base, "puppet-body-base")
 
     # The head in two halves (left drawn first, the right fading in over a narrow band
     # in the middle), so the far cheek can tuck in and the near one come forward.
     W, H = base.size
     f = 0.04 * W
-    left = Image.new("L", base.size, 0)
-    ImageDraw.Draw(left).rectangle((0, 0, int(W / 2 + f) + 2, H), fill=255)
     right = Image.new("L", base.size, 0)
     rp = right.load()
     for x in range(W):
         v = int(round(255 * smooth((x - (W / 2 - f)) / (2 * f))))
         for y in range(H):
             rp[x, y] = v
+    # The left half runs on far under the right half (0.08 of the width past its fade):
+    # the halves scale apart a little when the head turns, and the right half's soft
+    # fade-in must always lie over solid head, never over a gap that shows what is behind
+    # the head. Where the head's own paint is see-through (its outline, the neck stub)
+    # the left half thins out so the two together are exactly as see-through as the
+    # painting: right r a over left l a gives a when l = (1 - r) / (1 - r a).
+    left = Image.new("L", base.size, 0)
+    lp, bp = left.load(), base.getchannel("A").load()
+    reach = int(W / 2 + f + 0.08 * W)
+    for y in range(H):
+        for x in range(min(W, reach + 1)):
+            r, av = rp[x, y] / 255, bp[x, y] / 255
+            lp[x, y] = 255 if r * av >= 0.999 else int(round(255 * min(1.0, (1 - r) / (1 - r * av))))
     keep("head-base-l", *layer(base, left), head)
     keep("head-base-r", *layer(base, right), head)
 
@@ -641,9 +725,17 @@ def main():
     lines += ["    ]", "",
               "    /// Each band's share of its part's bend: 0 at the base, 1 at the tip.",
               "    static let bend: [String: CGFloat] = ["]
+    counts = {}
     for name, (_, _, _, _, wgt) in layers.items():
         if re.search(r"-b\d+$", name):
             lines.append(f'        "{name}": {wgt:.4f},')
+            part = re.sub(r"-b\d+$", "", name)
+            counts[part] = counts.get(part, 0) + 1
+    lines += ["    ]", "",
+              "    /// How many bands each banded part (tail, ears) is cut into.",
+              "    static let bands: [String: Int] = ["]
+    for part, n in counts.items():
+        lines.append(f'        "{part}": {n},')
     lines += ["    ]", "", "    static func px(_ name: String) -> CGSize { size[name] ?? CGSize(width: 1, height: 1) }", "}", ""]
     with open(SWIFT, "w") as f:
         f.write("\n".join(lines))

@@ -247,3 +247,20 @@ def test_s3store_with_stubbed_client():
         s.put("k/x.json", {"a": 1})
         assert s.get("k/x.json") == {"a": 1}
         assert s.list("k/") == ["k/x.json"]
+
+
+def test_open_pairing_connects_any_phone_to_the_named_patient():
+    """Linking switched off: any code pairs to the one named patient; an unknown label
+    leaves the one-time codes in force."""
+    from clinic_engine.seed import DEMO_LABEL
+    env = Env(open_pairing_patient=DEMO_LABEL)
+    body = {"pairing_code": "OPEN-OPEN-OPEN", "device_label": "phone", "platform": "ios"}
+    for _ in range(2):  # not one-time
+        r = env.client.post("/v1/devices/pair", json=body)
+        assert r.status_code == 200 and r.json()["patient_id"] == env.demo["patient_id"]
+    token = r.json()["device_token"]
+    assert env.client.get("/v1/today", headers={"authorization": f"Bearer {token}"}).status_code == 200
+
+    env = Env(open_pairing_patient="No such label")
+    r = env.client.post("/v1/devices/pair", json=body)
+    assert r.status_code == 400 and r.json()["error"]["code"] == "invalid_pairing_code"

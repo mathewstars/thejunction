@@ -1,0 +1,941 @@
+{
+ "dataset": "Depresjon (Garcia-Ceja et al. 2018), wrist movement counts; not in this repository",
+ "full_day_minutes": 1300,
+ "worn_minutes": 600,
+ "rule_as_it_runs": {
+  "history": "28 days ending 5 days back, at least 14",
+  "patients": {
+   "people": 23,
+   "people_scorable": 0,
+   "scored_days": 0,
+   "low_days": 0,
+   "low_day_share": null,
+   "people_flagged": 0
+  },
+  "controls": {
+   "people": 32,
+   "people_scorable": 0,
+   "scored_days": 0,
+   "low_days": 0,
+   "low_day_share": null,
+   "people_flagged": 0
+  }
+ },
+ "rule_with_short_history": {
+  "history": "up to 28 days ending 2 days back, at least 7 (this check only)",
+  "patients": {
+   "people": 23,
+   "people_scorable": 15,
+   "scored_days": 52,
+   "low_days": 4,
+   "low_day_share": 0.077,
+   "people_flagged": 1
+  },
+  "controls": {
+   "people": 32,
+   "people_scorable": 27,
+   "scored_days": 89,
+   "low_days": 9,
+   "low_day_share": 0.101,
+   "people_flagged": 0
+  }
+ },
+ "hypothesis_less_movement_when_worse": {
+  "patients": 19,
+  "expected_sign": "negative",
+  "spearman_rho": -0.04,
+  "bootstrap_95": [
+   -0.55,
+   0.53
+  ],
+  "permutation_p": 0.875,
+  "patients_whose_rating_changed": 15,
+  "moved_as_expected": 11
+ },
+ "level_between_groups": {
+  "median_daily_count_patients": 255931,
+  "median_daily_count_controls": 397014,
+  "permutation_p_at_most": 0.0003
+ },
+ "people": {
+  "as_it_runs": {
+   "condition": [
+    {
+     "name": "condition_1",
+     "days": 10,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_10",
+     "days": 8,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_11",
+     "days": 7,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_12",
+     "days": 11,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_13",
+     "days": 13,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_14",
+     "days": 2,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_15",
+     "days": 8,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_16",
+     "days": 15,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_17",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_18",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_19",
+     "days": 11,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_2",
+     "days": 17,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_20",
+     "days": 6,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_21",
+     "days": 1,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_22",
+     "days": 13,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_23",
+     "days": 15,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_3",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_4",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_5",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_6",
+     "days": 5,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_7",
+     "days": 10,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_8",
+     "days": 4,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_9",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    }
+   ],
+   "control": [
+    {
+     "name": "control_1",
+     "days": 7,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_10",
+     "days": 7,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_11",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_12",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_13",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_14",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_15",
+     "days": 10,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_16",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_17",
+     "days": 8,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_18",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_19",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_2",
+     "days": 19,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_20",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_21",
+     "days": 7,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_22",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_23",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_24",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_25",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_26",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_27",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_28",
+     "days": 15,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_29",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_3",
+     "days": 11,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_30",
+     "days": 8,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_31",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_32",
+     "days": 13,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_4",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_5",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_6",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_7",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_8",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_9",
+     "days": 12,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    }
+   ]
+  },
+  "short_history": {
+   "condition": [
+    {
+     "name": "condition_1",
+     "days": 10,
+     "scored_days": 1,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_10",
+     "days": 8,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_11",
+     "days": 7,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_12",
+     "days": 11,
+     "scored_days": 2,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_13",
+     "days": 13,
+     "scored_days": 4,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_14",
+     "days": 2,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_15",
+     "days": 8,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_16",
+     "days": 15,
+     "scored_days": 6,
+     "low_days": 1,
+     "flag": false
+    },
+    {
+     "name": "condition_17",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_18",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_19",
+     "days": 11,
+     "scored_days": 2,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_2",
+     "days": 17,
+     "scored_days": 8,
+     "low_days": 3,
+     "flag": true
+    },
+    {
+     "name": "condition_20",
+     "days": 6,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_21",
+     "days": 1,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_22",
+     "days": 13,
+     "scored_days": 4,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_23",
+     "days": 15,
+     "scored_days": 6,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_3",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_4",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_5",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_6",
+     "days": 5,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_7",
+     "days": 10,
+     "scored_days": 1,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_8",
+     "days": 4,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "condition_9",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    }
+   ],
+   "control": [
+    {
+     "name": "control_1",
+     "days": 7,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_10",
+     "days": 7,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_11",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 1,
+     "flag": false
+    },
+    {
+     "name": "control_12",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_13",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_14",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_15",
+     "days": 10,
+     "scored_days": 1,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_16",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 1,
+     "flag": false
+    },
+    {
+     "name": "control_17",
+     "days": 8,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_18",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_19",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_2",
+     "days": 19,
+     "scored_days": 10,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_20",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 1,
+     "flag": false
+    },
+    {
+     "name": "control_21",
+     "days": 7,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_22",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_23",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 2,
+     "flag": false
+    },
+    {
+     "name": "control_24",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 1,
+     "flag": false
+    },
+    {
+     "name": "control_25",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_26",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_27",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_28",
+     "days": 15,
+     "scored_days": 6,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_29",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_3",
+     "days": 11,
+     "scored_days": 2,
+     "low_days": 1,
+     "flag": false
+    },
+    {
+     "name": "control_30",
+     "days": 8,
+     "scored_days": 0,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_31",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_32",
+     "days": 13,
+     "scored_days": 4,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_4",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_5",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 2,
+     "flag": false
+    },
+    {
+     "name": "control_6",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_7",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_8",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    },
+    {
+     "name": "control_9",
+     "days": 12,
+     "scored_days": 3,
+     "low_days": 0,
+     "flag": false
+    }
+   ]
+  },
+  "change": [
+   {
+    "name": "condition_1",
+    "madrs_change": 0.0,
+    "movement_change_pct": 25.2
+   },
+   {
+    "name": "condition_10",
+    "madrs_change": -7.0,
+    "movement_change_pct": -17.1
+   },
+   {
+    "name": "condition_11",
+    "madrs_change": 0.0,
+    "movement_change_pct": 18.2
+   },
+   {
+    "name": "condition_12",
+    "madrs_change": -4.0,
+    "movement_change_pct": -12.3
+   },
+   {
+    "name": "condition_13",
+    "madrs_change": -5.0,
+    "movement_change_pct": 18.0
+   },
+   {
+    "name": "condition_15",
+    "madrs_change": 4.0,
+    "movement_change_pct": -33.1
+   },
+   {
+    "name": "condition_16",
+    "madrs_change": 4.0,
+    "movement_change_pct": -27.4
+   },
+   {
+    "name": "condition_17",
+    "madrs_change": -2.0,
+    "movement_change_pct": 22.5
+   },
+   {
+    "name": "condition_18",
+    "madrs_change": -3.0,
+    "movement_change_pct": 10.9
+   },
+   {
+    "name": "condition_19",
+    "madrs_change": -5.0,
+    "movement_change_pct": 10.6
+   },
+   {
+    "name": "condition_2",
+    "madrs_change": -13.0,
+    "movement_change_pct": 14.8
+   },
+   {
+    "name": "condition_20",
+    "madrs_change": -2.0,
+    "movement_change_pct": 2.4
+   },
+   {
+    "name": "condition_22",
+    "madrs_change": -1.0,
+    "movement_change_pct": 19.9
+   },
+   {
+    "name": "condition_23",
+    "madrs_change": -6.0,
+    "movement_change_pct": 33.6
+   },
+   {
+    "name": "condition_3",
+    "madrs_change": 1.0,
+    "movement_change_pct": 23.7
+   },
+   {
+    "name": "condition_4",
+    "madrs_change": -4.0,
+    "movement_change_pct": 67.5
+   },
+   {
+    "name": "condition_5",
+    "madrs_change": 0.0,
+    "movement_change_pct": 17.1
+   },
+   {
+    "name": "condition_7",
+    "madrs_change": 1.0,
+    "movement_change_pct": 59.1
+   },
+   {
+    "name": "condition_9",
+    "madrs_change": 0.0,
+    "movement_change_pct": 10.0
+   }
+  ]
+ }
+}

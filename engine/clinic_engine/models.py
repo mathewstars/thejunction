@@ -296,6 +296,44 @@ class FaceRawIn(Strict):
         return self
 
 
+class FaceFineIn(Strict):
+    """Fine facial movement, computed on the phone from the TrueDepth mesh or
+    depth map (docs/face-fine.md). For each named region and each frame: how far
+    the region is from the person's own resting shape after the head's movement
+    is removed, in millimetres. Numbers only: the mesh, the depth map and every
+    coordinate stay on the phone. Research only: nothing reads this for triage."""
+    source: Literal["mesh", "depth"] = Field(description="What the phone measured on: the "
+                                             "ARKit face mesh or the TrueDepth depth map.")
+    rate_hz: float = Field(ge=5, le=60, description="Frames per second of `samples`.")
+    regions: list[Annotated[str, StringConstraints(pattern=r"^[a-z_]{2,30}$")]] = Field(
+        min_length=2, max_length=12,
+        description="Names in the order of each sample's values, from the fixed list in "
+                    "docs/face-fine.md. Must include mouth_left and mouth_right.")
+    samples: list[list[float]] = Field(min_length=1, max_length=12000,
+                                       description="One row per frame, len(regions) values each, "
+                                                   "in millimetres, 0 to 50.")
+    tracked: Optional[list[Annotated[int, Field(ge=0, le=1)]]] = Field(
+        None, description="Optional, one per frame: 1 when the face was tracked. Default all 1.")
+    noise_mm: Optional[float] = Field(
+        None, ge=0, le=5, description="Optional: the noise floor the phone measured on still "
+                                      "frames of this session, in millimetres.")
+
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [{
+        "source": "mesh", "rate_hz": 60, "regions": ["mouth_left", "mouth_right", "brow_left",
+                                                     "brow_right"],
+        "samples": [[0.21, 0.19, 0.08, 0.07], [0.24, 0.20, 0.08, 0.08], [1.31, 0.42, 0.09, 0.08]],
+        "tracked": [1, 1, 1], "noise_mm": 0.25}]})
+
+    @model_validator(mode="after")
+    def _check(self):
+        from .mind.face_fine import check
+        problem = check({"regions": self.regions, "samples": self.samples,
+                         "tracked": self.tracked})
+        if problem:
+            raise ValueError(problem)
+        return self
+
+
 class _FaceOneWay(Strict):
     @model_validator(mode="after")
     def _one_face(self):
@@ -437,6 +475,10 @@ class FocusActivityIn(_ActivityBase, _FaceOneWay):
                                         "Prefer face_raw: the server computes the summary.")
     face_raw: Optional[FaceRawIn] = Field(None, description="Raw ARKit frames; the server "
                                           "computes the face summary. Not with face.")
+    face_fine: Optional[FaceFineIn] = Field(None, description="Fine facial movement the phone "
+                                            "computed from the TrueDepth mesh or depth map "
+                                            "(research only, docs/face-fine.md). With or "
+                                            "without face_raw.")
     revontulet: Optional[RevontuletIn] = Field(None, description="Only from Revontulet: the "
                                                "effort choices, tracing, pull and strokes. "
                                                "Without it the record means what it always did.")
@@ -451,6 +493,10 @@ class BreathingActivityIn(_ActivityBase, _FaceOneWay):
                                         "Prefer face_raw: the server computes the summary.")
     face_raw: Optional[FaceRawIn] = Field(None, description="Raw ARKit frames; the server "
                                           "computes the face summary. Not with face.")
+    face_fine: Optional[FaceFineIn] = Field(None, description="Fine facial movement the phone "
+                                            "computed from the TrueDepth mesh or depth map "
+                                            "(research only, docs/face-fine.md). With or "
+                                            "without face_raw.")
 
 
 GoodThingId = Annotated[str, StringConstraints(pattern=r"^[a-z_]{2,40}$")]
@@ -740,6 +786,8 @@ class ClinicMeOut(BaseModel):
     product_name: str
     clinic_name: str
     demo: ClinicDemo
+    read_only: bool = Field(False, description="True for a visitor of the open demo: the page "
+                            "shows generated example patients only and offers nothing that changes data.")
 
 
 ActivityOut.model_rebuild()
@@ -882,6 +930,20 @@ class ClinicRuleOut(BaseModel):
     at: str
     by: Optional[str] = None
     expires_at: Optional[str] = Field(None, description="When the rule stops applying.")
+
+
+class FamilyContactIn(Strict):
+    name: Optional[str] = Field(None, max_length=40, description="One of the names from "
+                                "GET /v1/clinic/family-contacts, or null for nobody.")
+
+
+class FamilyContactsOut(BaseModel):
+    contacts: list[str] = Field(description="The people a clinician can choose from on this "
+                                            "server (set in FAMILY_CONTACTS). Names only.")
+
+
+class FamilyContactOut(BaseModel):
+    family_contact: Optional[str]
 
 
 class ClinicRulesOut(BaseModel):

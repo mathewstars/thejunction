@@ -77,6 +77,9 @@ def check_activity(a: dict, now: datetime) -> str | None:
     raw = a.get("face_raw")
     if raw is not None and len(raw["samples"]) / raw["rate_hz"] > dur * 1.2 + 5:
         return "face_frames_longer_than_activity"
+    fine = a.get("face_fine")
+    if fine is not None and len(fine["samples"]) / fine["rate_hz"] > dur * 1.2 + 5:
+        return "fine_frames_longer_than_activity"
     return None
 
 

@@ -85,12 +85,19 @@ async def activities(body: ActivityIn, request: Request, p: Principal = Depends(
     computes every face measure, docs/face-raw.md) or, from older clients,
     `face` (a summary the phone computed). Not both (422). This route accepts
     bodies up to MAX_FACE_RAW_BODY_BYTES (4 MiB by default); other routes keep
-    the general limit."""
+    the general limit.
+
+    Research only: `face_fine` (docs/face-fine.md) carries fine facial movement
+    the phone computed from the TrueDepth mesh or depth map, in millimetres per
+    region and frame. The server sums it up and keeps it; nothing in triage,
+    the baseline or any model reads it."""
     rec = body.model_dump(mode="json")
     if rec.get("face_raw", "absent") is None:
         del rec["face_raw"]  # so a record without raw frames hashes as it always did
     if rec.get("revontulet", "absent") is None:
         del rec["revontulet"]  # the same for a record without Revontulet's measures
+    if rec.get("face_fine", "absent") is None:
+        del rec["face_fine"]  # and for a record without the fine movement stream
     rec["started_at"] = body.started_at.astimezone(timezone.utc).isoformat()
     return await service.record_activity(ctx_of(request), p, rec, rid_of(request))
 

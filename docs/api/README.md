@@ -19,7 +19,7 @@ Interactive docs while it runs: `http://127.0.0.1:8080/docs`. The clinician web 
 
 ## The demo server
 
-The engine also runs on a demo server: `https://lanvi.app`. Interactive docs: `https://lanvi.app/docs`. Every call under `/v1` needs a bearer token; ask Mathew for the pairing code and the clinician login, they are not in this repo. All data on it is example data.
+The engine also runs on a demo server: `https://lanvi.app`. Someone close who also hears (a first, small version): with `FAMILY_CONTACTS` set to `Name=telegram chat id;Name=chat id`, a clinician can choose one of those people for a patient (`GET /v1/clinic/family-contacts`, `PUT /v1/clinic/patients/{id}/family-contact`); when the clinic is sent a "needs review" message about that patient, the person gets one line on Telegram that names nobody and says nothing about health. On that server linking is switched off for now: with `OPEN_PAIRING_PATIENT` set to a patient's label, `POST /v1/devices/pair` connects every phone to that one patient and does not look at the code (empty, the default, means one-time codes are checked). Interactive docs: `https://lanvi.app/docs`. Every call under `/v1` needs a bearer token; ask Mathew for the pairing code and the clinician login, they are not in this repo. All data on it is example data.
 
 ## Auth
 
@@ -163,6 +163,8 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
 
    Channels are the 52 ARKit blend-shape names plus `headPitch`, `headYaw`, `headRoll` (degrees); `mouthSmileLeft`, `mouthSmileRight`, `eyeBlinkLeft`, `eyeBlinkRight` are required. At most 60 channels, 12,000 samples and 20 moments; this route accepts bodies up to 4 MiB (all other routes keep 256 KiB). Unknown or repeated channel names, a row of the wrong length, a number that is not finite, a blend shape outside 0 to 1 (a 0.02 overshoot is allowed and clamped) or an angle outside -180 to 180 give 422 `invalid_request` with a message naming the position. `face` and `face_raw` together: 422. Frames lasting much longer than `duration_s`: 422 `implausible_activity` (`face_frames_longer_than_activity`). Re-sending the same record (same frames) answers with `xp_gained: 0`; the frames are stored once.
 
+   `face_fine` (optional, research only, on focus and breathing): fine facial movement the phone computed from the TrueDepth mesh or depth map. One distance in millimetres per named region and frame, how far the region is from the person's own resting shape with the head's movement taken out. No mesh, depth or coordinates are accepted. The server sums it up and keeps it; no flag, level or model reads it. Shape, region names, limits and errors: `docs/face-fine.md`.
+
    `face` (older clients: a summary the phone computed; still accepted, numbers only, no frames, images or landmarks): `smile_rate_per_min`, `smile_intensity` (0-1), `facial_activity` (0-1), `blink_rate_per_min`, `look_down_share` (0-1), `head_tilt_deg`, all optional, and `tracking_quality` (0-1, required). Below 0.6 the summary is kept but not used.
 
    - Re-sending the same record answers with `xp_gained: 0`; a different record under a used id is 409.
@@ -243,6 +245,10 @@ The reply is `{"template_id": "gemini", "text": ...}` in the same response shape
 
 To switch it on, put in the server's `.env`: `CHAT_MODE=gemini`, `GEMINI_API_KEY`, and a model id in `CHAT_MODEL` (or `GEMINI_MODEL`). `CHAT_THINKING` (for example `low`) asks the chat model to think less so it answers sooner; empty, the default, sends no such setting. It does not need `OUTREACH_MODE`.
 
+## The open demo (no login, read only)
+
+`DEMO_PUBLIC=true` (off by default, and only while `DEMO_ENABLED` is on) opens the page at `/demo`. The page asks `POST /v1/clinic/visit` for a visitor token, valid two hours. A visitor may `GET` what a clinician of the demo clinic may `GET`, and nothing else: every other method answers 403, on every endpoint. It sees the generated example patients only. A profile that holds a real person's data (a patient, or the team's test play) is shown only when its patient record carries `open_demo: true`, which the person it belongs to has to agree to. The demo panel is never offered. Tests: `engine/tests/test_open_demo.py`.
+
 ## The clinician page
 
 The engine serves a plain web page for clinicians at `/` (files in `engine/clinic_engine/web/`, no build step, no outside resources, its own strict Content-Security-Policy). It uses only these calls:
@@ -257,6 +263,7 @@ The engine serves a plain web page for clinicians at `/` (files in `engine/clini
 | `GET /v1/clinic/patients/{id}/trace` | The decision trace; every chain has a `headline` (at most 6 words) and an `outcome` (`attention_opened`, `attention_raised`, `attention_closed`, `suggested`, `message_sent`, `refused`, `nothing`) |
 | `GET /v1/clinic/patients/{id}/rounds/{round_id}` | Round detail; `usual_round` (or null) gives a usual round of the same mode for the second trail |
 | `GET /v1/clinic/patients/{id}/activities/{activity_id}/face-raw` | Research download: the stored raw frames of one session as the phone sent them, plus `frames`, `channel_count`, `tracked_frames`. 404 when the session has no frames. Each download is audited (activity id only, no values) |
+| `GET /v1/clinic/patients/{id}/activities/{activity_id}/face-fine` | Research download: the server's summary of fine facial movement for one session (`summary`, `info`) and the stream as the phone sent it (`stream`). 404 when the session was sent without `face_fine`. Audited. |
 | `POST /v1/clinic/attention/{id}/ack` | The Acknowledge button |
 | `/v1/demo/...`, `/v1/review/run` | The demo panel, only for the demo clinic while demo mode is on. `POST /v1/demo/recompute-face {"patient_id"}` computes the face summary of every raw session of the patient again from the stored frames with the current thresholds and returns `{"patient_id", "recomputed": n}`. `POST /v1/demo/analyze {"patient_id", "activity_id", "what": "frames"}` runs the frame reading of one raw session now and returns its `frames_reading` (`what` defaults to `session`, the session reading) |
 

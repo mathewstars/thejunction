@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 
 from .audit import write_audit
 from .config import Settings
-from .mind import face_features, lines, xp
+from .mind import face_features, face_fine, lines, xp
 from .mind import notes as note_logic
 from .mind.activities import check_activity, played_to_the_end, process_activity
 from .mind.engine import Clock, Mind
@@ -74,24 +74,47 @@ def create_pairing_code(ctx: Ctx, clinic_id: str, patient_id: str) -> str:
     return code
 
 
+def _open_pairing_target(ctx: Ctx) -> tuple[str, str] | None:
+    """Linking switched off (OPEN_PAIRING_PATIENT): the clinic and patient every phone
+    is connected to, or None when codes are checked as usual or the label is unknown."""
+    label = ctx.settings.open_pairing_patient.strip()
+    if not label:
+        return None
+    for key in ctx.store.list("patients/"):
+        ix = ctx.store.get(key) or {}
+        c, pid = ix.get("clinic_id"), ix.get("patient_id")
+        if c and pid and (ctx.store.get(f"clinics/{c}/patients/{pid}/patient.json") or {}).get("label") == label:
+            return c, pid
+    return None
+
+
 async def pair_device(ctx: Ctx, code: str, label: str, platform: str, rid: str) -> dict:
     now = ctx.clock.now()
-    key = f"pairing/{sha256_hex(normalize_pairing_code(code))}.json"
-    rec = ctx.store.get(key)
-    if not rec or rec.get("used_at") or datetime.fromisoformat(rec["expires_at"]) <= now:
-        why = "unknown" if not rec else ("replayed" if rec.get("used_at") else "expired")
-        write_audit(ctx.store, now, clinic_id=None, patient_id=None, actor="anonymous",
-                    action="pair", outcome="refused", reason=f"pairing_code_{why}", request_id=rid)
-        raise ApiError(400, "invalid_pairing_code", "The pairing code is not valid.")
-    rec["used_at"] = now.isoformat()  # one-time: mark before issuing
-    ctx.store.put(key, rec)
-    c, pid = rec["clinic_id"], rec["patient_id"]
+    # Linking is switched off for now: with OPEN_PAIRING_PATIENT set, every phone that
+    # asks is connected to that one patient and the code it sent is not looked at.
+    # The one-time code check below is the real path; it applies again when the setting
+    # is empty.
+    open_to = _open_pairing_target(ctx)
+    if open_to:
+        c, pid = open_to
+    else:
+        key = f"pairing/{sha256_hex(normalize_pairing_code(code))}.json"
+        rec = ctx.store.get(key)
+        if not rec or rec.get("used_at") or datetime.fromisoformat(rec["expires_at"]) <= now:
+            why = "unknown" if not rec else ("replayed" if rec.get("used_at") else "expired")
+            write_audit(ctx.store, now, clinic_id=None, patient_id=None, actor="anonymous",
+                        action="pair", outcome="refused", reason=f"pairing_code_{why}", request_id=rid)
+            raise ApiError(400, "invalid_pairing_code", "The pairing code is not valid.")
+        rec["used_at"] = now.isoformat()  # one-time: mark before issuing
+        ctx.store.put(key, rec)
+        c, pid = rec["clinic_id"], rec["patient_id"]
     dev = new_id("dev")
     ctx.store.put(f"clinics/{c}/patients/{pid}/devices/{dev}.json",
                   {"id": dev, "label": label, "platform": platform, "created_at": now.isoformat()})
     token = issue_token(ctx.store, "device", clinic_id=c, patient_id=pid, device_id=dev, now=now)
     write_audit(ctx.store, now, clinic_id=c, patient_id=pid, actor=f"device:{dev}",
-                action="pair", detail={"device_id": dev}, request_id=rid)
+                action="pair", detail={"device_id": dev, **({"open_pairing": True} if open_to else {})},
+                request_id=rid)
     return {"device_token": token, "patient_id": pid}
 
 
@@ -604,6 +627,16 @@ async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
                               face_raw_info=face_features.describe(raw))
             elif stored.get("face") is not None:
                 stored["face_source"] = "summary"
+            fine = stored.pop("face_fine", None)
+            if fine is not None:
+                # Research only. The stream is its own object, like the raw frames;
+                # the record keeps a summary of movement and counts, nothing else.
+                repo.put(f"facefine/{body['id']}.json",
+                         {"activity_id": body["id"], "type": body["type"],
+                          "started_at": body["started_at"], "received_at": now.isoformat(),
+                          **fine, "frames": len(fine["samples"])})
+                stored.update(face_fine=face_fine.summarize(fine),
+                              face_fine_info=face_fine.describe(fine))
             previous = [a for a in repo.activities() if a["started_at"] < body["started_at"]]
             rec = process_activity(stored, previous)
             rec.update(received_at=now.isoformat(), example=False, content_sha256=sha,

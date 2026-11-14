@@ -19,7 +19,7 @@ BARS = [("smile, left", "mouthSmileLeft"), ("smile, right", "mouthSmileRight"), 
         ("jaw open", "jawOpen"), ("look down", "eyeLookDownLeft")]
 BCOL = [col(n) for _, n in BARS]
 
-def stream(t, start):
+def stream(t, start, qt=1e9):
     w, h = 640 * S, 720 * S; im = Image.new("RGB", (w, h), BG); g = ImageDraw.Draw(im)
     a = min(1.0, t / 0.5)
     g.text((40 * S, 44 * S), "What leaves the phone", font=f(32), fill=mix(BG, INK, a))
@@ -44,7 +44,10 @@ def stream(t, start):
             y = (472 + r * 21) * S; b = 0.25 + 0.75 * (r + 1) / rows
             txt = f"{i / RATE:6.3f}  " + " ".join(f"{SM[i][CH.index(n)]:.2f}" for _, n in BARS)
             g.text((40 * S, y), txt, font=f(13, True), fill=mix(BG, INK if r == rows - 1 else MUTED, b))
-    g.text((40 * S, 668 * S), "Example session, generated numbers", font=f(14), fill=MUTED)
+    if t >= qt:
+        al = min(1.0, (t - qt) / 0.6)
+        g.text((40 * S, 652 * S), "Do they change before a hard week?", font=f(24), fill=mix(BG, GLOW, al))
+    g.text((40 * S, 692 * S), "Example session, generated numbers", font=f(14), fill=MUTED)
     return im.resize((640, 720), Image.LANCZOS)
 
 SMILE = [(a + b) / 2 for a, b in zip(col("mouthSmileLeft"), col("mouthSmileRight"))]
@@ -90,8 +93,8 @@ def check(t, beats):
 
 mode, out, secs = sys.argv[1], sys.argv[2], float(sys.argv[3]); os.makedirs(out, exist_ok=True); n = int(secs * 24)
 if mode == "stream":
-    start = float(sys.argv[4]) if len(sys.argv) > 4 else 3.6
-    for k in range(n): stream(k / 24, start).save(f"{out}/{k:04d}.png")
+    start = float(sys.argv[4]) if len(sys.argv) > 4 else 3.6; qt = float(sys.argv[5]) if len(sys.argv) > 5 else 1e9
+    for k in range(n): stream(k / 24, start, qt).save(f"{out}/{k:04d}.png")
 else:
     beats = [float(x) for x in sys.argv[4].split(",")]
     for k in range(n): check(k / 24, beats).save(f"{out}/{k:04d}.png")

@@ -1,0 +1,47 @@
+{
+ "dataset": "PSYCHE-D (DiSCover Project, Evidation), Zenodo 5085146; not in this repository",
+ "rows": 10857,
+ "people": 4032,
+ "within_person_across_windows": {
+  "people": 1390,
+  "rows": 5560,
+  "expected_sign": "negative",
+  "rank_correlation": -0.077,
+  "interval_95": [
+   -0.103,
+   -0.047
+  ],
+  "phq9_per_1000_fewer_steps": 0.129
+ },
+ "within_person_across_windows_month_removed": {
+  "rank_correlation": -0.076,
+  "interval_95": [
+   -0.106,
+   -0.046
+  ]
+ },
+ "windows_clearly_below_own_normal": {
+  "windows": 5560,
+  "low_windows": 1218,
+  "people_with_a_low_window": 923,
+  "phq9_vs_own_other_windows_when_low": 0.3,
+  "phq9_vs_own_other_windows_otherwise": -0.09,
+  "difference": 0.39,
+  "interval_95": [
+   0.176,
+   0.617
+  ],
+  "share_higher_than_own_when_low": 0.455,
+  "share_higher_than_own_otherwise": 0.412
+ },
+ "trend_inside_a_window": {
+  "rows": 10829,
+  "people": 4027,
+  "expected_sign": "negative",
+  "rank_correlation": 0.031,
+  "interval_95": [
+   0.016,
+   0.05
+  ]
+ }
+}

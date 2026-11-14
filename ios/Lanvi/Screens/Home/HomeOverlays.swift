@@ -9,7 +9,15 @@ struct HomeHelpScreen: View {
     var onClose: () -> Void
 
     @Environment(AppStore.self) private var store
+    @State private var closing = false
 
+
+    /// Hide the fox for the close; if the same screen is shown again before it has
+    /// gone (opened again at once), the fox comes back by itself.
+    private func hideFoxForClose() {
+        closing = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { closing = false }
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -21,7 +29,11 @@ struct HomeHelpScreen: View {
 
                 LanviView(pose: .love, size: fox)
                     .lanviHops(false)
+                    .showsAfterRise(closing: closing)
                     .position(x: geo.size.width / 2, y: hill - fox / 2 + 12)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Lanvi")
+                    .accessibilityIdentifier("help.fox")
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
@@ -69,7 +81,7 @@ struct HomeHelpScreen: View {
                 .scrollBounceBehavior(.basedOnSize)
 
                 HStack {
-                    HomeCloseButton(action: onClose)
+                    HomeCloseButton { hideFoxForClose(); onClose() }
                     Spacer()
                 }
                 .padding(.horizontal, 20)

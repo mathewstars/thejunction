@@ -57,6 +57,9 @@ class Settings:
     rate_burst: int = 60
     session_ttl_minutes: int = 120
     pairing_ttl_hours: int = 24
+    # Linking switched off for a demo: the label of the one patient every phone is
+    # connected to, whatever pairing code it sends. Empty (the default) = codes are checked.
+    open_pairing_patient: str = ""
 
     # The mind
     default_timezone: str = "Europe/Helsinki"
@@ -118,6 +121,9 @@ class Settings:
     notify_mode: str = "off"  # off | telegram
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+    # Someone close to the patient who also hears (a first, small version): the people a
+    # clinician can choose from, as "Name=telegram chat id;Name=chat id". Empty = feature off.
+    family_contacts: str = ""
     clinician_page_url: str = ""
     notify_hours: str = "08-18"  # clinic local hours when a message may be sent
     notify_queue_outside_hours: bool = True  # queue to next window, else drop
@@ -125,6 +131,11 @@ class Settings:
     clinic_timezone: str = "Europe/Helsinki"
 
     demo_enabled: bool = True
+    # The open demo: anyone may read the generated example patients of the demo
+    # clinic without a login (GET only, never a real or test-play patient).
+    # Off unless DEMO_PUBLIC=true, and only while DEMO_ENABLED is on.
+    demo_public: bool = False
+    demo_visit_minutes: int = 120
 
     # The association appraisal (clinician-only research output), once a day per patient.
     associations_enabled: bool = True
@@ -149,6 +160,7 @@ class Settings:
             rate_burst=_env_int("RATE_BURST", 60),
             session_ttl_minutes=_env_int("SESSION_TTL_MINUTES", 120),
             pairing_ttl_hours=_env_int("PAIRING_TTL_HOURS", 24),
+            open_pairing_patient=_env("OPEN_PAIRING_PATIENT", ""),
             default_timezone=_env("DEFAULT_TIMEZONE", "Europe/Helsinki"),
             tick_seconds=_env_int("TICK_SECONDS", 300),
             review_inline=_env_bool("REVIEW_INLINE", False),
@@ -183,11 +195,13 @@ class Settings:
             notify_mode=_env("NOTIFY_MODE", "off").lower(),
             telegram_bot_token=_env("TELEGRAM_BOT_TOKEN"),
             telegram_chat_id=_env("TELEGRAM_CHAT_ID"),
+            family_contacts=_env("FAMILY_CONTACTS", ""),
             clinician_page_url=_env("CLINICIAN_PAGE_URL"),
             notify_hours=_env("NOTIFY_HOURS", "08-18"),
             notify_queue_outside_hours=_env_bool("NOTIFY_QUEUE_OUTSIDE_HOURS", True),
             notify_max_per_hour=_env_int("NOTIFY_MAX_PER_HOUR", 10),
             clinic_timezone=_env("CLINIC_TIMEZONE", "Europe/Helsinki"),
             demo_enabled=_env_bool("DEMO_ENABLED", True),
+            demo_public=_env_bool("DEMO_PUBLIC", False),
             associations_enabled=_env_bool("ASSOCIATIONS_ENABLED", True),
         )

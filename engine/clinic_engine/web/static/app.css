@@ -53,6 +53,9 @@ a { color: var(--sun); }
 
 main { max-width: 1180px; margin: 0 auto; padding: 20px max(16px, env(safe-area-inset-left, 0px)) 40px max(16px, env(safe-area-inset-right, 0px)); }
 .foot { max-width: 1180px; margin: 0 auto; padding: 0 16px 28px; color: var(--muted); font-size: 12px; }
+.visit-note { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 12px; margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+.visit-note b { color: var(--ink); }
+body.visitor #logout { display: none; }
 .flash { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--amber); border-radius: var(--r); padding: 8px 12px; margin: 0 0 14px; }
 
 /* buttons */
@@ -67,6 +70,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 20px max(16px, env(safe-area-
 .login { max-width: 340px; margin: 60px auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 22px; }
 .login h1 { margin: 0 0 14px; font-size: 20px; }
 .login form { display: grid; gap: 8px; }
+.login .login-help { margin: 14px 0 0; }
 .login label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
 .login input { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; margin-bottom: 6px; }
 .error { color: var(--ember); margin: 4px 0 0; }
@@ -377,6 +381,8 @@ ul.plain.big li, .d.big { font-size: 14.5px; line-height: 1.45; }
 .rb-pt { fill: var(--amber); stroke: var(--panel); stroke-width: 2; }
 .thumbs { margin: 4px 0 10px; }
 .rb-pt { fill: var(--ink); stroke: var(--bg); stroke-width: 2.5; }
+.bp-h3 { font-size: 15px; margin: 0 0 8px; }
+ul.plain.big + p { margin-top: 10px; }
 .bp-sub { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 0; }
 .bp.mini { max-width: none; }
 

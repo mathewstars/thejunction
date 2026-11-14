@@ -14,6 +14,7 @@ from ..mind import views
 from ..mind.watchers import compute_status
 from ..mind import associations as assoc
 from ..models import (AssociationsOut, ClinicMeOut, ClinicRuleIn, ClinicRulesOut, FaceRawOut,
+                      FamilyContactIn, FamilyContactOut, FamilyContactsOut,
                       LoginIn, LoginOut, RatingIn,
                       RatingOut, RatingsOut, TraceOut)
 from ..security import (Principal, dummy_verify, issue_token, new_id, sha256_hex,
@@ -55,6 +56,36 @@ async def login(body: LoginIn, request: Request):
     return {"session_token": token, "expires_at": (now + ttl).isoformat()}
 
 
+@router.post("/visit", response_model=LoginOut, responses=errors(404, 429),
+             summary="The open demo: a short-lived read-only token, no login")
+async def visit(request: Request):
+    """Only while DEMO_PUBLIC and DEMO_ENABLED are on. The token may GET what a
+    clinician of the demo clinic may GET, for generated example patients only;
+    it can change nothing. Rate limited like the login."""
+    open_rate_limit(request, "login")
+    ctx = ctx_of(request)
+    clinic_id = demo_clinic_id(ctx) if ctx.settings.demo_public else None
+    if not clinic_id:
+        raise ApiError(404, "not_found", "The open demo is not switched on.")
+    now = ctx.clock.now()
+    ttl = timedelta(minutes=ctx.settings.demo_visit_minutes)
+    token = issue_token(ctx.store, "visitor", clinic_id=clinic_id, ttl=ttl, now=now)
+    write_audit(ctx.store, now, clinic_id=clinic_id, patient_id=None, actor="visitor",
+                action="visit", request_id=rid_of(request))
+    return {"session_token": token, "expires_at": (now + ttl).isoformat()}
+
+
+def _visitor_may_see(patient: dict | None) -> bool:
+    """A visitor sees the generated example patients. A profile that holds a real
+    person's data (a patient, or the team's test play) is shown only when its
+    record says so (`open_demo`), which the person it belongs to has to agree to."""
+    if not patient:
+        return False
+    if patient.get("open_demo"):
+        return True
+    return bool(patient.get("example") and not patient.get("test_play"))
+
+
 @router.get("/me", response_model=ClinicMeOut, responses=errors(401, 403, 429),
             summary="What the clinician page needs to start: product name, clinic, demo mode")
 async def me(request: Request, p: Principal = Depends(clinician_only)):
@@ -65,15 +96,19 @@ async def me(request: Request, p: Principal = Depends(clinician_only)):
     clinic = ctx.store.get(f"clinics/{p.clinic_id}/clinic.json") or {}
     demo_on = demo_clinic_id(ctx) == p.clinic_id
     st = (ctx.store.get("demo/state.json") or {}) if demo_on else {}
+    visitor = p.scope == "visitor"
     return {"product_name": ctx.settings.product_name,
             "clinic_name": clinic.get("name", ""),
-            "demo": {"enabled": demo_on, "patient_id": st.get("patient_id")}}
+            # A visitor never gets the demo panel (it changes data), but the page
+            # still needs to know which patient the Blueprint's examples come from.
+            "demo": {"enabled": demo_on and not visitor, "patient_id": st.get("patient_id")},
+            "read_only": visitor}
 
 
 def _patient_repo(request: Request, p: Principal, patient_id: str):
     ctx = ctx_of(request)
     repo = ctx.mind.repo(p.clinic_id, patient_id)
-    if repo.patient() is None:
+    if repo.patient() is None or (p.scope == "visitor" and not _visitor_may_see(repo.patient())):
         write_audit(ctx.store, ctx.clock.now(), clinic_id=p.clinic_id, patient_id=None,
                     actor=p.actor, action="patient_read", outcome="refused",
                     reason="patient_not_in_clinic", detail={"patient_id": patient_id},
@@ -92,7 +127,10 @@ async def patients(request: Request, p: Principal = Depends(clinician_only)):
     # The patient index, not a listing of every object the clinic holds.
     for clinic_id, pid in ctx.mind.all_patients():
         if clinic_id == p.clinic_id:
-            lines.append(views.clinician_line(ctx.mind, ctx.mind.repo(p.clinic_id, pid)))
+            repo = ctx.mind.repo(p.clinic_id, pid)
+            if p.scope == "visitor" and not _visitor_may_see(repo.patient()):
+                continue
+            lines.append(views.clinician_line(ctx.mind, repo))
     order = {"urgent": 0, "attention": 1, "watch": 2, None: 3}
     status_order = {"outside": 0, "no_data": 1, "no_baseline": 2, "within": 3}
     # Within one level: a request for help first, then the person with more
@@ -144,6 +182,31 @@ async def patient_face_raw(request: Request, patient_id: str = Path(pattern=SID)
                 actor=p.actor, action="face_raw_read", detail={"activity_id": activity_id},
                 request_id=rid_of(request))
     return raw
+
+
+@router.get("/patients/{patient_id}/activities/{activity_id}/face-fine",
+            responses=errors(401, 403, 404, 429),
+            summary="Fine facial movement of one activity: the server's summary and the "
+                    "stream as the phone sent it (research download)")
+async def patient_face_fine(request: Request, patient_id: str = Path(pattern=SID),
+                            activity_id: str = Path(pattern=CID),
+                            p: Principal = Depends(clinician_only)):
+    """Only for focus and breathing sessions sent with `face_fine`; 404 otherwise.
+    `summary` is movement per region (level, reach, speed, brief twitches per
+    minute) and left-right asymmetry; `stream` is millimetres per region and
+    frame. Research only: no flag, level or reading is derived from it. Each
+    download is audited (which activity, never any values)."""
+    ctx = ctx_of(request)
+    repo = _patient_repo(request, p, patient_id)
+    stream = repo.get(f"facefine/{activity_id}.json")
+    if stream is None:
+        raise ApiError(404, "not_found", "No fine movement stream for this activity.")
+    rec = repo.get(f"activities/{activity_id}.json") or {}
+    write_audit(ctx.store, ctx.clock.now(), clinic_id=p.clinic_id, patient_id=patient_id,
+                actor=p.actor, action="face_fine_read", detail={"activity_id": activity_id},
+                request_id=rid_of(request))
+    return {"activity_id": activity_id, "summary": rec.get("face_fine"),
+            "info": rec.get("face_fine_info"), "stream": stream}
 
 
 @router.get("/patients/{patient_id}/exchanges", responses=errors(401, 403, 404, 422, 429),
@@ -219,6 +282,42 @@ def _rules_out(ctx, repo) -> dict:
     rules = [{k: r.get(k) for k in ("id", "text", "at", "by", "expires_at")}
              for r in ctx.mind.clinic_rules(repo)]
     return {"rules": rules, "applies": ctx.mind.triage_on}
+
+
+@router.get("/family-contacts", response_model=FamilyContactsOut, responses=errors(401, 403, 429),
+            summary="Someone close who also hears: the people a clinician can choose from")
+async def family_contacts_list(request: Request, p: Principal = Depends(clinician_only)):
+    """A first, small version of a family loop. Names only; the Telegram chats behind
+    them are a server setting (FAMILY_CONTACTS) and are never returned."""
+    from ..notify import family_contacts
+    return {"contacts": sorted(family_contacts(ctx_of(request).settings))}
+
+
+@router.put("/patients/{patient_id}/family-contact", response_model=FamilyContactOut,
+            responses=errors(401, 403, 404, 422, 429),
+            summary="Choose the person who also hears for this patient, or nobody")
+async def set_family_contact(body: FamilyContactIn, request: Request,
+                             patient_id: str = Path(pattern=SID),
+                             p: Principal = Depends(clinician_only)):
+    """When the clinic is sent a "needs review" message for this patient, the chosen
+    person gets one line on Telegram that names nobody and says nothing about health.
+    The patient has to agree to it; the clinic sets it here."""
+    from ..notify import family_contacts
+    ctx = ctx_of(request)
+    repo = _patient_repo(request, p, patient_id)
+    if body.name is not None and body.name not in family_contacts(ctx.settings):
+        raise ApiError(422, "invalid_request", "That person is not on this server's list.")
+    async with ctx.mind.lock(p.clinic_id, patient_id):
+        rec = dict(repo.patient())
+        if body.name is None:
+            rec.pop("family_contact", None)
+        else:
+            rec["family_contact"] = body.name
+        ctx.store.put(f"clinics/{p.clinic_id}/patients/{patient_id}/patient.json", rec)
+        write_audit(ctx.store, ctx.clock.now(), clinic_id=p.clinic_id, patient_id=patient_id,
+                    actor=p.actor, action="family_contact_set",
+                    detail={"chosen": body.name is not None}, request_id=rid_of(request))
+    return {"family_contact": body.name}
 
 
 @router.get("/patients/{patient_id}/clinic-rules", response_model=ClinicRulesOut,

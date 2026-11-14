@@ -90,7 +90,7 @@ struct HomePrimaryStyle: ButtonStyle {
             .offset(y: pressed ? 5 : 0)
             .background(shape.fill(edge).offset(y: 5))
             .animation(LanviTiming.press, value: pressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: pressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: pressed) { wasDown, isDown in isDown && !wasDown }
     }
 }
 
@@ -108,7 +108,7 @@ struct HomeCornerRoundStyle: ButtonStyle {
             .background(Circle().fill(Color(hex: 0xFFFEFB)).shadow(color: Theme.ink.opacity(0.12), radius: 8, y: 3))
             .scaleEffect(pressed ? 0.94 : 1)
             .animation(LanviTiming.press, value: pressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: pressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: pressed) { wasDown, isDown in isDown && !wasDown }
     }
 }
 
@@ -126,7 +126,7 @@ struct HomeQuietRoundStyle: ButtonStyle {
             .offset(y: pressed ? 5 : 0)
             .background(Circle().fill(Theme.line).offset(y: 5))
             .animation(LanviTiming.press, value: pressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: pressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: pressed) { wasDown, isDown in isDown && !wasDown }
     }
 }
 
@@ -197,7 +197,7 @@ private struct SheetRowStyle: ButtonStyle {
             .background(Theme.tint.opacity(configuration.isPressed ? 1 : 0))
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .animation(.spring(response: 0.2, dampingFraction: 0.8), value: configuration.isPressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed) { wasDown, isDown in isDown && !wasDown }
     }
 }
 

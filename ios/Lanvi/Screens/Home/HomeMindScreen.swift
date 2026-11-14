@@ -10,6 +10,14 @@ struct HomeMindScreen: View {
     @State private var pose: LanviPose = .curious
     @State private var say = "Here is what I've noticed so far. Tell me if I got something wrong."
     @State private var busy: String?
+    @State private var closing = false
+
+    /// Hide the fox for the close; if the same screen is shown again before it has
+    /// gone (opened again at once), the fox comes back by itself.
+    private func hideFoxForClose() {
+        closing = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { closing = false }
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -26,6 +34,7 @@ struct HomeMindScreen: View {
                     ZStack {
                         LanviView(pose: pose, size: fox)
                             .lanviHops(false)
+                            .showsAfterRise(closing: closing)
                     }
                     .frame(width: fox, height: fox)
                 }
@@ -44,7 +53,7 @@ struct HomeMindScreen: View {
                 .padding(.top, hill + 14)
 
                 HStack {
-                    HomeCloseButton(action: onClose)
+                    HomeCloseButton { hideFoxForClose(); onClose() }
                     Spacer()
                 }
                 .padding(.horizontal, 20)
@@ -220,6 +229,6 @@ private struct MindSmallButtonStyle: ButtonStyle {
             .offset(y: pressed ? 3 : 0)
             .background(shape.fill(filled ? Theme.brandEdge : Theme.line).offset(y: 3))
             .animation(LanviTiming.press, value: pressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: pressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: pressed) { wasDown, isDown in isDown && !wasDown }
     }
 }
