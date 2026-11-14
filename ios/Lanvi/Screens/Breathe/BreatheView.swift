@@ -2,10 +2,10 @@ import SwiftUI
 
 /// Breathe with Lanvi: about one minute of slow breathing with the fox.
 ///
-/// Lanvi grows on the in-breath and settles on the out-breath; the ring of light behind
-/// it and the aurora in the sky swell and fade with it. Everything follows one value,
-/// `breath` (0 all the way out, 1 all the way in), moved by long eased animations, so the
-/// motion never steps.
+/// Lanvi grows on the in-breath and settles on the out-breath; the aurora bloom behind it,
+/// its motes of light and the aurora in the sky swell and fade with it. Everything follows
+/// one value, `breath` (0 all the way out, 1 all the way in), moved by long eased
+/// animations, so the motion never steps.
 ///
 /// `onDone` gets the result after the person taps Done, or `nil` when they leave early.
 /// Launch with `-demo` and the session starts by itself (for recording the pitch video).
@@ -22,11 +22,12 @@ struct BreatheView: View {
     @State private var phase: BreathPhase = .settle
     @State private var breath: CGFloat = 0.35
     @State private var aurora: CGFloat = 0.3
+    @State private var flare: CGFloat = 0
     @State private var breathsDone = 0
+    @State private var progress: CGFloat = 0
     @State private var result: BreatheResult?
-    @State private var pose: LanviPose = .curious
+    @State private var pose: LanviPose = .love
     @State private var bounce = 0
-    @State private var sparks = false
 
     private let demo = ProcessInfo.processInfo.arguments.contains("-demo")
 
@@ -36,13 +37,13 @@ struct BreatheView: View {
             let safeBottom = geo.safeAreaInsets.bottom
             let w = geo.size.width
             let h = geo.size.height + safeTop + safeBottom
-            let hill = max(h * 0.60, h - safeBottom - 262).rounded()
-            let fox = min(240, (h * 0.27).rounded())
+            // The horizon sits low so the night sky and Lanvi own the screen; the snow keeps
+            // just enough room for the words and the button.
+            let hill = max(h * 0.58, h - safeBottom - 215).rounded()
+            let fox = min(236, (h * 0.27).rounded())
             let foxY = hill + 16 - fox / 2
-            let ring = fox * 1.3
-            let ringY = foxY - fox * 0.08
-            let skyTextY = (safeTop + ringY - ring * 0.54) / 2 + 10
-            let snowTop = hill + 34
+            let bloom = fox * 3.55
+            let snowTop = hill + 30
             let snowHeight = h - snowTop - safeBottom - 14
 
             ZStack(alignment: .topLeading) {
@@ -51,41 +52,28 @@ struct BreatheView: View {
                 BreatheAurora(level: aurora)
                     .frame(width: w, height: hill * 0.62)
 
-                GlowRing(breath: breath)
-                    .frame(width: ring, height: ring)
-                    .opacity(stage == .intro ? 0.6 : 1)
-                    .position(x: w / 2, y: ringY)
-
-                SparkBurst(fired: sparks)
-                    .position(x: w / 2, y: foxY)
+                BreathBloom(breath: breath, flare: flare)
+                    .frame(width: w, height: bloom)
+                    .position(x: w / 2, y: foxY - fox * 0.04)
 
                 LanviView(pose: pose, size: fox, bounceTrigger: bounce)
                     .scaleEffect(0.88 + 0.16 * breath, anchor: .bottom)
                     .position(x: w / 2, y: foxY)
 
-                if stage == .session {
-                    Text(phase.word)
-                        .font(Theme.rounded(40, .heavy))
-                        .foregroundStyle(.white)
-                        .shadow(color: Theme.glow.opacity(0.9), radius: 14)
-                        .id(phase)
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .scale(scale: 0.92)),
-                            removal: .opacity))
-                        .position(x: w / 2, y: skyTextY)
-                        .accessibilityAddTraits(.updatesFrequently)
-                }
-
                 snowContent
-                    .frame(width: w, height: snowHeight, alignment: .top)
+                    .frame(width: w, height: snowHeight)
                     .offset(y: snowTop)
 
-                Button { onDone(nil) } label: { Image(systemName: "xmark") }
-                    .buttonStyle(BreatheCornerButtonStyle())
-                    .accessibilityLabel(stage == .finish ? "Close" : "Leave")
-                    .position(x: w - 24 - 20, y: safeTop + 26)
-                    .opacity(stage == .finish ? 0 : 1)
-                    .disabled(stage == .finish)
+                Button { onDone(nil) } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 17, weight: .heavy))
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(BreatheRoundButtonStyle())
+                .accessibilityLabel("Close")
+                .position(x: 24 + 22, y: safeTop + 6 + 22)
+                .opacity(stage == .finish ? 0 : 1)
+                .disabled(stage == .finish)
             }
             .ignoresSafeArea()
         }
@@ -105,14 +93,14 @@ struct BreatheView: View {
         }
     }
 
-    // MARK: - Snow area: words and the big button
+    // MARK: - Snow area: words, dots and the big button
 
     @ViewBuilder
     private var snowContent: some View {
         VStack(spacing: 0) {
             switch stage {
             case .intro:
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     Text("Breathe with Lanvi")
                         .font(Theme.rounded(30, .heavy))
                         .foregroundStyle(Theme.ink)
@@ -122,35 +110,43 @@ struct BreatheView: View {
                         .multilineTextAlignment(.center)
                 }
                 .transition(.opacity.combined(with: .offset(y: 12)))
-                Spacer(minLength: 16)
+                Spacer(minLength: 14)
                 Button("Start", action: start)
                     .buttonStyle(ChunkyButtonStyle())
                     .padding(.horizontal, 24)
                     .transition(.opacity.combined(with: .offset(y: 30)))
 
             case .session:
-                VStack(spacing: 14) {
-                    BreathDots(total: BreathePace.breaths, done: breathsDone, breath: breath)
-                    Text("Follow my glow")
-                        .font(Theme.rounded(16, .semibold))
-                        .foregroundStyle(Theme.inkSecondary)
+                Spacer(minLength: 0)
+                VStack(spacing: 16) {
+                    Text(phase.word)
+                        .font(Theme.rounded(32, .heavy))
+                        .foregroundStyle(Theme.ink)
+                        .id(phase)
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .scale(scale: 0.92)),
+                            removal: .opacity))
+                        .accessibilityAddTraits(.updatesFrequently)
+                    BreathDots(total: BreathePace.breaths, done: breathsDone,
+                               progress: progress, breath: breath)
                 }
-                .padding(.top, 6)
-                .transition(.opacity.combined(with: .offset(y: 12)))
-                Spacer()
+                .transition(.opacity.combined(with: .offset(y: 16)))
 
             case .finish:
                 VStack(spacing: 6) {
-                    Text("Nice.")
-                        .font(Theme.rounded(44, .black))
+                    Text("That was lovely.")
+                        .font(Theme.rounded(34, .black))
                         .foregroundStyle(Theme.brand)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     Text("Thanks for breathing with me.")
                         .font(Theme.rounded(18, .semibold))
                         .foregroundStyle(Theme.inkSecondary)
                         .multilineTextAlignment(.center)
                 }
+                .padding(.horizontal, 24)
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                Spacer(minLength: 16)
+                Spacer(minLength: 14)
                 Button("Done") { onDone(result) }
                     .buttonStyle(ChunkyButtonStyle())
                     .padding(.horizontal, 24)
@@ -174,37 +170,47 @@ struct BreatheView: View {
     private func runSession() async {
         let startedAt = Date()
         breathsDone = 0
+        progress = 0
+        let breathLength = BreathePace.inhale + BreathePace.hold + BreathePace.exhale
 
         setPhase(.settle)
         withAnimation(.easeInOut(duration: BreathePace.settle)) {
             breath = 0
-            aurora = 0.15
+            aurora = 0.1
         }
         guard await wait(BreathePace.settle) else { return }
 
         for _ in 0..<BreathePace.breaths {
+            withAnimation(.linear(duration: breathLength)) { progress = 1 }
+
             setPhase(.inhale)
             withAnimation(.easeInOut(duration: BreathePace.inhale)) {
                 breath = 0.95
-                aurora = 0.8
+                aurora = 0.85
             }
             guard await wait(BreathePace.inhale) else { return }
 
             setPhase(.hold)
             withAnimation(.easeInOut(duration: BreathePace.hold)) {
                 breath = 1
-                aurora = 0.85
+                aurora = 0.9
             }
             guard await wait(BreathePace.hold) else { return }
 
             setPhase(.exhale)
             withAnimation(.easeInOut(duration: BreathePace.exhale)) {
                 breath = 0
-                aurora = 0.15
+                aurora = 0.1
             }
             guard await wait(BreathePace.exhale) else { return }
 
-            breathsDone += 1
+            // The dot is full: count it and get the next dot ready, without animating the
+            // reset, then let a frame pass before the next breath starts filling it.
+            withTransaction(\.animation, nil) {
+                breathsDone += 1
+                progress = 0
+            }
+            guard await wait(0.05) else { return }
         }
 
         let endedAt = Date()
@@ -219,12 +225,12 @@ struct BreatheView: View {
             stage = .finish
             pose = .cheer
         }
-        withAnimation(.easeInOut(duration: 1.6)) {
-            breath = 0.55
+        withAnimation(.easeInOut(duration: 1.8)) {
+            breath = 0.75
             aurora = 1
         }
+        withAnimation(.easeOut(duration: 2.6)) { flare = 1 }
         bounce += 1
-        sparks = true
     }
 
     private func setPhase(_ next: BreathPhase) {
