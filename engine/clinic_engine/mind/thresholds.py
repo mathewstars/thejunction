@@ -289,6 +289,7 @@ class Thresholds:
     assoc_seed: int = 20261113  # fixed, so results are reproducible
     assoc_p_adj_max: float = 0.10  # above this a row cannot be "consistent"
     assoc_weak_n: int = 12  # below this many paired days, at most "weak"
+    assoc_low_ratings: int = 20  # one observation per rating: fewer ratings than this is always "low"
     assoc_high_n: int = 20  # "high" confidence needs this many paired days ...
     assoc_high_lines: int = 3  # ... this many independent lines, and a rating reference
     assoc_medium_lines: int = 2  # code's own "medium" needs this many lines

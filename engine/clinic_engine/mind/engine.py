@@ -1406,7 +1406,8 @@ class Mind:
             repo.activities(), repo.docs("ratings"), repo.items(), repo.tz(), today, th)
         rows = assoc.compute_rows(ds, th)
         ref_kind = ds["reference"]["kind"]
-        code_rows, code_ov = assoc.code_appraisal(rows, ref_kind, ds["notes"], th)
+        unit, n_obs = ds.get("unit", "day"), ds.get("n_obs")
+        code_rows, code_ov = assoc.code_appraisal(rows, ref_kind, ds["notes"], th, unit, n_obs)
         tested = [r for r in code_rows if r["status"] == "tested"]
         self.trace(repo, "trigger", "appraisal",
                    {"by": trigger, "reference": ds["reference"]["key"], "kind": ref_kind,
@@ -1431,7 +1432,7 @@ class Mind:
                 refusals.extend(res.refusals)
                 if res.ok:
                     out_rows, overall, corrections = assoc.merge(res.value, code_rows, code_ov,
-                                                                 ref_kind, th)
+                                                                 ref_kind, th, unit, n_obs)
                     appraised_by = "model"
                     model_name = getattr(self.local, "model", None) or "level1"
                     refusals.extend(GateRefusal("output", 1, "association",
