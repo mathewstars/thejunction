@@ -1013,7 +1013,8 @@ class Mind:
     #
     # Clinician-only. Reads the day records and the stored HealthKit types,
     # writes ONLY research/days_reading.json, the trace, the audit log and the
-    # refusal log. Never attention, suggestions, lessons, questions or mind
+    # refusal log, and then lets the watchers look again (a confirmed finding may
+    # open a watch flag). Never suggestions, lessons, questions or mind
     # state, never an event on the bus, never any patient-facing text.
 
     def days_reading_state(self, repo: PatientRepo) -> str:

@@ -135,7 +135,7 @@ class Thresholds:
     # The frame reading (mind/frame_reading.py, data/frames_prompt.txt): the
     # level-2 model reads a reduced stream of the raw frames; code checks every
     # item on the full-rate frames. Clinician-only: none of these values
-    # touches attention, suggestions or lessons.
+    # touches suggestions or lessons (a confirmed finding may open a watch flag).
     frames_rate_hz: float = 5.0  # rows per second sent (blocks of frames averaged)
     frames_max_frames: int = 400  # longer recordings get a lower rate to fit
     # A reported smile is the same smile as one code found when the two spans
