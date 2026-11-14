@@ -147,7 +147,7 @@ struct HomeView: View {
                     if store.mode == .live, store.link == .offline {
                         Image(systemName: "icloud.slash.fill")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.8))
+                            .foregroundStyle(Theme.inkSecondary)
                             .padding(.leading, 8)
                             .accessibilityLabel("Offline. Your activities are saved and sent later.")
                     }
