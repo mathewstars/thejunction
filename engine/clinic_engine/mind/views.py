@@ -531,6 +531,7 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                                  "usual": FF.usual(fine_before), "earlier": len(fine_before),
                                  "needed": FF.OWN_MIN_SESSIONS, "per_region": fs.get("regions"),
                                  "asymmetry": fs.get("asymmetry"),
+                                 "mouth_corners": fs.get("mouth_corners"),
                                  # Every session with numbers counts toward the own usual,
                                  # whatever its quality label (the team's decision, 14 Nov:
                                  # the label is shown beside it, it does not filter).

@@ -209,7 +209,8 @@ async def patient_face_fine(request: Request, patient_id: str = Path(pattern=SID
     from ..mind import face_fine
     return {"activity_id": activity_id, "summary": rec.get("face_fine"),
             "info": rec.get("face_fine_info"), "stream": stream,
-            "twitches": face_fine.twitches(stream)}
+            "twitches": face_fine.twitches(stream),
+            "mouth_corners": face_fine.mouth_corners(stream)}
 
 
 @router.get("/patients/{patient_id}/exchanges", responses=errors(401, 403, 404, 422, 429),

@@ -21,13 +21,16 @@ from __future__ import annotations
 
 import math
 
-RULES_VERSION = 2   # 2: the top of a slow, small expression is no longer a brief movement
+RULES_VERSION = 3   # 2: the top of a slow, small expression is no longer a brief movement
+#                     3: brief movements of the mouth corners, by side (mouth_corners)
 
 # The regions a phone may name. A fixed list, so that no free text arrives.
 REGIONS = ("mouth_left", "mouth_right", "lip_upper", "lip_lower", "cheek_left", "cheek_right",
-           "brow_left", "brow_right", "eyelid_left", "eyelid_right", "jaw", "nose")
+           "brow_left", "brow_right", "eyelid_left", "eyelid_right", "jaw", "nose",
+           "mouth_corner_left", "mouth_corner_right")
 REQUIRED_REGIONS = ("mouth_left", "mouth_right")
-PAIRS = (("mouth_left", "mouth_right"), ("cheek_left", "cheek_right"),
+PAIRS = (("mouth_left", "mouth_right"), ("mouth_corner_left", "mouth_corner_right"),
+         ("cheek_left", "cheek_right"),
          ("brow_left", "brow_right"), ("eyelid_left", "eyelid_right"))
 
 MAX_SAMPLES = 12000
@@ -171,6 +174,68 @@ def twitches(raw: dict) -> list[dict]:
     return sorted(out, key=lambda t: (t["start_s"], t["region"]))
 
 
+# ---- brief movements of the mouth corners ------------------------------------------------
+
+CORNER_PAIRS = (("mouth_corner_left", "mouth_corner_right"), ("mouth_left", "mouth_right"))
+_MOUTH = ("mouth_left", "mouth_right", "mouth_corner_left", "mouth_corner_right",
+          "lip_upper", "lip_lower", "jaw")
+CORNER_TOGETHER_S = 0.07   # two movements this close in time are the same moment (2 frames at 30)
+
+
+def _near(a: dict, b: dict) -> bool:
+    return a["start_s"] <= b["end_s"] + CORNER_TOGETHER_S and b["start_s"] <= a["end_s"] + CORNER_TOGETHER_S
+
+
+def mouth_corners(raw: dict, found: list[dict] | None = None) -> dict | None:
+    """Brief movements at the two corners of the mouth, each named by its
+    side: "left", "right" (the person's own) or "both" when the two corners
+    move at the same moment. Uses the corner regions when the phone sends
+    them, else the two halves of the mouth.
+
+    A brief movement that most of the rest of the face makes at the same
+    moment is not a movement of the mouth: it is a jolt of the whole face
+    left over after the head's movement was taken out (or a blink, a sniff,
+    the phone). Those are counted apart and not reported as corner movements.
+    "Most" is at least half of the regions outside the mouth, and at least two.
+
+    None when the stream has neither pair of regions. Movement only."""
+    pair = next((p for p in CORNER_PAIRS if p[0] in raw["regions"] and p[1] in raw["regions"]), None)
+    if pair is None:
+        return None
+    found = twitches(raw) if found is None else found
+    others = [r for r in raw["regions"] if r not in _MOUTH]
+    need = max(2, math.ceil(len(others) / 2))
+
+    def whole_face(t: dict) -> bool:
+        return len({o["region"] for o in found if o["region"] in others and _near(o, t)}) >= need
+
+    left = [t for t in found if t["region"] == pair[0]]
+    right = [t for t in found if t["region"] == pair[1]]
+    events, dropped, used = [], 0, set()
+    for t in left:
+        mate = next((k for k, r in enumerate(right) if k not in used and _near(t, r)), None)
+        span = [t] if mate is None else [t, right[mate]]
+        if mate is not None:
+            used.add(mate)
+        ev = {"side": "left" if mate is None else "both",
+              "start_s": min(x["start_s"] for x in span), "end_s": max(x["end_s"] for x in span),
+              "peak_mm": max(x["peak_mm"] for x in span)}
+        if whole_face(ev):
+            dropped += 1
+        else:
+            events.append(ev)
+    for k, r in enumerate(right):
+        if k in used:
+            continue
+        ev = {"side": "right", "start_s": r["start_s"], "end_s": r["end_s"], "peak_mm": r["peak_mm"]}
+        if whole_face(ev):
+            dropped += 1
+        else:
+            events.append(ev)
+    return {"regions": list(pair), "events": sorted(events, key=lambda e: e["start_s"]),
+            "whole_face_dropped": dropped}
+
+
 def summarize(raw: dict) -> dict:
     """The summary kept beside the activity. Movement only, per region; null
     wherever there was too little tracked time to say anything."""
@@ -196,6 +261,13 @@ def summarize(raw: dict) -> dict:
             # -1: only the right side moves; 0: both alike; +1: only the left side moves.
             out["asymmetry"][left.rsplit("_", 1)[0]] = round(
                 (a["reach_mm"] - b["reach_mm"]) / (a["reach_mm"] + b["reach_mm"]), 3)
+    mc = mouth_corners({**raw, "samples": rows, "tracked": None})
+    if mc is not None:
+        minutes = tracked_s / 60.0
+        n = {side: sum(1 for e in mc["events"] if e["side"] == side) for side in ("left", "right", "both")}
+        out["mouth_corners"] = {"regions": mc["regions"], "left": n["left"], "right": n["right"],
+                                "both": n["both"], "whole_face_dropped": mc["whole_face_dropped"],
+                                "per_min": round(len(mc["events"]) / minutes, 2)}
     return out
 
 

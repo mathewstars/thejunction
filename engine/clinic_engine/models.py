@@ -306,7 +306,7 @@ class FaceFineIn(Strict):
                                              "ARKit face mesh or the TrueDepth depth map.")
     rate_hz: float = Field(ge=5, le=60, description="Frames per second of `samples`.")
     regions: list[Annotated[str, StringConstraints(pattern=r"^[a-z_]{2,30}$")]] = Field(
-        min_length=2, max_length=12,
+        min_length=2, max_length=14,
         description="Names in the order of each sample's values, from the fixed list in "
                     "docs/face-fine.md. Must include mouth_left and mouth_right.")
     samples: list[list[float]] = Field(min_length=1, max_length=12000,

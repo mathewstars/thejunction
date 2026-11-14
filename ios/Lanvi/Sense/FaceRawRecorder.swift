@@ -158,8 +158,8 @@ struct FaceRawRecorder {
 /// - Regions are found on that resting shape by where they lie on the face, as
 ///   fractions of its width and height (`boxes`), not by fixed vertex numbers.
 /// - Each later frame: per region, the mean distance of its vertices from rest.
-/// - `noiseMm`: the mean of those numbers over the resting frames themselves, that is
-///   how much the numbers move when the face is (mostly) still.
+/// - `noiseMm`: how much those numbers jump from frame to frame over the resting
+///   frames (their standard deviation, averaged over the regions).
 ///
 /// The region boxes are a first guess and have not been checked on a device. In a
 /// DEBUG build `FaceSense` prints how many vertices each region caught.
@@ -190,6 +190,10 @@ struct FaceFineRecorder {
         Box(name: "eyelid_right", u: 0.25...0.43, v: 0.60...0.69),
         Box(name: "jaw", u: 0.38...0.62, v: 0.02...0.14),
         Box(name: "nose", u: 0.44...0.56, v: 0.42...0.56),
+        // The corners themselves: the outer end of each half of the mouth, a small patch,
+        // so a brief pull at one corner is not averaged away over the half.
+        Box(name: "mouth_corner_left", u: 0.61...0.70, v: 0.24...0.32),
+        Box(name: "mouth_corner_right", u: 0.30...0.39, v: 0.24...0.32),
     ]
     static let required = ["mouth_left", "mouth_right"]
 
@@ -300,15 +304,21 @@ struct FaceFineRecorder {
         rest = shape
         members = Self.assign(shape)
 
-        var sum = 0.0, counted = 0
+        var columns = [[Double]](repeating: [], count: Self.boxes.count)
         for f in frames {
             let row = measure(f.vertices, against: shape)
             rows[f.slot] = row
-            for (j, value) in row.enumerated() where members[j].count >= Self.minVertices {
-                sum += value; counted += 1
-            }
+            for (j, value) in row.enumerated() { columns[j].append(value) }
         }
-        noiseMm = counted > 0 ? Self.round2(min(sum / Double(counted), 5)) : nil
+        // The spread of each region's number over the still frames (standard deviation),
+        // averaged over the regions sent. Not its level: the rule on the server compares
+        // a movement with how much the number jumps, not with where it sits.
+        let spreads = columns.enumerated().compactMap { j, v -> Double? in
+            guard members[j].count >= Self.minVertices, v.count > 1 else { return nil }
+            let mean = v.reduce(0, +) / Double(v.count)
+            return (v.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Double(v.count - 1)).squareRoot()
+        }
+        noiseMm = spreads.isEmpty ? nil : Self.round2(min(spreads.reduce(0, +) / Double(spreads.count), 5))
         early = []
     }
 

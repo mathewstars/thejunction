@@ -37,7 +37,7 @@ The rule that does not change: **no face shape leaves the phone.** A mesh and a 
 |---|---|---|
 | `source` | yes | `mesh` (the ARKit face mesh) or `depth` (the TrueDepth depth map). |
 | `rate_hz` | yes | Frames per second of `samples`, 5 to 60. |
-| `regions` | yes | The names of the values in each row, in order, from the list below. `mouth_left` and `mouth_right` are required. 2 to 12 names, none twice. |
+| `regions` | yes | The names of the values in each row, in order, from the list below. `mouth_left` and `mouth_right` are required. 2 to 14 names, none twice. |
 | `samples` | yes | One row per frame, oldest first, one number per region: millimetres, 0 to 50. At most 12,000 rows. |
 | `tracked` | no | One 0 or 1 per frame. Leave it out when every frame was tracked. |
 | `noise_mm` | no | The noise floor you measured in this session (see below), 0 to 5. Send it if you can: the twitch rule uses it. |
@@ -49,7 +49,10 @@ No other field is accepted. In particular no vertices, no coordinates, no depth 
 ```
 mouth_left  mouth_right  lip_upper  lip_lower  cheek_left  cheek_right
 brow_left   brow_right   eyelid_left  eyelid_right  jaw  nose
+mouth_corner_left  mouth_corner_right
 ```
+
+`mouth_left` and `mouth_right` are the two halves of the mouth. `mouth_corner_left` and `mouth_corner_right` are the corners themselves: a small patch at the outer end of each half, so that a brief pull at one corner is not averaged away.
 
 Left and right are the person's own left and right, as in ARKit's blend-shape names.
 
@@ -63,7 +66,7 @@ A way to compute it from the mesh (`ARFaceGeometry.vertices`):
 2. Pick a fixed set of vertex indices for each region once (the mesh topology never changes), and keep it in the app.
 3. The resting shape: per vertex, the median position over the first two or three seconds of the session, while the face is still. Keep it on the phone; never send it.
 4. Per frame and region: the mean, over the region's vertices, of the distance between the vertex and its resting position.
-5. `noise_mm`: the same number computed over frames you know to be still (for example the two seconds used for the resting shape), averaged over regions.
+5. `noise_mm`: how much that number jumps from frame to frame over frames you know to be still (its standard deviation over, for example, the frames used for the resting shape), averaged over regions. Not its average: the rule compares a movement with the spread, and a noise stated too small makes it invent movements (`docs/research-proposal.md`).
 
 **In the app this is built** (`FaceFineRecorder`, `ios/SENSORS.md`), with two differences from the recipe: the resting shape is the median of the first 45 tracked frames (1.5 seconds at 30 a second), and regions are found by where they lie on the resting face instead of by fixed vertex numbers. It compiles for a device and its unit tests pass; it has not run on a phone yet, so the region boxes are unchecked.
 
@@ -106,6 +109,8 @@ The summary (`clinic_engine/mind/face_fine.py`), on tracked frames only, after a
 | `reach_mm` | How far above that it goes (95th percentile minus the median). |
 | `speed_mm_s` | How fast it moves at its fastest (95th percentile of the change per second). |
 | `twitches_per_min` | Brief movements: at least 0.5 mm above the usual level and at least 3 times `noise_mm` (0.3 mm when not sent), lasting from 2 frames to 0.4 seconds. Anything longer is an expression, not a twitch. Since rules version 2 the whole rise must be brief too (at half that height, at most 0.8 seconds): the generated example showed that the top of a slow, small expression was being counted. |
+
+`mouth_corners`: the brief movements at the two corners of the mouth, by side. `left` and `right` count a corner that moved alone, `both` the moments when the two moved together (within 0.07 seconds), `per_min` all three together. A brief movement that at least half of the regions outside the mouth (and at least two) make at the same moment is not counted: that is a jolt of the whole face, the head or the phone, and it goes into `whole_face_dropped`. The corner regions are used when the phone sends them, otherwise the two halves of the mouth; `regions` says which. The download (`GET .../face-fine`) gives each one with its time and size.
 
 And for each left and right pair, `asymmetry`: -1 when only the right side moves, 0 when both move alike, +1 when only the left side moves.
 

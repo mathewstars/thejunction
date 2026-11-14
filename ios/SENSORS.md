@@ -53,7 +53,7 @@ Sending: a record with frames is 0.4 to 3 MB, so `LanviClient` posts it through 
 
 ## Fine facial movement (research only)
 
-Beside `face_raw`, the same tracker now sends `face_fine` (`docs/face-fine.md`): for twelve named regions and every frame, one number, how far the region is from the person's own resting shape, in millimetres.
+Beside `face_raw`, the same tracker now sends `face_fine` (`docs/face-fine.md`): for fourteen named regions (the two mouth corners among them) and every frame, one number, how far the region is from the person's own resting shape, in millimetres.
 
 | What | Where |
 |---|---|

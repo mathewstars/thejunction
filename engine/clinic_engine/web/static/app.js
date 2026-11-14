@@ -1335,10 +1335,16 @@
       factTile(num(v.twitches_per_min, 1) + " / min", "brief movements, all regions · " + own("twitches_per_min", 1, " / min")),
       factTile(num(v.speed_mm_s, 1) + " mm/s", "top speed · " + own("speed_mm_s", 1, " mm/s")),
       factTile(side, "mouth, left against right (" + (v.mouth_asymmetry === null || v.mouth_asymmetry === undefined ? "–" : (v.mouth_asymmetry < 0 ? "−" : "+") + Math.abs(v.mouth_asymmetry).toFixed(2)) + ", from −1 right only to +1 left only)"));
+    const mc = f.mouth_corners;
+    const mcLine = !mc ? null : el("p", { class: "readout" }, el("b", null, "Mouth corners: "),
+      (mc.left + mc.right + mc.both) + " brief " + ((mc.left + mc.right + mc.both) === 1 ? "movement" : "movements") + " (" + num(mc.per_min, 1) + " a minute): " +
+      mc.left + " left only, " + mc.right + " right only, " + mc.both + " both together." +
+      (mc.whole_face_dropped ? " " + mc.whole_face_dropped + " more set aside because most of the face moved at the same moment (the head or the phone, not the mouth)." : "") +
+      (mc.regions[0] === "mouth_left" ? " Measured on the two halves of the mouth; this recording has no corner regions." : ""));
     const tr = S.ffTrace && S.ffTrace.id === cur.id ? S.ffTrace : null;
     let chart = null, legend = null;
     if (tr) {
-      const W = 920, L = 150, R = 14, T = 12, PH = 130, LANE = 26, H = T + PH + 18 + LANE + 26;
+      const W = 920, L = 150, R = 14, T = 12, PH = 130, LANE = 26, H = T + PH + 18 + LANE * 3 + 26;
       const dur = tr.dur, peak = Math.max(1, ...tr.left, ...tr.right);
       const x = (t) => L + (W - L - R) * Math.min(1, Math.max(0, t / dur));
       const y = (mm) => T + PH - PH * Math.min(1, mm / peak);
@@ -1350,20 +1356,29 @@
       path(tr.right, "ff-right"); path(tr.left, "ff-left");
       const step = dur > 90 ? 20 : dur > 30 ? 10 : 5;
       for (let t = 0; t <= dur + 0.01; t += step) c.appendChild(svg("text", { x: x(t), y: H - 4, "text-anchor": t === 0 ? "start" : "middle" }, t + " s"));
-      const ly = T + PH + 18;
-      c.appendChild(svg("text", { class: "lane", x: L - 8, y: ly + 17, "text-anchor": "end" }, "Brief movements"));
-      tr.twitches.forEach((b) => c.appendChild(svg("rect", { class: "fr-bar same", x: x(b.start_s) - 2, y: ly + 5, width: Math.max(5, x(b.end_s) - x(b.start_s) + 4), height: LANE - 12, rx: 2 },
+      let ly = T + PH + 18;
+      [["left", "Left corner"], ["right", "Right corner"]].forEach(([side, label], k) => {
+        const yy = ly + LANE * k;
+        c.appendChild(svg("text", { class: "lane", x: L - 8, y: yy + 17, "text-anchor": "end" }, label));
+        tr.corners.filter((b) => b.side === side || b.side === "both").forEach((b) => c.appendChild(svg("rect", { class: "fr-bar " + (side === "left" ? "same" : "faint"), x: x(b.start_s) - 2, y: yy + 5, width: Math.max(5, x(b.end_s) - x(b.start_s) + 4), height: LANE - 12, rx: 2 },
+          svg("title", null, (b.side === "both" ? "Both corners together" : label + " only") + ": " + num(b.start_s, 2) + " to " + num(b.end_s, 2) + " s, " + num(b.peak_mm, 1) + " mm above the usual level"))));
+      });
+      ly += LANE * 2;
+      c.appendChild(svg("text", { class: "lane", x: L - 8, y: ly + 17, "text-anchor": "end" }, "Any region"));
+      tr.twitches.forEach((b) => c.appendChild(svg("rect", { class: "fr-bar code", x: x(b.start_s) - 2, y: ly + 5, width: Math.max(5, x(b.end_s) - x(b.start_s) + 4), height: LANE - 12, rx: 2 },
         svg("title", null, words(b.region) + ": " + num(b.start_s, 2) + " to " + num(b.end_s, 2) + " s, " + num(b.peak_mm, 1) + " mm above its usual level"))));
       chart = c;
       legend = el("ul", { class: "legend" },
-        el("li", null, el("span", { class: "fr-key same" }), "left mouth corner; and each brief movement found by code, in any region"),
-        el("li", null, el("span", { class: "fr-key faint" }), "right mouth corner"));
+        el("li", null, el("span", { class: "fr-key same" }), "left mouth corner: the line, and its brief movements"),
+        el("li", null, el("span", { class: "fr-key faint" }), "right mouth corner: the line, and its brief movements"),
+        el("li", null, el("span", { class: "fr-key code" }), "brief movements found by code in any region"));
     }
     const load = tr ? null : el("button", { type: "button", class: "btn btn-small", disabled: S.ffBusy ? "disabled" : null, on: { click: async () => {
       S.ffBusy = true; render();
       try {
         const r = await api("GET", "/v1/clinic/patients/" + encodeURIComponent(S.route.pid) + "/activities/" + encodeURIComponent(cur.id) + "/face-fine");
-        const st = r.stream, li = st.regions.indexOf("mouth_left"), ri = st.regions.indexOf("mouth_right"), t = [], left = [], right = [];
+        const st = r.stream, pair = (r.mouth_corners && r.mouth_corners.regions) || ["mouth_left", "mouth_right"];
+        const li = st.regions.indexOf(pair[0]), ri = st.regions.indexOf(pair[1]), t = [], left = [], right = [];
         // Every third frame at most, carrying the largest value, so a brief movement is not thinned away.
         const k = Math.max(1, Math.round(st.rate_hz / 15));
         for (let i = 0; i < st.samples.length; i += k) {
@@ -1371,7 +1386,7 @@
           for (let j = i; j < Math.min(st.samples.length, i + k); j++) { a = Math.max(a, st.samples[j][li]); b = Math.max(b, st.samples[j][ri]); }
           t.push(i / st.rate_hz); left.push(a); right.push(b);
         }
-        S.ffTrace = { id: cur.id, t, left, right, dur: st.samples.length / st.rate_hz, twitches: r.twitches || [] };
+        S.ffTrace = { id: cur.id, t, left, right, dur: st.samples.length / st.rate_hz, twitches: r.twitches || [], corners: (r.mouth_corners && r.mouth_corners.events) || [] };
       } catch (e) { flash(e.message); }
       S.ffBusy = false; render();
     } } }, S.ffBusy ? "Loading…" : "Show the movement trace (the download is written to the audit log)");
@@ -1379,10 +1394,10 @@
     const rows = Object.keys(reg).filter((k) => reg[k]).map((k) => el("tr", null, el("td", null, words(k)),
       el("td", { class: "r num" }, num(reg[k].level_mm, 2)), el("td", { class: "r num" }, num(reg[k].reach_mm, 2)),
       el("td", { class: "r num" }, num(reg[k].speed_mm_s, 1)), el("td", { class: "r num" }, num(reg[k].twitches_per_min, 1))));
-    return panel("Fine facial movement (research)", null, pick, head, tiles, chart, legend, load,
+    return panel("Fine facial movement (research)", null, pick, head, tiles, mcLine, chart, legend, load,
       el("details", { class: "more" }, el("summary", null, "Every region in this session"), table(["Region", { t: "Rests at, mm", r: 1 }, { t: "Reach, mm", r: 1 }, { t: "Top speed, mm/s", r: 1 }, { t: "Brief movements / min", r: 1 }], rows)),
       el("p", { class: "muted fr-note" }, "The phone turns the face mesh into one number per region and frame: millimetres from this person's own resting shape. No picture, mesh or coordinate leaves the phone (" + words(f.source || "mesh") + ", " + num(f.frames) + " frames at " + f.rate_hz + " a second" + (f.noise_mm !== null && f.noise_mm !== undefined ? ", noise " + num(f.noise_mm, 2) + " mm" : "") + "). " +
-        "This is an experiment. Nobody has shown that these numbers say anything about how a person is, so no flag, level or model reading uses them, and “own usual” is only the middle of this person's earlier sessions. The rule for a brief movement is a first guess, not set on recordings of people."));
+        "This is an experiment. Nobody has shown that these numbers say anything about how a person is, so no flag, level or model reading uses them, and “own usual” is only the middle of this person's earlier sessions. One session can be half the usual or less by chance alone: in our simulation that happened in one session out of five for a person who had not changed. The rule for a brief movement is a first guess, not set on recordings of people."));
   }
 
   // ---- activity

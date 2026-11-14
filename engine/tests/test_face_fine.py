@@ -243,7 +243,7 @@ def test_the_example_person_has_generated_fine_movement_and_code_marks_it(env):
     pid = seed_frames.create(env.store, c, "Europe/Helsinki", NOW)
     C = env.C()
     sessions = env.client.get(f"/v1/clinic/patients/{pid}", headers=C).json()["activities"]["focus"]["sessions"]
-    assert len(sessions) == 6 and all(s["fine"]["regions"] == 12 and s["example"] for s in sessions)
+    assert len(sessions) == 6 and all(s["fine"]["regions"] == 14 and s["example"] for s in sessions)
     assert sessions[-1]["fine"]["values"]["reach_mm"] < sessions[-1]["fine"]["usual"]["reach_mm"]
     got = env.client.get(f"/v1/clinic/patients/{pid}/activities/{seed_frames.session_ids()[0]}/face-fine",
                          headers=C).json()
@@ -267,3 +267,47 @@ def test_a_partly_tracked_or_noisy_session_counts_toward_the_own_usual_with_its_
     assert [f["counts"] for f in mine] == [True, True, True, True]
     assert all(f["values"] for f in mine)                      # each one is still shown
     assert mine[3]["earlier"] - mine[0]["earlier"] == 3        # all three before it count
+
+# ---- brief movements of the mouth corners ---------------------------------------------------
+
+CORNER = ["mouth_left", "mouth_right", "mouth_corner_left", "mouth_corner_right",
+          "cheek_left", "cheek_right", "brow_left", "brow_right"]
+
+
+def test_mouth_corner_movements_are_named_by_side():
+    # corner left alone at 5 s, corner right alone at 12 s, both corners together at 20 s
+    fine = make_fine(regions=CORNER, twitches=[(2, 5, 1.5), (3, 12, 1.2), (2, 20, 1.4), (3, 20.03, 1.1)])
+    mc = face_fine.mouth_corners(fine)
+    assert mc["regions"] == ["mouth_corner_left", "mouth_corner_right"]
+    assert [e["side"] for e in mc["events"]] == ["left", "right", "both"] and mc["whole_face_dropped"] == 0
+    assert abs(mc["events"][0]["start_s"] - 5) < 0.05 and mc["events"][2]["peak_mm"] > 1.2
+    s = face_fine.summarize(fine)["mouth_corners"]
+    assert (s["left"], s["right"], s["both"], s["per_min"]) == (1, 1, 1, 4.0)
+
+
+def test_a_jolt_of_the_whole_face_is_not_a_mouth_corner_movement():
+    jolt = [(j, 15, 1.3) for j in range(len(CORNER))]            # every region at once
+    fine = make_fine(regions=CORNER, twitches=[(2, 5, 1.5)] + jolt)
+    mc = face_fine.mouth_corners(fine)
+    assert [e["side"] for e in mc["events"]] == ["left"] and mc["whole_face_dropped"] == 1
+    # One other region moving at the same moment is not the whole face.
+    fine = make_fine(regions=CORNER, twitches=[(2, 5, 1.5), (6, 5, 1.5)])
+    assert len(face_fine.mouth_corners(fine)["events"]) == 1
+
+
+def test_without_corner_regions_the_mouth_halves_are_used_and_slow_smiles_are_not_counted():
+    fine = make_fine(twitches=[(0, 5, 1.5)], smile=(20, 5, 3.0, 2.5))
+    mc = face_fine.mouth_corners(fine)
+    assert mc["regions"] == ["mouth_left", "mouth_right"]
+    assert [e["side"] for e in mc["events"]] == ["left"]
+
+
+def test_corner_regions_pass_the_api_and_reach_the_page(env):
+    fine = make_fine(regions=CORNER, twitches=[(2, 5, 1.5), (3, 12, 1.2)])
+    assert post(env, focus_fine("act-fine-corner-1", fine)).status_code == 200
+    C, pid = env.C(), env.demo["patient_id"]
+    got = env.client.get(f"/v1/clinic/patients/{pid}/activities/act-fine-corner-1/face-fine", headers=C).json()
+    assert [e["side"] for e in got["mouth_corners"]["events"]] == ["left", "right"]
+    sessions = env.client.get(f"/v1/clinic/patients/{pid}", headers=C).json()["activities"]["focus"]["sessions"]
+    mine = [x for x in sessions if x["id"] == "act-fine-corner-1"][0]
+    assert mine["fine"]["mouth_corners"]["left"] == 1 and mine["fine"]["mouth_corners"]["right"] == 1

@@ -7,6 +7,7 @@ Outputs of `python -m clinic_engine.triage_check` (40 generated cases, read by t
 | `triage-check-2026-11-14.json` | The afternoon run, with the instruction the local model had until the evening. |
 | `triage-check-2026-11-14-evening.json` | The evening run, with the instruction that is live now. Its numbers are the ones quoted in the submission, the pitch and the mind page: 0 of 107 flags lower when the case got worse, 33 of 88 higher, 12 of 107 lowered against the fixed rules, 7 of 107 different on a second read, Gemini agreeing in 369 of 372 readings, the clinic rule applied in 20 of 20. |
 | `triage-check-2026-11-14-rejected-rewrite.json` | The same check on a larger rewrite of the instruction that we did not keep: all cases were read and the clinic rule was applied, but only 9 of 88 flags went higher when the case got worse, against 33 with the instruction we kept. |
+| `fine-check-2026-11-14.json` | `python -m clinic_engine.fine_check`: the fine facial movement rule on generated streams (how small a movement it finds at each noise, how many sessions it takes to see a change in a count). No face was recorded. Written up in `docs/research-proposal.md`. |
 | `clinic_rule_probe.py` | The probe that found the fault: one generated person with a movement drop and six open flags, one clinic rule, the real local model, a memory store. Run from `engine/` with `PYTHONPATH=.`. |
 
 ## The clinic-rule fault and its fix (evening of 14 November)

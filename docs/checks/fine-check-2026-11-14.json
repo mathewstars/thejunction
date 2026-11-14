@@ -1,0 +1,971 @@
+{
+ "generated_only": true,
+ "rules_version": 2,
+ "runs": 400,
+ "rate_hz": 30,
+ "seconds": 45,
+ "size_against_noise": [
+  {
+   "noise_mm": 0.05,
+   "size_mm": 0.3,
+   "planted": 2400,
+   "found_share": 0.0,
+   "misplaced_per_planted": 0.0
+  },
+  {
+   "noise_mm": 0.05,
+   "size_mm": 0.5,
+   "planted": 2400,
+   "found_share": 0.099,
+   "misplaced_per_planted": 0.07
+  },
+  {
+   "noise_mm": 0.05,
+   "size_mm": 0.75,
+   "planted": 2400,
+   "found_share": 0.984,
+   "misplaced_per_planted": 0.0
+  },
+  {
+   "noise_mm": 0.05,
+   "size_mm": 1.0,
+   "planted": 2400,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.0
+  },
+  {
+   "noise_mm": 0.05,
+   "size_mm": 1.5,
+   "planted": 2400,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.0
+  },
+  {
+   "noise_mm": 0.05,
+   "size_mm": 2.0,
+   "planted": 2400,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.0
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 0.3,
+   "planted": 2400,
+   "found_share": 0.0,
+   "misplaced_per_planted": 0.0
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 0.5,
+   "planted": 2400,
+   "found_share": 0.227,
+   "misplaced_per_planted": 0.062
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 0.75,
+   "planted": 2400,
+   "found_share": 0.974,
+   "misplaced_per_planted": 0.0
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 1.0,
+   "planted": 2400,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.0
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 1.5,
+   "planted": 2400,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.0
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 2.0,
+   "planted": 2400,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.0
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 0.3,
+   "planted": 2400,
+   "found_share": 0.004,
+   "misplaced_per_planted": 0.005
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 0.5,
+   "planted": 2400,
+   "found_share": 0.113,
+   "misplaced_per_planted": 0.053
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 0.75,
+   "planted": 2400,
+   "found_share": 0.707,
+   "misplaced_per_planted": 0.043
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 1.0,
+   "planted": 2400,
+   "found_share": 0.973,
+   "misplaced_per_planted": 0.003
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 1.5,
+   "planted": 2400,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.002
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 2.0,
+   "planted": 2400,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.003
+  },
+  {
+   "noise_mm": 0.3,
+   "size_mm": 0.3,
+   "planted": 2400,
+   "found_share": 0.0,
+   "misplaced_per_planted": 0.005
+  },
+  {
+   "noise_mm": 0.3,
+   "size_mm": 0.5,
+   "planted": 2400,
+   "found_share": 0.007,
+   "misplaced_per_planted": 0.01
+  },
+  {
+   "noise_mm": 0.3,
+   "size_mm": 0.75,
+   "planted": 2400,
+   "found_share": 0.108,
+   "misplaced_per_planted": 0.046
+  },
+  {
+   "noise_mm": 0.3,
+   "size_mm": 1.0,
+   "planted": 2400,
+   "found_share": 0.525,
+   "misplaced_per_planted": 0.065
+  },
+  {
+   "noise_mm": 0.3,
+   "size_mm": 1.5,
+   "planted": 2400,
+   "found_share": 0.975,
+   "misplaced_per_planted": 0.003
+  },
+  {
+   "noise_mm": 0.3,
+   "size_mm": 2.0,
+   "planted": 2400,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.003
+  },
+  {
+   "noise_mm": 0.5,
+   "size_mm": 0.3,
+   "planted": 2400,
+   "found_share": 0.0,
+   "misplaced_per_planted": 0.003
+  },
+  {
+   "noise_mm": 0.5,
+   "size_mm": 0.5,
+   "planted": 2400,
+   "found_share": 0.001,
+   "misplaced_per_planted": 0.002
+  },
+  {
+   "noise_mm": 0.5,
+   "size_mm": 0.75,
+   "planted": 2400,
+   "found_share": 0.005,
+   "misplaced_per_planted": 0.008
+  },
+  {
+   "noise_mm": 0.5,
+   "size_mm": 1.0,
+   "planted": 2400,
+   "found_share": 0.026,
+   "misplaced_per_planted": 0.022
+  },
+  {
+   "noise_mm": 0.5,
+   "size_mm": 1.5,
+   "planted": 2400,
+   "found_share": 0.309,
+   "misplaced_per_planted": 0.076
+  },
+  {
+   "noise_mm": 0.5,
+   "size_mm": 2.0,
+   "planted": 2400,
+   "found_share": 0.815,
+   "misplaced_per_planted": 0.024
+  },
+  {
+   "noise_mm": 1.0,
+   "size_mm": 2.0,
+   "planted": 2400,
+   "found_share": 0.031,
+   "misplaced_per_planted": 0.02
+  },
+  {
+   "noise_mm": 1.0,
+   "size_mm": 3.0,
+   "planted": 2400,
+   "found_share": 0.309,
+   "misplaced_per_planted": 0.077
+  },
+  {
+   "noise_mm": 1.0,
+   "size_mm": 4.0,
+   "planted": 2400,
+   "found_share": 0.825,
+   "misplaced_per_planted": 0.023
+  },
+  {
+   "noise_mm": 1.0,
+   "size_mm": 5.0,
+   "planted": 2400,
+   "found_share": 0.98,
+   "misplaced_per_planted": 0.003
+  }
+ ],
+ "shape": [
+  {
+   "noise_mm": 0.1,
+   "size_mm": 0.75,
+   "planted": 1200,
+   "found_share": 0.002,
+   "misplaced_per_planted": 0.0,
+   "frames": 3,
+   "seconds": 0.1
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 0.75,
+   "planted": 1200,
+   "found_share": 0.677,
+   "misplaced_per_planted": 0.0,
+   "frames": 5,
+   "seconds": 0.17
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 0.75,
+   "planted": 1200,
+   "found_share": 0.887,
+   "misplaced_per_planted": 0.087,
+   "frames": 7,
+   "seconds": 0.23
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 0.75,
+   "planted": 1200,
+   "found_share": 0.924,
+   "misplaced_per_planted": 0.066,
+   "frames": 9,
+   "seconds": 0.3
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 1.0,
+   "planted": 1200,
+   "found_share": 0.011,
+   "misplaced_per_planted": 0.0,
+   "frames": 3,
+   "seconds": 0.1
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 1.0,
+   "planted": 1200,
+   "found_share": 0.998,
+   "misplaced_per_planted": 0.0,
+   "frames": 5,
+   "seconds": 0.17
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 1.0,
+   "planted": 1200,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.0,
+   "frames": 7,
+   "seconds": 0.23
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 1.0,
+   "planted": 1200,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.0,
+   "frames": 9,
+   "seconds": 0.3
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 2.0,
+   "planted": 1200,
+   "found_share": 0.725,
+   "misplaced_per_planted": 0.0,
+   "frames": 3,
+   "seconds": 0.1
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 2.0,
+   "planted": 1200,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.0,
+   "frames": 5,
+   "seconds": 0.17
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 2.0,
+   "planted": 1200,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.0,
+   "frames": 7,
+   "seconds": 0.23
+  },
+  {
+   "noise_mm": 0.1,
+   "size_mm": 2.0,
+   "planted": 1200,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.0,
+   "frames": 9,
+   "seconds": 0.3
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 1.0,
+   "planted": 1200,
+   "found_share": 0.068,
+   "misplaced_per_planted": 0.002,
+   "frames": 3,
+   "seconds": 0.1
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 1.0,
+   "planted": 1200,
+   "found_share": 0.818,
+   "misplaced_per_planted": 0.003,
+   "frames": 5,
+   "seconds": 0.17
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 1.0,
+   "planted": 1200,
+   "found_share": 0.886,
+   "misplaced_per_planted": 0.065,
+   "frames": 7,
+   "seconds": 0.23
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 1.0,
+   "planted": 1200,
+   "found_share": 0.933,
+   "misplaced_per_planted": 0.049,
+   "frames": 9,
+   "seconds": 0.3
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 2.0,
+   "planted": 1200,
+   "found_share": 0.517,
+   "misplaced_per_planted": 0.003,
+   "frames": 3,
+   "seconds": 0.1
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 2.0,
+   "planted": 1200,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.001,
+   "frames": 5,
+   "seconds": 0.17
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 2.0,
+   "planted": 1200,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.004,
+   "frames": 7,
+   "seconds": 0.23
+  },
+  {
+   "noise_mm": 0.2,
+   "size_mm": 2.0,
+   "planted": 1200,
+   "found_share": 1.0,
+   "misplaced_per_planted": 0.003,
+   "frames": 9,
+   "seconds": 0.3
+  }
+ ],
+ "from_noise": [
+  {
+   "noise": "independent, size told exactly",
+   "noise_mm": 0.05,
+   "stated_mm": 0.05,
+   "per_session_of_twelve_regions": 0.0
+  },
+  {
+   "noise": "independent, size told exactly",
+   "noise_mm": 0.1,
+   "stated_mm": 0.1,
+   "per_session_of_twelve_regions": 0.0
+  },
+  {
+   "noise": "independent, size told exactly",
+   "noise_mm": 0.2,
+   "stated_mm": 0.2,
+   "per_session_of_twelve_regions": 0.04
+  },
+  {
+   "noise": "independent, size told exactly",
+   "noise_mm": 0.3,
+   "stated_mm": 0.3,
+   "per_session_of_twelve_regions": 0.03
+  },
+  {
+   "noise": "independent, size told exactly",
+   "noise_mm": 0.5,
+   "stated_mm": 0.5,
+   "per_session_of_twelve_regions": 0.03
+  },
+  {
+   "noise": "smooth from frame to frame (0.7), size told exactly",
+   "noise_mm": 0.1,
+   "stated_mm": 0.1,
+   "per_session_of_twelve_regions": 0.0
+  },
+  {
+   "noise": "smooth from frame to frame (0.7), size told exactly",
+   "noise_mm": 0.2,
+   "stated_mm": 0.2,
+   "per_session_of_twelve_regions": 2.63
+  },
+  {
+   "noise": "smooth from frame to frame (0.7), size told exactly",
+   "noise_mm": 0.3,
+   "stated_mm": 0.3,
+   "per_session_of_twelve_regions": 3.02
+  },
+  {
+   "noise": "smooth from frame to frame (0.9), size told exactly",
+   "noise_mm": 0.2,
+   "stated_mm": 0.2,
+   "per_session_of_twelve_regions": 3.4
+  },
+  {
+   "noise": "independent, told two thirds of its size",
+   "noise_mm": 0.3,
+   "stated_mm": 0.2,
+   "per_session_of_twelve_regions": 7.46
+  },
+  {
+   "noise": "independent, told half its size",
+   "noise_mm": 0.3,
+   "stated_mm": 0.15,
+   "per_session_of_twelve_regions": 33.34
+  },
+  {
+   "noise": "independent, nothing told (the rule then assumes 0.3)",
+   "noise_mm": 0.5,
+   "stated_mm": 0.3,
+   "per_session_of_twelve_regions": 19.93
+  }
+ ],
+ "counts": {
+  "one_session_half_or_less": [
+   {
+    "rate_varies": false,
+    "per_session": 2.0,
+    "earlier_sessions": 3,
+    "unchanged_person": 0.335,
+    "rate_truly_halved": 0.621
+   },
+   {
+    "rate_varies": false,
+    "per_session": 2.0,
+    "earlier_sessions": 5,
+    "unchanged_person": 0.322,
+    "rate_truly_halved": 0.626
+   },
+   {
+    "rate_varies": false,
+    "per_session": 4.0,
+    "earlier_sessions": 3,
+    "unchanged_person": 0.2,
+    "rate_truly_halved": 0.584
+   },
+   {
+    "rate_varies": false,
+    "per_session": 4.0,
+    "earlier_sessions": 5,
+    "unchanged_person": 0.2,
+    "rate_truly_halved": 0.584
+   },
+   {
+    "rate_varies": false,
+    "per_session": 8.0,
+    "earlier_sessions": 3,
+    "unchanged_person": 0.096,
+    "rate_truly_halved": 0.562
+   },
+   {
+    "rate_varies": false,
+    "per_session": 8.0,
+    "earlier_sessions": 5,
+    "unchanged_person": 0.092,
+    "rate_truly_halved": 0.555
+   },
+   {
+    "rate_varies": false,
+    "per_session": 16.0,
+    "earlier_sessions": 3,
+    "unchanged_person": 0.024,
+    "rate_truly_halved": 0.542
+   },
+   {
+    "rate_varies": false,
+    "per_session": 16.0,
+    "earlier_sessions": 5,
+    "unchanged_person": 0.023,
+    "rate_truly_halved": 0.55
+   },
+   {
+    "rate_varies": true,
+    "per_session": 2.0,
+    "earlier_sessions": 3,
+    "unchanged_person": 0.394,
+    "rate_truly_halved": 0.628
+   },
+   {
+    "rate_varies": true,
+    "per_session": 2.0,
+    "earlier_sessions": 5,
+    "unchanged_person": 0.387,
+    "rate_truly_halved": 0.612
+   },
+   {
+    "rate_varies": true,
+    "per_session": 4.0,
+    "earlier_sessions": 3,
+    "unchanged_person": 0.309,
+    "rate_truly_halved": 0.576
+   },
+   {
+    "rate_varies": true,
+    "per_session": 4.0,
+    "earlier_sessions": 5,
+    "unchanged_person": 0.3,
+    "rate_truly_halved": 0.569
+   },
+   {
+    "rate_varies": true,
+    "per_session": 8.0,
+    "earlier_sessions": 3,
+    "unchanged_person": 0.248,
+    "rate_truly_halved": 0.549
+   },
+   {
+    "rate_varies": true,
+    "per_session": 8.0,
+    "earlier_sessions": 5,
+    "unchanged_person": 0.246,
+    "rate_truly_halved": 0.549
+   },
+   {
+    "rate_varies": true,
+    "per_session": 16.0,
+    "earlier_sessions": 3,
+    "unchanged_person": 0.22,
+    "rate_truly_halved": 0.526
+   },
+   {
+    "rate_varies": true,
+    "per_session": 16.0,
+    "earlier_sessions": 5,
+    "unchanged_person": 0.212,
+    "rate_truly_halved": 0.524
+   }
+  ],
+  "sessions_to_see_a_halving": [
+   {
+    "rate_varies": false,
+    "per_session": 2.0,
+    "sessions_each_side": 3,
+    "seen_when_halved": 0.159,
+    "seen_when_halved_looking_both_ways": 0.093,
+    "said_when_unchanged": 0.031
+   },
+   {
+    "rate_varies": false,
+    "per_session": 2.0,
+    "sessions_each_side": 5,
+    "seen_when_halved": 0.27,
+    "seen_when_halved_looking_both_ways": 0.169,
+    "said_when_unchanged": 0.03
+   },
+   {
+    "rate_varies": false,
+    "per_session": 2.0,
+    "sessions_each_side": 10,
+    "seen_when_halved": 0.513,
+    "seen_when_halved_looking_both_ways": 0.372,
+    "said_when_unchanged": 0.035
+   },
+   {
+    "rate_varies": false,
+    "per_session": 2.0,
+    "sessions_each_side": 20,
+    "seen_when_halved": 0.804,
+    "seen_when_halved_looking_both_ways": 0.708,
+    "said_when_unchanged": 0.042
+   },
+   {
+    "rate_varies": false,
+    "per_session": 2.0,
+    "sessions_each_side": 40,
+    "seen_when_halved": 0.977,
+    "seen_when_halved_looking_both_ways": 0.95,
+    "said_when_unchanged": 0.04
+   },
+   {
+    "rate_varies": false,
+    "per_session": 4.0,
+    "sessions_each_side": 3,
+    "seen_when_halved": 0.327,
+    "seen_when_halved_looking_both_ways": 0.213,
+    "said_when_unchanged": 0.036
+   },
+   {
+    "rate_varies": false,
+    "per_session": 4.0,
+    "sessions_each_side": 5,
+    "seen_when_halved": 0.498,
+    "seen_when_halved_looking_both_ways": 0.367,
+    "said_when_unchanged": 0.04
+   },
+   {
+    "rate_varies": false,
+    "per_session": 4.0,
+    "sessions_each_side": 10,
+    "seen_when_halved": 0.81,
+    "seen_when_halved_looking_both_ways": 0.708,
+    "said_when_unchanged": 0.036
+   },
+   {
+    "rate_varies": false,
+    "per_session": 4.0,
+    "sessions_each_side": 20,
+    "seen_when_halved": 0.979,
+    "seen_when_halved_looking_both_ways": 0.954,
+    "said_when_unchanged": 0.042
+   },
+   {
+    "rate_varies": false,
+    "per_session": 4.0,
+    "sessions_each_side": 40,
+    "seen_when_halved": 1.0,
+    "seen_when_halved_looking_both_ways": 1.0,
+    "said_when_unchanged": 0.046
+   },
+   {
+    "rate_varies": false,
+    "per_session": 8.0,
+    "sessions_each_side": 3,
+    "seen_when_halved": 0.593,
+    "seen_when_halved_looking_both_ways": 0.46,
+    "said_when_unchanged": 0.035
+   },
+   {
+    "rate_varies": false,
+    "per_session": 8.0,
+    "sessions_each_side": 5,
+    "seen_when_halved": 0.809,
+    "seen_when_halved_looking_both_ways": 0.713,
+    "said_when_unchanged": 0.035
+   },
+   {
+    "rate_varies": false,
+    "per_session": 8.0,
+    "sessions_each_side": 10,
+    "seen_when_halved": 0.974,
+    "seen_when_halved_looking_both_ways": 0.95,
+    "said_when_unchanged": 0.037
+   },
+   {
+    "rate_varies": false,
+    "per_session": 8.0,
+    "sessions_each_side": 20,
+    "seen_when_halved": 1.0,
+    "seen_when_halved_looking_both_ways": 1.0,
+    "said_when_unchanged": 0.051
+   },
+   {
+    "rate_varies": false,
+    "per_session": 8.0,
+    "sessions_each_side": 40,
+    "seen_when_halved": 1.0,
+    "seen_when_halved_looking_both_ways": 1.0,
+    "said_when_unchanged": 0.047
+   },
+   {
+    "rate_varies": false,
+    "per_session": 16.0,
+    "sessions_each_side": 3,
+    "seen_when_halved": 0.855,
+    "seen_when_halved_looking_both_ways": 0.777,
+    "said_when_unchanged": 0.045
+   },
+   {
+    "rate_varies": false,
+    "per_session": 16.0,
+    "sessions_each_side": 5,
+    "seen_when_halved": 0.978,
+    "seen_when_halved_looking_both_ways": 0.953,
+    "said_when_unchanged": 0.043
+   },
+   {
+    "rate_varies": false,
+    "per_session": 16.0,
+    "sessions_each_side": 10,
+    "seen_when_halved": 1.0,
+    "seen_when_halved_looking_both_ways": 0.999,
+    "said_when_unchanged": 0.045
+   },
+   {
+    "rate_varies": false,
+    "per_session": 16.0,
+    "sessions_each_side": 20,
+    "seen_when_halved": 1.0,
+    "seen_when_halved_looking_both_ways": 1.0,
+    "said_when_unchanged": 0.042
+   },
+   {
+    "rate_varies": false,
+    "per_session": 16.0,
+    "sessions_each_side": 40,
+    "seen_when_halved": 1.0,
+    "seen_when_halved_looking_both_ways": 1.0,
+    "said_when_unchanged": 0.052
+   },
+   {
+    "rate_varies": true,
+    "per_session": 2.0,
+    "sessions_each_side": 3,
+    "seen_when_halved": 0.195,
+    "seen_when_halved_looking_both_ways": 0.132,
+    "said_when_unchanged": 0.063
+   },
+   {
+    "rate_varies": true,
+    "per_session": 2.0,
+    "sessions_each_side": 5,
+    "seen_when_halved": 0.294,
+    "seen_when_halved_looking_both_ways": 0.21,
+    "said_when_unchanged": 0.069
+   },
+   {
+    "rate_varies": true,
+    "per_session": 2.0,
+    "sessions_each_side": 10,
+    "seen_when_halved": 0.497,
+    "seen_when_halved_looking_both_ways": 0.391,
+    "said_when_unchanged": 0.083
+   },
+   {
+    "rate_varies": true,
+    "per_session": 2.0,
+    "sessions_each_side": 20,
+    "seen_when_halved": 0.76,
+    "seen_when_halved_looking_both_ways": 0.669,
+    "said_when_unchanged": 0.08
+   },
+   {
+    "rate_varies": true,
+    "per_session": 2.0,
+    "sessions_each_side": 40,
+    "seen_when_halved": 0.948,
+    "seen_when_halved_looking_both_ways": 0.912,
+    "said_when_unchanged": 0.096
+   },
+   {
+    "rate_varies": true,
+    "per_session": 4.0,
+    "sessions_each_side": 3,
+    "seen_when_halved": 0.376,
+    "seen_when_halved_looking_both_ways": 0.293,
+    "said_when_unchanged": 0.117
+   },
+   {
+    "rate_varies": true,
+    "per_session": 4.0,
+    "sessions_each_side": 5,
+    "seen_when_halved": 0.49,
+    "seen_when_halved_looking_both_ways": 0.394,
+    "said_when_unchanged": 0.115
+   },
+   {
+    "rate_varies": true,
+    "per_session": 4.0,
+    "sessions_each_side": 10,
+    "seen_when_halved": 0.72,
+    "seen_when_halved_looking_both_ways": 0.644,
+    "said_when_unchanged": 0.117
+   },
+   {
+    "rate_varies": true,
+    "per_session": 4.0,
+    "sessions_each_side": 20,
+    "seen_when_halved": 0.924,
+    "seen_when_halved_looking_both_ways": 0.883,
+    "said_when_unchanged": 0.127
+   },
+   {
+    "rate_varies": true,
+    "per_session": 4.0,
+    "sessions_each_side": 40,
+    "seen_when_halved": 0.993,
+    "seen_when_halved_looking_both_ways": 0.987,
+    "said_when_unchanged": 0.132
+   },
+   {
+    "rate_varies": true,
+    "per_session": 8.0,
+    "sessions_each_side": 3,
+    "seen_when_halved": 0.544,
+    "seen_when_halved_looking_both_ways": 0.477,
+    "said_when_unchanged": 0.175
+   },
+   {
+    "rate_varies": true,
+    "per_session": 8.0,
+    "sessions_each_side": 5,
+    "seen_when_halved": 0.685,
+    "seen_when_halved_looking_both_ways": 0.621,
+    "said_when_unchanged": 0.184
+   },
+   {
+    "rate_varies": true,
+    "per_session": 8.0,
+    "sessions_each_side": 10,
+    "seen_when_halved": 0.873,
+    "seen_when_halved_looking_both_ways": 0.828,
+    "said_when_unchanged": 0.193
+   },
+   {
+    "rate_varies": true,
+    "per_session": 8.0,
+    "sessions_each_side": 20,
+    "seen_when_halved": 0.975,
+    "seen_when_halved_looking_both_ways": 0.963,
+    "said_when_unchanged": 0.182
+   },
+   {
+    "rate_varies": true,
+    "per_session": 8.0,
+    "sessions_each_side": 40,
+    "seen_when_halved": 1.0,
+    "seen_when_halved_looking_both_ways": 0.998,
+    "said_when_unchanged": 0.177
+   },
+   {
+    "rate_varies": true,
+    "per_session": 16.0,
+    "sessions_each_side": 3,
+    "seen_when_halved": 0.678,
+    "seen_when_halved_looking_both_ways": 0.64,
+    "said_when_unchanged": 0.238
+   },
+   {
+    "rate_varies": true,
+    "per_session": 16.0,
+    "sessions_each_side": 5,
+    "seen_when_halved": 0.807,
+    "seen_when_halved_looking_both_ways": 0.767,
+    "said_when_unchanged": 0.245
+   },
+   {
+    "rate_varies": true,
+    "per_session": 16.0,
+    "sessions_each_side": 10,
+    "seen_when_halved": 0.942,
+    "seen_when_halved_looking_both_ways": 0.927,
+    "said_when_unchanged": 0.249
+   },
+   {
+    "rate_varies": true,
+    "per_session": 16.0,
+    "sessions_each_side": 20,
+    "seen_when_halved": 0.993,
+    "seen_when_halved_looking_both_ways": 0.991,
+    "said_when_unchanged": 0.242
+   },
+   {
+    "rate_varies": true,
+    "per_session": 16.0,
+    "sessions_each_side": 40,
+    "seen_when_halved": 1.0,
+    "seen_when_halved_looking_both_ways": 1.0,
+    "said_when_unchanged": 0.261
+   }
+  ]
+ },
+ "hard_kinds": {
+  "clean": {
+   "sessions": 40,
+   "planted": 196,
+   "found": 196,
+   "missed": 0,
+   "extra": 0
+  },
+  "expression": {
+   "sessions": 5,
+   "planted": 28,
+   "found": 28,
+   "missed": 0,
+   "extra": 0
+  },
+  "step": {
+   "sessions": 5,
+   "planted": 28,
+   "found": 19,
+   "missed": 9,
+   "extra": 0
+  },
+  "noisy": {
+   "sessions": 5,
+   "planted": 28,
+   "found": 28,
+   "missed": 0,
+   "extra": 0
+  }
+ }
+}

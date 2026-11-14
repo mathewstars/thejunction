@@ -280,7 +280,7 @@ final class FaceFineTests: XCTestCase {
         let names = Set(text[open.upperBound..<close.lowerBound]
             .split(whereSeparator: { $0 == " " || $0 == "\n" }).map(String.init))
         XCTAssertEqual(Set(FaceFineRecorder.boxes.map(\.name)), names)
-        XCTAssertEqual(names.count, 12)
+        XCTAssertEqual(names.count, 14)
     }
 
     func testEveryRegionCatchesVerticesAndLeftIsThePersonsLeft() {
@@ -301,10 +301,10 @@ final class FaceFineTests: XCTestCase {
         XCTAssertEqual(fine.source, "mesh")
         XCTAssertEqual(fine.rateHz, 30)
         XCTAssertEqual(fine.samples.count, 90)
-        XCTAssertEqual(fine.regions.count, 12)
+        XCTAssertEqual(fine.regions.count, 14)
         XCTAssertNil(fine.tracked)
         XCTAssertEqual(fine.noiseMm, 0)
-        XCTAssert(fine.samples.allSatisfy { $0.count == 12 && $0.allSatisfy { $0 == 0 } })
+        XCTAssert(fine.samples.allSatisfy { $0.count == 14 && $0.allSatisfy { $0 == 0 } })
     }
 
     func testAMovementShowsOnItsRegionInMillimetres() throws {
@@ -317,6 +317,11 @@ final class FaceFineTests: XCTestCase {
         let r = try XCTUnwrap(fine.regions.firstIndex(of: "mouth_right"))
         XCTAssertEqual(fine.samples[62][l], 2.0, accuracy: 0.01)
         XCTAssertEqual(fine.samples[62][r], 0)
+        // The corner patch lies inside the half, so it moves with it; the other corner does not.
+        let cl = try XCTUnwrap(fine.regions.firstIndex(of: "mouth_corner_left"))
+        let cr = try XCTUnwrap(fine.regions.firstIndex(of: "mouth_corner_right"))
+        XCTAssertEqual(fine.samples[62][cl], 2.0, accuracy: 0.01)
+        XCTAssertEqual(fine.samples[62][cr], 0)
         XCTAssertEqual(fine.samples[59][l], 0)
         XCTAssertEqual(fine.samples[66][l], 0)
     }

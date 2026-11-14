@@ -97,8 +97,11 @@ def make_example(seed: int, moves: int, scale: float, seconds: int = 45, rate: i
     rest = [rng.uniform(0.15, 0.3) for _ in names]
     rows = [[max(0.0, rest[j] + rng.gauss(0, noise)) for j in range(len(names))] for _ in range(n)]
     taken: list[tuple[int, float]] = []
+    corners = [names.index("mouth_corner_left"), names.index("mouth_corner_right")]
     while len(taken) < moves:
-        j, at = rng.randrange(len(names)), rng.uniform(2, seconds - 2)
+        # Half of the brief movements are planted at a mouth corner.
+        j = rng.choice(corners) if len(taken) % 2 == 0 else rng.randrange(len(names))
+        at = rng.uniform(2, seconds - 2)
         if any(abs(at - a) < 1.0 for _, a in taken):
             continue
         taken.append((j, at))
@@ -112,7 +115,9 @@ def make_example(seed: int, moves: int, scale: float, seconds: int = 45, rate: i
         left, right = rng.uniform(2.2, 3.2) * scale, rng.uniform(2.0, 3.0) * scale
         for i in range(int(at * rate), min(n, int((at + long) * rate))):
             w = math.sin(math.pi * (i / rate - at) / long)
-            for name, size in (("mouth_left", left), ("mouth_right", right), ("cheek_left", left * 0.5),
+            for name, size in (("mouth_left", left), ("mouth_right", right),
+                               ("mouth_corner_left", left * 1.2), ("mouth_corner_right", right * 1.2),
+                               ("cheek_left", left * 0.5),
                                ("cheek_right", right * 0.5), ("lip_upper", left * 0.3)):
                 rows[i][names.index(name)] += size * w
     return {"source": "mesh", "rate_hz": rate, "regions": names, "noise_mm": round(noise, 3),
