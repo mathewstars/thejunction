@@ -16,6 +16,16 @@ final class FrameMeter: NSObject {
     private var counts: [String: Int] = [:]
     private var windowStart: CFTimeInterval = 0
 
+    private var lastMark = "start"
+    private var lastMarkAt: CFTimeInterval = 0
+
+    /// Name what just happened, so a slow frame right after it can be traced.
+    static func mark(_ what: String) {
+        guard enabled else { return }
+        shared.lastMark = what
+        shared.lastMarkAt = CACurrentMediaTime()
+    }
+
     /// Count one rebuild of a view (call from its body).
     static func count(_ name: String) {
         guard enabled else { return }
@@ -32,7 +42,13 @@ final class FrameMeter: NSObject {
 
     @objc private func tick(_ l: CADisplayLink) {
         let now = l.timestamp
-        if last > 0 { intervals.append((now - last) * 1000) }
+        if last > 0 {
+            let ms = (now - last) * 1000
+            intervals.append(ms)
+            if ms > 25 {
+                print(String(format: "lanvi-perf: slow frame %.1f ms, %.2f s after '%@'", ms, now - lastMarkAt, lastMark))
+            }
+        }
         last = now
         if windowStart == 0 { windowStart = now }
         guard now - windowStart >= 2 else { return }

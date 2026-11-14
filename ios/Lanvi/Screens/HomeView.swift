@@ -231,9 +231,10 @@ struct HomeView: View {
     private func speech(_ L: Layout) -> some View {
         let top: CGFloat = L.compact ? 64 : 80
         // Clear air above the ear tips (and the little marks) in every pose.
-        // During the reward the bubble lifts a little to make room for "+10 XP".
+        // During the reward the bubble lifts a little to make room for "+10 XP"
+        // (an offset, so nothing is laid out again while it moves).
         let lift: CGFloat = pop != nil ? 58 : 0
-        let bottom = max(away ? L.foxCenter.y - L.fox / 2 - 14 : L.foxTop - 14 - lift, top + 90)
+        let bottom = max(away ? L.foxCenter.y - L.fox / 2 - 14 : L.foxTop - 14, top + 90)
         return VStack {
             Spacer(minLength: 0)
             Button { open(.chat) } label: {
@@ -246,6 +247,7 @@ struct HomeView: View {
         .padding(.horizontal, 24)
         .frame(height: bottom - top)
         .padding(.top, top)
+        .offset(y: -lift)
         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: bubbleText)
         .opacity(arrived ? 1 : 0)
     }
@@ -383,6 +385,9 @@ struct HomeView: View {
 
     /// Eyes up to the bubble when Lanvi says something new, then back.
     private func glanceAtBubble() {
+        #if DEBUG
+        FrameMeter.mark("glance at bubble")
+        #endif
         look = UnitPoint(x: 0.5, y: -0.35)
         Task {
             try? await Task.sleep(for: .seconds(1.3))
@@ -498,22 +503,34 @@ struct HomeView: View {
     /// The reward: the growth bar slides up, Lanvi hops for joy, "+10 XP" pops,
     /// the bar fills and the day count ticks. No light effects on the fox.
     private func celebrate(_ c: HomeCelebration) {
+        #if DEBUG
+        FrameMeter.mark("reward start")
+        #endif
         celebrating = true
         if c.xpGained > 0 {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { showGrowth = true }
         }
         Task {
             try? await Task.sleep(for: .milliseconds(c.xpGained > 0 ? 350 : 150))
+            #if DEBUG
+            FrameMeter.mark("happy + pop")
+            #endif
             react(.happy)
             haptic &+= 1
             if c.xpGained > 0 {
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) { pop = c }
             }
             try? await Task.sleep(for: .seconds(2.8))
+            #if DEBUG
+            FrameMeter.mark("pop away")
+            #endif
             withAnimation(.easeOut(duration: 0.3)) { pop = nil }
             withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { showGrowth = false }
             try? await Task.sleep(for: .seconds(0.8))
             while store.grewUp != nil { try? await Task.sleep(for: .milliseconds(200)) }
+            #if DEBUG
+            FrameMeter.mark("settle")
+            #endif
             celebrating = false
             store.celebration = nil
             settle()

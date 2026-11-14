@@ -107,7 +107,6 @@ struct HomeXPPop: View {
         .padding(.vertical, 9)
         .background(Capsule().fill(.white))
         .background(Capsule().fill(Theme.line).offset(y: 4))
-        .shadow(color: Color(hex: 0x7CF5C4).opacity(0.7), radius: 16)
         .scaleEffect(up ? 1 : 0.4)
         .offset(y: up ? -46 : 0)
         .opacity(up ? 1 : 0)
