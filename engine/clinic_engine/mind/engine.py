@@ -944,9 +944,11 @@ class Mind:
             reply = await self.outreach.gemini_complete(pack)
             # Why the model stopped and its token counts (codes and counts only).
             meta = getattr(self.outreach, "last_frames_meta", None) or {}
-            sent.update({k: meta[k] for k in ("finish", "attempts", "prompt_tokens",
+            sent.update({k: meta[k] for k in ("finish", "attempts", "thinking", "prompt_tokens",
                                               "thought_tokens", "output_tokens")
                          if meta.get(k) is not None})
+            if meta.get("model"):
+                result["model"] = meta["model"] if not self.outreach.standin else result["model"]
             if reply is None:
                 result["reason"] = "no_reply"
             else:
@@ -1069,9 +1071,11 @@ class Mind:
             result["stream"] = {"first_date": first_date(days, pack.payload), **pack.payload}
             reply = await self.outreach.gemini_complete(pack)
             meta = getattr(self.outreach, "last_frames_meta", None) or {}
-            sent.update({k: meta[k] for k in ("finish", "attempts", "prompt_tokens",
+            sent.update({k: meta[k] for k in ("finish", "attempts", "thinking", "prompt_tokens",
                                               "thought_tokens", "output_tokens")
                          if meta.get(k) is not None})
+            if meta.get("model"):
+                result["model"] = meta["model"] if not self.outreach.standin else result["model"]
             if reply is None:
                 result["reason"] = "no_reply"
             else:

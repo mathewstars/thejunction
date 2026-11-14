@@ -68,7 +68,7 @@ Answer: `{"device_token": "...", "patient_id": "pat_..."}`. Keep the token in th
 
 ## 3. Send days from Apple Health
 
-`POST /v1/daily`, 1 to 400 days per call.
+`POST /v1/daily`, 1 to 400 days per call. A second app (the HealthKit harness, a watch companion) can send any HealthKit type with `POST /v1/health/summary`: see `docs/health-data.md`.
 
 ```json
 {"days": [

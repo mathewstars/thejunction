@@ -86,6 +86,10 @@ class Settings:
     gemini_frames_retry_wait_s: float = 2.0
     gemini_frames_timeout_s: float = 60.0
     gemini_days_timeout_s: float = 150.0  # the day reading thinks longer over 84 rows
+    # How much the model thinks before it answers: low (a few seconds a reading),
+    # high, or default (the model's own, about half a minute a reading).
+    gemini_thinking: str = "low"
+    gemini_fallback_model: str = ""  # used when the main model keeps failing; empty: none
 
     # Lanvi's reply to a note: fixed (a vetted line, nothing leaves the server)
     # | gemini (Gemini writes the reply for a note that did not open the help screen,
@@ -155,6 +159,8 @@ class Settings:
             gemini_frames_retry_wait_s=_env_float("GEMINI_FRAMES_RETRY_WAIT_S", 2.0),
             gemini_frames_timeout_s=_env_float("GEMINI_FRAMES_TIMEOUT_S", 60.0),
             gemini_days_timeout_s=_env_float("GEMINI_DAYS_TIMEOUT_S", 150.0),
+            gemini_thinking=_env("GEMINI_THINKING", "low").lower(),
+            gemini_fallback_model=_env("GEMINI_FALLBACK_MODEL", ""),
             chat_mode=_env("CHAT_MODE", "fixed").lower(),
             chat_model=_env("CHAT_MODEL"),
             chat_timeout_s=_env_float("CHAT_TIMEOUT_S", 4.0),

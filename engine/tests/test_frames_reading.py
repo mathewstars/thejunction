@@ -553,8 +553,9 @@ def _flaky(statuses):
 @pytest.mark.parametrize("statuses, schema_on_last", [
     ([503, 200], True),    # a busy service: once more, the same body
     ([429, 200], True),
-    ([400, 200], False),   # a model that takes no schema: once more without it
-    ([400, 503, 200], False),
+    ([400, 200], True),    # a model that takes no thinking setting: once more without it
+    ([400, 503, 200], True),
+    ([400, 400, 200], False),  # and no schema either: once more without both
 ])
 def test_the_frame_reading_call_is_tried_again(statuses, schema_on_last):
     handler, seen = _flaky(statuses)
@@ -566,6 +567,9 @@ def test_the_frame_reading_call_is_tried_again(statuses, schema_on_last):
     assert len(seen) == len(statuses)
     assert ("responseSchema" in seen[-1]["generationConfig"]) is schema_on_last
     assert all(b["contents"] == seen[0]["contents"] for b in seen)
+    # The first request asks the model to think little; after a 400 that setting is gone.
+    assert seen[0]["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "low"}
+    assert ("thinkingConfig" in seen[-1]["generationConfig"]) is (statuses[0] != 400)
 
 
 def test_an_empty_reply_out_of_tokens_is_tried_again_with_a_larger_limit_and_traced():
@@ -597,14 +601,59 @@ def test_an_empty_reply_out_of_tokens_is_tried_again_with_a_larger_limit_and_tra
     assert det["finish"] == "STOP" and det["attempts"] == 2 and det["thought_tokens"] == 15900
 
 
-def test_a_service_that_keeps_failing_gives_no_reply_after_two_tries():
-    handler, seen = _flaky([503, 503, 200])
+def test_a_service_that_keeps_failing_gives_no_reply_after_three_tries():
+    handler, seen = _flaky([503, 503, 503, 200])
     env = Env(level2=handler)
     env.repo().put("patient.json", {**env.repo().patient(), "allow_outside_processing": True})
     assert env.client.post("/v1/activities", headers=env.H, json=focus()).status_code == 200
     env.run(env.mind.idle())
     assert stored(env)["status"] == "failed" and stored(env)["reason"] == "no_reply"
-    assert len(seen) == 2
+    assert len(seen) == 3
+
+
+def test_an_empty_answer_with_little_thinking_is_asked_again_with_the_default():
+    seen = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        body = json.loads(req.content)
+        if not is_frames_body(body):
+            return httpx.Response(200, json={"candidates": [{"content": {"parts": [
+                {"text": json.dumps({"objections": []})}]}}]})
+        seen.append(body)
+        if "thinkingConfig" in body["generationConfig"]:
+            return httpx.Response(200, json={"candidates": [{"finishReason": "STOP"}]})
+        return httpx.Response(200, json={"candidates": [{"finishReason": "STOP", "content": {
+            "parts": [{"text": json.dumps(GOOD)}]}}]})
+
+    env = Env(level2=handler)
+    env.repo().put("patient.json", {**env.repo().patient(), "allow_outside_processing": True})
+    assert env.client.post("/v1/activities", headers=env.H, json=focus()).status_code == 200
+    env.run(env.mind.idle())
+    assert stored(env)["status"] == "ready" and len(seen) == 2
+    assert "thinkingConfig" not in seen[1]["generationConfig"]
+
+
+def test_a_failing_model_falls_back_to_the_second_one_when_set():
+    urls = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        body = json.loads(req.content)
+        if not is_frames_body(body):
+            return httpx.Response(200, json={"candidates": [{"content": {"parts": [
+                {"text": json.dumps({"objections": []})}]}}]})
+        urls.append(str(req.url))
+        if "/models/test-model:" in str(req.url):
+            return httpx.Response(503, json={})
+        return httpx.Response(200, json={"candidates": [{"content": {"parts": [
+            {"text": json.dumps(GOOD)}]}}]})
+
+    env = Env(level2=handler, gemini_fallback_model="second-model")
+    env.repo().put("patient.json", {**env.repo().patient(), "allow_outside_processing": True})
+    assert env.client.post("/v1/activities", headers=env.H, json=focus()).status_code == 200
+    env.run(env.mind.idle())
+    f = stored(env)
+    assert f["status"] == "ready" and f["model"] == "second-model"
+    assert ["/models/second-model:" in u for u in urls] == [False, False, True]
 
 
 # ---- the pack ---------------------------------------------------------------------------------------
