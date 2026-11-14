@@ -77,7 +77,15 @@ actor LanviClient: LanviBackend {
     }
 
     func send(_ activity: API.ActivityIn) async throws -> API.ActivityOut {
-        try await call("POST", "/v1/activities", body: activity)
+        // Revontulet's measures: a server that does not take them yet refuses the record, so
+        // it goes once more, same id, without them (and plain for the rest of this run).
+        let first = RevontuletSendGate.shared.first(activity)
+        do {
+            return try await call("POST", "/v1/activities", body: first)
+        } catch {
+            guard let plain = RevontuletSendGate.shared.retry(after: error, sent: first) else { throw error }
+            return try await call("POST", "/v1/activities", body: plain)
+        }
     }
 
     func checkinOptions() async throws -> API.CheckinOptionsOut {
