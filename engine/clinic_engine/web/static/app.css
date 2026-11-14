@@ -406,3 +406,6 @@ ul.plain.big li, .d.big { font-size: 14.5px; line-height: 1.45; }
 .bp-gap { margin-top: 16px; }
 .attlist .sub.tri { display: block; flex-basis: 100%; color: var(--muted); font-size: 12px; margin: 2px 0 4px 18px; }
 .tri-note { margin: 10px 0 0; max-width: 80ch; }
+.rule-add { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; }
+.rule-input { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 13px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; resize: vertical; }
+.rule-input:focus { outline: none; border-color: var(--muted); }

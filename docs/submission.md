@@ -55,9 +55,9 @@ Lanvi stays with the person through good weeks and dips, and steps in early.
 5. It lets go when they're back: after three days in a row near their normal, or once a clinician has looked.
 6. It remembers what worked and starts with that next time.
 
-HOW IT NOTICES
+THE MIND
 
-Behind the fox, plain rules that we can explain raise a flag when something changes, and two models then decide how much it matters: a small one on the clinic's own hardware sets the level and Gemini, as the second reader, agrees, raises or lowers. A request for help is always urgent by rule and never waits for a model. Attention, memory and learning: Small watchers check every new day, activity or note, and once something needs attention Lanvi holds on to it until things really recover. One good day doesn't make it forget a slow slide.
+Behind the fox is what we call the mind, in three layers. Plain rules that we can explain notice when something changes and raise a flag. Two models then weigh how much it matters: a small one on the clinic's own hardware sets the level and Gemini, as the second reader, agrees, raises or lowers. Plain code guards both: every answer has a fixed form, a request for help is always urgent and never waits for a model, and the rules' own level stands whenever no model answers. A clinician can also write a rule for one person in their own words ("planned rest after surgery, lower movement only needs watching"); the clinic's own model follows it, and the words never leave the clinic's server. Attention, memory and learning: Small watchers check every new day, activity or note, and once something needs attention Lanvi holds on to it until things really recover. One good day doesn't make it forget a slow slide.
 
 It has two kinds of memory: the person's own rules, like "not before 9", which come first, and the lessons it learns about what helps them. Each lesson is checked against the person's real data, and they can see it and say "not true".
 

@@ -13,7 +13,8 @@ from ..mind import trace as trace_mod
 from ..mind import views
 from ..mind.watchers import compute_status
 from ..mind import associations as assoc
-from ..models import (AssociationsOut, ClinicMeOut, FaceRawOut, LoginIn, LoginOut, RatingIn,
+from ..models import (AssociationsOut, ClinicMeOut, ClinicRuleIn, ClinicRulesOut, FaceRawOut,
+                      LoginIn, LoginOut, RatingIn,
                       RatingOut, RatingsOut, TraceOut)
 from ..security import (Principal, dummy_verify, issue_token, new_id, sha256_hex,
                         verify_password)
@@ -200,6 +201,83 @@ async def ack(request: Request, attention_id: str = Path(pattern=SID),
     """Closes the held item. The same evidence does not reopen it; fresh
     evidence does. The status still follows the data."""
     return await service.ack_attention(ctx_of(request), p, attention_id, rid_of(request))
+
+
+# ---- the clinic's own rules for one person (clinician only) ---------------------------
+#
+# Free text, in the clinician's words. With TRIAGE_MODE=models the local model
+# reads them when it sets the level of each attention item, and a level that
+# follows a rule is not moved by the second model. The text stays on the
+# clinic's server: it is never part of a pack that goes outside. A rule can
+# change levels only; it cannot open or close an item, and it cannot lower a
+# request for help.
+
+MAX_CLINIC_RULES = 10
+
+
+def _rules_out(ctx, repo) -> dict:
+    rules = [{k: r.get(k) for k in ("id", "text", "at", "by")} for r in ctx.mind.clinic_rules(repo)]
+    return {"rules": rules, "applies": ctx.mind.triage_on}
+
+
+@router.get("/patients/{patient_id}/clinic-rules", response_model=ClinicRulesOut,
+            responses=errors(401, 403, 404, 429), summary="The clinic's rules for this person")
+async def list_clinic_rules(request: Request, patient_id: str = Path(pattern=SID),
+                            p: Principal = Depends(clinician_only)):
+    ctx = ctx_of(request)
+    return _rules_out(ctx, _patient_repo(request, p, patient_id))
+
+
+@router.post("/patients/{patient_id}/clinic-rules", response_model=ClinicRulesOut,
+             responses=errors(401, 403, 404, 409, 422, 429),
+             summary="Add a rule for this person, in the clinician's own words")
+async def add_clinic_rule(body: ClinicRuleIn, request: Request,
+                          patient_id: str = Path(pattern=SID),
+                          p: Principal = Depends(clinician_only)):
+    """At most 10 rules per person, 3 to 300 characters each. The rule is read
+    by the local model the next time the levels are set (at once when
+    `TRIAGE_MODE=models`). The audit log records that a rule was added and its
+    length, never its text."""
+    from ..security import new_id
+    ctx = ctx_of(request)
+    repo = _patient_repo(request, p, patient_id)
+    text = " ".join("".join(ch for ch in body.text if ch.isprintable()).split())
+    if len(text) < 3:
+        raise ApiError(422, "invalid_request", "The rule has no readable text.")
+    async with ctx.mind.lock(p.clinic_id, patient_id):
+        doc = repo.get("mind/clinic_rules.json") or {"rules": []}
+        if len([r for r in doc["rules"] if r.get("active", True)]) >= MAX_CLINIC_RULES:
+            raise ApiError(409, "conflict", f"At most {MAX_CLINIC_RULES} rules per person.")
+        rule = {"id": new_id("crl"), "text": text, "at": ctx.clock.now().isoformat(),
+                "by": p.actor, "active": True}
+        doc["rules"].append(rule)
+        repo.put("mind/clinic_rules.json", doc)
+        write_audit(ctx.store, ctx.clock.now(), clinic_id=p.clinic_id, patient_id=patient_id,
+                    actor=p.actor, action="clinic_rule_add",
+                    detail={"rule_id": rule["id"], "chars": len(text)}, request_id=rid_of(request))
+        await ctx.mind.publish("rule", p.clinic_id, patient_id)
+    return _rules_out(ctx, repo)
+
+
+@router.delete("/patients/{patient_id}/clinic-rules/{rule_id}", response_model=ClinicRulesOut,
+               responses=errors(401, 403, 404, 429), summary="Remove one of the clinic's rules")
+async def delete_clinic_rule(request: Request, patient_id: str = Path(pattern=SID),
+                             rule_id: str = Path(pattern=SID),
+                             p: Principal = Depends(clinician_only)):
+    ctx = ctx_of(request)
+    repo = _patient_repo(request, p, patient_id)
+    async with ctx.mind.lock(p.clinic_id, patient_id):
+        doc = repo.get("mind/clinic_rules.json") or {"rules": []}
+        hit = [r for r in doc["rules"] if r["id"] == rule_id and r.get("active", True)]
+        if not hit:
+            raise ApiError(404, "not_found", "Rule not found.")
+        hit[0].update(active=False, removed_at=ctx.clock.now().isoformat(), removed_by=p.actor)
+        repo.put("mind/clinic_rules.json", doc)
+        write_audit(ctx.store, ctx.clock.now(), clinic_id=p.clinic_id, patient_id=patient_id,
+                    actor=p.actor, action="clinic_rule_remove", detail={"rule_id": rule_id},
+                    request_id=rid_of(request))
+        await ctx.mind.publish("rule", p.clinic_id, patient_id)
+    return _rules_out(ctx, repo)
 
 
 # ---- reference ratings (clinician only) ------------------------------------------------

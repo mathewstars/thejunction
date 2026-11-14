@@ -34,9 +34,9 @@ The jury are researchers. So: every claim can be checked, the demo is the real a
 >
 > The clinician sees one line per patient. Urgent cases do not wait in a dashboard: an alert reaches the clinician the same day, with a case label and a link, and no health data in it.
 
-**Who notices, and what the models do (1:20 to 1:40)**
+**The mind (1:20 to 1:40)**
 
-> The phone notices when a person drifts from their own normal: rules we can explain raise the flag. Then two models decide how much it matters. A small one on the clinic's own hardware reads the whole picture and sets the level; Gemini, as the second reader, agrees, raises or lowers. A request for help never waits for a model: that is a rule. What Lanvi says and offers comes from a short list we wrote ourselves. We tried to make the system learn something harmful. Here is the log of what it refused.
+> Behind the fox is what we call the mind. Rules we can explain notice when a person drifts from their own normal, and raise a flag. Two models then weigh it: a small one on the clinic's own hardware sets how soon someone should look, and Gemini, the second reader, agrees, raises or lowers. A clinician can add a rule for one person in their own words, and the mind follows it. A request for help never waits for a model: that is a rule. We tried to make it learn something harmful. Here is the log of what it refused.
 
 **What we know and do not know (1:40 to 1:52)**
 
@@ -213,7 +213,8 @@ Video:
 | needs review today | emergency |
 | numbers about how the face moves, never a picture | reads emotions, knows you are sad |
 | offers one small thing | treats, therapy |
-| rules notice, two models weigh it, a request for help is a rule | the mind; the AI diagnoses |
+| the mind: rules notice, two models weigh, code guards | the AI decides; the AI diagnoses |
+| a rule in the clinician's own words | the AI was told what to do |
 | a second pair of eyes (Gemini) | the AI brain |
 
 ## Questions we expect
@@ -227,6 +228,9 @@ Video:
 | Why a camera on someone recovering from depression? | It is opt-in and everything works without it. Numbers only, never a picture; the movement numbers are kept on the clinic's server. |
 | Where does the data go? | It stays on the clinic's server. With the patient's consent, a stream of numbers with no name, no date and no text goes to Gemini. A second optional switch (chat mode, off by default) sends a note that does not ask for help to Gemini so it can write Lanvi's reply, also only with consent. |
 | Could plain code do what Gemini does with the face numbers? | On a clean signal, yes: a rule relative to the person's own rest finds the faint smiles too. On sessions with talking or a shifting baseline a simple such rule reported 22 things that were not smiles and Gemini reported none; Gemini had been told what talking looks like and the rule had not, and a more careful rule would do better. That is on 50 sessions we generated ourselves; real faces are the first step of the study. |
+| What is "the mind", exactly? | Three layers. Fixed rules notice a change and open a flag. Two models weigh it: the clinic's own small model sets the level, Gemini agrees, raises or lowers. Plain code guards both: a fixed form for every answer, a request for help always urgent, and the rules' own level whenever no model answers. Blueprint, "The mind", shows it with the example patient. |
+| Can a model lower a flag? | Yes, by design, and the page shows what each model said beside what the rules alone would say. It cannot touch a request for help. We have not compared its levels with a clinician's; that is part of the study. One setting puts the levels back on the rules alone. |
+| What is a clinic rule? | A sentence a clinician writes for one person, such as "planned rest after surgery, lower movement only needs watching". The clinic's own model reads it; the words never leave the clinic's server. It changes levels only and cannot lower a request for help. |
 | What stops the AI from saying something harmful? | It doesn't write freely to a patient. Lanvi's lines come from a fixed set, and code checks what the models return. |
 | Her name was at the top of the list. What did the clinic do? | The clinic gets one "needs review" message when a dip keeps going. What happens next is the clinic's decision, and that workflow is something we want to design with you. |
 | How would a clinic start using it? | The clinic gives the patient a pairing code; entering it is the consent to share. The next step is a pilot with one clinic. |

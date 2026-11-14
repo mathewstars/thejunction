@@ -148,7 +148,7 @@
   function parseHash() {
     const parts = (location.hash || "").replace(/^#\/?/, "").split("/").filter(Boolean);
     if (parts[0] === "demo") return { view: "demo", pid: null, tab: "overview" };
-    if (parts[0] === "blueprint") { if (["research", "gemini", "learning"].indexOf(parts[1]) >= 0) S.bpTab = parts[1]; return { view: "blueprint", pid: null, tab: "overview" }; }
+    if (parts[0] === "blueprint") { if (["research", "mind", "gemini", "learning"].indexOf(parts[1]) >= 0) S.bpTab = parts[1]; return { view: "blueprint", pid: null, tab: "overview" }; }
     if ((parts[0] === "p" || parts[0] === "patient") && parts[1]) {
       const tab = TABS.some((t) => t[0] === parts[2]) ? parts[2] : "overview";
       return { view: "patient", pid: decodeURIComponent(parts[1]), tab };
@@ -442,7 +442,7 @@
     });
     $("subnav").replaceChildren(tabs);  // the patient's sections live in the top bar
     const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, talk: tabTalk, research: tabResearch, mind: tabMind, log: tabLog }[S.route.tab](d, today);
-    if (S.route.tab === "overview" && body && body.appendChild) { const dp = daysPanel(d); if (dp) body.appendChild(dp); }
+    if (S.route.tab === "overview" && body && body.appendChild) { body.appendChild(clinicRulesPanel(d)); const dp = daysPanel(d); if (dp) body.appendChild(dp); }
     if (S.route.tab === "overview" && d.summary) wrap.appendChild(el("p", { class: "lead" },
       String(d.summary).replace(/\s*Last suggestion:[^.]*\.?/, "").replace(/held since/g, "flagged since").replace(/\b\d{4}-\d{2}-\d{2}\b/g, (m) => dayShort(m))));
     wrap.appendChild(el("div", { id: "tabpanel", role: "tabpanel", "aria-labelledby": "tab-" + S.route.tab }, body));
@@ -600,6 +600,29 @@
       } } }, "Acknowledge");
   }
 
+  // ---- the clinic's own rules for this person, in plain words
+  function clinicRulesPanel(d) {
+    const rules = d.clinic_rules || [], on = d.triage && d.triage.mode === "models";
+    const base = "/v1/clinic/patients/" + encodeURIComponent(S.route.pid) + "/clinic-rules";
+    const used = {};
+    Object.keys((d.triage && d.triage.levels) || {}).forEach((id) => { const r = d.triage.levels[id].clinic_rule_id; if (r) used[r] = (used[r] || 0) + 1; });
+    const input = el("textarea", { id: "clinic-rule-text", rows: 2, maxlength: 300, class: "rule-input", placeholder: "For example: She visits her mother on Sundays and walks less; a low Sunday alone needs no attention.", "aria-label": "A new rule for this person" });
+    const add = el("button", { type: "button", class: "btn btn-small", on: { click: async () => {
+      const text = input.value.trim();
+      if (text.length < 3) { flash("Write the rule first."); return; }
+      try { await api("POST", base, { text }); flash(""); S.detail = null; await refresh(); } catch (e) { flash(e.message); }
+    } } }, "Add rule");
+    const list = rules.length ? el("ul", { class: "attlist" }, rules.map((r) => el("li", null,
+      el("span", { class: "what" }, "“" + r.text + "”"),
+      el("span", { class: "muted since" }, dayShort(r.at) + (used[r.id] ? " · sets " + used[r.id] + (used[r.id] === 1 ? " level now" : " levels now") : on ? " · applies to nothing now" : "")),
+      el("button", { type: "button", class: "linklike small ack", "aria-label": "Remove this rule", on: { click: async () => {
+        try { await api("DELETE", base + "/" + encodeURIComponent(r.id)); S.detail = null; await refresh(); } catch (e) { flash(e.message); } } } }, "Remove")))) : empty("No rule written for this person.");
+    return panel("The clinic's rules for this person", rules.length || "", list, el("div", { class: "rule-add" }, input, add),
+      el("p", { class: "muted small tri-note" }, on
+        ? "Written in your own words. The local model reads the rules when the levels above are set, and a level that follows a rule is not moved by the second model. The words stay on the clinic's server. A rule can change levels only: it cannot lower a request for help, and it never reaches the patient."
+        : "Rules are stored, but nothing reads them while the levels are set by the fixed rules (model triage is off on this server)."));
+  }
+
   // ---- the day reading: two readers on the daily numbers from Apple Health
   // Code's fixed rule (each day against the person's own normal) and the
   // level-2 model read the same series. The series is the one that was sent.
@@ -721,11 +744,13 @@
     const triageLine = (i) => {
       const t = triLevels[i.id];
       if (tri.mode !== "models" || !t) return null;
+      const rule = t.clinic_rule_id ? (d.clinic_rules || []).find((r) => r.id === t.clinic_rule_id) : null;
+      if (rule) return el("span", { class: "sub tri" }, "Level set to " + LV[t.level] + " by the clinic's rule: “" + rule.text + "”. The fixed rules alone would say " + LV[t.rules_level] + ".");
       const one = t.level1 ? "the local model set " + LV[t.level1] + " (" + (RS[t.reason1] || words(t.reason1).toLowerCase()) + ")" : "the local model did not answer";
       const two = t.verdict2 ? "Gemini " + ({ agree: "agreed", raise: "raised it", lower: "lowered it" }[t.verdict2]) + " (" + (RS[t.reason2] || words(t.reason2).toLowerCase()) + ")" : "Gemini was not asked or did not answer";
       return el("span", { class: "sub tri" }, "Level set by the two models: " + one + "; " + two + ". The fixed rules alone would say " + LV[t.rules_level] + ".");
     };
-    const triageNote = tri.mode === "models" ? el("p", { class: "muted small tri-note" }, "The watchers decide what is on this list. The two models decide how much each item matters; when neither answers, the fixed rules' level stands. A request for help is always “needs review today” by rule.") : null;
+    const triageNote = tri.mode === "models" ? el("p", { class: "muted small tri-note" }, "The watchers decide what is on this list. The two models decide how much each item matters; when neither answers, the fixed rules' level stands. A request for help is given to both models as part of the picture, without the person's words; its own level is fixed by rule and no model can change it.") : null;
     const att = panel("Needs attention", items.length || "", items.length ? el("div", { class: "rows" },
       helpItem ? el("div", { class: "row" },
         el("div", { class: "top" }, levelChip(helpItem.level), el("span", { class: "t" }, kind(helpItem.kind))),
@@ -1383,6 +1408,93 @@
     wrap.appendChild(P("Who does what: the phone only collects numbers and sends them. The clinic’s server computes every measure and the statistics with plain code. A language model sees only the summary numbers (such as " + (have ? Math.abs(row.rho).toFixed(2) : "0.67") + "), never the daily measurements, the name or the face, and puts the result into words. Code then checks those words against the numbers."));
   }
 
+  // ---- blueprint: the mind (what decides whether the clinic should look at someone)
+  function bpMind(wrap) {
+    wrap.appendChild(el("p", { class: "lead" }, "The mind is the part of the server that decides whether the clinic should look at someone, and how soon. It has three layers. Fixed rules notice that something changed. Two models weigh how much it matters. Plain code guards both: it decides what a model may see and what a model may decide."));
+    const W = 960, H = 150, BW = 176, BH = 96, GAP = 19;
+    const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "bp", role: "img",
+      "aria-label": "The mind in five steps: something arrives, watchers in code open a flag, two models set its level, code guards the answer, the clinic sees it." });
+    const boxes = [["1", "Something arrives", ["a day, a game, a note;", "or five minutes pass", "with nothing new"], "code"],
+      ["2", "Watchers · code", ["fixed rules compare with", "the person's own normal", "and open or close a flag"], "code"],
+      ["3", "Two readers", ["the local model sets each", "flag's level; Gemini agrees,", "raises or lowers"], "model"],
+      ["4", "Guard · code", ["fixed form only; a request", "for help stays urgent; the", "rules' level if no answer"], "code"],
+      ["5", "The clinic", ["the list is ordered by", "level; one message when", "a flag needs review today"], "code"]];
+    boxes.forEach(([n, t, lines, cls], i) => {
+      const x = 2 + i * (BW + GAP), y = 26;
+      s.appendChild(svg("rect", { x, y, width: BW, height: BH, rx: 10, class: "bp-box " + cls }));
+      s.appendChild(svg("text", { x: x + 12, y: y + 24, class: "bp-t" }, n + "  " + t));
+      lines.forEach((l, k) => s.appendChild(svg("text", { x: x + 12, y: y + 46 + k * 17, class: "bp-s" }, l)));
+      if (i < boxes.length - 1) {
+        const x1 = x + BW, x2 = x + BW + GAP, ym = y + BH / 2;
+        s.appendChild(svg("line", { x1, y1: ym, x2: x2 - 2, y2: ym, class: "bp-line" }));
+        s.appendChild(svg("polygon", { points: (x2) + "," + ym + " " + (x2 - 9) + "," + (ym - 5) + " " + (x2 - 9) + "," + (ym + 5), class: "bp-head" }));
+      }
+    });
+    wrap.appendChild(el("section", { class: "panel" }, el("figure", { class: "bp-fig" }, s,
+      el("figcaption", { class: "bp-cap" }, "The amber box is the two models; the others are plain code. The models never start anything: they are asked only after a watcher has opened a flag, and again when the picture changes."))));
+
+    const cellRow = (r) => el("tr", null, r.map((v) => el("td", null, v)));
+    wrap.appendChild(panel("Who may do what", null, table(["Layer", "Decides", "Cannot"], [
+      ["Watchers (fixed rules)", "Which flags exist: they alone open one and close it when the change is gone.", "Say how much a flag matters once the models have answered."],
+      ["The local model, on the clinic's own hardware", "The level of every open flag: watch, attention, or needs review today, with one of ten fixed reasons. It reads the clinic's own rules for this person.", "Open or close a flag, write any text, or change the level of a request for help."],
+      ["Gemini, outside, only when the patient's record allows it", "Agree, raise or lower each level by one step.", "See a name, a date or any words; move a level that follows the clinic's rule; change a request for help."],
+      ["Guarding code", "What each model is sent, the form of its answer, and what happens when no model answers: then the fixed rules' own level stands.", "Be argued with: an answer outside the form is refused and written to the log."]
+    ].map(cellRow), "bp-table", { plain: true })));
+
+    wrap.appendChild(panel("What the watchers notice", null, el("div", { class: "bp-say" },
+      el("p", null, "Each watcher is one fixed rule. Everything is compared with the person's own normal: the median and usual spread of their last 28 days, leaving out the newest five so that a drop does not move the yardstick it is measured with."),
+      table(["Flag", "Opens when"], [
+        ["Movement drop", "at least 3 of the last 5 days are clearly below own normal in steps and walking speed (2 are enough when reactions or the face also changed)"],
+        ["One unusual day", "a single day very far from normal, either way"],
+        ["No data", "3 days without any daily data"],
+        ["Asked for help", "a note sounds like a request for help: a fixed word list catches it even when no model runs"],
+        ["Low mood in notes", "several notes labelled low"],
+        ["Offers unanswered", "3 offers in a row left without an answer"],
+        ["Slower reactions, less facial movement", "2 of the last 3 games clearly off the person's own normal"],
+        ["Check-ins stopped, plans not done", "no check-in for 3 days after a habit of them; 3 plans in a row not carried out"],
+        ["Noticed by the model, confirmed by code", "Gemini found a slow decline or fading smiles that the rules above missed, and code confirmed it in the numbers"]
+      ].map(cellRow), "bp-table", { plain: true }))));
+
+    // What the two readers decided for the example patient, read live from the server.
+    const d = S.bpDetail, tri = (d && d.triage) || {}, lv = tri.levels || {};
+    const LV = { watch: "watch", attention: "attention", urgent: "needs review today" };
+    const RS = { several_signals_agree: "several signals agree", single_weak_signal: "one weak signal", deep_and_held: "deep and held", held_long: "held for long", getting_better: "getting better",
+      too_little_data: "too little data", model_finding_confirmed: "a model's finding, confirmed", no_contact: "no contact", as_the_rules: "as the rules say", clinic_rule: "the clinic's rule" };
+    const open = ((d && d.attention_items) || []).filter((i) => i.state === "open" && lv[i.id]);
+    const live = tri.mode === "models" && open.length ? el("div", null,
+      el("h3", { class: "fr-h" }, "On the example patient right now"),
+      table(["Flag", "Fixed rules alone", "Local model", "Gemini", "Level shown to the clinic"], open.map((i) => { const t = lv[i.id]; return el("tr", null,
+        el("td", null, kind(i.kind)), el("td", null, LV[t.rules_level] || "–"),
+        el("td", null, t.level1 ? LV[t.level1] + " (" + (RS[t.reason1] || t.reason1) + ")" : "no answer"),
+        el("td", null, t.verdict2 ? ({ agree: "agrees", raise: "raises", lower: "lowers" }[t.verdict2]) : "not asked"),
+        el("td", null, t.level !== t.rules_level ? el("b", null, LV[t.level]) : LV[t.level], t.fixed_by_rule ? " (fixed by rule)" : "")); }), "bp-table", { plain: true }),
+      el("p", { class: "muted small" }, "Read from the server as this page loaded. Example data; bold marks a level the models set differently from the fixed rules."))
+      : el("p", { class: "muted small" }, tri.mode === "models" ? "No open flags on the example patient right now." : "On this server the levels are set by the fixed rules alone (model triage is switched off).");
+    wrap.appendChild(panel("How the two readers weigh a flag", null, el("div", { class: "bp-say" },
+      el("p", null, "Both readers get the same picture of one person: every open flag (its kind, the days it has been held, the level the fixed rules would give, and the flag's own numbers), the last 14 days of movement against own normal, and three counts. Numbers and fixed codes only."),
+      el("p", null, "The local model answers first. Gemini then sees the picture together with that answer and can move each level by one step. A request for help is part of the picture, so both weigh everything else knowing about it, but its own level cannot be changed.")), live));
+
+    wrap.appendChild(panel("The clinic's own rules, in plain words", null, el("div", { class: "bp-say" },
+      el("p", null, "A clinician can write a rule for one person the way they would say it to a colleague, for example: “She is on a planned two-week rest after knee surgery. Lower movement is expected and only needs watching.”"),
+      el("ul", { class: "plain" },
+        el("li", null, "The local model reads the rule when it sets the levels. A level that follows a rule is not moved by Gemini: the clinician outranks the second reader."),
+        el("li", null, "The words stay on the clinic's server. Gemini is told only that a level follows a clinic rule."),
+        el("li", null, "A rule changes levels and nothing else. It cannot open or close a flag, cannot lower a request for help, and nothing of it reaches the patient."),
+        el("li", null, "It is written on the patient's Overview page, under “The clinic's rules for this person”.")))));
+
+    wrap.appendChild(el("div", { class: "grid even" },
+      panel("What we checked", null, el("ul", { class: "plain" },
+        el("li", null, "The automatic tests cover the guard: the form of every answer, the request for help staying urgent whatever a model or a rule says, the rules' level standing when no model answers, and the clinician's words never leaving the server."),
+        el("li", null, "On this server, with the real models, on 14 November 2026: a rule written in English and the same rule in Slovak each lowered one flag for one example patient; a rule about something she does not have changed nothing; removing the rule restored the level."),
+        el("li", null, "Four repeated runs on the same picture gave the same levels, for two example patients."))),
+      panel("What we did not check", null, el("ul", { class: "plain" },
+        el("li", null, "Whether the levels the models set are the ones a clinician would set. Nobody has compared them."),
+        el("li", null, "Whether a model reads every rule the way its author meant it. Three rules on one example patient is not a test of that."),
+        el("li", null, "Stability beyond those eight runs."),
+        el("li", null, "The models can also lower a flag. That is a choice we made the evening before the deadline; one setting puts the levels back on the fixed rules alone.")))));
+    wrap.appendChild(panel("See it", null, el("p", { class: "bp-cap" }, "Open a patient: under “Needs attention” each flag shows what the local model said, what Gemini said, and what the fixed rules alone would say. The Timeline shows each call to a model with exactly what was sent and what came back.")));
+  }
+
   // ---- blueprint: what Gemini does (the page to send a Gemini-track judge to)
   // Measured on generated sessions and series, 14 November 2026 (docs/face-raw.md, docs/health-data.md).
   const BP_FACE_CLEAN = [["Code, fixed rule (in the product)", "121 of 121", "0 of 89", "0 of 121"],
@@ -1505,9 +1617,9 @@
         "does not add that lesson in this run. This is the one place where Gemini's answer is acted on without code testing it against numbers, and all it can do is hold a lesson back. It cannot add or change one.",
         [go2(anna, "mind", "Anna Korhonen → Learned"), ", “How it learns”, and the Blueprint section of the same name."]),
       job("5", "Weighs each flag for the clinic, as the second of two readers", "not measured yet",
-        "the open flags of one person (kind, days held, the rules' level, the flag's own numbers), the last 14 days of movement against own normal, and what the local model answered. No name, date or text. A request for help is never sent: it is urgent by rule.",
-        "for every flag: agree, raise or lower, with one of nine fixed reasons.",
-        "applies it: the flag's level moves by one step from the local model's level. This is a decision by the models, not checked against numbers. What code keeps is the list of flags, the rule for a request for help, and the fixed rules' own level, which is shown beside it and stands whenever no model answers.",
+        "the open flags of one person (kind, days held, the rules' level, the flag's own numbers), the last 14 days of movement against own normal, and what the local model answered. No name, date or text. A request for help is part of that picture, without the person's words; its own level is urgent by rule.",
+        "for every flag: agree, raise or lower, with one of ten fixed reasons.",
+        "applies it: the flag's level moves by one step from the local model's level. This is a decision by the models, not checked against numbers. What code keeps is the list of flags, the level of a request for help (always urgent, whatever a model answers), and the fixed rules' own level, which is shown beside it and stands whenever no model answers.",
         [go2(anna, "overview", "Anna Korhonen → Overview"), ", the list “Needs attention”: under each flag, what each model said and what the rules alone would say."])),
       el("p", { class: "small" }, "Still switched on in the server, from an earlier design: a reading of a movement round, which sends the path of the phone in metres and two small drawings of that path seen from above (no photo). The app no longer sends rounds.")));
 
@@ -1612,12 +1724,13 @@
   function viewBlueprint() {
     const wrap = el("div", { class: "stack" });
     const tab = S.bpTab || "research";
-    const tabsRow = el("div", { class: "seg", role: "group", "aria-label": "Blueprint sections" }, [["research", "The research"], ["gemini", "What Gemini does"], ["learning", "How it learns"]].map(([k, label]) =>
+    const tabsRow = el("div", { class: "seg", role: "group", "aria-label": "Blueprint sections" }, [["research", "The research"], ["mind", "The mind"], ["gemini", "What Gemini does"], ["learning", "How it learns"]].map(([k, label]) =>
       el("button", { type: "button", class: "btn btn-small", "aria-pressed": tab === k ? "true" : "false", "data-key": "bp-" + k, on: { click: () => { S.bpTab = k; history.replaceState(null, "", "#/blueprint/" + k); window.scrollTo(0, 0); render(); } } }, label)));
-    const title = tab === "research" ? "The research: can a phone notice when someone is getting worse again?" : tab === "gemini" ? "What Gemini does here" : "How the system learns";
+    const title = tab === "research" ? "The research: can a phone notice when someone is getting worse again?" : tab === "mind" ? "The mind: who notices, who weighs, who guards" : tab === "gemini" ? "What Gemini does here" : "How the system learns";
     wrap.appendChild(el("div", { class: "head" }, el("h1", null, title)));
     wrap.appendChild(tabsRow);
     if (tab === "research") bpResearch(wrap);
+    else if (tab === "mind") bpMind(wrap);
     else if (tab === "gemini") bpGemini(wrap);
     else bpLearning(wrap);
     return wrap;
