@@ -379,8 +379,31 @@
     if (low) s.appendChild(svg("path", { class: "line low", d: low }));
     return s;
   }
+  // The narrated one-minute tour of the app, on the front page. Built once and put back
+  // on every redraw (the page redraws each minute), so a playing video carries on.
+  let TOUR = null, tourPlaying = false;
+  function tourPanel() {
+    if (!TOUR) {
+      const v = el("video", { class: "tour-video", controls: "", playsinline: "", preload: "none",
+        poster: "/static/tour/lanvi-app-tour.jpg", src: "/static/tour/lanvi-app-tour.mp4",
+        "aria-label": "One-minute narrated tour of the Lanvi app" },
+        el("track", { kind: "captions", srclang: "en", label: "English", src: "/static/tour/lanvi-app-tour.vtt" }));
+      v.addEventListener("play", () => { tourPlaying = true; });
+      v.addEventListener("pause", () => { if (v.isConnected) tourPlaying = false; });
+      v.addEventListener("ended", () => { tourPlaying = false; });
+      TOUR = el("section", { class: "panel tour" }, v, el("div", { class: "tour-text" },
+        el("h2", null, "The app in one minute"),
+        el("p", null, "What the patient sees: the fox, tonight's game, the evening check-in and the help screen. Recorded from the real app in the iOS simulator, with a narrator's voice."),
+        el("p", { class: "muted small" }, "The sessions below are what this page receives from that app. Example data; the narration is a generated voice. Captions are on the player.")));
+      TOUR.video = v;
+    } else if (tourPlaying) {
+      setTimeout(() => { if (TOUR.video.isConnected && TOUR.video.paused) TOUR.video.play().catch(() => {}); }, 0);
+    }
+    return TOUR;
+  }
   function viewPatients() {
     const wrap = el("div");
+    wrap.appendChild(tourPanel());
     const list = (S.list && S.list.patients) || [];
     const today = todayStr();
     const counts = {};
