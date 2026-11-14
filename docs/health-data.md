@@ -81,6 +81,16 @@ The same idea as the frame reading for the face numbers (`docs/face-raw.md`), on
   - The overall words are shown as code's, with the model's beside them.
 - **When it runs.** After new days arrive, at most every 6 hours per person; and on demand with `POST /v1/demo/analyze {"patient_id": "...", "what": "days"}`. `DAYS_READER=off` turns it off.
 - **Where it shows.** Clinician only: `days_reading` in `GET /v1/clinic/patients/{id}` and the panel "Two readers on the daily numbers" on the Overview tab. `health_types` in the same answer lists the stored HealthKit types (counts and last day only).
-- **The reference set.** `python -m clinic_engine.days_reference [--model]` makes 24 generated series of 84 days with changes planted at known places (8 sustained dips, 8 slow declines, 8 with nothing planted: weekly rhythm only, two single odd days, or a gap) and scores each reader against the planted truth. RESULTS_PLACEHOLDER
+- **The reference set.** `python -m clinic_engine.days_reference [--model]` makes 24 generated series of 84 days with changes planted at known places (8 sustained dips, 8 slow declines, 8 with nothing planted: weekly rhythm only, two single odd days, or a gap) and scores each reader against the planted truth. Run on 14 November 2026 with `gemini-3.8-flash` (its default thinking), 24 of 24 series read:
+
+  | Reader | Sudden dips found | Slow declines found | Reported with nothing planted |
+  |---|---|---|---|
+  | Code, fixed rule (in the product) | 8 of 8 | 2 of 8 | 10 of 20 |
+  | Gemini, as reported | 8 of 8 | 8 of 8 | 0 of 16 |
+  | Gemini, after code's check | 8 of 8 | 8 of 8 | 0 of 16 |
+
+  Code's ten wrong reports are mostly short pieces of a slow decline that it flagged without seeing the whole (a piece overlaps the planted span by less than 0.3 of their union, so it counts as wrong). Of 35 planted low weekdays code named 34, and the model named 34 and none that was not planted. Against code's own stretches the model named 13 of 25 and added 5 that only it named and code confirmed; 4 of its stretches on other channels were not in the numbers and were dropped.
+
+  What this does not show: anything about real lives. The series are made by that file, with simple noise and one planted change each; real series have illness, travel, holidays and missing weeks. Each series was read once. The run used the model's default thinking; the server now asks it to think little (a reading in about 4 seconds instead of about 40), and the same count on that setting has not been made yet.
 
 All thresholds here are estimates. None is calibrated on real series; that is part of the study (`docs/research-proposal.md`).

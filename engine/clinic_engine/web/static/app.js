@@ -148,7 +148,7 @@
   function parseHash() {
     const parts = (location.hash || "").replace(/^#\/?/, "").split("/").filter(Boolean);
     if (parts[0] === "demo") return { view: "demo", pid: null, tab: "overview" };
-    if (parts[0] === "blueprint") return { view: "blueprint", pid: null, tab: "overview" };
+    if (parts[0] === "blueprint") { if (["research", "gemini", "learning"].indexOf(parts[1]) >= 0) S.bpTab = parts[1]; return { view: "blueprint", pid: null, tab: "overview" }; }
     if ((parts[0] === "p" || parts[0] === "patient") && parts[1]) {
       const tab = TABS.some((t) => t[0] === parts[2]) ? parts[2] : "overview";
       return { view: "patient", pid: decodeURIComponent(parts[1]), tab };
@@ -1308,19 +1308,124 @@
     wrap.appendChild(P("Who does what: the phone only collects numbers and sends them. The clinic’s server computes every measure and the statistics with plain code. A language model sees only the summary numbers (such as " + (have ? Math.abs(row.rho).toFixed(2) : "0.67") + "), never the daily measurements, the name or the face, and puts the result into words. Code then checks those words against the numbers."));
   }
 
-  // ---- blueprint: how the learning loop works
-  function viewBlueprint() {
-    const wrap = el("div", { class: "stack" });
-    const tab = S.bpTab || "research";
-    const tabsRow = el("div", { class: "seg", role: "group", "aria-label": "Blueprint sections" }, [["research", "The research"], ["learning", "How it learns"]].map(([k, label]) =>
-      el("button", { type: "button", class: "btn btn-small", "aria-pressed": tab === k ? "true" : "false", "data-key": "bp-" + k, on: { click: () => { S.bpTab = k; window.scrollTo(0, 0); render(); } } }, label)));
-    if (tab === "research") { wrap.appendChild(el("div", { class: "head" }, el("h1", null, "The research: can a phone notice when someone is getting worse again?"))); wrap.appendChild(tabsRow); bpResearch(wrap); return wrap; }
-    wrap.appendChild(el("div", { class: "head" }, el("h1", null, "How the system learns")));
-    wrap.appendChild(tabsRow);
-    wrap.appendChild(el("p", { class: "lead" }, "The system learns which small things suit one person. A model proposes, code decides. Nothing a model writes reaches the patient, and a lesson can only change the order of offers that we wrote ourselves."));
+  // ---- blueprint: what Gemini does (the page to send a Gemini-track judge to)
+  // Measured on generated sessions and series, 14 November 2026 (docs/face-raw.md, docs/health-data.md).
+  const BP_FRAMES = [
+    ["Code, fixed rule (in the product)", "121 of 121", "0 of 89", "0 of 121", "20 of 28", "0 of 13", "3 of 23"],
+    ["Code, simple rule relative to the person's rest", "121 of 121", "89 of 89", "0 of 210", "28 of 28", "13 of 13", "22 of 63"],
+    ["Gemini, as reported", "121 of 121", "89 of 89", "0 of 210", "28 of 28", "13 of 13", "0 of 41"],
+    ["Gemini, after code's check", "121 of 121", "89 of 89", "0 of 210", "28 of 28", "13 of 13", "0 of 41"]];
+  const BP_DAYS = [
+    ["Code, fixed rule (in the product)", "8 of 8", "2 of 8", "10 of 20"],
+    ["Gemini, as reported", "8 of 8", "8 of 8", "0 of 16"],
+    ["Gemini, after code's check", "8 of 8", "8 of 8", "0 of 16"]];
+  function bpGemini(wrap) {
+    wrap.appendChild(el("p", { class: "lead" }, "Gemini is the second reader. It reads numbers that plain code has already read with fixed rules, and code then checks every single item Gemini reports. It sees no name, no date, no picture and none of the person's words. What it returns is shown to the clinician beside code's own reading; it never reaches the patient and never decides anything."));
+    const W = 960, H = 150, BW = 172, BH = 96, GAP = 25;
+    const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "bp", role: "img",
+      "aria-label": "How a Gemini reading is made: numbers only, an input gate in code, Gemini, an output gate in code, then code checks each item before the clinician sees it." });
+    const boxes = [["1", "Numbers only", ["face movement per moment,", "or one row per day;", "rounded, no name or date"], "code"],
+      ["2", "Input gate · code", ["a fixed list of allowed", "fields; checked again", "right before sending"], "code"],
+      ["3", "Gemini reads", ["a fixed instruction,", "a fixed answer shape,", "nothing else"], "model"],
+      ["4", "Output gate · code", ["the exact shape, or the", "whole answer is refused", "and logged"], "code"],
+      ["5", "Each item checked", ["same as code · Gemini", "only, in the numbers ·", "not in the numbers: dropped"], "code"]];
+    boxes.forEach(([n, t, lines, cls], i) => {
+      const x = 4 + i * (BW + GAP), y = 26;
+      s.appendChild(svg("rect", { x, y, width: BW, height: BH, rx: 10, class: "bp-box " + cls }));
+      s.appendChild(svg("text", { x: x + 12, y: y + 24, class: "bp-t" }, n + "  " + t));
+      lines.forEach((l, k) => s.appendChild(svg("text", { x: x + 12, y: y + 46 + k * 17, class: "bp-s" }, l)));
+      if (i < boxes.length - 1) {
+        const x1 = x + BW, x2 = x + BW + GAP, ym = y + BH / 2;
+        s.appendChild(svg("line", { x1, y1: ym, x2: x2 - 2, y2: ym, class: "bp-line" }));
+        s.appendChild(svg("polygon", { points: (x2) + "," + ym + " " + (x2 - 9) + "," + (ym - 5) + " " + (x2 - 9) + "," + (ym + 5), class: "bp-head" }));
+      }
+    });
+    wrap.appendChild(el("section", { class: "panel" }, el("figure", { class: "bp-fig" }, s,
+      el("figcaption", { class: "muted small" }, "The amber box is Gemini; the others are plain code. The same five steps for every job below. Only with the patient's record allowing outside processing; without it nothing is sent."))));
+
+    const list = S.list || [];
+    const pidOf = (label) => { const p = list.find((q) => q.label === label); return p ? p.patient_id : null; };
+    const leo = pidOf("Example F-001"), anna = S.me && S.me.demo && S.me.demo.patient_id;
+    const go2 = (pid, tab, text) => pid ? el("a", { href: "#/p/" + encodeURIComponent(pid) + "/" + tab }, text) : el("span", { class: "muted" }, text);
+    const job = (n, t, sent, back, check, see) => el("div", { class: "row" }, el("div", { class: "top" }, el("span", { class: "chip" }, n), el("span", { class: "t" }, t)),
+      el("div", { class: "d" }, el("b", null, "Sent: "), sent, el("br"), el("b", null, "Gemini returns: "), back, el("br"), el("b", null, "Code then: "), check, el("br"), el("b", null, "See it: "), see));
+    wrap.appendChild(panel("The four jobs", null, el("div", { class: "rows" },
+      job("1", "Reads how a face moved during one short game",
+        "about 225 rows, five per second, each with a time and up to 14 numbers (smile, cheeks, blink, brows, gaze, head angle). The phone sent numbers only; a picture never existed on the server.",
+        "every smile with its start and end, a blink count, longer stretches such as looking down, and whether a smile followed each pleasant moment.",
+        "compares each smile with its own detection on the full 30 rows per second. Our fixed rule only counts a smile above one fixed level. Gemini judges against this person's own resting level, so it also finds faint smiles. Code keeps such a smile only when the rise is really in the numbers, and shows it apart. A smile that is not in the numbers is dropped.",
+        [go2(leo, "activity", "Leo Virtanen (generated example) → Activity → Focus game"), ", the panel “Two readers on one session”. In his last session the fixed rule counts no smile and Gemini finds three faint ones."]),
+      job("2", "Reads the daily numbers from Apple Health",
+        "up to 84 days, one row per day with a day number and the weekday instead of a date: steps, walking speed, sleep, heart-rate variability, and more when a watch sends it.",
+        "the stretches where something changed against the weeks before, sudden or as a slow slide, and the person's weekly rhythm (for example always fewer steps on Sundays).",
+        "tests each stretch against the same numbers. Our fixed rule flags a day only when it is far outside the person's normal, so it sees sudden drops and mostly misses slow slides. A stretch only Gemini names is kept when the change is in the numbers.",
+        [go2(anna, "overview", "Anna Korhonen (example) → Overview"), ", the panel “Two readers on the daily numbers” at the bottom."]),
+      job("3", "Compares one session with the same person's earlier ones",
+        "the session's numbers (reaction time, errors, the face summary) and the person's own usual values, with no identity.",
+        "a few fixed words (for example slower, less expressive, blinking less), each pointing at the numbers it rests on.",
+        "recomputes every claim from the numbers and drops the ones they do not support.",
+        [go2(anna, "activity", "Anna Korhonen → Activity → Focus game"), ", the column “Model reading”."]),
+      job("4", "Gives a second opinion on what the system learned",
+        "the lessons code has already accepted, with their evidence rows: rounded values, days counted back from today, a random label used once.",
+        "only objections, each one of three codes: weak evidence, contradicts recent days, too broad.",
+        "removes a lesson Gemini objects to. Gemini cannot add or change a lesson.",
+        [go2(anna, "mind", "Anna Korhonen → Learned"), ", “How it learns”, and the Blueprint section of the same name."]))));
+
+    const th = (t) => ({ t, r: 1 });
+    wrap.appendChild(panel("What we measured", null,
+      el("p", { class: "small" }, "Nobody can collect real recordings of patients in a weekend, so we did not pretend to. We generated sessions and daily series with events planted at known places, let every reader go through them, and counted. Run on 14 November 2026 through the same gates as real data."),
+      el("h3", { class: "fr-h" }, "Face numbers: 40 clean sessions and 10 hard ones (talking, the phone moving, a mouth that rests high)"),
+      table(["Reader", th("Clean: strong smiles"), th("Clean: faint smiles"), th("Clean: wrong reports"), th("Hard: strong smiles"), th("Hard: faint smiles"), th("Hard: wrong reports")],
+        BP_FRAMES.map((r) => el("tr", null, r.map((v, i) => el("td", { class: i ? "r num" : null }, v)))), null, { plain: true }),
+      el("h3", { class: "fr-h" }, "Daily numbers: 24 series of 84 days (8 sudden dips, 8 slow declines, 8 with nothing planted)"),
+      table(["Reader", th("Sudden dips found"), th("Slow declines found"), th("Wrong reports")],
+        BP_DAYS.map((r) => el("tr", null, r.map((v, i) => el("td", { class: i ? "r num" : null }, v)))), null, { plain: true }),
+      el("p", { class: "muted small" }, "Code's ten wrong reports are mostly short pieces of a slow decline that it flagged without seeing the whole. Of 35 planted low weekdays, code and Gemini each named 34, and Gemini named none that was not planted."),
+      el("ul", { class: "plain" },
+        el("li", null, "This says how the readers handle a known signal. It says nothing about real faces or real lives; the generated data is cleaner than any recording."),
+        el("li", null, "Gemini's instruction names talking and a shifting baseline as things that are not smiles, and the hard sessions contain exactly those. The simple code rule was not told. A more careful rule would do better than 22 wrong reports."),
+        el("li", null, "The first step of the study we propose is the same count on real recordings, with two people marking the events. If a rule does as well there, the rule is used and Gemini is dropped from that job."))));
+
+    wrap.appendChild(el("div", { class: "grid" },
+      panel("How the calls are made", null, el("ul", { class: "plain" },
+        el("li", null, "Model: gemini-3.8-flash through the Gemini API, with a response schema, so the answer has a fixed shape."),
+        el("li", null, "Asked to think little: a reading takes about 4 seconds instead of about 30, for a fraction of the tokens."),
+        el("li", null, "A busy or failing service is tried again after a growing wait, then with a second model. An empty answer is asked again with more thinking, or a larger limit when the model ran out of tokens."),
+        el("li", null, "Readings are made in the background and stored. No page waits for Gemini."),
+        el("li", null, "Every call is kept for the clinician: open a patient, then Timeline. Each Gemini row shows exactly what was sent and the raw answer."))),
+      panel("What Gemini never gets", null, el("ul", { class: "plain" },
+        el("li", null, "a name, an id, a date or a clock time"),
+        el("li", null, "a picture, a video or the shape of a face"),
+        el("li", null, "the person's typed words"),
+        el("li", null, "anything at all without the patient's record allowing outside processing")),
+        el("p", { class: "muted small" }, "One exception, off unless the clinic turns it on: a chat mode in which Gemini writes Lanvi's short reply to a note that does not ask for help. Then that note is sent, without any name or id, and code checks the reply before it is shown."))));
+    wrap.appendChild(panel("Where it is in the code", null, el("p", { class: "small" }, "Public repository: ", el("a", { href: "https://github.com/mathewstars/thejunction", rel: "noopener" }, "github.com/mathewstars/thejunction"), ". The instructions Gemini receives: engine/clinic_engine/data/frames_prompt.txt and days_prompt.txt. The gates: engine/clinic_engine/mind/gates.py. The checks of each item: mind/frame_reading.py and mind/day_reading.py. The call with its retries: outreach.py. The generated test sets: frames_reference.py and days_reference.py. Written out for a reader: docs/face-raw.md and docs/health-data.md.")));
+  }
+
+  // ---- blueprint: how the system learns, told with one example
+  function bpLearning(wrap) {
+    wrap.appendChild(el("p", { class: "lead" }, "The system learns one thing only: which of our small offers to show this person first, and at what time of day. It learns it from what the person did with earlier offers and how the days after went. It cannot learn anything else."));
+    const cell = (v, cls) => el("td", { class: cls || null }, v);
+    const ev = [["3 weeks ago, evening", "Breathe with Lanvi", "did it", "better"], ["3 weeks ago, afternoon", "a short walk", "not today", "–"],
+      ["2½ weeks ago, evening", "Breathe with Lanvi", "did it", "better"], ["2½ weeks ago, afternoon", "a short walk", "not today", "–"],
+      ["2 weeks ago, evening", "Breathe with Lanvi", "did it", "better"], ["2 weeks ago, afternoon", "a short walk", "not today", "–"]];
+    const step = (n, t, ...body) => el("div", { class: "row" }, el("div", { class: "top" }, el("span", { class: "chip" }, n), el("span", { class: "t" }, t)), el("div", { class: "d" }, body));
+    wrap.appendChild(panel("One example, start to finish", null, el("div", { class: "rows" },
+      step("1", "What happened", "Over three weeks Lanvi made six offers to one person. This is all the system knows about them:",
+        table(["When", "Offer", "Answer", "Movement in the days after, against her own normal"], ev.map((r) => el("tr", null, r.map((v) => cell(v)))), null, { plain: true }),
+        el("p", { class: "small muted" }, "Code builds this table. It holds no words the person typed.")),
+      step("2", "A model proposes a lesson", "The local model (on the clinic's own hardware) gets the table and a list of sentences it may fill in. It proposes two:",
+        el("ul", { class: "plain" }, el("li", null, "“Prefer breathing in the evening: done three times, and the days after were better.”"), el("li", null, "“Avoid the short walk in the afternoon: offered three times, not done.”")),
+        el("p", { class: "small muted" }, "It can only choose from our six offers, a time of day (morning, afternoon, evening or any) and eight fixed reasons. It cannot write a sentence of its own.")),
+      step("3", "Code checks the lesson", "Code counts again, by itself. A lesson is kept only when at least three rows of the table back it, they really say what the lesson claims, and at least six in ten of all rows about that offer agree. Both lessons pass. A lesson that fails is dropped and written to the log with the reason."),
+      step("4", "Gemini may object", "Gemini sees the two kept lessons with their rows, without any identity. It can only say “weak evidence”, “contradicts recent days” or “too broad”. An objection removes the lesson. Here it objects to neither."),
+      step("5", "What changes for the person", "Our usual order of offers is: breathing, the spark game, a short walk, some daylight, reaching out to someone, the evening check-in. With the two lessons, when an offer is due in the evening breathing stays first, and in the afternoon the short walk moves down the list, so she is offered something else first.",
+        el("p", { class: "small muted" }, "That is the whole effect. The words Lanvi says, the alerts to the clinic and what the clinician sees do not change.")),
+      step("6", "And if it stops being true", "The check runs again after new answers and once a day. When later rows point the other way, or no fresh rows have backed a lesson for a long time, it is withdrawn. The clinician can also reject a lesson by hand; it does not come back."))));
+
     const W = 960, H = 318, BW = 262, BH = 88;
     const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "bp", role: "img",
-      "aria-label": "The learning loop: the phone sends answers, code gathers evidence, model 1 proposes lessons, code checks them, model 2 may object, accepted lessons go to memory and change the order of the next offers." });
+      "aria-label": "The same six steps as a loop: the person answers offers, code builds the table, the local model proposes lessons, code checks them, Gemini may object, and kept lessons change the order of the next offers." });
     const box = (x, y, n, title, l1, l2, cls) => {
       s.appendChild(svg("rect", { x, y, width: BW, height: BH, rx: 10, class: "bp-box " + cls }));
       s.appendChild(svg("text", { x: x + 14, y: y + 26, class: "bp-t" }, n + "  " + title));
@@ -1334,32 +1439,37 @@
       if (label) s.appendChild(svg("text", { x: lx, y: ly, class: "bp-l", "text-anchor": anchor || "middle" }, label));
     };
     const X = [10, 349, 688], Y = [14, 216];
-    box(X[0], Y[0], "1", "The person", "offers answered, sessions played,", "a few words written", "code");
-    box(X[1], Y[0], "2", "Evidence · code", "what was offered, what was done,", "how the next days went", "code");
-    box(X[2], Y[0], "3", "Model 1 proposes", "lessons and up to 3 questions,", "only from lists it is given", "model");
-    box(X[2], Y[1], "4", "Check · code", "every proposal must point at evidence", "that supports it, or it is dropped", "code");
-    box(X[1], Y[1], "5", "Model 2 may object", "weak evidence, contradicts recent days,", "too broad", "model");
-    box(X[0], Y[1], "6", "Memory", "accepted lessons, open questions,", "the person's own rules", "code");
-    arrow(X[0] + BW, Y[0] + BH / 2, X[1], Y[0] + BH / 2, "numbers", (X[0] + BW + X[1]) / 2, Y[0] + BH / 2 - 8);
-    arrow(X[1] + BW, Y[0] + BH / 2, X[2], Y[0] + BH / 2, "anonymous", (X[1] + BW + X[2]) / 2, Y[0] + BH / 2 - 8);
-    arrow(X[2] + BW / 2, Y[0] + BH, X[2] + BW / 2, Y[1], "raw reply", X[2] + BW / 2 + 10, (Y[0] + BH + Y[1]) / 2 + 4, "start");
+    box(X[0], Y[0], "1", "The person answers", "did it, not today, or no answer;", "the phone sends the days after", "code");
+    box(X[1], Y[0], "", "Code builds the table", "one row per offer: when, what,", "the answer, the days after", "code");
+    box(X[2], Y[0], "2", "Local model proposes", "“prefer” or “avoid” an offer at a time", "of day, pointing at rows", "model");
+    box(X[2], Y[1], "3", "Code checks", "counts the rows again; a lesson they", "do not back is dropped", "code");
+    box(X[1], Y[1], "4", "Gemini may object", "weak evidence, contradicts recent", "days, too broad", "model");
+    box(X[0], Y[1], "5", "Kept lessons", "change the order of our offers,", "nothing else", "code");
+    arrow(X[0] + BW, Y[0] + BH / 2, X[1], Y[0] + BH / 2, "", 0, 0);
+    arrow(X[1] + BW, Y[0] + BH / 2, X[2], Y[0] + BH / 2, "", 0, 0);
+    arrow(X[2] + BW / 2, Y[0] + BH, X[2] + BW / 2, Y[1], "proposals", X[2] + BW / 2 + 10, (Y[0] + BH + Y[1]) / 2 + 4, "start");
     arrow(X[2], Y[1] + BH / 2, X[1] + BW, Y[1] + BH / 2, "kept", (X[1] + BW + X[2]) / 2, Y[1] + BH / 2 - 8);
     arrow(X[1], Y[1] + BH / 2, X[0] + BW, Y[1] + BH / 2, "not objected", (X[0] + BW + X[1]) / 2, Y[1] + BH / 2 - 8);
-    arrow(X[0] + BW / 2, Y[1], X[0] + BW / 2, Y[0] + BH, "changes only the order of the next offers", X[0] + BW / 2 + 10, (Y[0] + BH + Y[1]) / 2 + 4, "start");
+    arrow(X[0] + BW / 2, Y[1], X[0] + BW / 2, Y[0] + BH, "the next offer", X[0] + BW / 2 + 10, (Y[0] + BH + Y[1]) / 2 + 4, "start");
     wrap.appendChild(el("section", { class: "panel" }, el("figure", { class: "bp-fig" }, s,
-      el("figcaption", { class: "muted small" }, "Amber boxes are models, the others are plain code. The loop runs after new answers arrive and once a day."))));
-    const step = (n, t, body) => el("div", { class: "row" }, el("div", { class: "top" }, el("span", { class: "chip" }, n), el("span", { class: "t" }, t)), el("div", { class: "d" }, body));
-    wrap.appendChild(panel("Step by step", null, el("div", { class: "rows" },
-      step("1", "The person answers", "Each offer ends as did it, not today or no answer. Sessions and daily steps arrive from the phone. Typed words are turned into labels on this server and are never part of learning as text."),
-      step("2", "Code gathers the evidence", "One row per offer: the action, the situation (weekday, time of day, what was held), the answer, and whether the following days were better or worse against the person's own normal. Each row gets a short reference that means nothing outside this one request."),
-      step("3", "Model 1 proposes", "The local model receives those rows and lists of allowed actions, situations and reason codes. It returns lessons of the form “prefer or avoid this action in this situation, because of these rows”, and at most three questions it would like answered."),
-      step("4", "Code checks every proposal", "A lesson is kept only if its rows exist, there are enough of them, and they really point the way the lesson claims. A question already asked is dropped. Anything outside the lists is dropped. Every drop is written to the refusal log with its reason."),
-      step("5", "Model 2 gives a second opinion", "A second model sees the kept lessons with their evidence, with no identity, and can only object with one of three codes. An objection removes the lesson. It cannot add one."),
-      step("6", "Memory and the next offer", "Accepted lessons go into the person's memory. When the next offer is due, code picks from our fixed list of actions; lessons move suited actions up and unsuited ones down. The person's own rules, such as quiet hours, always win."))));
+      el("figcaption", { class: "muted small" }, "The same steps as a loop. Amber boxes are models; the others are plain code. A model only proposes or objects; code decides."))));
     wrap.appendChild(el("div", { class: "grid" },
-      panel("A lesson can", null, el("ul", { class: "plain" }, el("li", null, "move an action up or down in the order of offers"), el("li", null, "apply only in the situation it was learned in"), el("li", null, "be withdrawn when later evidence points the other way"))),
-      panel("A lesson cannot", null, el("ul", { class: "plain" }, el("li", null, "add an action that is not on our list"), el("li", null, "write or change any text the person sees"), el("li", null, "open, raise or close attention, or send an alert"), el("li", null, "override the person's own rules")))));
-    wrap.appendChild(panel("See it on real runs", null, el("p", { class: "small" }, "Open a patient, then Learned. “How it learns” lists each run with exactly what each model was sent and what it answered. The Timeline shows the same exchange inside the trigger that caused it, next to what code kept and dropped.")));
+      panel("A lesson can", null, el("ul", { class: "plain" }, el("li", null, "move one of our offers up or down in the order"), el("li", null, "apply only at the time of day it was learned for"), el("li", null, "be withdrawn when later answers point the other way"))),
+      panel("A lesson cannot", null, el("ul", { class: "plain" }, el("li", null, "add an offer that is not on our list"), el("li", null, "write or change any text the person sees"), el("li", null, "open, raise or close attention, or send an alert"), el("li", null, "override the person's own rules, such as quiet hours")))));
+    wrap.appendChild(panel("See it on real runs", null, el("p", { class: "small" }, "Open a patient, then Learned. “How it learns” lists each run with exactly what each model was sent and what it answered, and each lesson with the rows behind it. The Timeline shows the same exchange inside the event that caused it, next to what code kept and dropped.")));
+  }
+
+  function viewBlueprint() {
+    const wrap = el("div", { class: "stack" });
+    const tab = S.bpTab || "research";
+    const tabsRow = el("div", { class: "seg", role: "group", "aria-label": "Blueprint sections" }, [["research", "The research"], ["gemini", "What Gemini does"], ["learning", "How it learns"]].map(([k, label]) =>
+      el("button", { type: "button", class: "btn btn-small", "aria-pressed": tab === k ? "true" : "false", "data-key": "bp-" + k, on: { click: () => { S.bpTab = k; history.replaceState(null, "", "#/blueprint/" + k); window.scrollTo(0, 0); render(); } } }, label)));
+    const title = tab === "research" ? "The research: can a phone notice when someone is getting worse again?" : tab === "gemini" ? "What Gemini does here" : "How the system learns";
+    wrap.appendChild(el("div", { class: "head" }, el("h1", null, title)));
+    wrap.appendChild(tabsRow);
+    if (tab === "research") bpResearch(wrap);
+    else if (tab === "gemini") bpGemini(wrap);
+    else bpLearning(wrap);
     return wrap;
   }
 
