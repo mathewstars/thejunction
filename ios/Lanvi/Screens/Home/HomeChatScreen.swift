@@ -281,6 +281,7 @@ struct HomeChatScreen: View {
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.chatWaiting)
                 .opacity(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
                 .accessibilityLabel("Send")
+                .accessibilityIdentifier("chat.send")
             }
         }
         .padding(.horizontal, 16)

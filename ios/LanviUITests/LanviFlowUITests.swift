@@ -94,7 +94,7 @@ final class LanviFlowUITests: XCTestCase {
             pause(1.0)
             field.typeText("The coffee outside was nice")
             pause(0.6)
-            tap(app.buttons, "Send", "chat.send")
+            tap(app.buttons, "chat.send", "chat.send")
             pause(3.0)
         }
         tap(app.buttons, "Close", "chat.close")
@@ -208,7 +208,7 @@ final class LanviFlowUITests: XCTestCase {
 
         // 6. The send button works with the keyboard up.
         field.typeText("Second one")
-        app.buttons["Send"].tap()
+        app.buttons["chat.send"].tap()
         pause(2.5)
         XCTAssertTrue(app.staticTexts["Second one"].exists, "send button works")
         XCTAssertTrue(kb.exists)
