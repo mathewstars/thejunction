@@ -1,235 +1,203 @@
-# Game interface: from ARKit to the mind
+# Game interface: from ARKit to the server
 
-How one AR round travels from the phone to the server, what the server makes of it, and where the two model levels come in. Working name of the product: Angel (not final).
+How one activity travels from the phone to the server in the fox design, what the server makes of it, and what comes back. Checked against the code on Saturday 14 Nov.
 
-Owners: Peter (the app side), Mathew (the server side), Matthew (the game design values marked "design").
+Owners: Peter (the capture on the phone), Mathew (the server), Matthew (the game design values in section 8).
 
-Earlier we said the round is only a response and reports almost nothing. This document goes further: the round still is the response, and it also gives the server a small, clean signal about how the person moved. The phone's daily data stays the main sensor.
+This page replaces the earlier one about the AR round, where the rear camera followed the phone through the room. That round is cut. The server still accepts its record (`POST /v1/rounds`, marked deprecated) so an old build does not break; nothing here builds on it. ARKit is now used for one thing only: the front camera reads how the face moves during two activities, when the person allowed it.
+
+The phone's daily data from Apple Health stays the main sensor. An activity adds a small signal and never decides alone.
 
 ## 1. What ARKit gives the app
 
-With the rear camera and world tracking, ARKit gives the app the following. This is from our knowledge of the platform; Peter confirms each line on his phone.
+Face tracking with the front (TrueDepth) camera. It needs an iPhone with Face ID and does not run in the simulator.
 
-| ARKit gives | What it is | We use it for |
+| ARKit gives | What it is | Sent as |
 |---|---|---|
-| Camera pose per frame | Position and orientation of the phone in the room, in metres, many times a second | The path the person walked, speed, pauses |
-| Tracking state | Normal, or limited with a reason (too fast, too dark, starting up) | Deciding whether a round can be trusted |
-| Floor planes | Horizontal surfaces it found, with their size | The play area: where lights may be placed |
-| Raycasts | A point in the room where a ray from the screen hits a surface | Placing lights at a real distance and height |
-| Light estimate | How bright the room is | Marking rounds played in poor light |
-| Frame timestamps | Exact time of every frame | Timing of every event |
+| 52 blend shapes per frame | How far each part of the face is moved, 0 to 1: mouth corners, eyelids, brows, cheeks, jaw and so on | one column each, under ARKit's own names |
+| The face anchor's position against the camera | Where the head points | `headPitch`, `headYaw`, `headRoll` in degrees; pitch is positive when the chin goes down |
+| `isTracked` per frame | Whether ARKit saw the face | `tracked`, 1 or 0 |
+| Frame timestamps | When each frame was taken | used on the phone to make steady rows at 30 a second; not sent |
 
-What the app derives itself: the distance between the phone and a light. A light is caught when the phone comes within the catch distance (design, start with 0.35 m).
+Not used and never sent or stored: the camera image, video, the face mesh, landmarks, depth. The app shows no camera preview, only a small indicator while the camera is on.
 
-What we do not use: the camera image, the room mesh, any location. None of them leaves the phone, and none is stored.
+The numbers are good enough to compare a person with themselves. They are not good enough to compare two people or two phones, and the server never does.
 
-The phone is held in the hand, so "how the phone moved" stands for "how the person moved". That is good enough to compare a person with themselves. It is not good enough to compare two people or two phones, and we never do.
+## 2. What the app records during each activity
 
-## 2. What the app does during a round
+The app computes nothing from the face and judges nothing. It logs and sends. All judgement is on the server, where it can be tested and changed later.
 
-1. **Look around (about 10 seconds).** The person turns slowly. The app waits for normal tracking and a floor plane, and works out the play area.
-2. **Ask the server how to play.** `GET /v1/today` returns `round_config` (section 5). The app places the lights from it.
-3. **Play.** Lights appear one at a time. For each light the app logs when it appeared, where it was, when the person first moved towards it and when it was caught or expired.
-4. **Sample the path.** Twice a second the app stores the phone's position relative to where the round started.
-5. **Send one record** when the round ends, also when the person stops early.
+| Activity | Type | Length | What the app logs |
+|---|---|---|---|
+| Sparks and snow | `focus` | 45 seconds | correct taps, wrong taps (a snowflake), misses (a spark that faded), the reaction time of each tap in ms, finished or stopped; face frames |
+| Breathe with Lanvi | `breathing` | about a minute, 6 breaths | seconds played, breaths completed, finished or stopped; face frames |
+| Evening check-in | `checkin` | about a minute | up to three good things and one plan (each tapped from a list or typed), and the answer about yesterday's plan. No face. |
 
-The app does no analysis. It only logs. All judgement is on the server, where it can be tested.
+Face frames, in the app today (`ios/Lanvi/Sense/`, described in `ios/SENSORS.md`):
 
-## 3. The round record (app to server)
+- Asked once before the first game, with "Not now" as an equal answer. A switch on the Help screen turns it off.
+- One row per 1/30 second: all 52 blend shapes to 3 decimals, then the three angles.
+- A pleasant moment is marked when Lanvi cheers in the game (`moments_ms`, at most 20). The server looks for a smile after each.
+- Only the last `duration_s` + 1 seconds are kept, at most 9,000 rows.
+- No face tracked, camera refused, or no TrueDepth camera: no frames, and the game is the same.
 
-`POST /v1/rounds`, device token, idempotent by `id`.
+Checked so far: unit tests and one session sent to a local server from the app's own encoder. The capture on a real phone has a test list in `ios/SENSORS.md` and no recorded result in the repo yet.
+
+## 3. The activity record (app to server)
+
+`POST /v1/activities`, device token, one record per activity, also when stopped early. Field by field with limits and errors: `docs/app-api.md`, section 5. The face part in full: `docs/face-raw.md`.
 
 ```json
 {
-  "id": "5b1c0c9e-8d0a-4c57-9a55-3f0f6d1f2a10",
-  "schema": 2,
-  "suggestion_id": "s_41",
+  "id": "4f1c7f9e-2b7a-4d0e-9a51-0c3e5f7a9b21",
+  "type": "focus",
   "started_at": "2026-11-14T09:12:03Z",
-  "duration_s": 118.4,
-  "mode": "standing",
+  "duration_s": 45.2,
   "completed": true,
   "ended_by": "finished",
-
-  "config": {
-    "config_id": "standard",
-    "layout_seed": 1234,
-    "lights_total": 12
-  },
-
-  "tracking": {
-    "normal_ratio": 0.93,
-    "limited_reasons": ["excessive_motion"],
-    "play_area_m2": 9.5,
-    "light": "ok",
-    "lidar": false
-  },
-
-  "lights": [
-    {
-      "i": 0,
-      "spawn_t": 2.1,
-      "dist_m": 1.8,
-      "height_m": 1.2,
-      "first_move_t": 2.9,
-      "end_t": 6.4,
-      "caught": true
-    }
-  ],
-
-  "path": {
-    "hz": 2,
-    "points": [[0.0, 0.0, 0.0], [0.1, -0.2, 0.0]]
+  "correct_taps": 17, "wrong_taps": 1, "misses": 2,
+  "reaction_ms": [512, 498, 530, 476, 551],
+  "face_raw": {
+    "rate_hz": 30,
+    "channels": ["mouthSmileLeft", "mouthSmileRight", "eyeBlinkLeft", "eyeBlinkRight",
+                 "cheekSquintLeft", "cheekSquintRight", "headPitch", "headYaw", "headRoll"],
+    "samples": [
+      [0.041, 0.052, 0.083, 0.071, 0.020, 0.024, 6.2, -1.4, 0.8],
+      [0.312, 0.288, 0.074, 0.069, 0.183, 0.191, 6.0, -1.3, 0.9]
+    ],
+    "tracked": [1, 1],
+    "moments_ms": [40]
   }
 }
 ```
 
-Field notes:
-
 | Field | Meaning |
 |---|---|
-| `mode` | `standing`, `seated` (AR, lights within reach) or `screen` (no camera, lights tapped on the display) |
-| `ended_by` | `finished`, `user_stopped` or `interrupted` (call, app closed, tracking lost) |
-| `suggestion_id` | The suggestion this round answers, or null when the person just played |
-| `config` | Exactly what the server sent, so the server knows what the person was asked to do |
-| `tracking.normal_ratio` | Share of the round with normal tracking, 0 to 1 |
-| `tracking.light` | `dim`, `ok` or `bright`, from the light estimate |
-| `lights[].spawn_t`, `first_move_t`, `end_t` | Seconds from the start of the round. `first_move_t` is the first moment the phone moved clearly towards the light (design, start with 0.15 m of approach). Null if the person never moved. |
-| `lights[].dist_m`, `height_m` | Where the light was when it appeared: distance from the phone and height above the floor |
-| `path.points` | `[x, z, y]` in metres relative to the start of the round, rounded to 0.1. At most 240 points. Left out in `screen` mode. |
+| `ended_by` | `finished`, `user_stopped` or `interrupted` |
+| `suggestion_id` | optional: the suggestion this was played from |
+| `reaction_ms` | one entry per tap, at most 200. The server leaves out taps faster than 120 ms and needs at least 5 to compute a median. |
+| `face_raw.channels` | the names of the columns. Four are required: `mouthSmileLeft`, `mouthSmileRight`, `eyeBlinkLeft`, `eyeBlinkRight`. A measure that needs a missing channel comes back empty, so send them all. |
+| `face_raw.samples` | one row per frame, oldest first, at most 12,000 |
+| `face` | instead of `face_raw`, from an older phone: a summary the phone computed. Still accepted. Never both. |
 
-Times are seconds with one decimal, distances are metres. In `screen` mode `dist_m` and `height_m` are null and the path is left out.
+The same record sent again is answered without new XP and the frames are stored once. The same `id` with different content is refused (409).
 
-Privacy: the path is relative to the start point and carries no map of the room. It leaves the clinic's server only for the movement reading in section 6, only when that is switched on, and only after it has been made anonymous.
+## 4. What the server does with it
 
-## 4. What the server does with a round
-
-All of this is code. No model takes part in steps 1 to 5.
+Steps 1 to 5 are code. No model takes part.
 
 | Step | What happens |
 |---|---|
-| **1. Check** | Values that cannot be true are rejected. A round with `normal_ratio` under 0.7, a play area under 2 m² or `interrupted` is kept but marked low quality and never enters the baseline. |
-| **2. Features** | Per light: reaction time (`first_move_t - spawn_t`) and travel speed (`dist_m / (end_t - first_move_t)`). Per round: share of lights caught, median reaction time, median travel speed, share of the play area covered, share of the time standing still, vertical range, and fade (speed in the second half against the first half). |
-| **3. Own normal** | Each feature is compared with the same person's earlier good rounds in the same mode. At least five rounds are needed. The result is a robust z-score per feature. |
-| **4. Round energy** | One summary of speed, reaction and coverage against the person's own normal, as a bucket: `low`, `usual`, `high`. |
-| **5. Attention** | Watchers look at the round next to the daily data: two weak rounds in a row; weak rounds while the daily data looks normal (or the other way round); a growing fade; several rounds stopped early; rounds offered but not played. Each can open or raise an attention item. |
+| **1. Check** | A record that cannot be true is refused (422) and logged: in the future, longer than 30 minutes, more reaction times than taps, more than 10 taps a second, played longer than the activity lasted, frames that last much longer than the activity. |
+| **2. Face summary** | From `face_raw` the server computes 16 measures and the tracking quality: smiles (how often, how long, how strong, whether they reach the eyes, whether one follows a pleasant moment), blinks, looking down, brows, how much the face and the head moved. Rules and thresholds: `docs/face-raw.md`. The frames are kept as their own object, so the summary can be computed again when a rule changes. |
+| **3. Features** | Focus: median and spread of reaction time, error rate. Breathing: time played. Check-in: number of good things, plan made, yesterday's plan done. |
+| **4. Own normal** | Each feature and each face measure is compared with the same person's earlier sessions of the same type (the last 20 at most). At least 5 are needed. The result is a robust z-score. A face summary with tracking quality under 0.6 is stored and shown but never used. |
+| **5. Watchers** | See below. |
+| **6. Session reading** | Optional, a model, checked by code. See below. |
+| **7. Frame reading** | Optional, a model, checked by code, for the clinician only. See below. |
 
-The round never decides alone. The daily data from Apple Health is the main sensor; the round adds evidence and can raise attention earlier.
+Typed check-in words do not stay in the record. They are stored as notes and checked for help-seeking words like any note (`docs/app-api.md`, section 8).
 
-## 5. What the server sends back: `round_config`
+### The watchers
 
-Part of `GET /v1/today`. Code picks it from a fixed list. This is how the game adapts to the person.
+The first two look at the last 3 sessions with a z-score and need 2 of them.
 
-```json
-{
-  "config_id": "standard",
-  "mode_hint": "standing",
-  "layout_seed": 1234,
-  "lights_total": 12,
-  "distance_band": "mid",
-  "height_band": "mid",
-  "light_life_s": 8,
-  "catch_radius_m": 0.35
-}
-```
-
-| `config_id` | Lights | Distance | Height | For |
-|---|---|---|---|---|
-| `seated_gentle` | 8 | within reach | low to mid | A hard day, or the person's own rule |
-| `near_gentle` | 10 | near (up to 1 m) | mid | After a weak round, or while status is `outside` |
-| `standard` | 12 | mid (1 to 2.5 m) | mid | The usual round |
-| `wide` | 12 | across the play area | mid | After two strong rounds |
-| `wide_high` | 14 | across the play area | low to high | Strong and steady |
-
-The values in this table are design values for Matthew to tune.
-
-Rules for picking: start from the person's usual config; step down one after a low-energy round or while status is `outside`; step up one after two high-energy rounds; the person's rules always win (for example "seated only"); lessons may prefer a config or a time of day. The same `layout_seed` gives the same layout, so rounds can be compared.
-
-## 6. Where the two model levels come in
-
-Every model call passes two code gates. The input gate builds what the model may see. The output gate checks what comes back before anything is used. Nothing the person typed ever goes to a model outside the clinic.
-
-| | Level 1: local model | Level 2: Gemini (optional, off by default) |
-|---|---|---|
-| **Job** | Words the one line shown after the round. Proposes lessons and questions in a fixed shape. | **Reads the movement of a round** (below). Gives a second opinion on proposed lessons. |
-| **Sees** | Labels for this person's recent rounds and days: energy bucket, rounded z-scores, mode, config, finished or not, what was offered and answered | The anonymous movement trace of one round, and optionally a usual round next to it. Never ids, dates, the clinic, the device or any text. |
-| **May not do** | Choose the action, choose the config, change a threshold, close attention | The same |
-| **Checked by** | Output gate: fixed shape, known action and config names, evidence recomputed by code, no clinical words | Output gate: fixed shape, and every claim compared with what code computed from the same round |
-
-Code is the judge at the end. Every refusal at either gate is logged and shown to the next review.
-
-### The movement reading (level 2)
-
-This is the real job for Gemini: read how the person moved through a round, the way a physiotherapist would look at a recording, and say it in a fixed vocabulary.
-
-**What goes out, after the input gate:**
-
-- The path, turned by a random angle and with a fresh random alias, so two requests cannot be linked and the layout of the room cannot be read from it.
-- The per-light log: when each light appeared, how far and how high it was, when the person first moved and when it was caught.
-- The same for one usual round of the same person, when a comparison is wanted.
-- Optionally the two paths drawn as two small trail pictures, so the model can also look at the shape.
-- Times only as seconds from the start of the round. No date, no time of day.
-
-**What must come back, as one JSON object and nothing else:**
-
-```json
-{
-  "pattern": "slowing",
-  "fade_from_light": 7,
-  "reach": "avoids_high",
-  "turning": "mostly_right",
-  "compared_to_usual": "smaller_and_slower",
-  "confidence": "medium",
-  "evidence": [
-    {"claim": "slowing", "lights": [7, 8, 9, 10, 11]},
-    {"claim": "avoids_high", "lights": [3, 6, 9]}
-  ]
-}
-```
-
-| Field | Allowed values |
+| Watcher | Opens when |
 |---|---|
-| `pattern` | `steady`, `slowing`, `stop_start`, `hesitant_start`, `rushed`, `minimal_movement`, `unclear` |
-| `fade_from_light` | The index of the light where the person started to slow, or null |
-| `reach` | `full`, `avoids_high`, `avoids_low`, `avoids_far`, `unclear` |
-| `turning` | `both`, `mostly_left`, `mostly_right`, `little`, `unclear` |
-| `compared_to_usual` | `similar`, `smaller`, `slower`, `smaller_and_slower`, `larger`, `faster`, `unclear` |
-| `confidence` | `low`, `medium`, `high` |
-| `evidence[].claim` | One of the values used above, with the lights that show it |
+| `slower_reactions` | median reaction time 1.5 or more above own normal |
+| `face_flat` | facial activity or smile rate 1.5 or more below own normal, with good tracking |
+| `checkins_stopped` | no check-in for 3 days after at least 3 in the two weeks before |
+| `plans_not_done` | the last 3 answers about a plan were "no" |
+| `not_played` | 3 offered activities in a row left unplayed |
 
-**What the output gate does with it:**
+These open an item for the clinician at the lowest level, "watch". Alone they never rise, never cause a suggestion and never produce text for the person. They rise to "attention" only while the daily data also shows a held drop in movement. Slower reactions or a flatter face also let that drop be noticed one low day earlier (2 low days of the last 5 instead of 3).
 
-1. Anything that is not exactly this shape is refused.
-2. Every claim is checked against code. "Slowing from light 7" must agree with the travel speeds the server computed; "avoids high" must agree with the catch rate of the high lights. A claim that code cannot confirm is dropped and logged.
-3. What survives is stored with the round as a movement reading, marked "read by a model, checked by code".
+### The session reading (level 2, optional)
 
-**What it is used for:**
+A model compares one session's numbers with the person's earlier ones and says, in fixed words, whether anything changed.
 
-- The clinician sees the reading next to the trail of the round.
-- The patient sees one plain line, picked from a fixed set by the pattern. Never the reading itself.
-- It joins the evidence for attention and for lessons, for example: "slows down in the second half of evening rounds".
+- **Runs when:** a focus or breathing session has a face summary, the server's outside model is on (`OUTREACH_MODE`, off by default), and the patient's record allows outside processing. Otherwise the answer says `off` or `not_allowed` and the code path above stands.
+- **Sees:** this session's rounded numbers (reaction time, spread, error rate or time played, six face values, tracking quality) and up to 5 earlier sessions of the same type, named only by position (-1, -2, ...). No id, date, time of day or text.
+- **Returns:** `reactions`, `expression`, `eyes`, `compared_to_usual`, each a fixed word or `unclear`; from which earlier session the change started; a confidence; and which numbers support each claim.
+- **Code checks every claim** against its own z-scores. A claim of change needs a z of 1.0 or more. What code cannot confirm is set to `unclear` and logged.
+- **Used for:** a confirmed "slower" or "less expressive" counts as a hit for the two watchers above. The clinician sees the reading with what was dropped.
 
-**If level 2 is off or does not answer:** the round is processed by code alone, exactly as in section 4. Nothing waits for the model.
+### The frame reading (level 2, optional, clinician only)
 
-**Consent:** the movement reading runs only for a patient whose record allows outside processing. The switch for the whole server is `OUTREACH_MODE`.
+Here Gemini reads the frames themselves and code checks each item. Full text: `docs/face-raw.md`, "What a model sees", and `docs/api/README.md`, "The frame reading".
 
-### API for the reading
+- **Runs when:** the session came with `face_raw`, the outside model is on, `FRAMES_READER` is not `off`, and the patient's record allows outside processing. In the background, after the record is stored.
+- **Sees:** a reduced stream, not the frames as sent. Up to 15 named columns (time, smile, each mouth corner, cheek, frown, blink, look down, two brow values, jaw, three head angles, tracked), averaged to 5 rows a second, rounded, at most 400 rows, plus the pleasant moments in seconds. No id, date, clock time or text.
+- **Returns:** each smile with start, end, whether it reaches the eyes and which side; a blink count; stretches of 2 seconds or more (looking down, brows down, inner brows raised, head down, still face, eyes closed, not tracked); for each pleasant moment whether a smile followed; five overall words. It is told to judge a smile against this person's own resting level, and never to name a mood.
+- **Code checks each item** against its own detection on the full-rate frames:
+  - A reported smile is confirmed when it overlaps a smile code found by at least 0.3 of their joint span. Code's values for eyes and side replace the model's.
+  - **Faint smiles.** Code's own rule needs the smile signal to reach 0.25. A reported smile that touches no smile of code's is tested against the resting level around it (the 8 seconds before and after). It is kept apart as a faint smile when it rises above rest by 0.05 on average and 0.10 at its peak, lasts 0.3 seconds, and both mouth corners take part. If its peak does reach 0.25 but code's rule did not count it as a smile, it is marked brief instead. Otherwise it is dropped with a reason.
+  - A stretch is kept when code finds the same thing in most of it. Blink counts are shown side by side.
+- **Used for:** the clinician sees both readers on one session and how often they agree. It changes nothing else: not the face summary, not attention, not suggestions, not lessons, and nothing the person sees.
 
-| Call | Who | What |
-|---|---|---|
-| `POST /v1/rounds` | App | Returns at once with `analysis: "pending"`, `"off"` or `"not_allowed"`. The reading runs in the background. |
-| `GET /v1/rounds/{id}/analysis` | App | `status` (`pending`, `ready`, `off`, `failed`) and, when ready, the plain line for the patient. |
-| `GET /v1/clinic/patients/{patient_id}/rounds/{id}` | Clinician | The round, its features, the path for drawing the trail, and the full checked reading with what was dropped. |
-| `POST /v1/demo/analyze` | Demo | Runs the reading again for a round, so it can be shown live. |
+Neither reader is the truth. The thresholds of the fixed rule and the two faint-smile margins are estimates and have not been calibrated on recordings of people.
 
-## 7. What the clinician sees from rounds
+## 5. What comes back to the app
 
-Per patient: rounds played against rounds offered, the energy bucket per round over time, and the path of a chosen round drawn as a simple trail. Two trails side by side (a usual round and a recent one) show the change without a number. Next to them, the checked movement reading from level 2, when it is on.
+At once, in the answer to `POST /v1/activities`:
 
-## 8. Open points
+| Field | What |
+|---|---|
+| `xp_gained`, `xp_total` | XP for showing up: the same whatever the score, finished or not |
+| `stage`, `next_stage_at`, `glow`, `wandering` | Lanvi's growth after this record |
+| `line` | one line for Lanvi to say, from a fixed set, chosen by type and by how it ended |
+| `crisis`, `crisis_block` | true with the help block when typed check-in words ask for help |
+| `reading` | `pending`, `off`, `not_allowed` or `not_applicable` |
 
-1. **Peter:** confirm the ARKit lines in section 1, and that path sampling at 2 Hz and the per-light log are easy to produce.
-2. **Peter:** how `first_move_t` is detected in practice. If it is hard, send null and the server uses time to catch.
-3. **Matthew:** the config table in section 5, the catch distance and how long a light lives.
-4. **Aalto mentors:** which of the round features they would trust: reaction time, speed, coverage or fade.
-6. **All:** the movement reading sends an anonymous movement trace to Gemini. For the demo that is example data and our own. With real patients it needs their consent and an agreement with the provider; say so in the pitch.
-5. **Mathew:** the server needs five good rounds per mode for a baseline; for the demo the seed script supplies them, marked as example data.
+Later, if the app asks: `GET /v1/activities/{id}/reading` gives a status and, when ready, one neutral line. The app does not ask today.
+
+Nothing about the face, reaction times or mood comes back, in any call. `GET /v1/today` may later carry a suggestion, but only when the daily data moved.
+
+## 6. What the clinician sees
+
+On the patient page, per activity type: each session with date, finished or not, its headline numbers and their z against own normal, and how many were offered, played and finished in the last 7 and 28 days. For focus and breathing also the face measures with the tracking quality, where they came from (`raw` or `summary`), the frame counts (never the frames), the checked session reading, and the frame reading with its agreement numbers. Check-ins show the tapped items; typed words only when the patient's record allows it. A clinician can download one session's frames for research; each download is logged.
+
+XP and stage are shown as small facts, not as clinical signals.
+
+## 7. What is not built or not checked
+
+- A screen where the person gives or withdraws consent for outside processing. In the prototype the example data sets the flag.
+- Calibration of any face threshold against recordings of people.
+- The face capture on a real iPhone, as far as the repo shows.
+- `ended_by: "interrupted"` is accepted by the server; the app never sends it.
+
+## 8. Game design values (Matthew)
+
+The values of the old section 5 (the light configurations, catch distance, how long a light lives) belonged to the AR round. None applies to the fox design. They remain in the server only for old builds.
+
+Values that shape the game now. Those on the server are in `engine/clinic_engine/mind/lanvi_config.py`:
+
+| Value | Now | Where | Status |
+|---|---|---|---|
+| XP: focus, breathing, check-in | 10 each | server | from `docs/game-design.md` |
+| XP: yesterday's plan done | 15 | server | from `docs/game-design.md` |
+| XP: a day walked or slept around own normal | 5 | server | from `docs/game-design.md` |
+| Stages | kit 0, young fox 100, grown fox 300 | server | from `docs/game-design.md`; "tune later" |
+| XP awards per day | 2 focus, 2 breathing, 1 check-in | server | Mathew's choice. **Matthew to confirm.** |
+| Shortest activity that earns XP | 5 seconds | server | Mathew's choice. **Matthew to confirm.** |
+| Glow full at | 50 XP | server | Mathew's choice. **Matthew to confirm.** |
+| A wandering lasts | 3 hours | server | Mathew's choice ("a few hours" in the design). **Matthew to confirm.** |
+| "Welcome back" line after | 3 days away | server | Mathew's choice. **Matthew to confirm.** |
+| What helps, and what is suggested first | moving: walk, daylight. music: breathing, sparks. people: call someone. quiet: breathing, check-in | server | Mathew's choice. **Matthew to confirm.** |
+| Sparks and snow length | 45 seconds | app | from `docs/game-design.md` |
+| Breathe with Lanvi | 6 breaths | app | from `docs/game-design.md` |
+| Lanvi's lines, the five stories, the check-in lists | `engine/clinic_engine/data/lanvi_lines.json`, `checkin_catalog.json` | server | drafts. **Matthew to review the wording.** |
+
+Still to decide, Matthew:
+
+1. Tail glow. The handbook (`ios/HANDOFF.md`) says no light or glow on the fox's tail. Several server lines say "my tail glows", and the growth meter is called `glow`. Keep the word, or change the lines?
+2. Which moments in each game count as pleasant (`moments_ms`). Today: when Lanvi cheers.
+3. Whether the day limits and the 5-second floor fit the "never earn less on a bad day" rule as you mean it.
+4. Naming the fox and the tail colour from the design: not in the app or the server. Cut, or later?
+
+## 9. Open points
+
+1. **Peter:** run the device list in `ios/SENSORS.md`, above all the sign of `headPitch` (looking down must be positive). The app takes the angles from the camera's portrait view matrix; `docs/face-raw.md` describes the inverse camera transform. Check that both give the same sign on a phone.
+2. **Aalto mentors:** which measures they would trust: reaction time, smiles, facial activity, check-ins.
+3. **Mathew:** the server needs 5 earlier sessions of a type before it has an own normal. For the demo the seed data supplies them, marked as example data.
+4. **All:** the two readings send numbers to Gemini. In the demo that is example data. With real patients it needs their consent and an agreement with the provider. "No identifier in the data" is what we can state; it is not a legal finding of anonymity. Say so in the pitch.
