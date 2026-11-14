@@ -84,8 +84,7 @@ struct CheckinTileLabel: View {
             Text(text)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
-                .minimumScaleFactor(0.85)
-                .fixedSize(horizontal: false, vertical: true)
+                .minimumScaleFactor(0.8)
             Spacer(minLength: 0)
         }
     }
