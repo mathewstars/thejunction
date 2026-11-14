@@ -1,0 +1,7 @@
+// Committed defaults. The real values live in the git-ignored Config.xcconfig
+// next to this file (copy Config.example.xcconfig). With no Config.xcconfig the
+// app runs in offline demo mode with sample data.
+LANVI_SERVER_URL =
+LANVI_PAIRING_CODE =
+
+#include? "Config.xcconfig"
