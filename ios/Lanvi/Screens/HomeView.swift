@@ -12,14 +12,11 @@ struct HomeView: View {
     @Namespace private var zoom
 
     private enum Cover: Identifiable {
-        /// The story travels with the screen, so answering it (which clears it on
-        /// the server) never pulls the screen out from under the person.
-        case activity(ActivityKind), help, story(API.StoryOut), mind, chat
+        case activity(ActivityKind), help, mind, chat
         var id: String {
             switch self {
             case .activity(let k): return "activity-\(k.rawValue)"
             case .help: return "help"
-            case .story: return "story"
             case .mind: return "mind"
             case .chat: return "chat"
             }
@@ -75,9 +72,7 @@ struct HomeView: View {
     @State private var helpBlock: API.CrisisBlock?
     @State private var size: CGSize = .zero
     @State private var insets = EdgeInsets()
-    @State private var entrance: CGFloat = 0
     @State private var haptic = 0
-    @State private var storyAutoAnswer: String?
     @State private var arrived = false
     // The living fox: one-off reactions and where it looks.
     @State private var reaction: LanviMood = .happy
@@ -114,7 +109,7 @@ struct HomeView: View {
                         .simultaneousGesture(TapGesture().onEnded { tapFox() })
                 }
                 .frame(width: L.fox * 2, height: L.fox * 2)
-                .position(x: L.foxCenter.x + entrance, y: L.foxCenter.y)
+                .position(x: L.foxCenter.x, y: L.foxCenter.y)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Lanvi")
                 .accessibilityHint("Shows how Lanvi is growing")
@@ -230,9 +225,6 @@ struct HomeView: View {
                 cover = .help
             }
         }
-        .onChange(of: store.wandering?.state) { old, new in
-            if new == .back, old != .back { runIn() } else if !celebrating { settle() }
-        }
         .onChange(of: store.cheerTick) { _, _ in
             pose = .cheer
             react(.happy)
@@ -251,7 +243,7 @@ struct HomeView: View {
             #if DEBUG
             FrameMeter.shared.start()
             #endif
-            if store.wandering?.state == .back { runIn() } else { settle() }
+            settle()
             withAnimation(LanviTiming.screen.delay(0.2)) { arrived = true }
         }
         .task { await runDemo() }
@@ -324,14 +316,6 @@ struct HomeView: View {
                     .accessibilityIdentifier("home.primary")
                 chatButton
             }
-        case .story:
-            HStack(spacing: 12) {
-                moreButton
-                Button("Hear my story") { openStory() }
-                    .buttonStyle(HomePrimaryStyle())
-                    .accessibilityIdentifier("home.primary")
-                chatButton
-            }
         case .realWorld(let s):
             HStack(spacing: 16) {
                 Button("I did it") { Task { await store.answerSuggestion(s, didIt: true) } }
@@ -381,11 +365,6 @@ struct HomeView: View {
                 cover = nil
                 helpBlock = nil
             }
-        case .story(let story):
-            HomeStoryScreen(story: story, autoAnswer: storyAutoAnswer,
-                            onAnswer: { await store.answerStory($0) }) {
-                if case .story = cover { cover = nil }
-            }
         case .mind:
             HomeMindScreen { cover = nil }
         case .chat:
@@ -397,14 +376,12 @@ struct HomeView: View {
 
     // MARK: State for the scene
 
-    /// Lanvi stays on Home at full size in the middle, also while "wandering":
-    /// a tiny distant fox looked broken (the captain, Saturday). The line still says
-    /// it is off wandering, and today's one thing stays available.
+    /// Lanvi never leaves Home (the captain cut the wandering): always home, always full size.
     private var away: Bool { false }
 
     /// The mood Lanvi holds at rest: sleepy late at night, otherwise the pose decides.
     private var restingMood: LanviMood? {
-        guard !celebrating, store.wandering?.state != .back else { return nil }
+        guard !celebrating else { return nil }
         let hour = Calendar.current.component(.hour, from: store.now)
         return (hour >= 22 || hour < 5) ? .sleepy : nil
     }
@@ -433,7 +410,6 @@ struct HomeView: View {
         case .activity(let k):
             if case .game(let g) = store.todayThing, g == k { return "today" }
             return nil                     // opened from the more sheet: slides up
-        case .story: return "today"
         case .chat: return chatFrom        // the bubble or the chat button, whichever was tapped
         case .help, .mind: return nil
         }
@@ -443,7 +419,6 @@ struct HomeView: View {
     private var actionsKey: String {
         switch store.todayThing {
         case .game(let k): return "game-\(k.rawValue)"
-        case .story: return "story"
         case .realWorld(let s): return "real-\(s.id)"
         case .done: return "done"
         }
@@ -451,12 +426,6 @@ struct HomeView: View {
 
     /// Lanvi's one line. When today's thing is done, it says so.
     private var bubbleText: String {
-        if store.wandering?.state == .away, !celebrating {
-            if let back = API.date(from: store.wandering?.returnsAt), back > Date() {
-                return "I'm off wandering across Lapland. Back around \(back.formatted(date: .omitted, time: .shortened))."
-            }
-            return "I'm off wandering across Lapland. Back soon."
-        }
         if case .done(let d) = store.todayThing, !d.restful, !celebrating {
             return "That's our thing for today."
         }
@@ -472,10 +441,6 @@ struct HomeView: View {
         cover = c
     }
 
-    private func openStory() {
-        if let s = store.wandering?.story { open(.story(s)) }
-    }
-
     private func openAfterSheet(_ c: Cover) {
         pendingCover = c
         sheet = nil
@@ -486,17 +451,13 @@ struct HomeView: View {
     /// Home never wraps them in a second animation.
     private func settle() {
         let next: LanviPose
-        switch store.wandering?.state {
-        case .back: next = .surprised
-        default:
-            if isDoneToday { next = .love }
-            else {
-                let hour = Calendar.current.component(.hour, from: store.now)
-                switch store.dayPart {
-                case .morning: next = .cheer        // a morning stretch
-                case .day, .evening: next = .curious
-                case .night: next = (hour >= 22 || hour < 5) ? .love : .curious   // late: curled up and cosy
-                }
+        if isDoneToday { next = .love }
+        else {
+            let hour = Calendar.current.component(.hour, from: store.now)
+            switch store.dayPart {
+            case .morning: next = .cheer        // a morning stretch
+            case .day, .evening: next = .curious
+            case .night: next = (hour >= 22 || hour < 5) ? .love : .curious   // late: curled up and cosy
             }
         }
         if next != pose {
@@ -513,23 +474,9 @@ struct HomeView: View {
         }
     }
 
-    /// Back from the wandering: Lanvi runs in from the side, then looks up, a story to tell.
-    private func runIn() {
-        let w = max(size.width, 400)
-        pose = .run
-        entrance = -w
-        withAnimation(.easeOut(duration: 1.1)) { entrance = 0 }
-        Task {
-            try? await Task.sleep(for: .milliseconds(1100))
-            pose = .surprised
-            react(.surprised)
-            haptic &+= 1
-        }
-    }
-
     /// Opening the app again: Lanvi is pleased to see you.
     private func welcomeBack() {
-        guard !celebrating, store.wandering?.state != .away else { return }
+        guard !celebrating else { return }
         pose = .love
         react(.happy)
         Task {
@@ -578,10 +525,9 @@ struct HomeView: View {
     // MARK: Demo and screenshots
 
     /// `-demo` walk-through (Home part): today's thing, Breathe with Lanvi, the
-    /// reward, Lanvi grows up, today is done, Lanvi runs off to wander and comes
-    /// back with a story, then a word in the chat. `-demoPlay <focus|breathing|checkin>` sends one
-    /// activity at once; `-demoOpen <help|story|mind|chat|more|growth|focus|breathing|checkin>`
-    /// opens that screen; `-demoAnswer a|b` answers the waiting story.
+    /// reward, Lanvi grows up, today is done, then a word in the chat. `-demoPlay <focus|breathing|checkin>` sends one
+    /// activity at once; `-demoOpen <help|mind|chat|more|growth|focus|breathing|checkin>`
+    /// opens that screen.
     private func runDemo() async {
         await store.start()
         let args = ProcessInfo.processInfo.arguments
@@ -593,7 +539,6 @@ struct HomeView: View {
             try? await Task.sleep(for: .milliseconds(600))
             switch what {
             case "help": open(.help)
-            case "story": openStory()
             case "mind": open(.mind)
             case "chat": open(.chat)
             case "more": sheet = .more
@@ -606,10 +551,6 @@ struct HomeView: View {
             try? await Task.sleep(for: .seconds(value("-demoDelay").flatMap(Double.init) ?? 0.9))
             await store.finish(Self.sample(kind), kind: kind)
         }
-        if let answer = value("-demoAnswer") {
-            try? await Task.sleep(for: .milliseconds(900))
-            _ = await store.answerStory(answer)
-        }
         if args.contains("-flow") { await runFlow(); return }
         guard demo else { return }
 
@@ -619,15 +560,9 @@ struct HomeView: View {
         cover = nil
         try? await Task.sleep(for: .milliseconds(700))
         await store.finish(Self.sample(.breathing), kind: .breathing)
-        // XP, glow, growing up, done for today, then Lanvi runs off to wander.
+        // XP, glow, growing up, done for today.
         while celebrating || store.celebration != nil { try? await Task.sleep(for: .milliseconds(200)) }
         try? await Task.sleep(for: .seconds(3))
-        await store.demoComeBack()
-        try? await Task.sleep(for: .seconds(3))
-        storyAutoAnswer = "a"
-        openStory()
-        while cover != nil { try? await Task.sleep(for: .milliseconds(200)) }
-        try? await Task.sleep(for: .seconds(2))
         // A short word with Lanvi.
         open(.chat)
         while cover != nil { try? await Task.sleep(for: .milliseconds(200)) }

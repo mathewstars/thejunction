@@ -49,7 +49,7 @@ Where they plug into the app: Apple Health on first run and on every app open, s
 - Activities: **Sparks and snow** (focus tap game, about 45 s), **Breathe with Lanvi** (about 1 min), **Evening check-in** (three good things, one small thing for tomorrow).
 - A **real back-and-forth chat** with Lanvi.
 
-Rejected by Matthew, do not bring back: smile-back faces, a farm, a glowing ball mascot, the AR catch-the-lights game, foxes drawn by an agent (use his art only), stacks of white cards on Home, any light or glow on the fox's tail, swinging the fox's front legs as arms, a fox that shakes or fidgets in place.
+Rejected by Matthew, do not bring back: smile-back faces, a farm, a glowing ball mascot, the AR catch-the-lights game, foxes drawn by an agent (use his art only), stacks of white cards on Home, any light or glow on the fox's tail, swinging the fox's front legs as arms, a fox that shakes or fidgets in place, Lanvi wandering off or bringing back stories (cut; the app ignores the server's `wandering` and never calls the wandering answer endpoint).
 
 ## Design bar
 
@@ -85,7 +85,7 @@ The fox art comes from Matthew's own fox, sharpened and split into parts on the 
 2. Open `ios/Lanvi.xcodeproj`, pick an iPhone simulator, Run. iOS 17, SwiftUI, no third-party packages.
 3. **Builds talk to the live server, `lanvi.app`.** On first run the app asks for a one-time pairing code (get one from Mathew, dad). Codes work once; Help has "Disconnect this phone" to pair again with a new one. For sample data with no server, launch with `-offline` (UI tests and screenshot runs must always pass `-offline`, so automated runs never send fake activity to the live clinic). To use another server (a local engine), copy `ios/Config.example.xcconfig` to `ios/Config.xcconfig` (git-ignored).
 
-Launch arguments (Scheme, Arguments): `-demo` plays the whole story by itself; `-screen home|whathelps|focus|breathe|puppet` opens one screen; `-hour <0-23>` forces the time of day; `-offline` uses sample data instead of the server. More demo switches exist (`-demoXP`, `-demoGlow`, `-demoDone`, `-demoSuggestion`, `-demoWandering`, `-chatDemo` and others): read `App/LanviApp.swift` and `Net/DemoBackend.swift`.
+Launch arguments (Scheme, Arguments): `-demo` plays the whole story by itself; `-screen home|whathelps|focus|breathe|puppet` opens one screen; `-hour <0-23>` forces the time of day; `-offline` uses sample data instead of the server. More demo switches exist (`-demoXP`, `-demoGlow`, `-demoDone`, `-demoSuggestion`, `-chatDemo` and others): read `App/LanviApp.swift` and `Net/DemoBackend.swift`.
 
 ## How the app talks to the server
 

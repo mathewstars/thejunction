@@ -22,7 +22,6 @@ enum DayPart { case morning, day, evening, night }
 
 /// What the big "For today" card on Home shows.
 enum TodayThing: Equatable {
-    case story                          // a wandering story waits: always first
     case game(ActivityKind)             // one of the three activities
     case realWorld(API.SuggestionOut)   // walk, daylight, call someone: "I did it" / "Not today"
     case done(DoneToday)                // today's one thing is done
@@ -34,7 +33,6 @@ struct HomeCelebration: Equatable, Identifiable {
     var kind: ActivityKind
     var xpGained: Int
     var line: String
-    var startedWandering: Bool
 }
 
 /// One observable store for the whole app: today's state from the server (or the
@@ -154,11 +152,9 @@ final class AppStore {
 
     var daysTogether: Int { max(days.dates.count, 1) }   // today counts as day one
 
-    /// Today's one thing. A waiting story comes first; then what is done stays
-    /// done; then the server's suggestion; then the clock (morning breathing,
-    /// afternoon Sparks and snow, evening the check-in).
+    /// Today's one thing. What is done stays done; then the server's suggestion;
+    /// then the clock (morning breathing, afternoon Sparks and snow, evening the check-in).
     var todayThing: TodayThing {
-        if wandering?.state == .back, wandering?.story != nil { return .story }
         if let d = days.done, days.today == DaysTogether.key(Date()) { return .done(d) }
         if let s = suggestion {
             if let k = suggestedKind { return .game(k) }
@@ -317,7 +313,6 @@ final class AppStore {
     var glow: Double { min(max(today?.lanvi.glow ?? 0, 0), 1) }
     var stage: API.Stage { today?.lanvi.stage ?? .kit }
     var crisis: API.CrisisBlock { today?.crisis ?? DemoBackend.crisis }
-    var wandering: API.WanderingOut? { today?.lanvi.wandering }
     var planToAsk: API.PlanToAsk? { today?.lanvi.planToAsk }
     var pendingCount: Int { outbox.items.count }
 
@@ -426,7 +421,21 @@ final class AppStore {
 
     private func apply(_ t: API.TodayOut) {
         today = t
-        line = t.lanvi.line.text
+        line = Self.careLine(t.lanvi.line)
+    }
+
+    /// The wandering and its stories are cut (the captain, Saturday): Lanvi never
+    /// leaves and never has a story. The server may still send its wandering lines
+    /// (`away.*`, `back.*` in engine/clinic_engine/data/lanvi_lines.json); those are
+    /// swapped for a plain line in the care voice. The `wandering` object is ignored.
+    static func careLine(_ l: API.LineOut) -> String {
+        let id = l.templateId
+        guard id.hasPrefix("away.") || id.hasPrefix("back.") else { return l.text }
+        let lines = ["Hi. I'm glad you're here.",
+                     "The snow is soft today. Stay a while?",
+                     "There you are. I kept a spot warm for you."]
+        let day = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
+        return lines[day % lines.count]           // the same line all day
     }
 
     // MARK: Activities
@@ -448,7 +457,6 @@ final class AppStore {
             link = .online
             await celebrate(out, kind: kind)
             markDone(kind, seconds: record.durationS, thing: thing)
-            if out.wandering != wandering?.state { await refresh() }
         } catch let e as APIError where e.isTemporary {
             link = .offline
             celebrateOffline(kind: kind)
@@ -465,8 +473,8 @@ final class AppStore {
         guard var t = today else { return }
         let oldStage = t.lanvi.stage
         line = out.line.text
-        celebration = HomeCelebration(kind: kind, xpGained: out.xpGained, line: out.line.text,
-                                  startedWandering: out.wandering == .away && t.lanvi.wandering.state != .away)
+        line = Self.careLine(out.line)
+        celebration = HomeCelebration(kind: kind, xpGained: out.xpGained, line: line)
         // Let Lanvi's happy hop start, then the numbers move.
         try? await Task.sleep(for: .milliseconds(out.xpGained > 0 ? 500 : 300))
         #if DEBUG
@@ -477,7 +485,7 @@ final class AppStore {
             t.lanvi.stage = out.stage
             t.lanvi.nextStageAt = out.nextStageAt
             t.lanvi.glow = out.glow
-            t.lanvi.line = out.line
+            t.lanvi.line = API.LineOut(templateId: out.line.templateId, text: line)
             today = t
         }
         if out.crisis == true, let block = out.crisisBlock { crisisNow = block }
@@ -490,7 +498,7 @@ final class AppStore {
 
     private func celebrateOffline(kind: ActivityKind) {
         line = "Thanks for coming by. I'll tell the sky when we're back online."
-        celebration = HomeCelebration(kind: kind, xpGained: 0, line: line, startedWandering: false)
+        celebration = HomeCelebration(kind: kind, xpGained: 0, line: line)
     }
 
     private func flushOutbox() async {
@@ -506,29 +514,7 @@ final class AppStore {
         }
     }
 
-    // MARK: Wandering, preferences
-
-    /// Answer the story Lanvi brought back ("a" or "b").
-    func answerStory(_ answer: String) async -> Bool {
-        guard let w = wandering, w.state == .back, let id = w.id else { return false }
-        do {
-            let out = try await backend.answerWandering(id: id, answer: answer)
-            if var t = today {
-                t.lanvi.wandering = out.wandering ?? API.WanderingOut(state: .home, id: nil, returnsAt: nil, story: nil)
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { today = t }
-            }
-            line = "Thank you. I'll remember that on my next trip."
-            await refresh()
-            line = "Thank you. I'll remember that on my next trip."
-            return true
-        } catch APIError.notFound {
-            await refresh()   // the story was already answered elsewhere
-            return true
-        } catch {
-            link = .offline
-            return false
-        }
-    }
+    // MARK: Preferences
 
     // MARK: What Lanvi has learned
 
@@ -569,13 +555,6 @@ final class AppStore {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { mind = m }
         }
         return true
-    }
-
-    /// Demo walk-through only: Lanvi comes back from the wandering now.
-    func demoComeBack() async {
-        guard let demo = backend as? DemoBackend else { return }
-        await demo.comeBack()
-        await refresh()
     }
 
     @discardableResult

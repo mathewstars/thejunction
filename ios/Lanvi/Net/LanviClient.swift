@@ -29,7 +29,6 @@ protocol LanviBackend: Sendable {
     func send(_ activity: API.ActivityIn) async throws -> API.ActivityOut
     func checkinOptions() async throws -> API.CheckinOptionsOut
     func setPreferences(_ helps: [String]) async throws -> API.PreferencesOut
-    func answerWandering(id: String, answer: String) async throws -> API.WanderingAnswerOut
     func mind() async throws -> API.MindOut
     func feedback(_ f: API.FeedbackIn) async throws -> API.FeedbackOut
     func note(_ n: API.NoteIn) async throws -> API.NoteOut
@@ -94,11 +93,6 @@ actor LanviClient: LanviBackend {
         try await call("PUT", "/v1/preferences", body: API.PreferencesIn(helps: helps))
     }
 
-    func answerWandering(id: String, answer: String) async throws -> API.WanderingAnswerOut {
-        let safe = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
-        return try await call("POST", "/v1/lanvi/wanderings/\(safe)/answer",
-                              body: API.WanderingAnswerIn(answer: answer))
-    }
 
     func mind() async throws -> API.MindOut {
         try await call("GET", "/v1/mind", body: Optional<API.PairIn>.none)
