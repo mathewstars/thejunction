@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 /// What one finished Breathe with Lanvi session hands back, ready for a `breathing`
 /// activity record (`POST /v1/activities`, see docs/api/README.md).
@@ -32,6 +32,12 @@ enum BreathePace {
     static let inhale: Double = 4.0
     static let hold: Double = 1.5
     static let exhale: Double = 5.5
+
+    /// Shaped like real breath: the in-breath starts gently, flows, and rounds off full;
+    /// the out-breath lets go a little quicker and then trails off slowly. Never linear.
+    static let inhaleCurve = Animation.timingCurve(0.42, 0, 0.32, 1, duration: inhale)
+    static let exhaleCurve = Animation.timingCurve(0.3, 0.05, 0.2, 1, duration: exhale)
+    static let settleCurve = Animation.timingCurve(0.4, 0, 0.25, 1, duration: settle)
 }
 
 /// One step of a breath. `settle` is the short lead-in before the first breath.

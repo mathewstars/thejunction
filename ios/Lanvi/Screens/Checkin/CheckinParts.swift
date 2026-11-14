@@ -2,154 +2,157 @@ import SwiftUI
 
 // Every helper here is prefixed with `Checkin` so it never clashes with the other screens' helpers.
 
-/// Evening colours: the same sky, a little darker and quieter.
+/// Evening colours for words and tiles on the night sky.
 enum CheckinEvening {
-    static let top = Color(hex: 0x0A1442)
-    static let bottom = Color(hex: 0x2D4C9E)
-    static let moon = Color(hex: 0xFFF3D2)
-    static let skyText = Color(hex: 0xC9D7FF)   // secondary text on the sky
-    static let chipEdge = Color(hex: 0xA9BBEA)  // 3D edge of a white chip on the night sky
-    static let pressedFill = Color(hex: 0xDCE6FF)
+    static let skyText = Color(hex: 0xD3DEFF)   // secondary text on the sky
+    /// A tile at rest: night glass, a little lighter than the sky so it stands out.
+    static let tileFill = LinearGradient(colors: [Color(hex: 0x3A58B4), Color(hex: 0x2A4497)],
+                                         startPoint: .top, endPoint: .bottom)
+    /// The tile's 3D edge underneath.
+    static let tileEdge = Color(hex: 0x15245F)
+    /// A picked tile: Lanvi blue, lit from within.
+    static let pickedFill = LinearGradient(colors: [Color(hex: 0x6A8CF5), Theme.brand],
+                                           startPoint: .top, endPoint: .bottom)
 }
 
-/// The evening sky: Lanvi's usual sky scene, darker, with a glowing crescent moon when there is room for it.
-struct CheckinEveningSky: View {
-    var hillTop: CGFloat
-    var showMoon: Bool = true
-
-    var body: some View {
-        ZStack(alignment: .topTrailing) {
-            SkyScene(top: CheckinEvening.top, bottom: CheckinEvening.bottom, hillTop: hillTop)
-            CheckinMoon()
-                .padding(.top, 84)
-                .padding(.trailing, 22)
-                .ignoresSafeArea()
-                .opacity(showMoon ? 1 : 0)
-                .scaleEffect(showMoon ? 1 : 0.85)
-                .animation(.easeInOut(duration: 0.6), value: showMoon)
-                .allowsHitTesting(false)
-        }
+/// One point of light: a wide faint halo, a brighter glow and a white-hot core. Draw it on a
+/// canvas that is blended with `plusLighter`.
+enum CheckinLight {
+    static func draw(_ ctx: GraphicsContext, at p: CGPoint, radius r: CGFloat, color: Color, alpha: Double) {
+        guard alpha > 0.01 else { return }
+        func disc(_ radius: CGFloat) -> Path { Path(ellipseIn: CGRect(x: p.x - radius, y: p.y - radius, width: radius * 2, height: radius * 2)) }
+        ctx.fill(disc(r * 1.6), with: .radialGradient(
+            Gradient(colors: [color.opacity(0.5 * alpha), color.opacity(0.14 * alpha), color.opacity(0)]),
+            center: p, startRadius: 0, endRadius: r * 1.6))
+        ctx.fill(disc(r * 0.5), with: .radialGradient(
+            Gradient(colors: [.white.opacity(alpha), color.opacity(0.8 * alpha), color.opacity(0)]),
+            center: p, startRadius: 0, endRadius: r * 0.5))
     }
 }
 
-/// A crescent moon made of light: a wide breathing halo, a soft glow, and a crisp shaded crescent.
-struct CheckinMoon: View {
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30)) { context in
-            let t = context.date.timeIntervalSinceReferenceDate
-            let pulse = 1 + 0.05 * sin(t * 2 * .pi / 6)
-            ZStack {
-                Circle()
-                    .fill(RadialGradient(colors: [CheckinEvening.moon.opacity(0.16), CheckinEvening.moon.opacity(0.05), .clear],
-                                         center: .center, startRadius: 18, endRadius: 80))
-                    .frame(width: 160, height: 160)
-                    .scaleEffect(pulse)
-                    .blendMode(.plusLighter)
-                crescent
-                    .fill(CheckinEvening.moon.opacity(0.7))
-                    .blur(radius: 7)
-                    .blendMode(.plusLighter)
-                crescent
-                    .fill(LinearGradient(colors: [.white, CheckinEvening.moon, Color(hex: 0xE9D19A)],
-                                         startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .overlay(crescent.stroke(.white.opacity(0.6), lineWidth: 0.5))
-            }
-            .frame(width: 160, height: 160)
-        }
-    }
-
-    private var crescent: CheckinCrescent { CheckinCrescent() }
-}
-
-/// A crescent: a disc with a bigger offset disc cut out of its upper right.
-struct CheckinCrescent: Shape {
-    func path(in rect: CGRect) -> Path {
-        let d: CGFloat = 46
-        let outer = CGRect(x: rect.midX - d / 2, y: rect.midY - d / 2, width: d, height: d)
-        let cut = outer.insetBy(dx: 2, dy: 2).offsetBy(dx: 15, dy: -11)
-        return Path(ellipseIn: outer).subtracting(Path(ellipseIn: cut))
-    }
-}
-
-/// One mote of light: a wide faint halo, a brighter glow and a white-hot core, added onto what is behind.
+/// One mote of light as a view (used in the little tray of three lights).
 struct CheckinMote: View {
     var size: CGFloat
     var color: Color = Theme.aurora
 
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(RadialGradient(colors: [color.opacity(0.55), color.opacity(0.15), .clear],
-                                     center: .center, startRadius: 0, endRadius: size * 1.5))
-                .frame(width: size * 3, height: size * 3)
-            Circle()
-                .fill(RadialGradient(colors: [.white, color, color.opacity(0)],
-                                     center: .center, startRadius: 0, endRadius: size * 0.5))
-                .frame(width: size, height: size)
-            Circle()
-                .fill(.white)
-                .frame(width: size * 0.2, height: size * 0.2)
-                .blur(radius: size * 0.04)
+        Canvas { ctx, s in
+            CheckinLight.draw(ctx, at: CGPoint(x: s.width / 2, y: s.height / 2), radius: size, color: color, alpha: 1)
         }
+        .frame(width: size * 3.4, height: size * 3.4)
         .blendMode(.plusLighter)
         .allowsHitTesting(false)
     }
 }
 
-/// A chunky chip on the night sky. Not picked: white, raised on a 3D edge.
-/// Picked: pressed down flat, blue rim, check mark, soft aurora glow around it.
-struct CheckinChipStyle: ButtonStyle {
-    var selected: Bool
-    var dimmed: Bool = false
+/// The round icon at the start of a tile. Lit: a white bubble with a blue icon and a soft
+/// aurora glow behind it. Not lit: a faint see-through bubble.
+struct CheckinIconBubble: View {
+    var symbol: String
+    var lit: Bool
+    var size: CGFloat = 32
 
-    func makeBody(configuration: Configuration) -> some View {
-        let down = selected || configuration.isPressed
-        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
-        configuration.label
-            .font(Theme.rounded(16, .bold))
-            .foregroundStyle(selected ? Theme.brandEdge : Theme.ink)
-            .padding(.vertical, 11)
-            .padding(.horizontal, 15)
-            .background(shape.fill(selected ? CheckinEvening.pressedFill : .white))
-            .overlay {
-                // Inner shadow along the top so a picked chip reads as sunk in.
-                shape.stroke(Theme.brandEdge.opacity(selected ? 0.28 : 0), lineWidth: 5)
-                    .blur(radius: 2.5)
-                    .offset(y: 2)
-                    .mask(shape)
+    var body: some View {
+        ZStack {
+            if lit {
+                CheckinMote(size: size * 0.62, color: GameAurora.mint)
+                    .transition(.scale(scale: 0.3).combined(with: .opacity))
             }
-            .overlay(shape.stroke(selected ? Theme.brand : .clear, lineWidth: 2.5))
-            .shadow(color: Theme.glow.opacity(selected ? 0.75 : 0), radius: 10)
-            .offset(y: down ? 4 : 0)
-            .background(shape.fill(selected ? Theme.brandEdge : CheckinEvening.chipEdge).offset(y: 4))
-            .opacity(dimmed ? 0.62 : 1)
-            .animation(.spring(response: 0.22, dampingFraction: 0.6), value: down)
-            .animation(.easeOut(duration: 0.2), value: dimmed)
+            Circle()
+                .fill(lit ? AnyShapeStyle(Color.white) : AnyShapeStyle(Color.white.opacity(0.13)))
+                .overlay(Circle().strokeBorder(.white.opacity(lit ? 0 : 0.12), lineWidth: 1))
+                .frame(width: size, height: size)
+            Image(systemName: symbol)
+                .font(.system(size: size * 0.46, weight: .bold))
+                .foregroundStyle(lit ? Theme.brand : .white.opacity(0.92))
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .frame(width: size, height: size)
+        .animation(.spring(response: 0.35, dampingFraction: 0.6), value: lit)
     }
 }
 
-/// The "Write my own" chip: see-through on the sky with a dashed white rim, same chunky press.
-struct CheckinAddChipStyle: ButtonStyle {
+/// What goes inside a tile: the icon bubble and the words.
+struct CheckinTileLabel: View {
+    var text: String
+    var symbol: String
+    var selected: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            CheckinIconBubble(symbol: selected && symbol != "pencil" ? "checkmark" : symbol, lit: selected)
+            Text(text)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .minimumScaleFactor(0.85)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+/// A chunky Duolingo-style tile on the night sky. At rest it stands on a 3D edge; pressing
+/// pushes it down onto the edge; picked, it stays pressed in, turns Lanvi blue and glows
+/// with an aurora rim. `dashed` is the see-through "Write my own" tile.
+struct CheckinTileStyle: ButtonStyle {
+    var selected: Bool
     var dimmed: Bool = false
+    var dashed: Bool = false
+    var compact: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
         let pressed = configuration.isPressed
-        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        let edge: CGFloat = 5
+        let down: CGFloat = pressed ? edge : (selected ? 3 : 0)
+        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
         configuration.label
-            .font(Theme.rounded(16, .heavy))
+            .font(Theme.rounded(compact ? 15 : 16, .heavy))
             .foregroundStyle(.white)
-            .padding(.vertical, 11)
-            .padding(.horizontal, 15)
-            .background(shape.fill(.white.opacity(pressed ? 0.24 : 0.14)))
-            .overlay(shape.strokeBorder(.white.opacity(0.7), style: StrokeStyle(lineWidth: 2, dash: [6, 5])))
-            .offset(y: pressed ? 4 : 0)
-            .background(shape.fill(.white.opacity(0.10)).offset(y: 4))
-            .opacity(dimmed ? 0.45 : 1)
-            .animation(.spring(response: 0.18, dampingFraction: 0.65), value: pressed)
+            .padding(.leading, 10)
+            .padding(.trailing, 8)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: compact ? 52 : 60, alignment: .leading)
+            .background {
+                if dashed {
+                    shape.fill(.white.opacity(pressed ? 0.16 : 0.07))
+                } else {
+                    shape.fill(selected ? CheckinEvening.pickedFill : CheckinEvening.tileFill)
+                }
+            }
+            .overlay(alignment: .top) {
+                // A soft gloss along the top edge, so it reads as a raised, rounded tile.
+                if !dashed {
+                    shape.fill(LinearGradient(colors: [.white.opacity(selected ? 0.22 : 0.12), .clear],
+                                              startPoint: .top, endPoint: .center))
+                        .allowsHitTesting(false)
+                }
+            }
+            .overlay {
+                if dashed {
+                    shape.strokeBorder(.white.opacity(0.6), style: StrokeStyle(lineWidth: 2, dash: [6, 5]))
+                } else if selected {
+                    shape.strokeBorder(LinearGradient(colors: [GameAurora.mint, Theme.aurora],
+                                                      startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2.5)
+                } else {
+                    shape.strokeBorder(.white.opacity(0.14), lineWidth: 1.5)
+                }
+            }
+            .shadow(color: GameAurora.mint.opacity(selected ? 0.4 : 0), radius: 12)
+            .offset(y: down)
+            .background {
+                shape.fill(dashed ? Color.white.opacity(0.08) : (selected ? Theme.brandEdge : CheckinEvening.tileEdge))
+                    .offset(y: edge)
+            }
+            .padding(.bottom, edge)
+            .opacity(dimmed ? 0.5 : 1)
+            .scaleEffect(pressed ? 0.98 : 1)
+            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: pressed)
+            .animation(.spring(response: 0.32, dampingFraction: 0.62), value: selected)
+            .animation(.easeInOut(duration: 0.25), value: dimmed)
     }
 }
 
-/// Secondary chunky button: white with a blue label, same 3D press.
+/// Secondary chunky button on the night: see-through night glass with white words, same 3D press.
 struct CheckinQuietButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         let pressed = configuration.isPressed
@@ -158,90 +161,28 @@ struct CheckinQuietButtonStyle: ButtonStyle {
             .font(Theme.rounded(16, .heavy))
             .textCase(.uppercase)
             .tracking(0.8)
-            .foregroundStyle(Theme.brand)
+            .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .frame(height: 54)
-            .background(shape.fill(.white))
-            .overlay(shape.stroke(Theme.line, lineWidth: 2))
+            .background(shape.fill(CheckinEvening.tileFill))
+            .overlay(shape.strokeBorder(.white.opacity(0.18), lineWidth: 1.5))
             .offset(y: pressed ? 5 : 0)
-            .background(shape.fill(Theme.line).offset(y: 5))
+            .background(shape.fill(CheckinEvening.tileEdge).offset(y: 5))
             .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
             .sensoryFeedback(.impact(weight: .light), trigger: pressed)
     }
 }
 
-/// The chunky round blue close button, top-left.
-struct CheckinCloseButton: View {
-    var action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "xmark")
-                .font(.system(size: 16, weight: .black))
-                .foregroundStyle(.white)
-        }
-        .buttonStyle(RoundChunkyStyle())
-        .accessibilityLabel("Leave the check-in")
-    }
-
-    private struct RoundChunkyStyle: ButtonStyle {
-        func makeBody(configuration: Configuration) -> some View {
-            let pressed = configuration.isPressed
-            configuration.label
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(Theme.brand))
-                .overlay(alignment: .top) {
-                    Capsule().fill(.white.opacity(0.28)).frame(width: 18, height: 5).padding(.top, 6)
-                }
-                .offset(y: pressed ? 4 : 0)
-                .background(Circle().fill(Theme.brandEdge).offset(y: 4))
-                .contentShape(Circle())
-                .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
-                .sensoryFeedback(.impact(weight: .light), trigger: pressed)
-        }
-    }
-}
-
-/// Chips that wrap onto the next line, left aligned.
-struct CheckinFlowLayout: Layout {
-    var spacing: CGFloat = 10
-    var lineSpacing: CGFloat = 12
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? .infinity
-        let rows = arrange(width: width, subviews: subviews)
-        let height = rows.last.map { $0.y + $0.height } ?? 0
-        return CGSize(width: proposal.width ?? rows.map(\.width).max() ?? 0, height: height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        for row in arrange(width: bounds.width, subviews: subviews) {
-            var x = bounds.minX
-            for i in row.indices {
-                let size = subviews[i].sizeThatFits(.init(width: bounds.width, height: nil))
-                subviews[i].place(at: CGPoint(x: x, y: bounds.minY + row.y), proposal: .init(size))
-                x += size.width + spacing
-            }
-        }
-    }
-
-    private struct Row { var indices: [Int] = []; var y: CGFloat = 0; var width: CGFloat = 0; var height: CGFloat = 0 }
-
-    private func arrange(width: CGFloat, subviews: Subviews) -> [Row] {
-        var rows: [Row] = []
-        var row = Row()
-        for i in subviews.indices {
-            let size = subviews[i].sizeThatFits(.init(width: width, height: nil))
-            if !row.indices.isEmpty && row.width + spacing + size.width > width {
-                rows.append(row)
-                row = Row(y: row.y + row.height + lineSpacing)
-            }
-            row.width = row.indices.isEmpty ? size.width : row.width + spacing + size.width
-            row.height = max(row.height, size.height)
-            row.indices.append(i)
-        }
-        if !row.indices.isEmpty { rows.append(row) }
-        return rows
+/// A small glass pill for corner actions on the sky (Help).
+struct CheckinGlassPillStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        let pressed = configuration.isPressed
+        configuration.label
+            .background(Capsule().fill(CheckinEvening.tileFill))
+            .overlay(Capsule().strokeBorder(.white.opacity(0.18), lineWidth: 1.5))
+            .offset(y: pressed ? 3 : 0)
+            .background(Capsule().fill(CheckinEvening.tileEdge).offset(y: 3))
+            .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
     }
 }
 
@@ -262,7 +203,7 @@ struct CheckinSparkTray: View {
                                                  center: .center, startRadius: 0, endRadius: 5))
                             .frame(width: 9, height: 9)
                         if lit {
-                            CheckinMote(size: 15, color: i == 1 ? Theme.auroraViolet : Theme.aurora)
+                            CheckinMote(size: 9, color: i == 1 ? GameAurora.violet : GameAurora.mint)
                                 .scaleEffect(1 + 0.08 * sin(t * 2.4 + Double(i)))
                                 .transition(.scale(scale: 0.2).combined(with: .opacity))
                         }
@@ -294,13 +235,13 @@ struct CheckinProgress: View {
                     .fill(Color(hex: 0x07103A).opacity(0.55))
                     .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1.5))
                 Capsule()
-                    .fill(LinearGradient(colors: [Theme.aurora, Theme.glow, Theme.auroraViolet],
+                    .fill(LinearGradient(colors: [GameAurora.mint, Theme.aurora, Theme.auroraViolet],
                                          startPoint: .leading, endPoint: .trailing))
                     .overlay(alignment: .top) {
                         Capsule().fill(.white.opacity(0.55)).frame(height: 4).padding(.horizontal, 7).padding(.top, 3)
                     }
                     .frame(width: max(18, geo.size.width * progress))
-                    .shadow(color: Theme.aurora.opacity(0.7), radius: 8)
+                    .shadow(color: GameAurora.mint.opacity(0.6), radius: 8)
             }
         }
         .frame(height: 16)

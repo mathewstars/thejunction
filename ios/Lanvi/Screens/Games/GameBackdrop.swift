@@ -118,6 +118,19 @@ extension View {
     }
 }
 
+/// A very soft pool of night behind words that sit over bright aurora: no edge, no box,
+/// only enough shade to keep white words crisp.
+struct GameShade: View {
+    var body: some View {
+        Ellipse()
+            .fill(Color(hex: 0x0A1442).opacity(0.3))
+            .padding(.horizontal, -10)
+            .padding(.vertical, -6)
+            .blur(radius: 28)
+            .allowsHitTesting(false)
+    }
+}
+
 /// The one close button every game uses: chunky, round, blue, top-left.
 struct GameCloseButton: View {
     var label = "Close"

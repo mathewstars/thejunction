@@ -61,8 +61,8 @@ final class FocusEngine {
     let start: Date
     /// The part of the screen the drops fall through, set by the screen from its layout.
     var field: CGRect = .zero
-    /// Where the aurora lives, set by the screen.
-    var auroraRect: CGRect = .zero
+    /// The whole screen's size, set by the screen: the aurora lines up with the painting on it.
+    var screen: CGSize = .zero
 
     private(set) var drops: [FocusDrop] = []
     private(set) var effects: [FocusEffect] = []
@@ -229,7 +229,7 @@ final class FocusEngine {
 
     /// Where light from a catch lands on the aurora right now.
     func landing(_ u: CGFloat, at t: TimeInterval) -> CGPoint {
-        GameAurora.edge(u: u, in: auroraRect, t: start.timeIntervalSinceReferenceDate + t)
+        GameAurora.edge(u: u, screen: screen, t: start.timeIntervalSinceReferenceDate + t)
     }
 
     // MARK: Taps
@@ -262,8 +262,8 @@ final class FocusEngine {
             if reactionMs.count < Self.maxReactions { reactionMs.append(ms) }
             ease = max(0.88, ease - 0.025)
             // It rises to the part of the aurora above where it was caught, give or take.
-            let across = auroraRect.width > 0 ? (hit.pos.x - auroraRect.minX) / auroraRect.width : 0.5
-            let u = min(0.9, max(0.1, across + .random(in: -0.12...0.12)))
+            let across = screen.width > 0 ? hit.pos.x / screen.width : 0.5
+            let u = min(0.92, max(0.12, across + .random(in: -0.12...0.12)))
             effects.append(FocusEffect(kind: .burst, at: hit.pos, t0: t, angle: d.phase))
             effects.append(FocusEffect(kind: .flight, at: hit.pos, t0: t, angle: d.phase, u: u))
             return .caught(reactionMs: ms, toward: landing(u, at: t + Self.flightTime))

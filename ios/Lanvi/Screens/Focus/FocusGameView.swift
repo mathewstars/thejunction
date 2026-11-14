@@ -44,16 +44,16 @@ struct FocusGameView: View {
         var fox: CGFloat
         var feet: CGFloat
         var field: CGRect
-        var aurora: CGRect
         var captionY: CGFloat
+        /// Where the finish words sit: in the clear sky between the aurora and the far hills.
+        var finishY: CGFloat
 
         init(_ s: GameStage) {
             fox = s.compact ? 150 : 196
             feet = s.feet(fox: fox * 1.1, reserve: 96)
             let playTop = feet - fox * 0.84
             field = CGRect(x: 26, y: s.belowBar + 8, width: s.width - 52, height: max(160, playTop - 8 - s.belowBar - 8))
-            let auroraTop = s.top + 6
-            aurora = CGRect(x: -16, y: auroraTop, width: s.width + 32, height: max(180, (s.horizon - auroraTop) * 0.64))
+            finishY = min(s.world.point(0.5, 0.43).y, feet - fox * 1.1 - 70)
             captionY = (feet + s.buttonY - 27) / 2 + 2
         }
 
@@ -75,7 +75,7 @@ struct FocusGameView: View {
             ZStack(alignment: .topLeading) {
                 GameBackdrop(scene: .night, stage: s)
 
-                FocusSky(engine: engine, field: L.field, auroraRect: L.aurora)
+                FocusSky(engine: engine, field: L.field, screen: s.size)
 
                 if phase == .playing {
                     Color.clear
@@ -187,8 +187,9 @@ struct FocusGameView: View {
                         .foregroundStyle(sky.body)
                 }
                 .gameLegible(sky)
+                .background(GameShade())
                 .frame(width: s.width - 40)
-                .position(x: s.width / 2, y: L.aurora.maxY + (foxTop - L.aurora.maxY) * (s.compact ? 0.42 : 0.5))
+                .position(x: s.width / 2, y: L.finishY)
                 .transition(.opacity.combined(with: .scale(scale: 0.94)))
 
                 Button("Done") { onDone(result) }
@@ -209,8 +210,8 @@ struct FocusGameView: View {
     }
 
     private func howTo(spark: Bool, text: String, ink: GameInk, compact: Bool) -> some View {
-        VStack(spacing: 2) {
-            FocusArtPreview(spark: spark, size: compact ? 60 : 72)
+        VStack(spacing: -6) {
+            FocusArtPreview(spark: spark, size: compact ? 70 : 84)
             Text(text)
                 .font(Theme.rounded(15, .heavy))
                 .foregroundStyle(ink.title)

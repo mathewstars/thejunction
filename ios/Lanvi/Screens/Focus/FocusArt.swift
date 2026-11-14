@@ -360,7 +360,8 @@ struct SparkLayers: View {
 struct FocusSky: View {
     let engine: FocusEngine?
     let field: CGRect
-    let auroraRect: CGRect
+    /// The whole screen, so the aurora lines up with the painting.
+    let screen: CGSize
 
     private static let trailSteps: [Double] = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
 
@@ -373,7 +374,7 @@ struct FocusSky: View {
                 Canvas { ctx, _ in
                     let finale = engine?.endedAt.map { GameEase.smooth((t - $0) / 2.4) } ?? 0
                     let flares = engine?.flares.map { GameAurora.Flare(u: $0.u, age: t - $0.t0) } ?? []
-                    GameAurora.draw(ctx, in: auroraRect, level: engine?.auroraShown ?? 0.1, t: wall,
+                    GameAurora.draw(ctx, screen: screen, level: engine?.auroraShown ?? 0.1, t: wall,
                                     flares: flares, brightness: 1 + 0.25 * finale)
                 }
                 .blendMode(.plusLighter)
@@ -412,7 +413,7 @@ struct FocusSky: View {
     private func advance(to now: Date) -> TimeInterval {
         guard let engine else { return 0 }
         engine.field = field
-        engine.auroraRect = auroraRect
+        engine.screen = screen
         engine.step(now: now)
         return engine.clock(now)
     }
@@ -431,11 +432,11 @@ struct FocusArtPreview: View {
             if spark {
                 SparkLayers { ctx, layer, s in
                     FocusArt.spark(ctx, layer, at: CGPoint(x: s.width / 2, y: s.height / 2 + bob),
-                                   scale: size / 72, alpha: 1, time: t, seed: 0.4)
+                                   scale: size / 58, alpha: 1, time: t, seed: 0.4)
                 }
             } else {
                 Canvas { ctx, s in
-                    FocusArt.snowflake(ctx, at: CGPoint(x: s.width / 2, y: s.height / 2 + bob), arm: 15 * size / 72,
+                    FocusArt.snowflake(ctx, at: CGPoint(x: s.width / 2, y: s.height / 2 + bob), arm: 15 * size / 64,
                                        alpha: 1, angle: t * 0.4, squash: 0.8 + 0.2 * CGFloat(cos(t * 1.1)))
                 }
             }
