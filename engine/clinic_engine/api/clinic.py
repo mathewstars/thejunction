@@ -194,7 +194,8 @@ async def patient_face_fine(request: Request, patient_id: str = Path(pattern=SID
     """Only for focus and breathing sessions sent with `face_fine`; 404 otherwise.
     `summary` is movement per region (level, reach, speed, brief twitches per
     minute) and left-right asymmetry; `stream` is millimetres per region and
-    frame. Research only: no flag, level or reading is derived from it. Each
+    frame; `twitches` is where code's rule finds brief movements in it.
+    Research only: no flag, level or reading is derived from it. Each
     download is audited (which activity, never any values)."""
     ctx = ctx_of(request)
     repo = _patient_repo(request, p, patient_id)
@@ -205,8 +206,10 @@ async def patient_face_fine(request: Request, patient_id: str = Path(pattern=SID
     write_audit(ctx.store, ctx.clock.now(), clinic_id=p.clinic_id, patient_id=patient_id,
                 actor=p.actor, action="face_fine_read", detail={"activity_id": activity_id},
                 request_id=rid_of(request))
+    from ..mind import face_fine
     return {"activity_id": activity_id, "summary": rec.get("face_fine"),
-            "info": rec.get("face_fine_info"), "stream": stream}
+            "info": rec.get("face_fine_info"), "stream": stream,
+            "twitches": face_fine.twitches(stream)}
 
 
 @router.get("/patients/{patient_id}/exchanges", responses=errors(401, 403, 404, 422, 429),

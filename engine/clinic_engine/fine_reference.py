@@ -86,6 +86,39 @@ def make_session(seed: int, hard: str | None = None) -> tuple[dict, list[dict]]:
     return raw, sorted(truth, key=lambda t: t["start_s"])
 
 
+def make_example(seed: int, moves: int, scale: float, seconds: int = 45, rate: int = 30) -> dict:
+    """A generated stream shaped like the app's (all twelve regions, 30 a
+    second): `moves` brief movements and three slow expressions of the mouth
+    and cheeks, their size times `scale`. For the example person only."""
+    rng = random.Random(seed)
+    names = list(face_fine.REGIONS)
+    n = seconds * rate
+    noise = rng.uniform(0.05, 0.07)
+    rest = [rng.uniform(0.15, 0.3) for _ in names]
+    rows = [[max(0.0, rest[j] + rng.gauss(0, noise)) for j in range(len(names))] for _ in range(n)]
+    taken: list[tuple[int, float]] = []
+    while len(taken) < moves:
+        j, at = rng.randrange(len(names)), rng.uniform(2, seconds - 2)
+        if any(abs(at - a) < 1.0 for _, a in taken):
+            continue
+        taken.append((j, at))
+        i0 = int(at * rate)
+        i1 = i0 + rng.randint(4, 9)
+        peak = rng.uniform(1.0, 2.2)
+        for i in range(i0, i1):
+            rows[i][j] += peak * math.sin(math.pi * (i - i0 + 0.5) / (i1 - i0)) ** 0.5
+    for k in range(3):
+        at, long = 4 + 13 * k + rng.uniform(0, 4), rng.uniform(2, 4)
+        left, right = rng.uniform(2.2, 3.2) * scale, rng.uniform(2.0, 3.0) * scale
+        for i in range(int(at * rate), min(n, int((at + long) * rate))):
+            w = math.sin(math.pi * (i / rate - at) / long)
+            for name, size in (("mouth_left", left), ("mouth_right", right), ("cheek_left", left * 0.5),
+                               ("cheek_right", right * 0.5), ("lip_upper", left * 0.3)):
+                rows[i][names.index(name)] += size * w
+    return {"source": "mesh", "rate_hz": rate, "regions": names, "noise_mm": round(noise, 3),
+            "samples": [[round(v, 2) for v in r] for r in rows]}
+
+
 def _iou(a0: float, a1: float, b0: float, b1: float) -> float:
     inter = max(0.0, min(a1, b1) - max(a0, b0))
     union = max(a1, b1) - min(a0, b0)

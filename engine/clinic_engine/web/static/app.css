@@ -400,6 +400,8 @@ ul.plain.big + p { margin-top: 10px; }
 .fr-key.faint { background: var(--sun); }
 .fr-key.drop { border: 1.5px dashed var(--ember); }
 .readout.fr-faint b { color: var(--sun); }
+.chart.ff .line.ff-left { stroke: var(--ink); }
+.chart.ff .line.ff-right { stroke: var(--sun); }
 .fr-note { font-size: 12px; margin: 10px 0 0; max-width: 78ch; }
 .fr-h { font-size: 13px; font-weight: 700; margin: 18px 0 8px; }
 

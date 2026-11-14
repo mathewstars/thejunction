@@ -2068,7 +2068,7 @@
           "clinician"
         ],
         "summary": "Fine facial movement of one activity: the server's summary and the stream as the phone sent it (research download)",
-        "description": "Only for focus and breathing sessions sent with `face_fine`; 404 otherwise.\n`summary` is movement per region (level, reach, speed, brief twitches per\nminute) and left-right asymmetry; `stream` is millimetres per region and\nframe. Research only: no flag, level or reading is derived from it. Each\ndownload is audited (which activity, never any values).",
+        "description": "Only for focus and breathing sessions sent with `face_fine`; 404 otherwise.\n`summary` is movement per region (level, reach, speed, brief twitches per\nminute) and left-right asymmetry; `stream` is millimetres per region and\nframe; `twitches` is where code's rule finds brief movements in it.\nResearch only: no flag, level or reading is derived from it. Each\ndownload is audited (which activity, never any values).",
         "operationId": "patient_face_fine_v1_clinic_patients__patient_id__activities__activity_id__face_fine_get",
         "security": [
           {

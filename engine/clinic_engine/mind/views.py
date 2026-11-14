@@ -497,9 +497,11 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
             out["text"] = notes[ref["note_id"]]["text"]
         return out
 
+    from . import face_fine as FF
     by_type: dict = {}
     for t in ("focus", "breathing", "checkin"):
         sessions = []
+        fine_before: list[dict] = []   # this person's earlier fine-movement sessions
         for a in view.of_type(t):
             f = a.get("features") or {}
             s = {"id": a["id"], "started_at": a["started_at"],
@@ -518,6 +520,19 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                     "rate_hz", "frames", "tracked_share", "channels")}
                 s["reading"] = _reading_out(a)
                 s["frames_reading"] = frames_reading_out(a)
+                # Fine facial movement (research only, docs/face-fine.md): the
+                # session's numbers beside this person's own earlier sessions.
+                # Shown only; nothing is judged from it. Never the stream.
+                s["fine"] = None
+                fs, fh = a.get("face_fine"), FF.headline(a.get("face_fine"))
+                if fs:
+                    s["fine"] = {**(a.get("face_fine_info") or {}), "quality": fs.get("quality"),
+                                 "noise_mm": fs.get("noise_mm"), "values": fh,
+                                 "usual": FF.usual(fine_before), "earlier": len(fine_before),
+                                 "needed": FF.OWN_MIN_SESSIONS, "per_region": fs.get("regions"),
+                                 "asymmetry": fs.get("asymmetry")}
+                    if fh and fs.get("quality") in ("good", "partly"):
+                        fine_before.append(fh)
                 if t == "focus":
                     # Revontulet's own measures, as sent (numbers only), or null.
                     s["revontulet"] = a.get("revontulet")

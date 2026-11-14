@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import math
 
-RULES_VERSION = 1
+RULES_VERSION = 2   # 2: the top of a slow, small expression is no longer a brief movement
 
 # The regions a phone may name. A fixed list, so that no free text arrives.
 REGIONS = ("mouth_left", "mouth_right", "lip_upper", "lip_lower", "cheek_left", "cheek_right",
@@ -118,7 +118,22 @@ def _twitch_runs(y: list[float], rate: float, noise: float) -> tuple[float, list
     level = _pct(sorted(y), 0.5)
     floor = max(TWITCH_FLOOR_MM, TWITCH_NOISE_FACTOR * noise)
     max_frames = max(2, int(round(TWITCH_MAX_S * rate)))
-    return level, [r for r in _runs([v > level + floor for v in y]) if 2 <= r[1] <= max_frames]
+    out = []
+    for first, n in _runs([v > level + floor for v in y]):
+        if not 2 <= n <= max_frames:
+            continue
+        # The whole rise must be brief too: measured at half the height, it may last
+        # at most twice as long. Otherwise this is the top of a slow, small
+        # expression that only just crossed the line.
+        half = level + floor / 2
+        a, b = first, first + n - 1
+        while a > 0 and y[a - 1] > half:
+            a -= 1
+        while b < len(y) - 1 and y[b + 1] > half:
+            b += 1
+        if b - a + 1 <= 2 * max_frames:
+            out.append((first, n))
+    return level, out
 
 
 def _region(x: list[float], rate: float, noise: float) -> dict:
@@ -181,4 +196,36 @@ def summarize(raw: dict) -> dict:
             # -1: only the right side moves; 0: both alike; +1: only the left side moves.
             out["asymmetry"][left.rsplit("_", 1)[0]] = round(
                 (a["reach_mm"] - b["reach_mm"]) / (a["reach_mm"] + b["reach_mm"]), 3)
+    return out
+
+
+# ---- one session beside the person's own earlier sessions (shown only) ---------------------
+
+OWN_MIN_SESSIONS = 3     # fewer earlier sessions: no "usual" is given
+HEADLINE = ("reach_mm", "speed_mm_s", "twitches_per_min", "mouth_asymmetry")
+
+
+def headline(summary: dict | None) -> dict | None:
+    """Four numbers for one session: mean reach and mean top speed over the
+    regions sent, brief movements per minute over all regions together, and
+    the left-right asymmetry of the mouth. None when the session says nothing."""
+    if not summary or summary.get("quality") == "short":
+        return None
+    regs = [r for r in (summary.get("regions") or {}).values() if r]
+    if not regs:
+        return None
+    return {"reach_mm": round(sum(r["reach_mm"] for r in regs) / len(regs), 3),
+            "speed_mm_s": round(sum(r["speed_mm_s"] for r in regs) / len(regs), 2),
+            "twitches_per_min": round(sum(r["twitches_per_min"] or 0 for r in regs), 2),
+            "mouth_asymmetry": (summary.get("asymmetry") or {}).get("mouth")}
+
+
+def usual(earlier: list[dict]) -> dict:
+    """The person's own usual value of each headline number: the median of
+    their earlier sessions, or None with fewer than OWN_MIN_SESSIONS of them.
+    A description for a reader. No rule, flag or model takes it."""
+    out = {}
+    for k in HEADLINE:
+        vals = sorted(h[k] for h in earlier if h.get(k) is not None)
+        out[k] = round(_pct(vals, 0.5), 3) if len(vals) >= OWN_MIN_SESSIONS else None
     return out

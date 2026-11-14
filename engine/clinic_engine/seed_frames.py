@@ -22,8 +22,10 @@ from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from .config import Settings
+from .fine_reference import make_example
 from .frames_reference import make_session
 from .mind import face_features as ff
+from .mind import face_fine
 from .seed import create_patient, revontulet_game, wipe_patient
 from .service import _raw_object
 from .store import Store, make_store
@@ -39,6 +41,11 @@ SESSIONS = (
     (3, ["faint", "faint"]),
     (1, ["faint", "faint", "faint"]),
 )
+
+
+# Fine movement per session (research only, generated): (brief movements, size of the
+# slow expressions). It follows the smiles: livelier in the first three sessions.
+FINE = ((6, 1.0), (5, 1.05), (6, 0.95), (3, 0.7), (2, 0.55), (2, 0.5))
 
 
 def session_ids() -> list[str]:
@@ -74,6 +81,8 @@ def create(store: Store, clinic_id: str, tz_name: str, now: datetime, seed: int 
              "correct_taps": n - 1, "wrong_taps": 1, "misses": rng.randint(1, 3),
              "reaction_ms": [int(max(200, rng.gauss(520, 55) * slow)) for _ in range(n)],
              "face": ff.summarize(raw), "face_source": "raw", "face_raw_info": ff.describe(raw)}
+        fine = make_example(seed * 1000 + k, *FINE[k])
+        a.update(face_fine=face_fine.summarize(fine), face_fine_info=face_fine.describe(fine))
         a.update(revontulet_game(rv, a["reaction_ms"], min(1.0, 0.08 * k)))
         a["duration_s"] = 45.0  # the generated face frames are 45 s long
         a["revontulet"].update(broke_through_s=round(rv.uniform(18, 26), 1), fox_finished=False)
@@ -82,6 +91,9 @@ def create(store: Store, clinic_id: str, tz_name: str, now: datetime, seed: int 
                    crisis=False, analysis={"status": "off"}, frames_reading={"status": "pending"})
         store.put(base + f"activities/{rec['id']}.json", rec)
         store.put(base + f"faceraw/{rec['id']}.json", _raw_object(a, raw, now))
+        store.put(base + f"facefine/{rec['id']}.json",
+                  {"activity_id": rec["id"], "type": "focus", "started_at": a["started_at"],
+                   "received_at": a["started_at"], **fine, "frames": len(fine["samples"])})
         previous.append(rec)
     return pid
 

@@ -1,6 +1,6 @@
 # Fine facial movement: what the phone may send (research only)
 
-For the iOS developer. This is the server side of the idea in `docs/research-proposal.md`, "A finer signal we would try next". It is an experiment: the server takes the numbers, sums them up and keeps them. No flag, level, reading or model uses them, and the clinician page does not show them.
+For the iOS developer. This is the server side of the idea in `docs/research-proposal.md`, "A finer signal we would try next". It is an experiment: the server takes the numbers, sums them up, keeps them and shows them on the clinician page beside the person's own earlier sessions. No flag, level, reading or model uses them.
 
 The rule that does not change: **no face shape leaves the phone.** A mesh and a depth map are the shape of a face. So this is the one place where the phone computes before it sends. What leaves is, for a few named regions and for every frame, one distance in millimetres.
 
@@ -105,7 +105,7 @@ The summary (`clinic_engine/mind/face_fine.py`), on tracked frames only, after a
 | `level_mm` | Where the region usually sits in this session (the median). |
 | `reach_mm` | How far above that it goes (95th percentile minus the median). |
 | `speed_mm_s` | How fast it moves at its fastest (95th percentile of the change per second). |
-| `twitches_per_min` | Brief movements: at least 0.5 mm above the usual level and at least 3 times `noise_mm` (0.3 mm when not sent), lasting from 2 frames to 0.4 seconds. Anything longer is an expression, not a twitch. |
+| `twitches_per_min` | Brief movements: at least 0.5 mm above the usual level and at least 3 times `noise_mm` (0.3 mm when not sent), lasting from 2 frames to 0.4 seconds. Anything longer is an expression, not a twitch. Since rules version 2 the whole rise must be brief too (at half that height, at most 0.8 seconds): the generated example showed that the top of a slow, small expression was being counted. |
 
 And for each left and right pair, `asymmetry`: -1 when only the right side moves, 0 when both move alike, +1 when only the left side moves.
 
@@ -113,9 +113,15 @@ And for each left and right pair, `asymmetry`: -1 when only the right side moves
 
 These thresholds are first guesses. They are not set on recordings of people. Because the stream is kept, the summary can be computed again when they change.
 
+## On the clinician page
+
+Activity, then Focus game or Breathing: the panel "Fine facial movement (research)". For one session it shows four numbers (mean reach over the regions, brief movements per minute over all regions, mean top speed, left against right at the mouth), each beside this person's own usual value: the middle of their earlier sessions, given once there are three. A button loads the trace of the two mouth corners with code's brief movements marked (the download is audited). Nothing is coloured, ranked or judged, and the panel says that nobody has shown these numbers to mean anything.
+
+**What can be seen today is generated.** `python -m clinic_engine.seed_frames` gives the example person (Leo Virtanen, Example F-001) six sessions with a generated stream each, shaped like the app's (twelve regions, 30 a second), livelier in the first three. No real face has been recorded.
+
 ## Reading it back
 
-`GET /v1/clinic/patients/{id}/activities/{activity_id}/face-fine` (clinician session): `summary`, `info` and `stream`. 404 when the activity was sent without `face_fine`. Each download is written to the audit log with the activity id and no values.
+`GET /v1/clinic/patients/{id}/activities/{activity_id}/face-fine` (clinician session): `summary`, `info`, `stream` and `twitches` (where code's rule finds brief movements). 404 when the activity was sent without `face_fine`. Each download is written to the audit log with the activity id and no values.
 
 ## For the detection work: a workbench that already runs
 

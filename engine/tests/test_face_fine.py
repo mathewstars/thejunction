@@ -200,3 +200,52 @@ def test_the_payload_holds_numbers_and_fixed_names_only():
     assert set(p) == {"rate_hz", "regions", "noise_mm", "frames"} and p["regions"] == raw["regions"]
     assert len(p["frames"]) == 900 and all(len(r) == 1 + len(raw["regions"]) for r in p["frames"])
     assert R.PROMPT.read_text("utf-8").startswith("DRAFT")
+
+
+# ---- shown beside the person's own earlier sessions (the clinician page) -----------------
+
+def test_the_top_of_a_slow_small_expression_is_not_a_brief_movement():
+    # It crosses the line for under 0.4 s, but the whole rise lasts seconds.
+    s = face_fine.summarize(make_fine(smile=(10, 3, 0.75, 0.75)))
+    assert s["regions"]["mouth_left"]["twitches_per_min"] == 0
+
+
+def test_own_usual_needs_three_earlier_sessions_and_is_their_middle():
+    hs = [face_fine.headline(face_fine.summarize(make_fine(twitches=[(0, 5 + 3 * i, 1.5) for i in range(k)],
+                                                           seed=k))) for k in (1, 2, 6)]
+    assert [h["twitches_per_min"] for h in hs] == [1.33, 2.67, 8.0]
+    assert face_fine.usual(hs[:2])["twitches_per_min"] is None
+    assert face_fine.usual(hs)["twitches_per_min"] == 2.67
+    short = make_fine(seconds=20)
+    short["tracked"] = [0] * len(short["samples"])
+    assert face_fine.headline(face_fine.summarize(short)) is None
+
+
+def test_the_page_gets_each_session_beside_the_earlier_ones_and_never_the_stream(env):
+    for k in range(4):
+        rec = focus_fine(f"act-fine-own-{k:03d}", make_fine(twitches=[(0, 5, 1.5)] * (k > 2), seed=k),
+                         started_at=(NOW - timedelta(days=4 - k, minutes=30)).isoformat())
+        assert post(env, rec).status_code == 200
+    r = env.client.get(f"/v1/clinic/patients/{env.demo['patient_id']}", headers=env.C())
+    assert r.status_code == 200 and '"samples"' not in r.text
+    mine = [s for s in r.json()["activities"]["focus"]["sessions"] if s["id"].startswith("act-fine-own-")]
+    assert [s["fine"]["earlier"] for s in mine] == [0, 1, 2, 3]
+    assert mine[2]["fine"]["usual"]["twitches_per_min"] is None
+    assert mine[3]["fine"]["usual"]["twitches_per_min"] == 0 and mine[3]["fine"]["values"]["twitches_per_min"] == 1.33
+    assert mine[3]["fine"]["frames"] == 2700 and mine[3]["fine"]["source"] == "mesh"
+    plain = [s for s in r.json()["activities"]["focus"]["sessions"] if not s["id"].startswith("act-fine-")]
+    assert all(s["fine"] is None for s in plain)
+
+
+def test_the_example_person_has_generated_fine_movement_and_code_marks_it(env):
+    from clinic_engine import seed_frames
+    c = env.demo["clinic_id"]
+    pid = seed_frames.create(env.store, c, "Europe/Helsinki", NOW)
+    C = env.C()
+    sessions = env.client.get(f"/v1/clinic/patients/{pid}", headers=C).json()["activities"]["focus"]["sessions"]
+    assert len(sessions) == 6 and all(s["fine"]["regions"] == 12 and s["example"] for s in sessions)
+    assert sessions[-1]["fine"]["values"]["reach_mm"] < sessions[-1]["fine"]["usual"]["reach_mm"]
+    got = env.client.get(f"/v1/clinic/patients/{pid}/activities/{seed_frames.session_ids()[0]}/face-fine",
+                         headers=C).json()
+    assert got["stream"]["rate_hz"] == 30 and len(got["twitches"]) >= 3
+    assert set(got["twitches"][0]) == {"region", "start_s", "end_s", "peak_mm"}

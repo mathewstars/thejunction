@@ -1313,6 +1313,75 @@
       over ? el("h3", { class: "fr-h" }, "Every session the model has read") : null, over);
   }
 
+  // Fine facial movement (research only, docs/face-fine.md): one session beside this
+  // person's own earlier sessions. Shown only; nothing is judged from it.
+  function finePanel(sessions) {
+    const have = sessions.filter((x) => x.fine);
+    if (!have.length) return null;
+    const cur = have.find((x) => x.id === S.ffId) || have[0];
+    const f = cur.fine, v = f.values, u = f.usual || {};
+    const pick = have.length > 1 ? el("div", { class: "seg", role: "group", "aria-label": "Session" }, have.slice(0, 8).map((sx) =>
+      el("button", { type: "button", class: "btn btn-small", "aria-pressed": sx.id === cur.id ? "true" : "false", on: { click: () => { S.ffId = sx.id; render(); } } }, dayShort(sx.date) + " " + String(sx.started_at).slice(11, 16)))) : null;
+    const head = [cur.example ? el("p", { class: "readout muted" }, "Generated example session: no person was recorded. The numbers come from a generator with brief movements and slow expressions planted in them.") : null];
+    if (!v) return panel("Fine facial movement (research)", null, pick, head, empty("Too little of this session was tracked to say anything (" + num(f.frames) + " frames)."));
+    const own = (k, d, unit) => u[k] === null || u[k] === undefined ? "own usual: after " + f.needed + " earlier sessions (" + f.earlier + " so far)"
+      : "own usual " + num(u[k], d) + unit + " (middle of " + f.earlier + " earlier sessions)";
+    const side = v.mouth_asymmetry === null || v.mouth_asymmetry === undefined ? "–" : Math.abs(v.mouth_asymmetry) < 0.15 ? "both sides alike" : v.mouth_asymmetry > 0 ? "left side more" : "right side more";
+    const tiles = el("div", { class: "facts" },
+      factTile(num(v.reach_mm, 2) + " mm", "how far the regions move from rest · " + own("reach_mm", 2, " mm")),
+      factTile(num(v.twitches_per_min, 1) + " / min", "brief movements, all regions · " + own("twitches_per_min", 1, " / min")),
+      factTile(num(v.speed_mm_s, 1) + " mm/s", "top speed · " + own("speed_mm_s", 1, " mm/s")),
+      factTile(side, "mouth, left against right (" + (v.mouth_asymmetry === null || v.mouth_asymmetry === undefined ? "–" : (v.mouth_asymmetry < 0 ? "−" : "+") + Math.abs(v.mouth_asymmetry).toFixed(2)) + ", from −1 right only to +1 left only)"));
+    const tr = S.ffTrace && S.ffTrace.id === cur.id ? S.ffTrace : null;
+    let chart = null, legend = null;
+    if (tr) {
+      const W = 920, L = 150, R = 14, T = 12, PH = 130, LANE = 26, H = T + PH + 18 + LANE + 26;
+      const dur = tr.dur, peak = Math.max(1, ...tr.left, ...tr.right);
+      const x = (t) => L + (W - L - R) * Math.min(1, Math.max(0, t / dur));
+      const y = (mm) => T + PH - PH * Math.min(1, mm / peak);
+      const c = svg("svg", { class: "chart fr ff", viewBox: "0 0 " + W + " " + H, role: "img",
+        "aria-label": "How far the two mouth corners were from rest during one session, and where code found brief movements" });
+      c.appendChild(svg("line", { class: "axis", x1: L, x2: W - R, y1: T + PH, y2: T + PH }));
+      c.appendChild(svg("text", { class: "lane", x: L - 8, y: T + 10, "text-anchor": "end" }, "From rest, 0 to " + num(peak, 1) + " mm"));
+      const path = (vals, cls) => c.appendChild(svg("path", { class: "line " + cls, d: vals.map((mm, i) => (i ? "L" : "M") + x(tr.t[i]).toFixed(1) + " " + y(mm).toFixed(1)).join("") }));
+      path(tr.right, "ff-right"); path(tr.left, "ff-left");
+      const step = dur > 90 ? 20 : dur > 30 ? 10 : 5;
+      for (let t = 0; t <= dur + 0.01; t += step) c.appendChild(svg("text", { x: x(t), y: H - 4, "text-anchor": t === 0 ? "start" : "middle" }, t + " s"));
+      const ly = T + PH + 18;
+      c.appendChild(svg("text", { class: "lane", x: L - 8, y: ly + 17, "text-anchor": "end" }, "Brief movements"));
+      tr.twitches.forEach((b) => c.appendChild(svg("rect", { class: "fr-bar same", x: x(b.start_s) - 2, y: ly + 5, width: Math.max(5, x(b.end_s) - x(b.start_s) + 4), height: LANE - 12, rx: 2 },
+        svg("title", null, words(b.region) + ": " + num(b.start_s, 2) + " to " + num(b.end_s, 2) + " s, " + num(b.peak_mm, 1) + " mm above its usual level"))));
+      chart = c;
+      legend = el("ul", { class: "legend" },
+        el("li", null, el("span", { class: "fr-key same" }), "left mouth corner; and each brief movement found by code, in any region"),
+        el("li", null, el("span", { class: "fr-key faint" }), "right mouth corner"));
+    }
+    const load = tr ? null : el("button", { type: "button", class: "btn btn-small", disabled: S.ffBusy ? "disabled" : null, on: { click: async () => {
+      S.ffBusy = true; render();
+      try {
+        const r = await api("GET", "/v1/clinic/patients/" + encodeURIComponent(S.route.pid) + "/activities/" + encodeURIComponent(cur.id) + "/face-fine");
+        const st = r.stream, li = st.regions.indexOf("mouth_left"), ri = st.regions.indexOf("mouth_right"), t = [], left = [], right = [];
+        // Every third frame at most, carrying the largest value, so a brief movement is not thinned away.
+        const k = Math.max(1, Math.round(st.rate_hz / 15));
+        for (let i = 0; i < st.samples.length; i += k) {
+          let a = 0, b = 0;
+          for (let j = i; j < Math.min(st.samples.length, i + k); j++) { a = Math.max(a, st.samples[j][li]); b = Math.max(b, st.samples[j][ri]); }
+          t.push(i / st.rate_hz); left.push(a); right.push(b);
+        }
+        S.ffTrace = { id: cur.id, t, left, right, dur: st.samples.length / st.rate_hz, twitches: r.twitches || [] };
+      } catch (e) { flash(e.message); }
+      S.ffBusy = false; render();
+    } } }, S.ffBusy ? "Loading…" : "Show the movement trace (the download is written to the audit log)");
+    const reg = f.per_region || {};
+    const rows = Object.keys(reg).filter((k) => reg[k]).map((k) => el("tr", null, el("td", null, words(k)),
+      el("td", { class: "r num" }, num(reg[k].level_mm, 2)), el("td", { class: "r num" }, num(reg[k].reach_mm, 2)),
+      el("td", { class: "r num" }, num(reg[k].speed_mm_s, 1)), el("td", { class: "r num" }, num(reg[k].twitches_per_min, 1))));
+    return panel("Fine facial movement (research)", null, pick, head, tiles, chart, legend, load,
+      el("details", { class: "more" }, el("summary", null, "Every region in this session"), table(["Region", { t: "Rests at, mm", r: 1 }, { t: "Reach, mm", r: 1 }, { t: "Top speed, mm/s", r: 1 }, { t: "Brief movements / min", r: 1 }], rows)),
+      el("p", { class: "muted fr-note" }, "The phone turns the face mesh into one number per region and frame: millimetres from this person's own resting shape. No picture, mesh or coordinate leaves the phone (" + words(f.source || "mesh") + ", " + num(f.frames) + " frames at " + f.rate_hz + " a second" + (f.noise_mm !== null && f.noise_mm !== undefined ? ", noise " + num(f.noise_mm, 2) + " mm" : "") + "). " +
+        "This is an experiment. Nobody has shown that these numbers say anything about how a person is, so no flag, level or model reading uses them, and “own usual” is only the middle of this person's earlier sessions. The rule for a brief movement is a first guess, not set on recordings of people."));
+  }
+
   // ---- activity
   function outcomeWord(v) { return v === null || v === undefined ? "–" : v > 0.3 ? "better after" : v < -0.3 ? "worse after" : "no change"; }
   function tabActivity(d) {
@@ -1369,7 +1438,8 @@
         el("td", { class: "num" }, !x.z || x.z.median_reaction_ms == null ? "–" : (x.z.median_reaction_ms >= 1.5 ? "slower than usual" : x.z.median_reaction_ms <= -1.5 ? "faster than usual" : "usual") + " (" + signed(x.z.median_reaction_ms) + ")"),
         el("td", { class: "r num" }, x.values && x.values.error_rate != null ? Math.round(x.values.error_rate * 100) + " %" : "–"),
         faceCell(x.face), readCell(x.reading))), null, { filter: 1 })));
-    if (sub === "focus" || sub === "breathing") { const fp = framesPanel(recent(A[sub]), A.frames_agreement); if (fp) wrap.appendChild(fp); }
+    if (sub === "focus" || sub === "breathing") { const fp = framesPanel(recent(A[sub]), A.frames_agreement); if (fp) wrap.appendChild(fp);
+      const np = finePanel(recent(A[sub])); if (np) wrap.appendChild(np); }
     if (sub === "focus") { const rp = revontuletPanel(recent(A.focus), d); if (rp) wrap.appendChild(rp); }
     if (sub === "breathing") wrap.appendChild(panel("Breathing", A.breathing.sessions.length, table(["Date", "Finished", { t: "Time", r: 1 }, "Face", "Model reading"],
       recent(A.breathing).map((x) => el("tr", null, el("td", { class: "num" }, dayShort(x.date)), el("td", null, yes(x.completed)),
