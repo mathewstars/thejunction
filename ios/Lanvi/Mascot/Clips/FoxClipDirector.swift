@@ -32,34 +32,89 @@ final class FoxClipDirector: ObservableObject {
     private var running = false
     private var assets: [FoxClip: AVURLAsset] = [:]
     private var fading = false
+    private var warmed = false
+    /// The waiting lane stays rendered, nearly invisible, holding the rest frame: a
+    /// video layer shown for the first time costs a long frame, a rendered one does not.
+    private static let standby: Float = 0.01
 
     init() {
+        idleLeft = Int.random(in: 1...2)
+    }
+
+    /// The first video player in the app costs ~0.2 s while the media frameworks load.
+    /// Pay that once, off the main thread, before the first real player is made.
+    private static var prewarmed = false
+    private static func prewarm() async {
+        guard !prewarmed else { return }
+        await Task.detached(priority: .userInitiated) {
+            let player = AVQueuePlayer()
+            _ = AVPlayerLayer(player: player)
+            if let url = FoxClip.idle.url { _ = try? await AVURLAsset(url: url).load(.tracks, .duration) }
+        }.value
+        prewarmed = true
+    }
+
+    private func setUp() {
         lanes = [Lane(), Lane()]
         for lane in lanes { view.add(lane.layer) }
-        lanes[1].layer.opacity = 0
+        lanes[1].layer.opacity = Self.standby
         for (i, lane) in lanes.enumerated() {
             lane.onAdvance = { [weak self] item in self?.advanced(lane: i, to: item) }
             lane.onReady = { [weak self] in self?.ready(lane: i) }
         }
-        idleLeft = Int.random(in: 1...2)
+    }
+
+    /// A second after the first frame: open every clip file once, one by one, and park
+    /// the waiting lane on the rest frame, so a later switch never waits on either.
+    /// (Doing this at launch, all at once, cost the opening a half-second stall.)
+    private func warmUp() {
+        guard !warmed else { return }
+        warmed = true
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(1))
+            guard let self, self.running else { self?.warmed = false; return }
+            if !self.fading { self.warm(self.lanes[1 - self.live]) }
+            for clip in FoxClip.available {
+                _ = try? await self.asset(clip).load(.duration, .tracks)
+            }
+        }
     }
 
     // MARK: Control
 
     func start() {
-        guard !running else { lanes[live].player.play(); return }
+        guard !running else { if !lanes.isEmpty { lanes[live].player.play() }; return }
         running = true
+        guard lanes.isEmpty else { return begin() }
+        // The rest picture shows until the first frame, so this wait is never blank.
+        Task { [weak self] in
+            await Self.prewarm()
+            guard let self, self.running, self.lanes.isEmpty else { return }
+            self.setUp()
+            self.begin()
+        }
+    }
+
+    private func begin() {
         let lane = lanes[live]
         lane.load([item(.idle), item(nextClip(after: .idle))])
         current = .idle
         lane.player.play()
     }
 
+    /// Park a lane on the rest frame (paused), rendered at standby opacity.
+    private func warm(_ lane: Lane) {
+        lane.player.pause()
+        lane.player.removeAllItems()
+        lane.player.insert(item(.idle), after: nil)
+        lane.layer.opacity = Self.standby
+    }
+
     func pause() { for lane in lanes { lane.player.pause() } }
 
     func resume() {
         guard running else { return start() }
-        lanes[live].player.play()
+        if !lanes.isEmpty { lanes[live].player.play() }
     }
 
     func stop() {
@@ -70,14 +125,14 @@ final class FoxClipDirector: ObservableObject {
             lane.player.pause()
             lane.player.removeAllItems()
             lane.layer.removeAllAnimations()
-            lane.layer.opacity = i == live ? 1 : 0
+            lane.layer.opacity = i == live ? 1 : Self.standby
         }
     }
 
     /// Play `clip` next: after the current clip, or (urgent) cross-faded in now.
     func request(_ clip: FoxClip, urgent: Bool = false) {
         let clip = clip.resolved
-        guard running else { pending = clip; return }
+        guard running, !lanes.isEmpty else { pending = clip; return }
         if urgent { crossFade(to: clip) } else { queueNext(clip) }
     }
 
@@ -129,7 +184,7 @@ final class FoxClipDirector: ObservableObject {
 
     /// A held mood changed: let the next clip follow it.
     private func requeue() {
-        guard running, !fading else { return }
+        guard running, !fading, !lanes.isEmpty else { return }
         let lane = lanes[live]
         if lane.remaining > 0.45 { lane.replaceQueued(with: item(nextClip(after: current))) }
     }
@@ -139,7 +194,7 @@ final class FoxClipDirector: ObservableObject {
         fading = true
         let incoming = lanes[1 - live]
         incoming.layer.removeAllAnimations()
-        incoming.layer.opacity = 0
+        incoming.layer.opacity = Self.standby
         incoming.load([item(clip), item(nextClip(after: clip))])
         incoming.tagged = clip
         incoming.waitForFirstFrame()
@@ -152,13 +207,15 @@ final class FoxClipDirector: ObservableObject {
 
     /// The incoming lane has its first frame: play it and fade it in over the live one.
     private func ready(lane i: Int) {
-        if !showing { showing = true }
+        if !showing { showing = true; warmUp() }
         guard fading, i != live else { return }
         let incoming = lanes[i], outgoing = lanes[live]
         incoming.player.play()
-        view.bringToFront(incoming.layer)
+        // Order by z, never by re-adding the layer (that rebuilds the video layer: a hitch).
+        incoming.layer.zPosition = 1
+        outgoing.layer.zPosition = 0
         let fade = CABasicAnimation(keyPath: "opacity")
-        fade.fromValue = 0
+        fade.fromValue = Self.standby
         fade.toValue = 1
         fade.duration = 0.15
         fade.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -170,9 +227,7 @@ final class FoxClipDirector: ObservableObject {
         FrameMeter.mark("clip fade to \(current.rawValue)")
         #endif
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.17) { [weak self] in
-            outgoing.player.pause()
-            outgoing.player.removeAllItems()
-            outgoing.layer.opacity = 0
+            self?.warm(outgoing)
             self?.fading = false
         }
     }
@@ -189,16 +244,18 @@ final class FoxClipDirector: ObservableObject {
 
     // MARK: Items
 
+    private func asset(_ clip: FoxClip) -> AVURLAsset {
+        if let a = assets[clip] { return a }
+        let a = AVURLAsset(url: clip.url!, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
+        assets[clip] = a
+        return a
+    }
+
     private var clipOf: [ObjectIdentifier: FoxClip] = [:]
 
     private func item(_ clip: FoxClip) -> AVPlayerItem {
         let clip = clip.resolved
-        let asset = assets[clip] ?? {
-            let a = AVURLAsset(url: clip.url!, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
-            assets[clip] = a
-            return a
-        }()
-        let item = AVPlayerItem(asset: asset)
+        let item = AVPlayerItem(asset: asset(clip))
         item.preferredForwardBufferDuration = 1
         if clipOf.count > 64 { clipOf.removeAll() }
         clipOf[ObjectIdentifier(item)] = clip
@@ -227,7 +284,6 @@ private final class Lane {
         player.actionAtItemEnd = .advance
         layer = AVPlayerLayer(player: player)
         layer.videoGravity = .resizeAspect
-        layer.pixelBufferAttributes = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         layer.backgroundColor = UIColor.clear.cgColor
         itemWatch = player.observe(\.currentItem, options: [.new]) { [weak self] p, _ in
             let item = p.currentItem
@@ -286,7 +342,6 @@ final class FoxClipLayersView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     func add(_ l: CALayer) { layer.addSublayer(l) }
-    func bringToFront(_ l: CALayer) { layer.addSublayer(l) }
 
     override func layoutSubviews() {
         super.layoutSubviews()
