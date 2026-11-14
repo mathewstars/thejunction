@@ -1066,7 +1066,9 @@
   function pickMeasures(a) {
     const sr = a.series || {}, rows = a.rows || [];
     const usable = rows.filter((r) => r.status === "tested" && r.expected !== "mixed" && ((sr.measures || {})[r.key] || []).length >= 5);
-    const cons = usable.filter((r) => r.agreement === "consistent").sort((x, y) => y.rho - x.rho);
+    // Prefer the measures research supports best, then the closest followers.
+    const SUP = { stronger: 0, moderate: 1, weaker: 2, mixed: 3 };
+    const cons = usable.filter((r) => r.agreement === "consistent").sort((x, y) => (SUP[x.support] - SUP[y.support]) || (y.rho - x.rho));
     const pick = [];
     const add = (r) => { if (r && pick.indexOf(r) < 0 && pick.length < 4) pick.push(r); };
     ["face", "activity", "daily"].forEach((g) => add(cons.find((r) => r.group === g)));
