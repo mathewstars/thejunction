@@ -771,7 +771,7 @@ struct RevontuletPainter {
     /// snow slides and puffs into powder.
     private func snow(_ ctx: inout GraphicsContext) {
         guard let w = e.warmthAt, now >= w else { return }
-        let sq = L.foxSquare(.warm)
+        let sq = L.foxSquare(e.beat == .sleep || e.beat == .done ? .rest : .warm)
         for (i, s) in art.specks.enumerated() {
             let land = w + 0.25 + s.delay
             guard now >= land - 0.7 else { continue }

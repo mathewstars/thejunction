@@ -30,6 +30,8 @@ enum RevontuletInput: Equatable {
     case close
     /// The app left the foreground mid-game: the game ends, recorded as interrupted.
     case interrupt
+    /// The Continue button on the goodnight: hands the finished game back.
+    case finish
 }
 
 /// What just happened, for the screen (haptics, the fox, `GameMoments`). Rounds count from 0.
@@ -63,6 +65,8 @@ enum RevontuletEvent: Equatable {
     case strokeMoved(speed: Double)
     case strokeEnded(number: Int, counted: Bool)
     case sleep
+    /// The fox is asleep: the game is complete and the Continue button appears.
+    case asleep
     case ended(completed: Bool)
 }
 
@@ -91,6 +95,10 @@ struct RevontuletLayout: Equatable {
     var warmFoxCenter: CGPoint
     /// How long a stroke must be to count: a real pass over most of the fox.
     var strokeLength: CGFloat
+    /// The fox asleep at the end: as large as in the warmth, a little higher, so the line
+    /// and the Continue button sit below it.
+    var restFoxCenter: CGPoint
+    var restLineY: CGFloat
     /// The pane of ice: wider than the screen, a jagged top about an eighth of the way down,
     /// its base sunk in the snow.
     var wall: CGRect
@@ -126,6 +134,9 @@ struct RevontuletLayout: Equatable {
         let warmFeet = min(h * 0.875, h - safeBottom - 70)
         warmFoxCenter = CGPoint(x: w / 2, y: warmFeet - warmSize / 2)
         strokeLength = warmSize * 0.36
+        let buttonY = h - safeBottom - 16 - 27
+        restLineY = buttonY - 27 - 26
+        restFoxCenter = CGPoint(x: w / 2, y: restLineY - 30 - warmSize / 2)
         anchor = CGPoint(x: w * 0.68, y: h * 0.62)
         arcRadius = min(w * 0.24, h * 0.115)
         maxPull = h * 0.2
@@ -137,7 +148,7 @@ struct RevontuletLayout: Equatable {
         lineY = h - safeBottom - max(28, h * 0.055)
     }
 
-    enum FoxPlace { case play, full, warm }
+    enum FoxPlace { case play, full, warm, rest }
 
     /// Where the fox's square is: during the rounds, at the celebration, in the warmth.
     func foxSquare(_ place: FoxPlace) -> CGRect {
@@ -145,6 +156,7 @@ struct RevontuletLayout: Equatable {
         case .play: (playFoxScale, playFoxCenter)
         case .full: (1, foxCenter)
         case .warm: (warmFoxScale, warmFoxCenter)
+        case .rest: (warmFoxScale, restFoxCenter)
         }
         let s = foxSize * k
         return CGRect(x: c.x - s / 2, y: c.y - s / 2, width: s, height: s)
