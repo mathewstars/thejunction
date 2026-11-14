@@ -51,4 +51,4 @@ To try it against a local engine: run it as in `docs/api/README.md` (seed with `
 - `-screen home | whathelps | focus | breathe | checkin | checkin-plan`: open one screen.
 - `-offline`: sample data, no server (always use it for tests and screenshots).
 - `-screen pair`: the pairing screen on its own. `-pairTry CODE[,CODE]` (debug builds) types each code and presses Connect, for testing against a local engine.
-- Home moments for screenshots: `-demoGlow 0.9`, `-demoXP 295`, `-demoSuggestion breathing`, `-demoWandering back|away`, `-demoPlay focus|breathing|checkin`, `-demoOpen help|story|mind|focus|breathing|checkin`, `-demoAnswer a|b`.
+- Home moments for screenshots: `-demoGlow 0.9`, `-demoXP 295`, `-demoSuggestion breathing`, `-demoPlay focus|breathing|checkin`, `-demoOpen help|mind|chat|more|growth|focus|breathing|checkin`. Lanvi never wanders and has no stories (cut by the captain); the app ignores the server's `wandering`.

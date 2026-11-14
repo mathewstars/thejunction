@@ -29,8 +29,7 @@ struct LanviApp: App {
 /// Launch arguments:
 /// - `-demo`: the whole story by itself for the pitch video (under a minute):
 ///   Welcome, Home with today's one thing, Breathe with Lanvi, the XP and glow
-///   moment, growing up, done for today, a wandering and its story, a word with
-///   Lanvi. Always uses the offline demo data.
+///   moment, growing up, done for today, a word with Lanvi. Always uses the offline demo data.
 /// - `-screen <name>`: open one screen straight away: `home`, `whathelps`,
 ///   `focus`, `breathe`, `checkin`, `checkin-plan`, `puppet`, `pair`.
 /// - `-flow`: the first run and a short tour of Home (chat, more, growth, Help) play
