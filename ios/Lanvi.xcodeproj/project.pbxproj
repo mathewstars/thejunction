@@ -39,6 +39,7 @@
 		53DFDA41B96A5436FE6B9BD6 /* RevontuletModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4F6CF2EF1D602B235A66678 /* RevontuletModel.swift */; };
 		559778D7817C23DE20017C0F /* LanviOverlayHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B006DA55F144DD2BA237BBE /* LanviOverlayHost.swift */; };
 		5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */; };
+		62D23D38D0C773170613771F /* RevontuletCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1DD3329F63273E5D258A97 /* RevontuletCoach.swift */; };
 		63F055804A5075D00F92CCF8 /* FaceSense.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0FB8AE15346D15FAA5BA3AF /* FaceSense.swift */; };
 		65C54BD206B6EA73A157288C /* RevontuletMeasures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FA6F39FA7B8EDFDD18AB261 /* RevontuletMeasures.swift */; };
 		65D2DC99CA91B8EF96FAEC64 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC334EE89ADCF793E4BC0D9B /* SharedModels.swift */; };
@@ -175,6 +176,7 @@
 		5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviClient.swift; sourceTree = "<group>"; };
 		5D56B6AE8D26C23CF005FB03 /* RescueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RescueView.swift; sourceTree = "<group>"; };
 		5D91945D05F0DA6BDBC2AB0A /* FaceTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTracker.swift; sourceTree = "<group>"; };
+		5E1DD3329F63273E5D258A97 /* RevontuletCoach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevontuletCoach.swift; sourceTree = "<group>"; };
 		5E91BDD22A3D7AF3A6B1F654 /* LanviPuppetPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviPuppetPreview.swift; sourceTree = "<group>"; };
 		60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Nunito-OFL.txt"; sourceTree = "<group>"; };
 		607DA0BDB68AC9211EAADA43 /* HomeParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeParts.swift; sourceTree = "<group>"; };
@@ -496,6 +498,7 @@
 			children = (
 				6AF5D037379E7DAC80011C4A /* RevontuletArt.swift */,
 				FD3F81F3EF6C8E219C91311D /* RevontuletAutoPlay.swift */,
+				5E1DD3329F63273E5D258A97 /* RevontuletCoach.swift */,
 				0A642E52DE3048D1D92DE79C /* RevontuletDirect.swift */,
 				ED29D543DC313AABB988967F /* RevontuletEngine.swift */,
 				6E7FB0E06C454380ECB20FD9 /* RevontuletFeel.swift */,
@@ -726,6 +729,7 @@
 				29E67CCEC71332BFCD470B39 /* RescueView.swift in Sources */,
 				6ED5E6C6908681928159A9E4 /* RevontuletArt.swift in Sources */,
 				459FA66B974721DC4E098E60 /* RevontuletAutoPlay.swift in Sources */,
+				62D23D38D0C773170613771F /* RevontuletCoach.swift in Sources */,
 				B0AC66AEFCE17E1CDE35E35A /* RevontuletDirect.swift in Sources */,
 				F67B6544CC99447BBF65A7BE /* RevontuletEngine.swift in Sources */,
 				25BF8E17E15D212C9C743A28 /* RevontuletFeel.swift in Sources */,
