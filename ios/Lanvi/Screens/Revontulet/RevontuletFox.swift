@@ -15,6 +15,8 @@ struct RevontuletFox: View, Equatable {
     var petTick: Int
     /// Held while a stroke asks for it (the third stroke: eyes closed happily).
     var petMood: LanviMood? = nil
+    /// A moment of real joy (both embers lit): the fox may hop.
+    var joy = false
 
     var body: some View {
         // One puppet plays every act, so the fox never jumps between them.
@@ -25,7 +27,7 @@ struct RevontuletFox: View, Equatable {
     /// what it is told.
     private var puppet: some View {
         LanviView(pose: .curious, size: size)
-            .lanviHops(act == .celebrating)
+            .lanviHops(act == .celebrating || joy)
             .lanviReaction(reaction, trigger: reactionTick)
             // Asleep: it yawns (the moment below), then its eyes close and stay closed (the
             // closed crescent eyes `.okay` holds), breathing on. A true sleeping face would

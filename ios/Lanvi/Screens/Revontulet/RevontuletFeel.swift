@@ -35,10 +35,10 @@ enum RevontuletTune {
 
     // Impacts: easy is one warm round thud; hard is deeper and longer with crackle;
     // the full combo adds a rising three-beat flourish.
-    static let easyThud = (i: 0.58, s: 0.22, t: 0.12)
-    static let hardThud = (i: 0.76, s: 0.08, t: 0.26)
-    static let comboThud = (i: 0.86, s: 0.06, t: 0.32)
-    static let crackleI = 0.3, crackleS = 0.9, crackles = (easy: 2, hard: 7, combo: 10)
+    static let easyThud = (i: 0.5, s: 0.3, t: 0.09)
+    static let hardThud = (i: 0.78, s: 0.06, t: 0.3)
+    static let comboThud = (i: 0.9, s: 0.04, t: 0.38)
+    static let crackleI = 0.3, crackleS = 0.9, crackles = (easy: 1, hard: 8, combo: 12)
     static let flourish: [(t: Double, i: Double, s: Double)] = [(0.36, 0.24, 0.5), (0.47, 0.3, 0.62), (0.58, 0.38, 0.75)]
     // The surprise ribbon: one soft wave.
     static let ribbonWave = (delay: 0.7, t: 1.1, i: 0.26, s: 0.1)
