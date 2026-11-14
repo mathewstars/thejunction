@@ -1,5 +1,7 @@
 # iOS app
 
+**Start here: [HANDOFF.md](HANDOFF.md).** It has what the app is, who owns what, the code map, how to run it and the rules for working on it. The rest of this page is older.
+
 The Xcode project goes here. Peter writes the code, Matthew builds it on his Mac and puts it on TestFlight.
 
 Read first:
