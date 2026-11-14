@@ -549,8 +549,9 @@ class InputGate:
         "units of the person's usual spread, oldest first, null when no data; -1.5 or lower is "
         'clearly low. "rules_level" is what fixed rules alone would say. An "asked_for_help" item '
         'is always "urgent" and you cannot change that; answer "urgent" for it and weigh the '
-        'other items knowing about it. For these items leave "rule" out. Reply with ONE JSON '
-        'object only, no prose: '
+        'other items knowing about it. For these items leave "rule" out. When the data has no '
+        '"clinic_rules", never write "rule" and never use the reason "clinic_rule". Reply with '
+        'ONE JSON object only, no prose: '
         '{"items":[{"ref":str,"level":"watch"|"attention"|"urgent","reason":str,"rule":str (only '
         'on an item a clinic rule decides)}]} with every ref from the data exactly once and '
         '"reason" one of the codes in "reasons". Never state or imply a diagnosis. Apart from '
@@ -957,7 +958,10 @@ class TriageItem(_Strict):
     ref: str = Field(max_length=4)
     level: Literal["watch", "attention", "urgent"]
     reason: str = Field(max_length=40)
-    rule: Optional[str] = Field(None, max_length=4)  # the clinic rule that set it, if any
+    # The clinic rule that set it, if any. Longer than a ref on purpose: a model that writes
+    # something else here ("clinic_rules") is caught item by item in OutputGate.triage and
+    # the item is kept without a rule, instead of the whole answer being thrown away.
+    rule: Optional[str] = Field(None, max_length=40)
 
 
 class TriageReply(_Strict):
