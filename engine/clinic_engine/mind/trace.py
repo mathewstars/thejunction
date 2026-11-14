@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 
 from ..security import new_id
 from ..store import Store
+from .activities import fine_recent
 
 log = logging.getLogger("clinic_engine.trace")
 
@@ -208,6 +209,10 @@ def watcher_facts(view) -> dict:
             "slower_needed_z": th.slower_reaction_z,
             "face_activity_z": [(a.get("face_z") or {}).get("facial_activity") for a in faces],
             "face_smile_z": [(a.get("face_z") or {}).get("smile_rate_per_min") for a in faces],
+            # A person whose sessions send the fine movement stream is judged by its
+            # reach in millimetres over the last few sessions together.
+            "fine_recent": {k: v for k, v in (fine_recent(view.activities, th) or {}).items() if k != "last"},
+            "fine_flat_needed_z": th.fine_flat_z,
             "flat_needed_z": th.face_flat_z,
             "adds_weight": view.activity_weight(),
             "last_finished": [a["ended_by"] == "finished" for a in view.activities[-3:]],

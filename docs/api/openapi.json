@@ -5606,7 +5606,7 @@
               "pattern": "^[a-z_]{2,30}$"
             },
             "type": "array",
-            "maxItems": 12,
+            "maxItems": 14,
             "minItems": 2,
             "title": "Regions",
             "description": "Names in the order of each sample's values, from the fixed list in docs/face-fine.md. Must include mouth_left and mouth_right."
