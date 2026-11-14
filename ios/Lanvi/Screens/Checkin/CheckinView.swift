@@ -411,6 +411,7 @@ struct CheckinView: View {
                 }
             }
             .gameLegible(GameInk.sky(.night))
+            .background(GameShade())
             .frame(width: s.width - 48)
             .position(x: s.width / 2, y: (s.belowBar + f.foxTop) / 2 + 6)
 
@@ -775,6 +776,7 @@ extension CheckinView {
     fileprivate func debugShot() async {
         #if DEBUG
         guard let shot = UserDefaults.standard.string(forKey: "checkinShot") else { return }
+        print("checkin: shown")
         try? await Task.sleep(for: .milliseconds(300))
         switch shot {
         case "plan-yes": answerPlan(.yes)

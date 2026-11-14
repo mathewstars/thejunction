@@ -51,7 +51,7 @@ struct FocusGameView: View {
         init(_ s: GameStage) {
             fox = s.compact ? 150 : 196
             feet = s.feet(fox: fox * 1.1, reserve: 96)
-            let playTop = feet - fox * 0.84
+            let playTop = feet - fox * (s.compact ? 0.84 : 0.94)
             field = CGRect(x: 26, y: s.belowBar + 8, width: s.width - 52, height: max(160, playTop - 8 - s.belowBar - 8))
             finishY = min(s.world.point(0.5, 0.43).y, feet - fox * 1.1 - 70)
             captionY = (feet + s.buttonY - 27) / 2 + 2
@@ -60,7 +60,7 @@ struct FocusGameView: View {
         func scale(_ phase: Phase, compact: Bool) -> CGFloat {
             switch phase {
             case .intro: 1
-            case .playing: 0.84
+            case .playing: compact ? 0.84 : 0.94
             case .finished: compact ? 1.0 : 1.1
             }
         }
@@ -155,9 +155,11 @@ struct FocusGameView: View {
 
             case .playing:
                 if let engine {
+                    // Ends short of the painted moon in the top right corner.
+                    let barWidth = s.width - 24 - 44 - 16 - (s.compact ? 92 : 84)
                     TimeBar(start: engine.start, length: FocusEngine.roundLength)
-                        .frame(width: s.width - 24 - 44 - 16 - 28)
-                        .position(x: 24 + 44 + 16 + (s.width - 24 - 44 - 16 - 28) / 2, y: s.barY)
+                        .frame(width: barWidth)
+                        .position(x: 24 + 44 + 16 + barWidth / 2, y: s.barY)
                         .transition(.opacity)
                 }
                 GameLine(text: line, font: Theme.rounded(18, .heavy), color: GameInk.snow.body)

@@ -99,6 +99,7 @@ struct BreatheView: View {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.1)) { appeared = true }
         }
         .task(id: stage) {
+            if demo { print("breathe: stage \(stage)") }
             switch stage {
             case .intro:
                 guard demo else { return }
@@ -166,6 +167,7 @@ struct BreatheView: View {
                         .multilineTextAlignment(.center)
                 }
                 .gameLegible(GameInk.sky(.night))
+                .background(GameShade())
                 .frame(width: s.width - 40)
                 .position(x: s.width / 2, y: skyMid + (s.compact ? 10 : 30))
                 .transition(.opacity.combined(with: .scale(scale: 0.94)))
