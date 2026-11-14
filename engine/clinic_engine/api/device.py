@@ -56,8 +56,16 @@ async def activities(body: ActivityIn, request: Request, p: Principal = Depends(
 
     The answer says what Lanvi shows next: XP gained, the new total, stage,
     glow and one line from the fixed set. XP is for showing up: the same
-    whatever the score."""
+    whatever the score.
+
+    The face: send `face_raw` (raw ARKit frames, numbers only; the server
+    computes every face measure, docs/face-raw.md) or, from older clients,
+    `face` (a summary the phone computed). Not both (422). This route accepts
+    bodies up to MAX_FACE_RAW_BODY_BYTES (4 MiB by default); other routes keep
+    the general limit."""
     rec = body.model_dump(mode="json")
+    if rec.get("face_raw", "absent") is None:
+        del rec["face_raw"]  # so a record without raw frames hashes as it always did
     rec["started_at"] = body.started_at.astimezone(timezone.utc).isoformat()
     return await service.record_activity(ctx_of(request), p, rec, rid_of(request))
 

@@ -7,9 +7,9 @@ off they are admin-only."""
 
 from fastapi import APIRouter, Depends, Request
 
-from .. import seed
+from .. import seed, service
 from ..audit import write_audit
-from ..models import AnalyzeIn, ReviewIn, ScenarioIn
+from ..models import AnalyzeIn, RecomputeFaceIn, RecomputeFaceOut, ReviewIn, ScenarioIn
 from ..security import Principal
 from ..service import ApiError
 from .deps import ctx_of, demo_actor, errors, rid_of
@@ -106,8 +106,10 @@ async def review_run(body: ReviewIn, request: Request, p: Principal = Depends(de
              summary="Run the level-2 reading again for one activity (or an earlier round)")
 async def demo_analyze(body: AnalyzeIn, request: Request, p: Principal = Depends(demo_actor)):
     """With `activity_id`: the session reading of a focus or breathing session
-    with a face summary. With `round_id`: the movement reading of an AR round
-    of the earlier design."""
+    with a face summary, or with `what: "frames"` the frame reading of a session
+    sent with raw face frames (level 2 reads them, code checks every item;
+    returns the stored `frames_reading`). With `round_id`: the movement reading
+    of an AR round of the earlier design."""
     ctx = ctx_of(request)
     c = _locate(request, p, body.patient_id)
     repo = ctx.mind.repo(c, body.patient_id)
@@ -115,6 +117,11 @@ async def demo_analyze(body: AnalyzeIn, request: Request, p: Principal = Depends
         rec = repo.get(f"activities/{body.activity_id}.json")
         if rec is None:
             raise ApiError(404, "not_found", "Activity not found.")
+        if body.what == "frames":
+            result = await ctx.mind.run_frames_reading(repo, body.activity_id, take_lock=True)
+            _audit(request, p, "demo_analyze", patient_id=body.patient_id,
+                   activity_id=body.activity_id, what="frames", status=result.get("status"))
+            return result
         analysis = await ctx.mind.run_session_reading(repo, body.activity_id, take_lock=True)
         _audit(request, p, "demo_analyze", patient_id=body.patient_id,
                activity_id=body.activity_id)
@@ -124,3 +131,20 @@ async def demo_analyze(body: AnalyzeIn, request: Request, p: Principal = Depends
     analysis = await ctx.mind.run_reading(repo, body.round_id, take_lock=True)
     _audit(request, p, "demo_analyze", patient_id=body.patient_id, round_id=body.round_id)
     return analysis
+
+
+@router.post("/demo/recompute-face", response_model=RecomputeFaceOut,
+             responses=errors(401, 403, 404, 422, 429),
+             summary="Compute the face summary of a patient's raw sessions again")
+async def demo_recompute_face(body: RecomputeFaceIn, request: Request,
+                              p: Principal = Depends(demo_actor)):
+    """For every focus or breathing session sent with raw face frames: compute
+    the summary again from the stored frames with the current thresholds, and
+    rewrite its face summary, face quality and face z values. Sessions sent with
+    a summary are left as they are. Returns how many were recomputed."""
+    ctx = ctx_of(request)
+    c = _locate(request, p, body.patient_id)
+    async with ctx.mind.lock(c, body.patient_id):
+        n = service.recompute_faces(ctx.mind.repo(c, body.patient_id))
+    _audit(request, p, "demo_recompute_face", patient_id=body.patient_id, recomputed=n)
+    return {"patient_id": body.patient_id, "recomputed": n}

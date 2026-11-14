@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 
 from .audit import write_audit
 from .config import Settings
-from .mind import lines, xp
+from .mind import face_features, lines, xp
 from .mind import notes as note_logic
 from .mind.activities import check_activity, process_activity
 from .mind.engine import Clock, Mind
@@ -508,10 +508,23 @@ async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
                         stored["plan"] = {"note_id": nid}
                     else:
                         stored["plan"] = {"catalog_id": plan["catalog_id"]}
+            raw = stored.pop("face_raw", None)
+            if raw is not None:
+                # The phone sent raw frames: the server computes the summary and
+                # keeps the frames as their own object, outside the activity
+                # record and outside every pack, for re-analysis.
+                repo.put(f"faceraw/{body['id']}.json", _raw_object(body, raw, now))
+                stored.update(face=face_features.summarize(raw), face_source="raw",
+                              face_raw_info=face_features.describe(raw))
+            elif stored.get("face") is not None:
+                stored["face_source"] = "summary"
             previous = [a for a in repo.activities() if a["started_at"] < body["started_at"]]
             rec = process_activity(stored, previous)
             rec.update(received_at=now.isoformat(), example=False, content_sha256=sha,
                        crisis=crisis, analysis={"status": ctx.mind.session_reading_state(repo, rec)})
+            if rec.get("face_source") == "raw":
+                # The frame reading (clinician-only): level 2 reads the frames, code checks.
+                rec["frames_reading"] = {"status": ctx.mind.frames_reading_state(repo, rec)}
             repo.put(f"activities/{rec['id']}.json", rec)
             if sug is not None:
                 sug["activity_id"] = rec["id"]
@@ -522,13 +535,53 @@ async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
             _st, new = xp.sync(repo, now)
             gained = sum(a["xp"] for a in new if a.get("by") == rec["id"])
             _audit(ctx, p, "activity", "ok", None, rid, activity_id=rec["id"], type=rec["type"],
-                   ended_by=rec["ended_by"], face_quality=rec["face_quality"], xp_gained=gained,
-                   crisis=crisis)
+                   ended_by=rec["ended_by"], face_quality=rec["face_quality"],
+                   face_source=rec.get("face_source"), xp_gained=gained, crisis=crisis)
             await ctx.mind.publish("activity", p.clinic_id, p.patient_id, activity_id=rec["id"],
                                    xp_gained=gained)
         if rec["analysis"]["status"] == "pending":
             await ctx.mind.schedule_session_reading(repo, rec["id"])
+        if (rec.get("frames_reading") or {}).get("status") == "pending":
+            await ctx.mind.schedule_frames_reading(repo, rec["id"])
         return _activity_out(ctx, repo, rec, gained, crisis)
+
+
+def _raw_object(body: dict, raw: dict, now: datetime) -> dict:
+    """The raw frames as sent, plus counts. Stored at faceraw/{activity_id}.json."""
+    tracked = raw.get("tracked")
+    return {"activity_id": body["id"], "type": body["type"], "started_at": body["started_at"],
+            "received_at": now.isoformat(), "rate_hz": raw["rate_hz"],
+            "channels": raw["channels"], "samples": raw["samples"], "tracked": tracked,
+            "moments_ms": raw.get("moments_ms"), "frames": len(raw["samples"]),
+            "channel_count": len(raw["channels"]),
+            "tracked_frames": len(raw["samples"]) if tracked is None else sum(tracked)}
+
+
+def recompute_face(repo: PatientRepo, activity_id: str) -> bool:
+    """Compute the face summary of one raw session again from its stored frames,
+    with the current thresholds, and rewrite the activity's face summary, face
+    quality and face z values (against the same earlier sessions). The caller
+    holds the patient lock. False when the activity or its frames are missing."""
+    raw = repo.get(f"faceraw/{activity_id}.json")
+    rec = repo.get(f"activities/{activity_id}.json")
+    if raw is None or rec is None:
+        return False
+    face = face_features.summarize(raw)
+    previous = [a for a in repo.activities() if a["started_at"] < rec["started_at"]]
+    redo = process_activity({**rec, "face": face}, previous)
+    rec.update(face=face, face_source="raw", face_raw_info=face_features.describe(raw),
+               face_quality=redo["face_quality"], face_z=redo["face_z"], usual=redo["usual"])
+    repo.put(f"activities/{activity_id}.json", rec)
+    return True
+
+
+def recompute_faces(repo: PatientRepo) -> int:
+    """recompute_face for every raw session of the patient, oldest first, so a
+    later session's own normal sees the earlier ones' new values."""
+    ids = [k.rsplit("/", 1)[1][:-len(".json")] for k in repo.store.list(repo.p + "faceraw/")]
+    recs = [r for r in (repo.get(f"activities/{i}.json") for i in ids) if r is not None]
+    return sum(recompute_face(repo, r["id"])
+               for r in sorted(recs, key=lambda r: (r["started_at"], r["id"])))
 
 
 def checkin_options() -> dict:

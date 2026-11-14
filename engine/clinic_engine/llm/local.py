@@ -55,7 +55,9 @@ class LocalModel:
     async def _send(self, pack: Pack, body: dict, headers: dict) -> str | None:
         try:
             # The association appraisal may think for a while before answering.
-            timeout = self.long_timeout if pack.task == "association" else self.timeout
+            # So may the frame reading when the local model stands in for level 2.
+            timeout = self.long_timeout if pack.task in ("association", "frames_reading") \
+                else self.timeout
             async with httpx.AsyncClient(timeout=timeout, transport=self.transport) as c:
                 r = await c.post(f"{self.base_url}/chat/completions", json=body, headers=headers)
                 r.raise_for_status()

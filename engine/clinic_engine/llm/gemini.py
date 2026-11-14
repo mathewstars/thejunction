@@ -15,7 +15,8 @@ from ..mind.gates import Pack
 GEMINI_HOST = "generativelanguage.googleapis.com"
 
 
-def build_request(settings: Settings, pack: Pack) -> tuple[str, dict, dict]:
+def build_request(settings: Settings, pack: Pack,
+                  max_output_tokens: int = 4000) -> tuple[str, dict, dict]:
     if not settings.gemini_model:
         raise RuntimeError("GEMINI_MODEL is not set")
     url = f"https://{GEMINI_HOST}/v1beta/models/{settings.gemini_model}:generateContent"
@@ -30,7 +31,7 @@ def build_request(settings: Settings, pack: Pack) -> tuple[str, dict, dict]:
         "contents": [{"role": "user", "parts": parts}],
         "generationConfig": {"temperature": 0, "responseMimeType": "application/json",
                              # the model thinks before it answers and that counts here
-                             "maxOutputTokens": 4000},
+                             "maxOutputTokens": max_output_tokens},
     }
     headers = {"x-goog-api-key": settings.gemini_api_key}
     return url, headers, body

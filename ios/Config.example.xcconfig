@@ -1,0 +1,7 @@
+// Copy this file to Config.xcconfig (git-ignored) and fill in the two values.
+// Leave them empty to run the app in offline demo mode.
+//
+// In xcconfig files "//" starts a comment, so write the address with $()
+// between the two slashes, like this: https:/$()/example.org
+LANVI_SERVER_URL = http:/$()/127.0.0.1:8080
+LANVI_PAIRING_CODE = ABCD-EFGH-JKLM
