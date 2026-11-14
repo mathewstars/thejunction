@@ -8,7 +8,7 @@ until [[ ! -e /tmp/lanvi-phone-priority ]] && mkdir /tmp/lanvi-heavy.lock 2>/dev
   if [[ -n $(find /tmp/lanvi-heavy.lock -maxdepth 0 -mmin +15) ]]; then rmdir /tmp/lanvi-heavy.lock; fi
   sleep 15
 done
-trap 'xcrun simctl shutdown $dev 2>/dev/null; rmdir /tmp/lanvi-heavy.lock' EXIT
+trap 'xcrun simctl shutdown $dev 2>/dev/null; rm -rf $root/ios/build/dd; rmdir /tmp/lanvi-heavy.lock' EXIT
 cd $root/ios
 nice xcodebuild test -project Lanvi.xcodeproj -scheme Lanvi -destination "id=$dev" \
   -derivedDataPath build/dd -only-testing:LanviTests/LanviEyesTests 2>&1 | awk '/Test Case|Executed|error:|FAILED|SUCCEEDED/'
