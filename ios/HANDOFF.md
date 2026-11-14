@@ -89,7 +89,7 @@ Launch arguments (Scheme, Arguments): `-demo` plays the whole story by itself; `
 
 ## How the app talks to the server
 
-Pair once (`POST /v1/devices/pair`), then `GET /v1/today` on open and after every activity, `POST /v1/activities` for a finished activity (types `focus`, `breathing`, `checkin`), `POST /v1/feedback` for "I did it / Not today", `POST /v1/notes` for each chat message (the reply is `reply.text`; `crisis: true` opens Help at once), plus check-in options, preferences, wanderings and "mind". All of it is in `Net/LanviClient.swift`.
+Pair once (`POST /v1/devices/pair`), then `GET /v1/today` on open and after every activity, `POST /v1/activities` for a finished activity (types `focus`, `breathing`, `checkin`), `POST /v1/feedback` for "I did it / Not today", `POST /v1/notes` for each chat message (the reply is `reply.text`; `crisis: true` opens Help at once), plus check-in options, preferences and "mind" (never the wandering answer: stories are cut). All of it is in `Net/LanviClient.swift`.
 
 A new kind of activity needs dad's server to accept it first. Today it knows only `focus`, `breathing`, `checkin`.
 
