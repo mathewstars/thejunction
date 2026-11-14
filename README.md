@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | **The pitch, three minutes** | https://lanvi.app/pitch |
-| **The running system** | https://lanvi.app (clinician page, example data) |
+| **The running system** | https://lanvi.app/demo (the clinician page, no login, read only) |
 
 [![Lanvi: the story footage behind, the real app in the phone](docs/img/lanvi-pitch.jpg)](https://lanvi.app/pitch)
 
@@ -15,7 +15,14 @@ Built at Junction 2026 for Aalto University's challenge "Beyond the Clinic", wit
 
 ## Open the demo
 
-Go to https://lanvi.app/demo. It needs no login and is read only: you see the clinician page as the clinic does, but nothing can be changed. (To sign in and change things, write to stafurik@gmail.com or call +421 917 916 569 for the login.) It is a demo server: the patients are examples with generated histories, plus one shared test profile, "Team test P" (Patient T-001), that receives what our own phones send. Start with Anna Korhonen.
+Go to https://lanvi.app/demo. It needs no login and is read only: you see the clinician page as the clinic does, but nothing can be changed. (To sign in and change things, write to stafurik@gmail.com or call +421 917 916 569 for the login.) It is a demo server: the patients are examples with generated histories, plus one shared test profile, "Team test P" (Patient T-001), that receives what our own phones send and is shown with its owner's agreement.
+
+Where to start:
+
+- **Anna Korhonen**: the example with a dip. Overview shows what the clinic sees first; Research shows how her measures moved with a weekly score, and says plainly that the link was written into the example.
+- **Aino Mäkelä**, Activity, Focus game: the game's own measures over eight weeks, each compared with her own earlier games.
+- **Team test P**, Activity, Focus game: ten real games from one phone on one evening. The page says they are too few and too close together to compare.
+- **Blueprint**, in the top bar: how the system decides, with live examples.
 
 ## Install the app
 
@@ -25,9 +32,9 @@ You need a Mac with Xcode and an iPhone. The face numbers need a phone with Face
 2. Under Signing & Capabilities choose your own team, pick your iPhone and press Run.
 3. There is nothing to link for now: every install connects to the shared test profile on lanvi.app. Play a game or do the evening check-in, then open "Team test P" on the clinician page to see it arrive.
 
-Everyone who has the demo login can see what an install sends (games, face numbers and, if you allow it, Apple Health days). Do not allow Apple Health on a phone whose data you want to keep private. More about the app: [`ios/README.md`](ios/README.md).
+What an install sends (games, face numbers and, if you allow it, Apple Health days) lands on that shared profile, which the open demo shows to anyone. Do not install it on a phone whose data you want to keep private, and do not allow Apple Health there. More about the app: [`ios/README.md`](ios/README.md).
 
-## Two things to look at
+## Three things to look at
 
 ### The mind
 
@@ -35,7 +42,7 @@ Rules we can explain notice a change and raise a flag. Two models weigh it: the 
 
 On 40 generated cases read by the real models, a worse case never got a lower level (0 of 107 flags). The same case read twice changed on 6 of 107.
 
-- Explained with a live example: https://lanvi.app/#/blueprint/mind
+- Explained with a live example: https://lanvi.app/demo#/blueprint/mind
 - Code: [`engine/clinic_engine/mind/`](engine/clinic_engine/mind/) (start with `watchers.py`, `triage.py`, `gates.py`)
 - The check and its output: `python -m clinic_engine.triage_check`, [`docs/checks/`](docs/checks/)
 
@@ -45,13 +52,22 @@ The front camera, through ARKit, gives 52 numbers about how the face moves and t
 
 Whether any of this follows depression is the study we want to run: 24 hypotheses fixed before any data (three were redefined on 14 November, when the game changed), 30 people after TMS, 12 weeks, each compared only with themselves.
 
-- The face numbers and the two readers: [`docs/face-raw.md`](docs/face-raw.md), https://lanvi.app/#/blueprint/gemini
-- The game's own measures: [`docs/revontulet-measures.md`](docs/revontulet-measures.md)
+- The face numbers and the two readers: [`docs/face-raw.md`](docs/face-raw.md), https://lanvi.app/demo#/blueprint/gemini
 - What we read, and the study: [`docs/research-notes-gamified-dtx.md`](docs/research-notes-gamified-dtx.md), [`docs/research-proposal.md`](docs/research-proposal.md)
+
+### The game, and how far its numbers can be trusted
+
+Revontulet is the game in the app: break an ice wall by picking an easier or a harder crack, trace a half circle, stroke the sleeping fox. It records which crack was picked and how fast the finger moved. The clinician page compares each game with that person's own earlier games, in two ways: with the games just before, and with their start, which a slow slide cannot drag along.
+
+We measured how often those comparisons are wrong, on generated games set to match the first real ones (tracing speed varied by about 13% from game to game). When nothing changes, about 11 games in 100 still get a label. A single game catches a large slide about 7 times in 10; the last three games taken together, about 9 in 10. The first table we made looked much better, because the first generated games were steadier than real play. Real games replaced it.
+
+- On the page: Aino Mäkelä or Team test P, Activity, Focus game
+- What each measure is, the rules and the table: [`docs/revontulet-measures.md`](docs/revontulet-measures.md)
+- The check: `python -m clinic_engine.revontulet_check`
 
 ## What is real and what is not
 
-The server, the clinician page, both models and the same-day alert are live, and a real iPhone has sent games, face numbers and Apple Health days through the whole path. Anna and the other patients on the page are examples with generated histories. Nothing is tested with patients, and nothing here shows that these measures follow depression. It is a weekend prototype, not a validated measure.
+The server, the clinician page, both models and the same-day alert are live, and a real iPhone has sent games, face numbers and Apple Health days through the whole path. Anna and the other patients on the page are examples with generated histories, and each page that shows a relation in them says it was written into the example. Nothing is tested with patients, and nothing here shows that these measures follow depression. It is a weekend prototype, not a validated measure.
 
 ## In this repository
 
