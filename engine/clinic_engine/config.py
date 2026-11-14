@@ -121,6 +121,9 @@ class Settings:
     notify_mode: str = "off"  # off | telegram
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+    # Someone close to the patient who also hears (a first, small version): the people a
+    # clinician can choose from, as "Name=telegram chat id;Name=chat id". Empty = feature off.
+    family_contacts: str = ""
     clinician_page_url: str = ""
     notify_hours: str = "08-18"  # clinic local hours when a message may be sent
     notify_queue_outside_hours: bool = True  # queue to next window, else drop
@@ -192,6 +195,7 @@ class Settings:
             notify_mode=_env("NOTIFY_MODE", "off").lower(),
             telegram_bot_token=_env("TELEGRAM_BOT_TOKEN"),
             telegram_chat_id=_env("TELEGRAM_CHAT_ID"),
+            family_contacts=_env("FAMILY_CONTACTS", ""),
             clinician_page_url=_env("CLINICIAN_PAGE_URL"),
             notify_hours=_env("NOTIFY_HOURS", "08-18"),
             notify_queue_outside_hours=_env_bool("NOTIFY_QUEUE_OUTSIDE_HOURS", True),

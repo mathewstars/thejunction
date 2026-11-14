@@ -19,7 +19,7 @@ Interactive docs while it runs: `http://127.0.0.1:8080/docs`. The clinician web 
 
 ## The demo server
 
-The engine also runs on a demo server: `https://lanvi.app`. On that server linking is switched off for now: with `OPEN_PAIRING_PATIENT` set to a patient's label, `POST /v1/devices/pair` connects every phone to that one patient and does not look at the code (empty, the default, means one-time codes are checked). Interactive docs: `https://lanvi.app/docs`. Every call under `/v1` needs a bearer token; ask Mathew for the pairing code and the clinician login, they are not in this repo. All data on it is example data.
+The engine also runs on a demo server: `https://lanvi.app`. Someone close who also hears (a first, small version): with `FAMILY_CONTACTS` set to `Name=telegram chat id;Name=chat id`, a clinician can choose one of those people for a patient (`GET /v1/clinic/family-contacts`, `PUT /v1/clinic/patients/{id}/family-contact`); when the clinic is sent a "needs review" message about that patient, the person gets one line on Telegram that names nobody and says nothing about health. On that server linking is switched off for now: with `OPEN_PAIRING_PATIENT` set to a patient's label, `POST /v1/devices/pair` connects every phone to that one patient and does not look at the code (empty, the default, means one-time codes are checked). Interactive docs: `https://lanvi.app/docs`. Every call under `/v1` needs a bearer token; ask Mathew for the pairing code and the clinician login, they are not in this repo. All data on it is example data.
 
 ## Auth
 

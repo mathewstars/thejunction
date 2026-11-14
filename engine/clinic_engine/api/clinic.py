@@ -14,6 +14,7 @@ from ..mind import views
 from ..mind.watchers import compute_status
 from ..mind import associations as assoc
 from ..models import (AssociationsOut, ClinicMeOut, ClinicRuleIn, ClinicRulesOut, FaceRawOut,
+                      FamilyContactIn, FamilyContactOut, FamilyContactsOut,
                       LoginIn, LoginOut, RatingIn,
                       RatingOut, RatingsOut, TraceOut)
 from ..security import (Principal, dummy_verify, issue_token, new_id, sha256_hex,
@@ -256,6 +257,42 @@ def _rules_out(ctx, repo) -> dict:
     rules = [{k: r.get(k) for k in ("id", "text", "at", "by", "expires_at")}
              for r in ctx.mind.clinic_rules(repo)]
     return {"rules": rules, "applies": ctx.mind.triage_on}
+
+
+@router.get("/family-contacts", response_model=FamilyContactsOut, responses=errors(401, 403, 429),
+            summary="Someone close who also hears: the people a clinician can choose from")
+async def family_contacts_list(request: Request, p: Principal = Depends(clinician_only)):
+    """A first, small version of a family loop. Names only; the Telegram chats behind
+    them are a server setting (FAMILY_CONTACTS) and are never returned."""
+    from ..notify import family_contacts
+    return {"contacts": sorted(family_contacts(ctx_of(request).settings))}
+
+
+@router.put("/patients/{patient_id}/family-contact", response_model=FamilyContactOut,
+            responses=errors(401, 403, 404, 422, 429),
+            summary="Choose the person who also hears for this patient, or nobody")
+async def set_family_contact(body: FamilyContactIn, request: Request,
+                             patient_id: str = Path(pattern=SID),
+                             p: Principal = Depends(clinician_only)):
+    """When the clinic is sent a "needs review" message for this patient, the chosen
+    person gets one line on Telegram that names nobody and says nothing about health.
+    The patient has to agree to it; the clinic sets it here."""
+    from ..notify import family_contacts
+    ctx = ctx_of(request)
+    repo = _patient_repo(request, p, patient_id)
+    if body.name is not None and body.name not in family_contacts(ctx.settings):
+        raise ApiError(422, "invalid_request", "That person is not on this server's list.")
+    async with ctx.mind.lock(p.clinic_id, patient_id):
+        rec = dict(repo.patient())
+        if body.name is None:
+            rec.pop("family_contact", None)
+        else:
+            rec["family_contact"] = body.name
+        ctx.store.put(f"clinics/{p.clinic_id}/patients/{patient_id}/patient.json", rec)
+        write_audit(ctx.store, ctx.clock.now(), clinic_id=p.clinic_id, patient_id=patient_id,
+                    actor=p.actor, action="family_contact_set",
+                    detail={"chosen": body.name is not None}, request_id=rid_of(request))
+    return {"family_contact": body.name}
 
 
 @router.get("/patients/{patient_id}/clinic-rules", response_model=ClinicRulesOut,

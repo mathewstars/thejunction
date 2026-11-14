@@ -886,6 +886,20 @@ class ClinicRuleOut(BaseModel):
     expires_at: Optional[str] = Field(None, description="When the rule stops applying.")
 
 
+class FamilyContactIn(Strict):
+    name: Optional[str] = Field(None, max_length=40, description="One of the names from "
+                                "GET /v1/clinic/family-contacts, or null for nobody.")
+
+
+class FamilyContactsOut(BaseModel):
+    contacts: list[str] = Field(description="The people a clinician can choose from on this "
+                                            "server (set in FAMILY_CONTACTS). Names only.")
+
+
+class FamilyContactOut(BaseModel):
+    family_contact: Optional[str]
+
+
 class ClinicRulesOut(BaseModel):
     rules: list[ClinicRuleOut]
     applies: bool = Field(description="True when the two model levels set the levels "

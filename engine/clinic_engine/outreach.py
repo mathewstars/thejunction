@@ -240,13 +240,15 @@ class Outreach:
 
     _MSG_OK = re.compile(r"^[\w .,:()/\-]+( https://\S+)?$", re.UNICODE)
 
-    async def telegram_send(self, text: str) -> bool:
+    async def telegram_send(self, text: str, chat_id: str | None = None) -> bool:
+        """To the clinic's chat, or to `chat_id` (a person the clinic chose for one patient)."""
         s = self.settings
-        if s.notify_mode != "telegram" or not (s.telegram_bot_token and s.telegram_chat_id):
+        chat = chat_id or s.telegram_chat_id
+        if s.notify_mode != "telegram" or not (s.telegram_bot_token and chat):
             return False
         if len(text) > 300 or not self._MSG_OK.match(text):
             raise OutreachRefused("message shape not allowed")
         url = f"https://api.telegram.org/bot{s.telegram_bot_token}/sendMessage"
-        body = {"chat_id": s.telegram_chat_id, "text": text, "disable_web_page_preview": True}
+        body = {"chat_id": chat, "text": text, "disable_web_page_preview": True}
         data = await self._post("telegram", url, body, {}, 10.0)
         return bool(data and data.get("ok"))

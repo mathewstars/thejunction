@@ -2439,6 +2439,162 @@
         }
       }
     },
+    "/v1/clinic/family-contacts": {
+      "get": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "Someone close who also hears: the people a clinician can choose from",
+        "description": "A first, small version of a family loop. Names only; the Telegram chats behind\nthem are a server setting (FAMILY_CONTACTS) and are never returned.",
+        "operationId": "family_contacts_list_v1_clinic_family_contacts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FamilyContactsOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/clinic/patients/{patient_id}/family-contact": {
+      "put": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "Choose the person who also hears for this patient, or nobody",
+        "description": "When the clinic is sent a \"needs review\" message for this patient, the chosen\nperson gets one line on Telegram that names nobody and says nothing about health.\nThe patient has to agree to it; the clinic sets it here.",
+        "operationId": "set_family_contact_v1_clinic_patients__patient_id__family_contact_put",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FamilyContactIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FamilyContactOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/clinic/patients/{patient_id}/clinic-rules": {
       "get": {
         "tags": [
@@ -5818,6 +5974,63 @@
         ],
         "title": "FaceSummary",
         "description": "Numbers only, from the front camera during the activity, when the person\nallowed it. No frames, no images, no landmarks."
+      },
+      "FamilyContactIn": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "One of the names from GET /v1/clinic/family-contacts, or null for nobody."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "FamilyContactIn"
+      },
+      "FamilyContactOut": {
+        "properties": {
+          "family_contact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family Contact"
+          }
+        },
+        "type": "object",
+        "required": [
+          "family_contact"
+        ],
+        "title": "FamilyContactOut"
+      },
+      "FamilyContactsOut": {
+        "properties": {
+          "contacts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Contacts",
+            "description": "The people a clinician can choose from on this server (set in FAMILY_CONTACTS). Names only."
+          }
+        },
+        "type": "object",
+        "required": [
+          "contacts"
+        ],
+        "title": "FamilyContactsOut"
       },
       "FeedbackIn": {
         "properties": {

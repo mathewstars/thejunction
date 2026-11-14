@@ -31,12 +31,28 @@ log = logging.getLogger("clinic_engine.notify")
 
 
 class Notifier(Protocol):
-    async def send(self, text: str) -> bool: ...
+    async def send(self, text: str, chat_id: str | None = None) -> bool: ...
 
 
 class OffNotifier:
-    async def send(self, text: str) -> bool:
+    async def send(self, text: str, chat_id: str | None = None) -> bool:
         return False
+
+
+def family_contacts(settings: Settings) -> dict[str, str]:
+    """{name: telegram chat id} from FAMILY_CONTACTS ("Name=chat id;Name=chat id")."""
+    out: dict[str, str] = {}
+    for part in (settings.family_contacts or "").split(";"):
+        name, sep, chat = part.partition("=")
+        name, chat = " ".join(name.split()), chat.strip()
+        if sep and name and chat and len(name) <= 40:
+            out[name] = chat
+    return out
+
+
+def build_family_message(product: str) -> str:
+    """What the chosen person gets: no name, no level, no measurement, no link."""
+    return f"{product}: someone close to you may appreciate a call or a visit today."
 
 
 class TelegramNotifier:
@@ -45,8 +61,8 @@ class TelegramNotifier:
     def __init__(self, outreach: Outreach):
         self.outreach = outreach
 
-    async def send(self, text: str) -> bool:
-        return await self.outreach.telegram_send(text)
+    async def send(self, text: str, chat_id: str | None = None) -> bool:
+        return await self.outreach.telegram_send(text, chat_id)
 
 
 class RecordingNotifier:
@@ -54,12 +70,16 @@ class RecordingNotifier:
 
     def __init__(self, fail: bool = False):
         self.messages: list[str] = []
+        self.family: list[tuple[str, str]] = []  # (chat id, text) sent to a chosen person
         self.fail = fail
 
-    async def send(self, text: str) -> bool:
+    async def send(self, text: str, chat_id: str | None = None) -> bool:
         if self.fail:
             raise RuntimeError("notifier down")
-        self.messages.append(text)
+        if chat_id:
+            self.family.append((chat_id, text))
+        else:
+            self.messages.append(text)
         return True
 
 
@@ -160,6 +180,22 @@ class UrgentNotifications:
                 continue
             await self._send(now, clinic_id, patient, item, key)
 
+    async def _family(self, now: datetime, clinic_id: str, patient: dict) -> None:
+        """When the clinic has been told, the person the clinic chose for this patient
+        (with the patient's agreement) gets one short line too. It says nothing about
+        who or why. Never breaks the clinic's message."""
+        chat = family_contacts(self.settings).get(patient.get("family_contact") or "")
+        if not chat:
+            return
+        try:
+            ok = await self.notifier.send(build_family_message(self.settings.product_name), chat)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("family notifier failed: %s", type(exc).__name__)
+            ok = False
+        write_audit(self.store, now, clinic_id=clinic_id, patient_id=patient["id"], actor="mind",
+                    action="notify_family", outcome="ok" if ok else "refused",
+                    reason="sent" if ok else "send_failed")
+
     async def _send(self, now: datetime, clinic_id: str, patient: dict, item: dict, key: str) -> None:
         pid, level = patient["id"], item["level"]
         if self.settings.notify_mode == "off":
@@ -185,6 +221,7 @@ class UrgentNotifications:
             self._sent_times.append(mono)
             self.store.put(key, {"status": "sent", "at": now.isoformat()})
             self._audit(now, clinic_id, pid, "ok", "sent", item["id"], level)
+            await self._family(now, clinic_id, patient)
         else:
             self.store.put(key, {"status": "failed", "at": now.isoformat()})
             self._audit(now, clinic_id, pid, "refused", "send_failed", item["id"], level)

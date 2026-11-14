@@ -464,7 +464,7 @@
     });
     $("subnav").replaceChildren(tabs);  // the patient's sections live in the top bar
     const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, talk: tabTalk, research: tabResearch, mind: tabMind, log: tabLog }[S.route.tab](d, today);
-    if (S.route.tab === "overview" && body && body.appendChild) { body.appendChild(clinicRulesPanel(d)); const dp = daysPanel(d); if (dp) body.appendChild(dp); }
+    if (S.route.tab === "overview" && body && body.appendChild) { body.appendChild(clinicRulesPanel(d)); body.appendChild(familyPanel(d)); const dp = daysPanel(d); if (dp) body.appendChild(dp); }
     if (S.route.tab === "overview" && d.summary) wrap.appendChild(el("p", { class: "lead" },
       String(d.summary).replace(/\s*Last suggestion:[^.]*\.?/, "").replace(/held since/g, "flagged since").replace(/\b\d{4}-\d{2}-\d{2}\b/g, (m) => dayShort(m))));
     wrap.appendChild(el("div", { id: "tabpanel", role: "tabpanel", "aria-labelledby": "tab-" + S.route.tab }, body));
@@ -620,6 +620,27 @@
       "aria-label": "Acknowledge " + kind(item.kind), on: { click: async () => {
         try { await api("POST", "/v1/clinic/attention/" + encodeURIComponent(item.id) + "/ack"); await refresh(); } catch (e) { flash(e.message); }
       } } }, "Acknowledge");
+  }
+
+  // ---- someone close who also hears: one chosen person gets a short line when the clinic does
+  function familyPanel(d) {
+    const pid = S.route.pid;
+    const sel = el("select", { id: "family-contact", class: "rule-input", "aria-label": "Someone close who also hears" },
+      el("option", { value: "" }, "Nobody"));
+    const note = el("p", { class: "muted small tri-note" }, "A first, small version. When the clinic gets a “needs review” message about this person, the chosen person gets one line on Telegram: “someone close to you may appreciate a call or a visit today.” It names nobody and says nothing about health. The patient has to agree to it.");
+    const fill = (names) => {
+      names.forEach((n) => sel.appendChild(el("option", { value: n }, n)));
+      sel.value = d.family_contact && names.indexOf(d.family_contact) >= 0 ? d.family_contact : "";
+      if (!names.length) { sel.disabled = true; note.textContent = "Nobody can be chosen on this server yet (no contacts are set). " + note.textContent; }
+      if (S.visitor) sel.disabled = true;
+    };
+    if (S.family) fill(S.family);
+    else api("GET", "/v1/clinic/family-contacts").then((out) => { S.family = out.contacts || []; fill(S.family); }).catch(() => fill([]));
+    sel.addEventListener("change", async () => {
+      try { await api("PUT", "/v1/clinic/patients/" + encodeURIComponent(pid) + "/family-contact", { name: sel.value || null }); d.family_contact = sel.value || null; flash(""); }
+      catch (e) { flash(e.message); sel.value = d.family_contact || ""; }
+    });
+    return panel("Someone close who also hears", null, el("div", { class: "rule-add" }, sel), note);
   }
 
   // ---- the clinic's own rules for this person, in plain words

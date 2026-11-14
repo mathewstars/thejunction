@@ -318,6 +318,7 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
     return {
         **line,
         "share_notes": share,
+        "family_contact": patient.get("family_contact"),
         "chat_mode": mind.settings.chat_mode,
         "allow_outside_processing": bool(patient.get("allow_outside_processing")),
         "timeline": [{"date": s["date"], "z": s["z"], "movement_z": s["movement_z"],

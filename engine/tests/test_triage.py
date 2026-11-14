@@ -370,3 +370,48 @@ def test_a_made_up_rule_name_keeps_the_item_and_drops_the_rule():
     assert res.ok and res.value["a1"]["rule"] is None and res.value["a1"]["reason"] == "as_the_rules"
     assert [r.reason for r in res.refusals] == ["unknown_clinic_rule"]
     assert "never write \"rule\"" in INPUT_GATE.SYSTEM_TRIAGE
+
+
+def test_someone_close_also_hears_when_the_clinic_does():
+    """A chosen person gets one line that names nobody; with nobody chosen, or a name that
+    is not on the server's list, only the clinic hears."""
+    import asyncio
+    from datetime import datetime, timezone
+    from clinic_engine.notify import RecordingNotifier, UrgentNotifications, build_family_message
+    from clinic_engine.store import MemoryStore
+    from conftest import make_settings
+
+    async def run(contact):
+        settings = make_settings(notify_mode="telegram", notify_hours="00-24",
+                                 family_contacts="Sister=111; Brother = 222")
+        notifier = RecordingNotifier()
+        n = UrgentNotifications(MemoryStore(), settings, notifier)
+        now = datetime(2026, 11, 14, 12, 0, tzinfo=timezone.utc)
+        patient = {"id": "pat_" + "0" * 24, "label": "Example X-001"}
+        if contact:
+            patient["family_contact"] = contact
+        await n.on_level(now, "cli_" + "0" * 24, patient,
+                         {"id": "att_1", "level": "urgent", "since": "2026-11-12"})
+        return notifier
+
+    got = asyncio.run(run("Brother"))
+    assert len(got.messages) == 1 and len(got.family) == 1 and got.family[0][0] == "222"
+    assert got.family[0][1].endswith(build_family_message("x")[1:])
+    assert "Example" not in got.family[0][1] and "http" not in got.family[0][1]
+    assert asyncio.run(run(None)).family == []
+    assert asyncio.run(run("Stranger")).family == []
+
+
+def test_choosing_the_person_who_also_hears():
+    env = Env(family_contacts="Sister=111")
+    h = env.clinician_headers() if hasattr(env, "clinician_headers") else None
+    if h is None:
+        r = env.client.post("/v1/clinic/login", json={"username": env.demo["username"], "password": env.demo["password"]})
+        h = {"authorization": "Bearer " + r.json()["session_token"]}
+    pid = env.demo["patient_id"]
+    assert env.client.get("/v1/clinic/family-contacts", headers=h).json() == {"contacts": ["Sister"]}
+    assert env.client.put(f"/v1/clinic/patients/{pid}/family-contact", headers=h, json={"name": "Nobody we know"}).status_code == 422
+    assert env.client.put(f"/v1/clinic/patients/{pid}/family-contact", headers=h, json={"name": "Sister"}).json() == {"family_contact": "Sister"}
+    assert env.client.get(f"/v1/clinic/patients/{pid}", headers=h).json()["family_contact"] == "Sister"
+    assert env.client.put(f"/v1/clinic/patients/{pid}/family-contact", headers=h, json={"name": None}).json() == {"family_contact": None}
+    assert env.client.get(f"/v1/clinic/patients/{pid}", headers=h).json()["family_contact"] is None
