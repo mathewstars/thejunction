@@ -861,7 +861,20 @@ struct LanviMotion {
             // of joy, the ears flop on landing, the tail wags, a little wiggle to settle.
             // Faces swap at the top of the hop, hidden inside the move.
             if Motion.inside(rt, 0.31, 1.65) { face.eyes = .happy; face.mouth = .happy }
-            if hops { hop(&p, rt - 0.05, height: 110, headLeads: true) }
+            if hops {
+                hop(&p, rt - 0.05, height: 110, headLeads: true)
+            } else {
+                // On the snow (`.lanviHops(false)`): the joy stays in place. Two springy
+                // bounces of the body with the feet planted, the head wiggling side to
+                // side, the ears up.
+                let b = Motion.bump(rt, 0.08, 0.4) + 0.7 * Motion.bump(rt, 0.42, 0.72)
+                p.bodySY += 0.03 * b; p.rootSY -= 0.012 * Motion.bump(rt, 0.02, 0.14)
+                p.headY -= 9 * b; p.chest += 0.01 * b
+                let wig = sin(2 * .pi * (rt - 0.3) / 0.36) * Motion.env(rt, 0.3, 0.42, 1.2, 1.55)
+                p.headTilt += 6 * wig; p.dirX += 0.08 * wig
+                let perk = Motion.env(rt, 0.05, 0.25, 1.3, 1.7)
+                p.earL -= 6 * perk; p.earR -= 6 * perk
+            }
             p.headY += 7 * Motion.bump(rt, 1.55, 1.85)
             p.chest += 0.03 * Motion.bump(rt, 0.02, 0.6)
             p.dirY -= 0.28 * exp(-pow((rt - 0.33) / 0.11, 2))
@@ -876,7 +889,9 @@ struct LanviMotion {
             let dip = Motion.bump(rt, 0, 0.13)
             p.rootSY -= 0.03 * dip; p.headY += 3 * dip
             let jolt = Motion.pulse(rt, start: 0.06, end: 0.38, response: 0.16, damping: 0.5, settle: 0.7)
-            p.rootY -= 22 * jolt; p.bodySY += 0.03 * jolt; p.rootSY += 0.02 * jolt
+            // (on the snow, `.lanviHops(false)`: the jolt stretches him up, feet planted)
+            if hops { p.rootY -= 22 * jolt } else { p.headY -= 6 * jolt }
+            p.bodySY += 0.03 * jolt; p.rootSY += 0.02 * jolt
             let perk = Motion.pulse(rt, start: 0.05, end: 1.25, response: 0.22, damping: 0.45, settle: 0.55)
             p.earL -= 9 * perk; p.earR -= 9 * perk; p.earLS += 0.08 * perk; p.earRS += 0.08 * perk
             p.headY -= 8 * perk; p.dirY -= 0.18 * perk

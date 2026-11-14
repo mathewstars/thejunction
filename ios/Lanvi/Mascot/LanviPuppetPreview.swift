@@ -49,6 +49,8 @@ struct LanviPuppetPreview: View {
     private let demo = UserDefaults.standard.string(forKey: "puppetDemo")
     private let plain = UserDefaults.standard.bool(forKey: "plain")
     private let snow = UserDefaults.standard.bool(forKey: "snow")
+    /// `-puppetHops NO`: on the snow like Home (no hops; reactions stay in place).
+    private let hopsOn = UserDefaults.standard.object(forKey: "puppetHops") == nil || UserDefaults.standard.bool(forKey: "puppetHops")
     /// `-puppetBounds YES` (or the Bounds button): outline the eyes and their patches.
     @State private var bounds = UserDefaults.standard.bool(forKey: "puppetBounds")
 
@@ -82,6 +84,7 @@ struct LanviPuppetPreview: View {
             .lanviReaction(mood, trigger: trigger)
             .lanviMoment(moment, trigger: momentTrigger)
             .lanviMood(heldMood)
+            .lanviHops(hopsOn)
             .lanviTalking(talking)
             .lanviSays(sayText, trigger: sayTrigger)
             .lanviLookAt(look)
