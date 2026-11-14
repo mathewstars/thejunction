@@ -242,7 +242,7 @@ private struct WorldLife: View {
             let r = Double(ribbon)
             let baseY = 0.13 + 0.10 * r
             let speed = 0.045 + 0.02 * r
-            let count = 15
+            let count = 12
             for i in 0..<count {
                 let fx = -0.06 + 1.12 * Double(i) / Double(count - 1)
                 let phase = fx * 7.0 + t * speed * 2 * .pi + r * 2.1
@@ -253,7 +253,7 @@ private struct WorldLife: View {
                 let c = Color(red: green.r + (violet.r - green.r) * mix,
                               green: green.g + (violet.g - green.g) * mix,
                               blue: green.b + (violet.b - green.b) * mix)
-                let a = min(0.34 * strength * breathe + 0.26 * flare, 0.58)
+                let a = min(0.30 * strength * breathe + 0.20 * flare, 0.45)
                 let p = frame.point(CGFloat(fx), CGFloat(fy))
                 let w = span * 0.15, h = span * (0.032 + 0.014 * breathe)
                 var layer = g
