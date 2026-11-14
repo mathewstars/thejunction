@@ -25,11 +25,19 @@ What it does, in plain words:
    head's own eye patches (they are further apart on the head than on the sheet).
 5. Bakes the soft fades in (neck stub under the cheeks, top of the front legs), so
    the phone draws plain pictures with no masks.
+6. Cuts depth layers (see `depth_layers`): the face markings (eye patches, brow marks,
+   nose) come off the head so they can slide around it when the head turns; the chest
+   bib comes off the body so it can swell with each breath; the tail and ears are split
+   into overlapping bands along their length (each fading in over the one before) so
+   they can bend. Where a marking
+   came off, the head is filled with the fur around it.
 
 Only Pillow is needed. Re-run it whenever better art arrives.
 """
 import json
+import math
 import os
+import re
 import shutil
 import sys
 from collections import deque
@@ -175,6 +183,179 @@ def save_asset(img, name):
                    "info": {"author": "xcode", "version": 1}}, f, indent=2)
 
 
+# ---------------------------------------------------------------------------------
+# Depth layers. All boxes are shares (0...1) of the part's own picture, measured on
+# the painted head, body, tail and ears. Brightness is 0.3 R + 0.59 G + 0.11 B: white
+# fur is about 235, the blue fur 175, the brow marks 130, the nose 72.
+
+FACE = {
+    # name: (box x0, y0, x1, y1, seed x, y, brightness test, grow px, soften px)
+    "face-patch-l": ((0.13, 0.28, 0.49, 0.585), (0.31, 0.45), lambda v: v > 205, 16, 5),
+    "face-patch-r": ((0.51, 0.28, 0.87, 0.585), (0.69, 0.45), lambda v: v > 205, 16, 5),
+    "face-brow-l": ((0.26, 0.2, 0.43, 0.31), (0.342, 0.255), lambda v: v < 155, 8, 3),
+    "face-brow-r": ((0.57, 0.2, 0.74, 0.31), (0.665, 0.255), lambda v: v < 155, 8, 3),
+    "face-nose": ((0.4, 0.48, 0.6, 0.64), (0.5, 0.565), lambda v: v < 120, 12, 3),
+}
+BIB = ((0.24, 0.16, 0.76, 0.66), (0.496, 0.366), lambda v: v > 205, 12, 5)
+# Bands: drawn in order, each over the last (see `bands`).
+# Pivot (share of the part), distance measured in shares of `by` (width or
+# height), band centres from `a` to `b`, `n` bands. A band's bend weight grows evenly from 0
+# at the base to 1 at the tip, so neighbouring bands never differ by much.
+BANDS = {
+    "tail": ((0.88, 0.66), "w", 0.16, 0.93, 12),
+    "ear-left": ((0.36, 0.8), "h", 0.1, 0.82, 10),
+    "ear-right": ((0.64, 0.8), "h", 0.1, 0.82, 10),
+}
+
+
+def brightness(img):
+    r, g, b = img.convert("RGB").split()
+    return Image.merge("RGB", (r, g, b)).convert("L", (0.3, 0.59, 0.11, 0))
+
+
+def feature_mask(img, box, seed, test, grow, soft, cut_bottom=True):
+    """A soft mask of one painted marking: the pixels passing `test` inside `box` that
+    touch `seed`, grown by `grow` px into the fur around it, softened by `soft` px."""
+    W, H = img.size
+    x0, y0, x1, y1 = int(box[0] * W), int(box[1] * H), int(box[2] * W), int(box[3] * H)
+    lum = brightness(img).load()
+    alpha = img.getchannel("A").load()
+    m = Image.new("L", img.size, 0)
+    mp = m.load()
+    sx, sy = int(seed[0] * W), int(seed[1] * H)
+    q = deque([(sx, sy)])
+    seen = {(sx, sy)}
+    while q:
+        x, y = q.popleft()
+        if not (x0 <= x < x1 and y0 <= y < y1) or alpha[x, y] < 250 or not test(lum[x, y]):
+            continue
+        mp[x, y] = 255
+        for n in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if n not in seen:
+                seen.add(n)
+                q.append(n)
+    for _ in range(grow // 2):
+        m = m.filter(ImageFilter.MaxFilter(5))
+    if cut_bottom:
+        # a straight cut at the bottom of the box (the patches run into the white cheeks)
+        m.paste(0, (0, y1, W, H))
+    m = m.filter(ImageFilter.GaussianBlur(soft))
+    return ImageChops.multiply(m, img.getchannel("A"))
+
+
+def inpaint(img, core):
+    """Fill the `core` pixels from the fur around them (a smooth pull-push fill)."""
+    rgb = img.convert("RGB")
+    known = ImageChops.multiply(ImageChops.invert(core), img.getchannel("A").point(lambda v: 255 if v > 250 else 0))
+    levels = [(ImageChops.multiply(rgb, Image.merge("RGB", [known] * 3)), known)]
+    while min(levels[-1][0].size) > 6:
+        c, w = levels[-1]
+        size = (max(1, c.width // 2), max(1, c.height // 2))
+        levels.append((c.resize(size, Image.BOX), w.resize(size, Image.BOX)))
+    c, w = levels[-1]
+    cp, wp = c.load(), w.load()
+    total, n = [0, 0, 0], 0
+    for y in range(c.height):
+        for x in range(c.width):
+            if wp[x, y] > 0:
+                for i in range(3):
+                    total[i] += cp[x, y][i] * 255 / wp[x, y]
+                n += 1
+    avg = tuple(int(t / max(n, 1)) for t in total)
+    f = Image.new("RGB", c.size)
+    fp = f.load()
+    for y in range(c.height):
+        for x in range(c.width):
+            w = wp[x, y]
+            fp[x, y] = tuple(min(255, int(cp[x, y][i] * 255 / w)) for i in range(3)) if w > 0 else avg
+    for c, w in reversed(levels[:-1]):
+        up = f.resize(c.size, Image.BILINEAR)
+        f = ImageChops.add(c, ImageChops.multiply(up, Image.merge("RGB", [ImageChops.invert(w)] * 3)))
+    out = Image.composite(f, rgb, core).convert("RGBA")
+    out.putalpha(img.getchannel("A"))
+    return out
+
+
+def layer(img, mask):
+    """The part's pixels under `mask`, trimmed. Returns the picture and its box."""
+    out = img.copy()
+    out.putalpha(ImageChops.multiply(img.getchannel("A"), mask))
+    box = out.getchannel("A").point(lambda v: 255 if v > 2 else 0).getbbox()
+    return out.crop(box), box
+
+
+def bands(img, pivot, by, a, b, n):
+    """Overlapping bands around `pivot`, from the base outwards, made to be drawn one on
+    top of the next with plain layering: band i fades in over band i - 1 (which is solid
+    there) across [c - s/2, c + s/2], stays solid to the next band's fade-in, then fades
+    out under it. At rest that rebuilds the painted part exactly; bent, neighbouring bands
+    differ by one small step. Returns [(picture, box, bend weight)]."""
+    W, H = img.size
+    unit = W if by == "w" else H
+    px, py = pivot[0] * W, pivot[1] * H
+    reach = math.hypot(max(px, W - px), max(py, H - py))
+    dist = Image.new("L", img.size)
+    dp = dist.load()
+    for y in range(H):
+        for x in range(W):
+            dp[x, y] = min(255, int(math.hypot(x - px, y - py) / reach * 255))
+    s = (b - a) / (n - 1)
+    out = []
+    for i in range(n):
+        c = a + i * s
+
+        def weight(v, c=c, i=i):
+            r = v / 255 * reach / unit
+            rise = 1.0 if i == 0 else smooth((r - (c - s / 2)) / s)
+            fall = 1.0 if i == n - 1 else 1 - smooth((r - (c + 1.5 * s)) / (0.5 * s))
+            return int(round(255 * rise * fall))
+
+        mask = dist.point(weight)
+        pic, box = layer(img, mask)
+        out.append((pic, box, i / (n - 1)))   # the bend grows evenly along the length
+    return out
+
+
+def depth_layers(pieces, preview):
+    """Cut the depth layers. Returns {asset name: (box shares x, y, w, h, bend weight)}."""
+    found = {}
+
+    def keep(name, pic, box, parent, weight=0.0):
+        W, H = parent.size
+        save_asset(pic, "puppet-" + name)
+        found[name] = (box[0] / W, box[1] / H, (box[2] - box[0]) / W, (box[3] - box[1]) / H, weight)
+        if preview:
+            pic.save(os.path.join(preview, name + ".png"))
+
+    head = pieces["head"]
+    masks = {name: feature_mask(head, *spec) for name, spec in FACE.items()}
+    # the patches never take the nose or brows with them
+    nose_zone = masks["face-nose"].filter(ImageFilter.MaxFilter(9))
+    brow_zone = ImageChops.lighter(masks["face-brow-l"], masks["face-brow-r"]).filter(ImageFilter.MaxFilter(9))
+    for side in ("face-patch-l", "face-patch-r"):
+        masks[side] = ImageChops.subtract(masks[side], ImageChops.lighter(nose_zone, brow_zone))
+    core = Image.new("L", head.size, 0)
+    for name, m in masks.items():
+        keep(name, *layer(head, m), head)
+        core = ImageChops.lighter(core, m.point(lambda v: 255 if v >= 254 else 0))
+    base = inpaint(head, core)
+    # where a marking is only partly there (its soft rim), the head keeps its own paint
+    save_asset(base, "puppet-head-base")
+    if preview:
+        base.save(os.path.join(preview, "head-base.png"))
+
+    body = pieces["body"]
+    bib = feature_mask(body, *BIB)
+    keep("body-bib", *layer(body, bib), body)
+    body_base = inpaint(body, bib.point(lambda v: 255 if v >= 254 else 0))
+    save_asset(body_base, "puppet-body-base")
+
+    for part, (pivot, by, a, b, n) in BANDS.items():
+        for i, (pic, box, w) in enumerate(bands(pieces[part], pivot, by, a, b, n)):
+            keep(f"{part}-b{i}", pic, box, pieces[part], w)
+    return found
+
+
 def main():
     args = sys.argv[1:]
     if len(args) < 2:
@@ -191,6 +372,7 @@ def main():
 
     sizes = {}
     eyes = {}
+    full = {}   # each part at full size, for the depth layers
     for path, names, gap in ((args[0], PART_NAMES, 0), (args[1], FACE_NAMES, PAIR_GAP)):
         sheet = Image.open(path).convert("RGBA")
         found, small_size = blobs(sheet.getchannel("A"))
@@ -217,6 +399,7 @@ def main():
                     img.save(os.path.join(preview, name + ".png"))
                 continue
             save_asset(img, "puppet-" + name)
+            full[name] = img
             sizes[name] = (img.width, img.height, box[0], box[1])
             if preview:
                 img.save(os.path.join(preview, name + ".png"))
@@ -231,6 +414,19 @@ def main():
               "    static let eyeCenter: [String: CGPoint] = ["]
     for name, (cx, cy) in eyes.items():
         lines.append(f'        "{name}": CGPoint(x: {cx:.0f}, y: {cy:.0f}),')
+    layers = depth_layers(full, preview)
+    lines += ["    ]", "",
+              "    /// Depth layers cut from a part (face markings, chest bib, bands of the tail and",
+              "    /// ears): where each sits in its part's picture, as shares (x, y, width, height).",
+              "    static let layer: [String: CGRect] = ["]
+    for name, (x, y, w, h, _) in layers.items():
+        lines.append(f'        "{name}": CGRect(x: {x:.5f}, y: {y:.5f}, width: {w:.5f}, height: {h:.5f}),')
+    lines += ["    ]", "",
+              "    /// Each band's share of its part's bend: 0 at the base, 1 at the tip.",
+              "    static let bend: [String: CGFloat] = ["]
+    for name, (_, _, _, _, wgt) in layers.items():
+        if re.search(r"-b\d+$", name):
+            lines.append(f'        "{name}": {wgt:.4f},')
     lines += ["    ]", "", "    static func px(_ name: String) -> CGSize { size[name] ?? CGSize(width: 1, height: 1) }", "}", ""]
     with open(SWIFT, "w") as f:
         f.write("\n".join(lines))
