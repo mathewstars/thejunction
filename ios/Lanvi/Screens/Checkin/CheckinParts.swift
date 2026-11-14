@@ -106,12 +106,13 @@ struct CheckinTileStyle: ButtonStyle {
         let down: CGFloat = pressed ? edge : (selected ? 3 : 0)
         let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
         configuration.label
-            .font(Theme.rounded(compact ? 15 : 16, .heavy))
+            .font(Theme.rounded(compact ? 14.5 : 16, .heavy))
             .foregroundStyle(.white)
             .padding(.leading, 10)
             .padding(.trailing, 8)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, minHeight: compact ? 52 : 60, alignment: .leading)
+            .padding(.vertical, 7)
+            // Every tile the same height, so rows line up even when a label takes two lines.
+            .frame(maxWidth: .infinity, minHeight: compact ? 54 : 62, maxHeight: compact ? 54 : 62, alignment: .leading)
             .background {
                 if dashed {
                     shape.fill(.white.opacity(pressed ? 0.16 : 0.07))

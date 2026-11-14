@@ -85,8 +85,9 @@ struct CheckinView: View {
             let reserve: CGFloat = planDone == .notAsked ? 54 + 12 + 54 + 16 : 54 + 22
             return Frame(fox: fox, feet: s.feet(fox: fox, reserve: reserve), compact: compact)
         case .goodThings, .plan:
-            let fox: CGFloat = compact ? 112 : 150
-            let feet = compact ? buttonsTop - 6 : min(s.hollow.y + 5, buttonsTop - 14)
+            let fox: CGFloat = compact ? 104 : 150
+            // Lanvi sits on the near snow just above the button, so the tiles get the whole sky.
+            let feet = buttonsTop - (compact ? 6 : 16)
             return Frame(fox: fox, feet: feet, compact: compact)
         case .goodnight:
             let fox: CGFloat = compact ? 150 : 206
@@ -337,7 +338,7 @@ struct CheckinView: View {
                                                      @ViewBuilder tiles: () -> Tiles,
                                                      @ViewBuilder button: () -> Bottom) -> some View {
         let headerTop = s.belowBar + 2
-        let gridTop = headerTop + (f.compact ? 62 : 74)
+        let gridTop = headerTop + (f.compact ? 58 : 74)
         let gridHeight = max(120, f.foxTop - 4 - gridTop)
         return ZStack(alignment: .topLeading) {
             VStack(alignment: .leading, spacing: 4) {
@@ -364,10 +365,10 @@ struct CheckinView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
-                          spacing: f.compact ? 9 : 12) { tiles() }
+                          spacing: f.compact ? 8 : 12) { tiles() }
                     .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    .padding(.bottom, 14)
+                    .padding(.top, f.compact ? 3 : 8)
+                    .padding(.bottom, f.compact ? 4 : 14)
                     .frame(minHeight: gridHeight, alignment: .center)
             }
             .scrollBounceBehavior(.basedOnSize)
