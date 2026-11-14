@@ -961,7 +961,7 @@
   }
   // the score above, "smiling less" below, on one time axis; big for the first screen, tiny for the cards
   function bpPair(weeks, o) {
-    const big = !!o.big, CW = big ? 960 : 420, L = big ? 286 : 44, R = big ? 16 : 8;
+    const big = !!o.big, CW = big ? 960 : 420, L = big ? 300 : 44, R = big ? 16 : 8;
     const AT = big ? 20 : 6, AH = big ? 96 : 34, GAP = big ? 44 : 8, BT = AT + AH + GAP, BH = big ? 96 : 34, CH = BT + BH + (big ? 30 : 6);
     const n0 = weeks[0].day, n1 = weeks[weeks.length - 1].day;
     const x = (d) => L + ((d - n0) / ((n1 - n0) || 1)) * (CW - L - R);
@@ -982,7 +982,7 @@
       c.appendChild(svg("text", { x: Math.min(CW - R - 90, Math.max(L + 90, x(calm.day))), y: ya(10) - 7, class: "tg-ax", "text-anchor": "middle" }, "10: the line clinics watch"));
       c.appendChild(svg("text", { x: 4, y: BT + 26, class: "bp-l" }, "EVERY DAY"));
       c.appendChild(svg("text", { x: 4, y: BT + 50, class: "bp-t" }, "The phone: smiling less"));
-      c.appendChild(svg("text", { x: 4, y: BT + 70, class: "bp-s" }, "during a short game · weekly average · up = worse"));
+      c.appendChild(svg("text", { x: 4, y: BT + 70, class: "bp-s" }, "in a short game · weekly average · up = worse"));
     }
     if (!big) {
       c.appendChild(svg("text", { x: 2, y: AT + 10, class: "tg-ax" }, "score"));
@@ -1037,13 +1037,13 @@
         el("div", null,
           P("The picture above compares the same week with the same week. That can show the phone’s numbers move with the score. It cannot show that they move earlier. Only if they change before the score does could a clinic be told sooner."),
           P("The study we want to run: twenty to thirty people after TMS, twelve weeks, the questionnaire every week, and this app. We compare this week’s phone numbers with next week’s score, for each person and across all of them.")),
-        el("figure", { class: "bp-fig" }, q, el("figcaption", { class: "muted small" }, "What we would look for. A sketch, not data: this is not established.")))));
+        el("figure", { class: "bp-fig" }, q, el("figcaption", { class: "bp-text" }, "What we would look for. A sketch, not data: this is not established.")))));
     wrap.appendChild(el("h2", { class: "bp-sub" }, "The details: what is measured, the yardstick, how sure, and the limits"));
     // 2. what the phone measures
     const card = (title, where, items) => el("section", { class: "panel" }, el("h2", null, title), el("p", { class: "bp-text" }, where), el("ul", { class: "plain big" }, items.map((t) => el("li", null, t))));
     wrap.appendChild(P("Smiling is one example. When depression deepens, people often smile less, move less and react more slowly; doctors see this in the room. Whether a phone at home can see it is an open question: early studies are small and mixed. These are the things we let the phone count:"));
     wrap.appendChild(el("div", { class: "grid3" },
-      card("The face", "The front camera, during a 45-second game or a minute of breathing. People smile and frown a little even while concentrating. The phone turns the face into numbers on the spot: no photo or video is kept or sent.",
+      card("The face", "The front camera, during a 45-second game or a minute of breathing. People smile and frown a little even while concentrating. For each frame the phone sends only numbers, such as how far the mouth corners are up or how closed the eyes are. No photo, no video and no face shape leaves it. The clinic’s server works out the measures from those numbers, so a rule can be changed and old sessions recomputed.",
         ["how often and how strongly the person smiles", "how much the face moves at all", "how much they look down"]),
       card("The game", "A short focus game: tap the right lights.", ["how fast they react", "how steady their speed is", "how many mistakes"]),
       card("Apple Health", "What the phone and watch already collect all day, with the person’s permission.", ["steps and walking speed", "hours of sleep"])));
@@ -1123,7 +1123,7 @@
       el("li", null, "People who feel worse play less, so the bad weeks have the least data."),
       el("li", null, "Other things move these numbers too: light, glasses, how the phone is held, medication, getting better at the game, the season."),
       el("li", null, "The questionnaire asks about sleep and slowed movement itself, so sleep and steps partly overlap with the yardstick."))));
-    wrap.appendChild(P("Who does what: the phone measures and plain code does the statistics. A language model sees only the summary numbers (such as " + (have ? Math.abs(row.rho).toFixed(2) : "0.67") + "), never the daily measurements, the name or the face, and puts the result into words. Code then checks those words against the numbers."));
+    wrap.appendChild(P("Who does what: the phone only collects numbers and sends them. The clinic’s server computes every measure and the statistics with plain code. A language model sees only the summary numbers (such as " + (have ? Math.abs(row.rho).toFixed(2) : "0.67") + "), never the daily measurements, the name or the face, and puts the result into words. Code then checks those words against the numbers."));
   }
 
   // ---- blueprint: how the learning loop works
