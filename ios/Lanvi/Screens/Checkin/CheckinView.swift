@@ -24,6 +24,16 @@ struct CheckinView: View {
     enum Step: Int, Comparable {
         case planQuestion, goodThings, plan, goodnight
         static func < (a: Step, b: Step) -> Bool { a.rawValue < b.rawValue }
+
+        /// The step's name for game moments.
+        var moment: GameCheckinStep {
+            switch self {
+            case .planQuestion: .planQuestion
+            case .goodThings: .goodThings
+            case .plan: .plan
+            case .goodnight: .goodnight
+            }
+        }
     }
 
     enum TypingFor { case goodThing, plan }
@@ -148,14 +158,21 @@ struct CheckinView: View {
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.86).delay(0.1)) { appeared = true }
         }
-        .task { await debugShot() }
+        .task {
+            GameMoments.emit(.checkinStarted)
+            GameMoments.emit(.checkinStep(step.moment))
+            await debugShot()
+        }
     }
 
     // MARK: Top bar
 
     private func topBar(_ s: GameStage) -> some View {
         HStack(spacing: 14) {
-            GameCloseButton(label: "Leave the check-in") { onDone(nil) }
+            GameCloseButton(label: "Leave the check-in") {
+                GameMoments.emit(.checkinEnded(finished: false))
+                onDone(nil)
+            }
             CheckinProgress(progress: progress)
             if let onHelp {
                 Button(action: onHelp) {
@@ -534,6 +551,7 @@ struct CheckinView: View {
     private func go(to next: Step) {
         forward = next > step
         withAnimation(.spring(response: 0.55, dampingFraction: 0.86)) { step = next }
+        GameMoments.emit(.checkinStep(next.moment))
         switch next {
         case .planQuestion: react(.curious)
         case .goodThings: react(goodThings.isEmpty ? .curious : .love)
@@ -556,6 +574,7 @@ struct CheckinView: View {
 
     private func finish() {
         finished = true
+        GameMoments.emit(.checkinEnded(finished: true))
         let result = CheckinResult(
             goodThings: Array(goodThings.prefix(3)),
             plan: plan,

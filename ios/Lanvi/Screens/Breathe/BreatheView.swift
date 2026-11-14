@@ -79,7 +79,10 @@ struct BreatheView: View {
 
                 Group {
                     words(s, feet: feet, skyMid: skyMid, ink: ink)
-                    GameCloseButton { onDone(nil) }
+                    GameCloseButton {
+                        if stage == .session { GameMoments.emit(.breatheEnded(finished: false)) }
+                        onDone(nil)
+                    }
                         .position(x: 24 + 22, y: s.barY)
                         .opacity(stage == .finish ? 0 : 1)
                         .disabled(stage == .finish)
@@ -192,6 +195,7 @@ struct BreatheView: View {
     /// person leaves, because the view goes away and takes this task with it.
     private func runSession() async {
         let startedAt = Date()
+        GameMoments.emit(.breatheStarted)
         breathsDone = 0
         progress = 0
         let total = BreathePace.inhale + BreathePace.hold + BreathePace.exhale
@@ -204,8 +208,9 @@ struct BreatheView: View {
         }
         guard await wait(BreathePace.settle) else { return }
 
-        for _ in 0..<BreathePace.breaths {
+        for number in 1...BreathePace.breaths {
             phase = .inhale
+            GameMoments.emit(.breathIn(number: number))
             withAnimation(BreathePace.inhaleCurve) {
                 breath = 0.95
                 aurora = 0.8
@@ -215,6 +220,7 @@ struct BreatheView: View {
             guard await wait(BreathePace.inhale) else { return }
 
             phase = .hold
+            GameMoments.emit(.breathHold(number: number))
             withAnimation(.easeInOut(duration: BreathePace.hold)) {
                 breath = 1
                 aurora = 0.85
@@ -223,6 +229,7 @@ struct BreatheView: View {
             guard await wait(BreathePace.hold) else { return }
 
             phase = .exhale
+            GameMoments.emit(.breathOut(number: number))
             withAnimation(BreathePace.exhaleCurve) {
                 breath = 0
                 aurora = 0.12
@@ -244,6 +251,7 @@ struct BreatheView: View {
         result = BreatheResult(startedAt: startedAt, endedAt: endedAt,
                                breathsCompleted: breathsDone,
                                completed: breathsDone == BreathePace.breaths)
+        GameMoments.emit(.breatheEnded(finished: true))
         finish()
     }
 

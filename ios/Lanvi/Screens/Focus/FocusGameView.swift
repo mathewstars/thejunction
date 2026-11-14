@@ -201,7 +201,10 @@ struct FocusGameView: View {
             }
 
             if phase != .finished {
-                GameCloseButton { onDone(nil) }
+                GameCloseButton {
+                    if phase == .playing { GameMoments.emit(.focusEnded(finished: false)) }
+                    onDone(nil)
+                }
                     .position(x: 24 + 22, y: s.barY)
                     .transition(.opacity)
             }
@@ -235,6 +238,7 @@ struct FocusGameView: View {
         guard phase == .playing, let engine else { return }
         switch engine.tap(at: point, now: Date()) {
         case .caught(let ms, let toward):
+            GameMoments.emit(.sparkCaught(reactionMs: ms))
             caughtTick += 1
             streak += 1
             if engine.correctTaps == 1 {
@@ -246,6 +250,7 @@ struct FocusGameView: View {
             watch(toward)
             if demo { print("focus: caught after \(ms) ms") }
         case .melted:
+            GameMoments.emit(.snowTapped)
             meltTick += 1
             say(["Brr, chilly!", "Snow likes to fall"].randomElement()!)
             if demo { print("focus: snowflake melted") }
@@ -284,6 +289,7 @@ struct FocusGameView: View {
     private func start() {
         guard phase == .intro else { return }
         engine = FocusEngine()
+        GameMoments.emit(.focusStarted)
         withAnimation(.spring(response: 0.6, dampingFraction: 0.86)) {
             phase = .playing
             look = nil
@@ -295,6 +301,7 @@ struct FocusGameView: View {
         let end = Date()
         engine.end(now: end)
         result = engine.result(completed: true, endedAt: end)
+        GameMoments.emit(.focusEnded(finished: true))
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(0.7))
             withAnimation(.spring(response: 0.65, dampingFraction: 0.82)) {
