@@ -17,7 +17,7 @@
  TEXT        Change any words between the tags. Nothing else depends on them.
  TIME        data-seconds="24" is the time planned for the scene.
              All scenes together must stay at or under 180 (the microphone
-             is cut at 3:00). Today they add up to 171, so there are 9
+             is cut at 3:00). Today they add up to 174, so there are 6
              seconds of air. The page shows the sum and warns when it is over.
  CLICKS      data-step="1", "2", "3" ... is the click on which a thing appears.
              Things without data-step are there when the scene opens.
@@ -87,7 +87,7 @@
   </section>
 
   <!-- ============ 2 · THE FOX ============ -->
-  <section class="scene fox-scene" data-title="The fox" data-seconds="22" data-aurora="0">
+  <section class="scene fox-scene" data-title="The fox" data-seconds="21" data-aurora="0">
     <video class="bgv" src="clips/cub.mp4" poster="clips/cub.jpg" muted playsinline preload="auto" data-gone="1"></video>
     <video class="bgv" src="clips/pickup.mp4" poster="clips/pickup.jpg" muted playsinline preload="auto" data-step="1" data-gone="2"></video>
     <video class="bgv" src="clips/reveal.mp4" poster="clips/reveal.jpg" muted playsinline preload="auto" data-step="2"></video>
@@ -113,13 +113,13 @@
     <aside>
       On the way home she finds a fox cub, alone in the snow.
       [click] She picks him up. [click] And he steps into her phone.
-      [click] He asks for one small thing a day. [let them read the three]
+      [click] He asks for one small thing a day.
       No score, no streak. A bad day costs her nothing.
     </aside>
   </section>
 
   <!-- ============ 3 · WHAT THE PHONE KEEPS COUNT OF ============ -->
-  <section class="scene count-scene" data-title="Numbers" data-seconds="21" data-aurora="0.25">
+  <section class="scene count-scene" data-title="Numbers" data-seconds="18" data-aurora="0.25">
     <div class="col left narrow">
       <h2 class="l">This is not a habit tracker.</h2>
       <p class="m" data-step="1">She said yes.<br>So while she plays, the phone keeps count.</p>
@@ -139,13 +139,12 @@
         <span class="sig-name">How her face moves</span><span class="sig-src">30 times a second</span>
         <div class="numgrid" id="numgrid"></div>
       </div>
-      <p class="never" data-step="2">No photo or video ever leaves the phone.</p>
     </div>
     <aside>
-      This is not a habit tracker. Anna said yes to one more thing.
-      While she plays, the phone keeps count: how far she walks, how fast she reacts, and how her face moves.
+      This is not a habit tracker.
+      With her yes, the phone keeps count while she plays: how far she walks, how fast she reacts, how her face moves.
       Numbers only, never pictures. [point at the numbers]
-      And compared with one thing only: her own normal.
+      Compared only with her own normal.
     </aside>
   </section>
 
@@ -231,7 +230,7 @@
   </section>
 
   <!-- ============ 6 · THE MIND (the proof comes after the story) ============ -->
-  <section class="scene mind-scene" data-title="The mind" data-seconds="27" data-aurora="0.3">
+  <section class="scene mind-scene" data-title="The mind" data-seconds="26" data-aurora="0.3">
     <h2 class="l center">Behind the fox: what we call the mind.</h2>
     <div class="layers">
       <div class="layer code" data-step="1">
@@ -255,7 +254,8 @@
     <div class="stats" data-step="4">
       <div class="stat"><b>0 of 107</b><span>flags ended lower when the case got worse</span></div>
       <div class="stat honest"><b>6 of 107</b><span>changed when the same case was read twice. So no model may lower what the rules call urgent.</span></div>
-      <p class="s dim">40 generated cases, read by the real models.</p>
+      <div class="stat gem"><b>50 of 50</b><span>generated face sessions where Gemini found every planted smile and reported nothing else</span></div>
+      <p class="s dim">Generated cases and sessions, read by the real models.</p>
     </div>
     <aside>
       Behind the fox, the mind.
@@ -263,35 +263,34 @@
       Two models weigh it: the clinic's own, and Gemini.
       Code guards both.
       On forty generated cases, a worse case never got a lower level.
-      But the same case, read twice, changed six times in a hundred and seven, so no model may lower what the rules call urgent.
+      But six in a hundred and seven changed on a second read, so no model may lower what the rules call urgent.
     </aside>
   </section>
 
-  <!-- ============ 7 · WHAT IS REAL ============ -->
-  <section class="scene real-scene" data-title="What is real" data-seconds="13" data-aurora="0.25">
-    <figure class="realshot">
-      <img src="img/clinician-page.webp" alt="The clinician page: Anna Korhonen outside her normal, movement down five days">
-      <figcaption>The clinician page itself, with example data. Open it now: lanvi.app</figcaption>
-    </figure>
-    <div class="twocol">
-      <div class="realcol">
-        <span class="tag good">real today</span>
-        <ul>
-          <li>Live: server, clinician page, both models, the alert. A real iPhone has sent its data.</li>
-        </ul>
-      </div>
-      <div class="realcol">
-        <span class="tag warn">not yet</span>
-        <ul>
-          <li>Anna is example data. Nothing is tested with patients.</li>
-        </ul>
-      </div>
+  <!-- ============ 7 · THE RESEARCH ============ -->
+  <section class="scene real-scene" data-title="The research" data-seconds="21" data-aurora="0.25">
+    <div class="shots swap">
+      <figure class="realshot" data-gone="1">
+        <img src="img/clinician-page.webp" alt="The clinician page: Anna Korhonen outside her normal, movement down five days">
+        <figcaption>It runs. This is the clinician page itself, with example data. Open it now: lanvi.app</figcaption>
+      </figure>
+      <figure class="realshot" data-step="1">
+        <img src="img/research-verdict.webp" alt="The research page for Elina: her score stayed between 5 and 9, too little change to tell whether anything moves with it">
+        <figcaption>The research page for Elina, who stayed well: the same tool refuses to conclude.</figcaption>
+      </figure>
     </div>
-    <p class="l center study" data-step="1">Whether these numbers follow depression<br>is the study we want to run with you.<br><span class="dim">30 people after TMS · 12 weeks · each compared only with themselves</span></p>
+    <div class="hypslot swap">
+      <p class="l center" data-gone="1">It runs. Open it now: <span class="accent">lanvi.app</span></p>
+      <div class="hypslot swap">
+      <p class="l center" data-gone="1">It runs. Open it now: <span class="accent">lanvi.app</span></p>
+      <p class="l center hyp" data-step="1"><span class="accent">24 hypotheses</span>, written before any data.</p>
+    </div>
+    </div>
+    <p class="l center study" data-step="2">Whether these numbers follow depression<br>is the study we want to run with you.<br><span class="dim">30 people after TMS · 12 weeks · each compared only with themselves · nothing tested with patients yet</span></p>
     <aside>
       It runs: you can open it now.
-      Anna is invented, and nothing is tested with patients.
-      Whether these numbers follow depression is the study we want to run with you.
+      [click] We wrote twenty-four hypotheses before any data. For Elina, who stayed well, the same tool refuses to conclude.
+      [click] Nothing is tested with patients. Whether these numbers follow depression is the study we want to run with you.
     </aside>
   </section>
 
