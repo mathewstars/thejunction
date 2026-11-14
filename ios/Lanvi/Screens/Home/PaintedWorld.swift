@@ -46,6 +46,10 @@ struct WorldFrame {
 struct PaintedWorld: View {
     var scene: WorldScene
     var snow: Bool = true
+    /// Hold the snow, glints and shimmer still (Home sets it while a full screen
+    /// covers it, so nobody draws a hidden scene 60 times a second). The world's
+    /// clock never fast-forwards, so it carries on from where it was.
+    var still: Bool = false
     /// Today's glow (0...1, already on Home): how strongly the aurora rests.
     var glow: Double = 0
     /// When the reward last played: the sky flares bright for about 2.5 s, then
@@ -79,7 +83,7 @@ struct PaintedWorld: View {
                 if scene == .dawn { DawnWarmth() }
                 if !Self.lifeOff {
                     WorldLife(scene: scene, frame: WorldFrame(screen: size), snow: snow,
-                              glow: glow, flareAt: flareAt)
+                              glow: glow, flareAt: flareAt, still: still)
                 }
             }
             .animation(.easeInOut(duration: 1.6), value: scene)
@@ -150,6 +154,7 @@ private struct WorldLife: View {
     var snow: Bool
     var glow: Double
     var flareAt: Date?
+    var still: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -161,14 +166,17 @@ private struct WorldLife: View {
     ]
 
     var body: some View {
-        // Reduce Motion: the whole sky holds still (the timeline is paused).
-        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: reduceMotion)) { context in
+        // Reduce Motion: the whole sky holds still (the timeline is paused). So does a
+        // world nobody can see (`still`: Home under a full screen).
+        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: reduceMotion || still)) { context in
             // One shared, continuous clock for every scene: it advances at most
             // 1/30 s per frame, so a layer that was paused (under an overlay, in the
             // background) or just created never fast-forwards to catch up.
             let t = WorldClock.shared.now(context.date)
             let f = flare(at: context.date)
-            Canvas { ctx, size in
+            // Drawn off the main thread: a full-screen canvas redrawn every frame
+            // must not cost the main thread (taps, the fox) its frame time.
+            Canvas(rendersAsynchronously: true) { ctx, size in
                 if scene == .night {
                     aurora(&ctx, size: size, t: t, flare: f)
                     glints(&ctx, t: t)

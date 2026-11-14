@@ -57,6 +57,8 @@ struct HomeView: View {
     @State private var insets = EdgeInsets()
     @State private var haptic = 0
     @State private var arrived = false
+    /// A full screen has finished rising over Home and hides all of it.
+    @State private var hidden = false
     // The living fox: one-off reactions and where it looks.
     @State private var reaction: LanviMood = .happy
     @State private var reactTick = 0
@@ -86,6 +88,25 @@ struct HomeView: View {
                 panelID: sheet?.id,
                 onClosePanel: { sheet = nil })
         }
+        // While a full screen (chat, Help, an activity) covers Home completely, Home's
+        // world holds still instead of drawing hidden snow every frame. It moves again
+        // the moment that screen starts to go back down, while Home is still covered.
+        .onChange(of: cover?.id) { _, id in
+            // Any change (also one screen swapping for another) shows Home for a moment.
+            hidden = false
+            guard let id else { return }
+            Task {
+                try? await Task.sleep(for: .milliseconds(700))
+                if cover?.id == id { hidden = true }
+            }
+        }
+    }
+
+    /// The painted world behind Home (its own property: Home's body is at the edge of
+    /// what the compiler can type-check in one expression).
+    private var world: PaintedWorld {
+        let glow: Double = store.today?.lanvi.glow ?? 0
+        return PaintedWorld(scene: store.worldScene, still: hidden, glow: glow, flareAt: skyFlare)
     }
 
     private var home: some View {
@@ -97,7 +118,7 @@ struct HomeView: View {
             let L = Layout(size: geo.size, insets: geo.safeAreaInsets, away: away)
 
             ZStack(alignment: .top) {
-                PaintedWorld(scene: store.worldScene, glow: store.today?.lanvi.glow ?? 0, flareAt: skyFlare)
+                world
 
                 // Lanvi, settled in the snow of the clearing (the shared fox layout).
                 GroundedFox(stage: L.stage, scene: store.worldScene) {
