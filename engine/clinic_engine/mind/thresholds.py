@@ -75,6 +75,9 @@ class Thresholds:
     # ember taps a game, and none on an easy-only game. One hard round with both
     # embers lit is enough for a median; the spread still needs four.
     revontulet_min_reactions: int = 2
+    # A touch on the sleeping fox shorter than this is a flick, not a stroke
+    # (a real game sent one of 121 ms next to strokes of 763 and 4480 ms).
+    revontulet_min_stroke_ms: int = 300
     reaction_min_ms: int = 120  # faster taps are anticipations; left out of the median
     # A face summary enters a baseline only when tracking was good enough.
     # A low-quality summary is stored and shown, never used.
@@ -328,9 +331,17 @@ ROUND_MIN_SCALE = {
 ACTIVITY_MIN_SCALE = {
     "median_reaction_ms": 40.0, "reaction_spread_ms": 25.0, "error_rate": 0.05,
     "time_played_s": 5.0, "good_things": 0.5,
+    # Revontulet has few embers a game (four in a real game on 14 November), so
+    # its floors are wider than Sparks and snow's: one ember missed of four is a
+    # quarter and stays inside the usual range, and a middle reaction time from
+    # two to six taps moves more than one from sixteen.
+    "revontulet.error_rate": 0.25, "revontulet.median_reaction_ms": 60.0,
     # Revontulet: with three rounds one choice is a third; the floor keeps a single
     # different choice inside the usual range (0.33 / 0.25 = 1.3) and two outside it.
-    "hard_share": 0.25, "choice_ms": 150.0, "trace_speed_cm_s": 0.15, "stroke_speed_cm_s": 0.2,
+    "hard_share": 0.25, "choice_ms": 150.0,
+    # The two speeds: floors of about 4% of what real games showed on 14 November
+    # (tracing near 14 cm/s, strokes near 20), as they were 4% of the first guess.
+    "trace_speed_cm_s": 0.6, "stroke_speed_cm_s": 0.9,
     "smile_rate_per_min": 0.5, "smile_intensity": 0.05, "facial_activity": 0.05,
     "blink_rate_per_min": 2.0, "look_down_share": 0.05, "head_tilt_deg": 2.0,
     "smile_time_share": 0.03, "eye_smile_share": 0.05, "smile_response_share": 0.1,

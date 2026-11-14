@@ -29,6 +29,7 @@ enum RevontuletSelfTest {
             let pace = [1.0, 0.35, 2.6, 4.0][Int(rng.next() * 4)]
             var e = RevontuletEngine(layout: layout, seed: UInt64(n + 1))
             var auto = RevontuletAutoPlay(style: styles[n % 4], seed: UInt64(n * 31 + 5), pace: pace)
+            let pressesContinue = n % 7 != 3
             let t0 = 5000.0
             var now = t0
             let dt = 1.0 / 60
@@ -36,8 +37,8 @@ enum RevontuletSelfTest {
             let leaveAt: Double? = mischief == 8 ? t0 + 2 + rng.next() * 85 : nil
             var fingerDown = false
             _ = e.handle(.start, at: now)
-            while now < t0 + 130 {
-                for input in auto.step(e, now: now) {
+            while now < t0 + 135 {
+                for input in auto.step(e, now: now) where pressesContinue || input != .finish {
                     switch input {
                     case .down: fingerDown = true
                     case .up: fingerDown = false
@@ -73,9 +74,11 @@ enum RevontuletSelfTest {
                 default:
                     break
                 }
-                // Some people tap the goodnight away at once.
-                if n % 5 == 2, e.beat == .sleep, now - e.beatStart > 0.4 {
+                // A tap anywhere on the goodnight does nothing; Continue (pressed by the pretend
+                // finger) hands back; some people never press it and the safety net does.
+                if n % 5 == 2, e.beat == .sleep {
                     _ = e.handle(.down(randomPoint(layout, &rng), radius: 10), at: now)
+                    _ = e.handle(.up(randomPoint(layout, &rng)), at: now + 0.05)
                 }
                 _ = e.tick(now)
                 if e.beat == .done { break }

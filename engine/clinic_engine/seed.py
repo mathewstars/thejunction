@@ -272,11 +272,42 @@ def _face(rng: random.Random, flat: float = 1.0, rx: random.Random | None = None
             "tracking_quality": round(min(1.0, rng.gauss(0.86, 0.03)), 2)}
 
 
+def revontulet_game(rv: random.Random, rts: list[int], low: float = 0.0, finished: bool = True,
+                    played_s: float = 90.0, hard: float = 0.85, hit: float | None = None,
+                    min_hits: int = 0) -> dict:
+    """The focus fields of one generated Revontulet game, as the app sends it
+    (ios ActivityRouter.record): launches and embers hit as correct taps, no
+    wrong taps, embers missed as misses, one reaction time per ember hit (taken
+    from `rts`, already drawn by the caller) and the `revontulet` object.
+    `low` (0 as usual, 1 lowest) slows the tracing and stroking; a game stopped
+    early has two rounds, no strokes and no burst. `min_hits` draws the game
+    again until that many embers were tapped: the two-week example needs
+    reaction times in every game for its "slower reactions" story to show
+    (a real game often has fewer; see revontulet_min_reactions)."""
+    from .seed_revontulet import _game  # that module imports this one
+    for _ in range(200):
+        g = _game(rv, low, hard=hard, hit=0.9 - 0.25 * low if hit is None else hit)
+        if not finished:
+            g.update(rounds=g["rounds"][:2], strokes=[], broke_through_s=None, fox_finished=None)
+        hits = sum(r["embers_hit"] for r in g["rounds"])
+        if hits >= min_hits:
+            break
+    shown = sum(r["embers_shown"] for r in g["rounds"])
+    # A real game ends some twenty seconds after the wall bursts (the strokes);
+    # when the fox had to finish it, the full 90 seconds ran out.
+    burst = g["broke_through_s"]
+    length = 90.0 if burst is None else min(90.0, round(burst + rv.uniform(17, 27), 1))
+    return {"duration_s": length if finished else played_s, "correct_taps": len(g["rounds"]) + hits,
+            "wrong_taps": 0, "misses": shown - hits, "reaction_ms": rts[:hits], "revontulet": g}
+
+
 def make_activity(rng: random.Random, aid: str, started: datetime, typ: str, how: str,
                   dip: bool, prev_plan: bool, rx: random.Random | None = None,
-                  good: int | None = None) -> dict:
+                  good: int | None = None, rv: random.Random | None = None) -> dict:
     """`good` sets how many good things a check-in names, after the usual draws,
-    so every other example value stays exactly as it was."""
+    so every other example value stays exactly as it was. With `rv` (its own
+    generator, for the same reason) a focus record is a Revontulet game, the
+    game the app plays since 14 November; without it, Sparks and snow."""
     rec = {"id": aid, "type": typ, "started_at": started.isoformat(), "suggestion_id": None}
     if typ == "focus":
         slow = 1.35 if dip else 1.0
@@ -285,6 +316,11 @@ def make_activity(rng: random.Random, aid: str, started: datetime, typ: str, how
         rec.update(duration_s=45.0 if how == "finished" else round(rng.uniform(18, 28), 1),
                    correct_taps=n - 1, wrong_taps=1, misses=rng.randint(1, 3) + (2 if dip else 0),
                    reaction_ms=rts[: n], face=_face(rng, 0.5 if dip else 1.0, rx))
+        if rv is not None:
+            # In the dip the tracing and the ember taps get slower; the embers are
+            # still tapped, so the slower reaction times are there to be seen.
+            rec.update(revontulet_game(rv, rts, 0.6 if dip else 0.0, how == "finished",
+                                       rec["duration_s"], hard=0.9, hit=0.9, min_hits=3))
     elif typ == "breathing":
         if dip and rng.random() < 0.7:
             how = "user_stopped"
@@ -315,6 +351,7 @@ def write_activities(store: Store, clinic_id: str, patient_id: str, today, tz: Z
     from .mind.activities import process_activity
     rng = random.Random(seed + 31)
     rx = random.Random(seed + 37)  # the newer face fields only
+    rv = random.Random(seed + 43)  # Revontulet's measures only
     base = f"clinics/{clinic_id}/patients/{patient_id}/activities/"
     for key in store.list(base):
         if (store.get(key) or {}).get("example"):
@@ -344,7 +381,8 @@ def write_activities(store: Store, clinic_id: str, patient_id: str, today, tz: Z
             continue
         a = make_activity(rng, f"example-act-{n:03d}", started.astimezone(timezone.utc), typ, how,
                           dip and off > -DIP_ACTIVITY_DAYS, had_plan, rx,
-                          good=DIP_GOOD_THINGS.get(off) if dip and typ == "checkin" else None)
+                          good=DIP_GOOD_THINGS.get(off) if dip and typ == "checkin" else None,
+                          rv=rv)
         if typ == "checkin":
             had_plan = True
             if dip and off >= DIP_NO_CHECKIN_FROM:

@@ -38,6 +38,8 @@ struct HomeChatScreen: View {
                     .safeAreaInset(edge: .bottom, spacing: 0) { composer }
             }
         }
+        // The whole chat takes every touch: nothing reaches Home underneath.
+        .contentShape(Rectangle())
         .onAppear { store.openChat() }
         .onChange(of: draft.isEmpty) { _, empty in
             pose = .curious   // typing: the listening mood carries it (peek is not a puppet pose)
@@ -66,6 +68,9 @@ struct HomeChatScreen: View {
                         .lanviMood(draft.isEmpty ? nil : .listening)
                 }
                 .frame(width: 96, height: 80)
+                // The little fox here takes no touches of its own, so a tap on him
+                // is just a tap on the scene (it puts the keyboard away).
+                .allowsHitTesting(false)
                 Text("Lanvi")
                     .font(Theme.rounded(17, .black))
                     .foregroundStyle(onSky)
@@ -81,10 +86,11 @@ struct HomeChatScreen: View {
         .padding(.horizontal, 20)
         .padding(.top, 6)
         .padding(.bottom, 8)
-        // The scene around Lanvi at the top: a tap there puts the keyboard away too
-        // (X and Help are buttons and keep their own taps).
+        // The scene around Lanvi at the top: one quick tap there puts the keyboard
+        // away (X and Help are buttons and keep their own taps). A simultaneous
+        // tap fires at once; it never waits for another gesture to fail.
         .contentShape(Rectangle())
-        .onTapGesture { focused = false }
+        .simultaneousGesture(TapGesture().onEnded { focused = false })
     }
 
     // MARK: The thread
@@ -115,13 +121,15 @@ struct HomeChatScreen: View {
             // Drag the list down to put the keyboard away, following the finger.
             .scrollDismissesKeyboard(.interactively)
             .scrollBounceBehavior(.always)
-            // A tap on the list (not on a bubble's button) puts the keyboard away.
-            // Buttons inside win over this parent tap, so they still work.
+            // One quick tap anywhere on the list puts the keyboard away, at once
+            // (simultaneous with the scroll, so it never needs a long press).
             .contentShape(Rectangle())
-            .onTapGesture { focused = false }
+            .simultaneousGesture(TapGesture().onEnded { focused = false })
             .onChange(of: store.chat.messages.count) { _, _ in settleDown(proxy) }
             .onChange(of: store.chatWaiting) { _, _ in settleDown(proxy) }
-            .onChange(of: focused) { _, _ in settleDown(proxy, first: 0.35) }
+            // Keep the newest message in view when the keyboard comes up; when it
+            // goes away the list stays exactly where it is.
+            .onChange(of: focused) { _, up in if up { settleDown(proxy, first: 0.35) } }
             .onAppear { scrollDown(proxy, animated: false) }
         }
     }
@@ -167,6 +175,9 @@ struct HomeChatScreen: View {
                 if let s = m.suggestion, let kind = ActivityKind.allCases.first(where: { $0.suggestionAction == s.action }) {
                     suggestionCard(kind)
                         .padding(.leading, 44)
+                        // While the keyboard is up, a tap here only puts it away; it
+                        // never starts the activity by accident.
+                        .allowsHitTesting(!focused)
                 }
             }
             .padding(.bottom, LanviBubbleShape.tailHeight)
@@ -272,6 +283,10 @@ struct HomeChatScreen: View {
                         .stroke(LanviBubbleBackground.outline, lineWidth: 2))
                     .background(RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .fill(LanviBubbleBackground.edge).offset(y: 3))
+                    // The whole white box starts typing on the first touch, not only
+                    // the line of text inside it.
+                    .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .simultaneousGesture(TapGesture().onEnded { if !focused { focused = true } })
                     .onChange(of: draft) { _, v in
                         // Return sends (a multi-line field turns it into a newline);
                         // Return on an empty field puts the keyboard away.

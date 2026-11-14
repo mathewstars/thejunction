@@ -332,7 +332,10 @@ class RevontuletRound(Strict):
                                                         "picked one.")
     trace_start_ms: Optional[int] = Field(None, ge=0, le=120000,
                                           description="The half-circle appearing to the first "
-                                                      "touch on it.")
+                                                      "touch on it. Null on a traced round "
+                                                      "means the first-time coach showed the "
+                                                      "move: that round is left out of the time "
+                                                      "to choose and the tracing speed.")
     trace_ms: Optional[int] = Field(None, ge=0, le=120000,
                                     description="First touch on the half-circle to the light "
                                                 "reaching its end. Null if not finished.")
@@ -375,9 +378,11 @@ class RevontuletStroke(Strict):
 class RevontuletIn(Strict):
     """What Revontulet measures beyond the focus record's taps and reaction
     times (docs/revontulet-measures.md). Numbers only: no touch paths, no
-    positions, nothing that identifies a person. Stored with the activity and
-    shown to the clinician; not yet used to judge a day, pick suggestions,
-    count XP or build the person's own normal."""
+    positions, nothing that identifies a person. A record with this object is
+    read as a Revontulet game and compared only with the person's earlier
+    Revontulet games: reaction times need two ember taps, the error rate is
+    embers missed over embers shown, and a game where the wall burst counts as
+    played to the end even when the person left during the strokes."""
     rounds: list[RevontuletRound] = Field(default_factory=list, max_length=3,
                                           description="One per round where a fault line was "
                                                       "picked, in order.")
@@ -417,12 +422,14 @@ class RevontuletIn(Strict):
 
 
 class FocusActivityIn(_ActivityBase, _FaceOneWay):
-    """Sparks and snow (about 45 seconds), or Revontulet (about 90 seconds,
-    with `revontulet`)."""
+    """Revontulet (up to about 90 seconds, with `revontulet`), the game the
+    app plays; or the earlier Sparks and snow (about 45 seconds, without)."""
     type: Literal["focus"]
     correct_taps: int = Field(ge=0, le=1000)
-    wrong_taps: int = Field(ge=0, le=1000, description="Tapped a snowflake.")
-    misses: int = Field(ge=0, le=1000, description="Sparks that faded untapped.")
+    wrong_taps: int = Field(ge=0, le=1000, description="Sparks and snow: tapped a snowflake. "
+                            "Revontulet: always 0.")
+    misses: int = Field(ge=0, le=1000, description="Sparks that faded untapped. "
+                        "Revontulet: embers that flashed and were not tapped.")
     reaction_ms: list[Annotated[int, Field(ge=0, le=10000)]] = Field(
         default_factory=list, max_length=200,
         description="Reaction time per tap in whole milliseconds. The server computes its own "
