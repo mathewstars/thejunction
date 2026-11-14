@@ -253,7 +253,7 @@ private struct WorldLife: View {
                 let c = Color(red: green.r + (violet.r - green.r) * mix,
                               green: green.g + (violet.g - green.g) * mix,
                               blue: green.b + (violet.b - green.b) * mix)
-                let a = min(0.11 * strength * breathe + 0.10 * flare, 0.42)
+                let a = min(0.22 * strength * breathe + 0.32 * flare, 0.62)
                 let p = frame.point(CGFloat(fx), CGFloat(fy))
                 let w = span * 0.16, h = span * (0.05 + 0.02 * breathe)
                 var layer = g
@@ -268,7 +268,7 @@ private struct WorldLife: View {
             // The whole sky lights up a little with it.
             let top = frame.point(0.5, 0.18)
             g.fill(Path(CGRect(origin: .zero, size: size)),
-                   with: .radialGradient(Gradient(colors: [Color(hex: 0x9CF7D4).opacity(0.12 * flare), .clear]),
+                   with: .radialGradient(Gradient(colors: [Color(hex: 0x9CF7D4).opacity(0.22 * flare), .clear]),
                                          center: top, startRadius: 0, endRadius: size.height * 0.55))
         }
     }
@@ -318,7 +318,7 @@ private struct WorldLife: View {
             for s in 0..<6 {
                 let y = reach * CGFloat(s) / 6
                 let fade = 1 - Double(s) / 6
-                let a = 0.055 * breathe * fade
+                let a = 0.13 * breathe * fade
                 let rect = CGRect(x: -width / 2, y: y, width: width, height: reach / 6 + 1)
                 layer.fill(Path(rect), with: .linearGradient(
                     Gradient(colors: [warm.opacity(0), warm.opacity(a), warm.opacity(0)]),
@@ -333,7 +333,7 @@ private struct WorldLife: View {
         g.blendMode = .plusLighter
         let c = CGPoint(x: size.width * 0.5, y: size.height * 0.16)
         g.fill(Path(CGRect(origin: .zero, size: size)),
-               with: .radialGradient(Gradient(colors: [Color.white.opacity(0.28 * flare),
+               with: .radialGradient(Gradient(colors: [Color.white.opacity(0.42 * flare),
                                                        Color(hex: 0xC9F6FF).opacity(0.10 * flare), .clear]),
                                      center: c, startRadius: 0, endRadius: size.height * 0.6))
     }
