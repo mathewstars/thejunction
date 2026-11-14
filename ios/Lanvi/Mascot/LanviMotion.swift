@@ -33,9 +33,9 @@ struct LanviMotion {
     func frame() -> RigFrame {
         var f = core()
         // --- Blink (always, even with Reduce Motion) ---
-        // Never on the same moment as an eye-set swap: skip a blink that would land
-        // within 0.2 s of one.
-        if freezeBlink != nil || (eyes(at: t - 0.2) == f.eyes && eyes(at: t + 0.2) == f.eyes) {
+        // Never on the same moment as an eye-set swap, nor in a reaction's wind-up:
+        // skip a blink that would land within 0.35 s of a swap.
+        if freezeBlink != nil || (eyes(at: t - 0.3) == f.eyes && eyes(at: t + 0.35) == f.eyes) {
             applyBlink(&f, sleepy: held == .sleepy)
         }
         return f
@@ -123,20 +123,35 @@ struct LanviMotion {
         return f
     }
 
-    /// A hop of the whole fox: anticipation crouch, stretch up, squash on landing, two
-    /// settling wobbles. The fox squashes as a whole (gently) so no part distorts;
-    /// the head lags the body, the ears and tail trail and overshoot.
-    private func hop(_ f: inout RigFrame, _ ht: Double, height: Double) {
-        guard ht > -0.1, ht < 1.3 else { return }
+    /// A hop of the whole fox: anticipation crouch, stretch going up, squash on landing,
+    /// two small settling bounces. The fox squashes as a whole (gently) so no part
+    /// distorts, and the front paws stay planted relative to the body.
+    /// `headLeads`: the joyful hop, where the head leads up, tips back at the top and
+    /// nods down a beat after the landing. Otherwise the head lags like a passenger.
+    private func hop(_ f: inout RigFrame, _ ht: Double, height: Double, headLeads: Bool = false) {
+        guard ht > -0.1, ht < 1.5 else { return }
         let h = Motion.hop(ht, height: height)
-        let late = Motion.hop(ht - 0.07, height: height)
         f.rootY -= CGFloat(h.lift)
         let sq = 1 + (h.squash - 1) * 0.5
         f.rootSY *= CGFloat(sq)
         f.rootSX *= CGFloat(1 + (1 - sq) * 0.8)
-        // Head: sinks into the crouch, lags going up, overshoots on landing.
-        f.headDY += CGFloat((h.lift - late.lift) * 0.35) + CGFloat((1 - h.squash) * 70)
-        earsLag(&f, lift: h.lift, t: ht)
+        // The head sinks into every squash (crouch and landings).
+        f.headDY += CGFloat((1 - h.squash) * 70)
+        let scale = height / 110
+        if headLeads {
+            let lead = Motion.hop(ht + 0.05, height: height)
+            f.headDY += CGFloat((h.lift - lead.lift) * 0.3)
+            // tips back at the top of the hop...
+            let top = exp(-pow((ht - 0.27) / 0.08, 2))
+            f.headDY -= CGFloat(7 * scale * top)
+            f.eyeDY -= CGFloat(3 * top)
+            // ...and nods down a beat after the body lands
+            f.headDY += CGFloat(12 * scale * Motion.flick(ht - 0.47, duration: 0.15))
+        } else {
+            let late = Motion.hop(ht - 0.07, height: height)
+            f.headDY += CGFloat((h.lift - late.lift) * 0.35)
+        }
+        earsLag(&f, lift: h.lift, t: ht, landing: headLeads ? 0.5 : 0.42, flop: headLeads ? 11 * scale : 6)
     }
 
     // MARK: Held moods
@@ -211,14 +226,9 @@ struct LanviMotion {
             f.headDX += CGFloat(10 * side)
             f.headTilt += 4 * side
         case 1: yawn(&f, yt: ft)
-        case 2: // paw wave
-            let up = Motion.hold(ft, start: 0.0, end: 1.6, response: 0.35, damping: 0.6)
-            let dip = Motion.flick(ft, duration: 0.09) * 0.12
-            f.pawR += 62 * (up - dip) + 11 * up * sin(ft * 2 * .pi / 0.42)
-            f.pawRX += CGFloat(30 * up) / Rig.unit
-            f.pawRY -= CGFloat(90 * up) / Rig.unit
-            if Motion.inside(ft, 0.15, 1.6) { f.eyes = .happy }
-            f.headTilt -= 4 * up
+        case 2: // a small happy bounce (paws stay planted)
+            hop(&f, ft - 0.05, height: 32, headLeads: true)
+            if Motion.inside(ft, 0.31, 1.0) { f.eyes = .happy }
         default: // happy squint
             if Motion.inside(ft, 0.1, 0.9) { f.eyes = .happy }
             let p = Motion.hold(ft, start: 0.1, end: 0.9, response: 0.3)
@@ -282,24 +292,23 @@ struct LanviMotion {
         switch r {
         case .happy:
             guard rt < 2.0 else { return }
-            // Faces swap at the bottom of the crouch, hidden inside the move.
-            if Motion.inside(rt, 0.13, 1.6) { f.eyes = .happy }
-            if Motion.inside(rt, 0.13, 1.75) { f.mouth = .happy }
+            // Joy from the whole body; the front paws stay planted on the snow.
+            // Faces swap at the top of the hop, hidden inside the move.
+            // Back to the normal face inside a small nod at 1.65 s.
+            if Motion.inside(rt, 0.31, 1.65) { f.eyes = .happy; f.mouth = .happy }
             guard m else { return }
-            hop(&f, rt - 0.05, height: 110)
-            // Both front legs swing up and out from the shoulder, after a small dip.
-            let paws = Motion.hold(rt, start: 0.12, end: 1.35, response: 0.34, damping: 0.55)
-            let dip = Motion.flick(rt, duration: 0.08) * 0.15
-            let wiggle = 6 * sin(2 * .pi * rt / 0.3) * paws
-            f.pawL += 65 * (paws - dip) + wiggle; f.pawR += 65 * (paws - dip) - wiggle
-            f.pawLX -= CGFloat(30 * paws) / Rig.unit; f.pawRX += CGFloat(30 * paws) / Rig.unit
-            f.pawLY -= CGFloat(90 * paws) / Rig.unit; f.pawRY -= CGFloat(90 * paws) / Rig.unit
-            // Tail wags fast, the tip whipping behind.
-            let wagEnv = Motion.hold(rt, start: 0.0, end: 1.3, response: 0.25, damping: 0.9)
-            let wag = { (x: Double) in 15 * sin(2 * .pi * x / 0.34) }
-            f.tail += wagEnv * wag(rt)
-            f.tailTip += wagEnv * 1.2 * (wag(rt - 0.06) - wag(rt))
-            f.headTilt += 4 * sin(2 * .pi * rt / 0.68) * wagEnv
+            hop(&f, rt - 0.05, height: 110, headLeads: true)
+            f.headDY += CGFloat(7 * Motion.flick(rt - 1.58, duration: 0.14))
+            // Tail wags fast: four swings that shrink, the tip clearly trailing.
+            let wag = { (x: Double) -> Double in
+                guard x > 0 else { return 0 }
+                return 16 * (1 - exp(-x * 14)) * exp(-x * 1.5) * sin(2 * .pi * x / 0.34)
+            }
+            f.tail += wag(rt - 0.1)
+            f.tailTip += 1.5 * (wag(rt - 0.17) - wag(rt - 0.1))
+            // A tiny side-to-side wiggle of the whole fox while it settles.
+            let st = rt - 0.05 - 0.54
+            if st > 0 { f.rootTilt += 2.6 * sin(2 * .pi * st / 0.32) * exp(-st * 2.6) * min(st / 0.08, 1) }
         case .surprised:
             guard rt < 1.8 else { return }
             if Motion.inside(rt, 0.07, 1.4) || (!m && rt < 1.4) { f.eyes = .wide; f.mouth = .o }
@@ -313,7 +322,6 @@ struct LanviMotion {
             f.headDY -= CGFloat(10 * perk)
             f.bodySY += CGFloat(0.03 * jolt)
             f.tail -= 10 * perk
-            f.pawL += 9 * jolt; f.pawR += 9 * jolt
         case .curious:
             guard rt < 2.2 else { return }
             if look == nil, Motion.inside(rt, 0.05, 1.7), f.eyes == .open { f.eyes = .up; f.eyeDX += 4; f.eyeDY -= 3 }
@@ -356,11 +364,12 @@ struct LanviMotion {
         f.tail += 10 * Motion.flick(rt - 0.2, duration: 0.2)
     }
 
-    /// Ears trail the body: they fold out a little on the way up and spring on landing.
-    private func earsLag(_ f: inout RigFrame, lift: Double, t: Double) {
-        guard t > 0, t < 1.2 else { return }
+    /// Ears trail the body: they fold out a little on the way up, flop on landing (a beat
+    /// after it) and spring back with an overshoot.
+    private func earsLag(_ f: inout RigFrame, lift: Double, t: Double, landing: Double = 0.42, flop: Double = 6) {
+        guard t > 0, t < 1.4 else { return }
         let rise = lift / 120 * 7
-        let land = t > 0.42 ? 6 * sin((t - 0.42) / 0.16 * .pi) * exp(-(t - 0.42) * 6) : 0
+        let land = t > landing ? flop * sin((t - landing) / 0.16 * .pi) * exp(-(t - landing) * 6) : 0
         f.earL += rise + land
         f.earR += rise + land
         f.tailTip += lift / 120 * 6
