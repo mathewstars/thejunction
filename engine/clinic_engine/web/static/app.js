@@ -232,11 +232,12 @@
       $("product-name").textContent = S.me.product_name || "Clinician page";
       document.title = (S.me.product_name || "Clinician page") + " · clinic";
       $("clinic-name").textContent = S.me.clinic_name || "";
-      $("nav-demo").hidden = !(S.me.demo && S.me.demo.enabled);
+      // Not in the menu: the page wipes example data with one click. It stays reachable at #/demo.
+      $("nav-demo").hidden = !(S.me.demo && S.me.demo.enabled && S.route.view === "demo");
       try { sessionStorage.setItem("clinic_demo", S.me.demo && S.me.demo.enabled ? "1" : "0"); } catch (e) { /* storage may be blocked */ }
     } else {
       let was = null; try { was = sessionStorage.getItem("clinic_demo"); } catch (e) { was = null; }
-      $("nav-demo").hidden = was !== "1";
+      $("nav-demo").hidden = was !== "1" || S.route.view !== "demo";
     }
     const r = S.route;
     $("nav-patients").toggleAttribute("aria-current", false);
