@@ -5,7 +5,7 @@ def sh(a):
     r = subprocess.run(a, capture_output=True, text=True)
     if r.returncode: print(r.stderr[-600:])
     return r
-T = dict(A=0.0, B=76.3, RING=88.0, NURSE=89.2, D=95.4, E=106.4, END=116.4)
+T = dict(A=0.0, B=76.3, RING=89.8, NURSE=91.0, D=97.2, E=108.2, END=118.2)
 ms = lambda t: int(t * 1000)
 N = "loudnorm=I=-16:TP=-1.5:LRA=9"
 # Every change of take is a fade, never a switch: the outgoing piano fades after the last word,

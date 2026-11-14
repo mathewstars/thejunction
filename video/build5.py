@@ -64,14 +64,19 @@ def over(src, png, d, ss=0.0, speed=1.0):
     if ss + d * speed > L: speed = (L - ss) / d
     vf = f"[0:v]setpts=PTS/{speed},scale=1280:720,fps=24,eq=brightness=-0.22:saturation=0.8,gblur=sigma=3[b];[b][1:v]overlay=0:0[w];[w][2:v]overlay=0:0[v]"
     run(["-ss", str(ss), "-i", src, "-i", png, "-i", f"{OLD}/tag_gen.png", "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
-def windows(src, d, wins, ss=0.0):
-    """The clip plays on as it was; framed windows come up over it one after another."""
-    o = out(); L = dur_of(src) - 0.1; speed = min(1.0, (L - ss) / d)
-    vf = f"[0:v]setpts=PTS/{speed},scale=1280:720,fps=24,eq=brightness=-0.10[b0];"; ins = ["-ss", str(ss), "-i", src]; cur = "[b0]"
+def windows(src, d, wins, ss=0.0, tag=None, dim=-0.10):
+    """The clip (or still) stays as it was; framed windows come up over it."""
+    o = out(); img = src.endswith(".png")
+    if img:
+        ins = ["-loop", "1", "-t", str(d), "-i", src]; vf = f"[0:v]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,fps=24,eq=brightness={dim}[b0];"
+    else:
+        L = dur_of(src) - 0.1; speed = min(1.0, (L - ss) / d); ins = ["-ss", str(ss), "-i", src]
+        vf = f"[0:v]setpts=PTS/{speed},scale=1280:720,fps=24,eq=brightness={dim}[b0];"
+    cur = "[b0]"
     for i, (png, a, b) in enumerate(wins):
         ins += ["-loop", "1", "-t", str(d), "-i", png]
         vf += f"[{i+1}:v]format=rgba,fade=t=in:st={a}:d=0.3:alpha=1,fade=t=out:st={b-0.3}:d=0.3:alpha=1[w{i}];{cur}[w{i}]overlay=0:0:enable='between(t,{a},{b})'[b{i+1}];"; cur = f"[b{i+1}]"
-    ins += ["-i", f"{OLD}/tag_gen.png"]; vf += f"{cur}[{len(wins)+1}:v]overlay=0:0[v]"
+    ins += ["-i", tag or f"{OLD}/tag_gen.png"]; vf += f"{cur}[{len(wins)+1}:v]overlay=0:0[v]"
     run(ins + ["-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
 n = [0]
 def out(): n[0] += 1; return f"seg5/{n[0]:03d}.mp4"
@@ -142,17 +147,17 @@ at(65.7, lambda d: chart("chart_b.mp4", d))
 at(76.3, lambda d: still("chart_end.png", d, z0=1.0, z1=1.07, fx=1.0, fy=0.5, tag="tag_ex.png"))
 at(78.0, lambda d: clip(K("k5"), d, ss=0.2, zoom=1.9, fx=0.12, fy=0.8))    # the boots alone
 at(80.4, lambda d: clip(K("k4"), d, ss=0.4, cap=("cap_help.png", 1.3)))
-at(84.1, lambda d: windows(K("k7"), d, [("w_tg.png", 0.35, 1.75), ("w_anna.png", 1.75, d)], ss=0.6))     # the clinic's phone; the alert; her profile
-at(88.0, lambda d: still(S("morning"), d, z0=1.0, z1=1.05, fx=0.6, fy=0.5, tag="tag_morning.png"))            # the phone buzzes
-at(89.2, lambda d: clip(K("k8"), d, speed=0.8, tag="tag_morning.png"))                                        # her nurse: "Anna? I read your note. I'm here."
+at(84.1, lambda d: windows(K("k7"), d, [("w_tg.png", 0.3, d + 0.3)], ss=0.6))                                          # the clinic's phone, the real alert on it the whole time
+at(88.0, lambda d: windows(S("morning"), d, [("w_anna.png", 0.15, d - 0.05)], dim=-0.06))                              # next clip: her profile on the clinician page over it
+at(91.0, lambda d: clip(K("k8"), d, speed=0.8, tag="tag_morning.png"))                                                # "The next morning, her clinic calls." Her nurse speaks.
 # 7 honest: Anna's own research page, then the study
-at(95.4, lambda d: still(f"{OLD}/screens/r4_anna.jpg", d, z0=1.3, z1=1.38, fx=0.0, fy=0.14, tag="tag_ex.png", fit=True))
-at(98.2, lambda d: still(f"{OLD}/screens/r4_anna.jpg", d, z0=1.5, z1=1.62, fx=0.1, fy=0.75, tag="tag_ex.png", fit=True))
-at(102.5, lambda d: card("c_study.png", d))
+at(97.2, lambda d: still(f"{OLD}/screens/r4_anna.jpg", d, z0=1.3, z1=1.38, fx=0.0, fy=0.14, tag="tag_ex.png", fit=True))
+at(100.0, lambda d: still(f"{OLD}/screens/r4_anna.jpg", d, z0=1.5, z1=1.62, fx=0.1, fy=0.75, tag="tag_ex.png", fit=True))
+at(104.3, lambda d: card("c_study.png", d))
 # 8 the name and the motto
-at(106.4, lambda d: card("c_brand.png", d, fade=0.8))
-END = 116.4
-FIXED = {0.0, 84.1, 88.0, 89.2, 95.4, 106.4}        # cuts that belong to the sound and must not move
+at(108.2, lambda d: card("c_brand.png", d, fade=0.8))
+END = 118.2
+FIXED = {0.0, 84.1, 88.0, 91.0, 97.2, 108.2}        # cuts that belong to the sound and must not move
 B = json.load(open("beats5.json"))
 def snap(t, prev):
     best, bs = t, -9
