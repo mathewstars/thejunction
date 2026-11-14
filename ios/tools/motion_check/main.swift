@@ -112,8 +112,23 @@ for h in [LanviMood.listening, .thinking, .sleepy] {
 }
 write("talking", from: base - 0.5, seconds: 5.5) {
     $0.appearAt = .infinity
-    $0.talking = $0.t < base + 4
+    $0.talking = $0.t >= base && $0.t < base + 4
     $0.talkingSince = $0.t < base + 4 ? base : base + 4
+    $0.talkStart = base
+}
+// A speech bubble driving the mouth: open, closed, open... every 0.12 s for 2 s.
+write("bubble", from: base - 0.5, seconds: 3.5) {
+    $0.appearAt = .infinity
+    let t = $0.t
+    guard t >= base else { return }
+    let n = Int(floor((min(t, base + 2) - base) / 0.12))
+    let shape = { (i: Int) -> MouthShape in i % 2 == 0 ? .o : .smile }
+    if t < base + 2 {
+        $0.mouthOverride = shape(n); $0.mouthFrom = n == 0 ? nil : shape(n - 1)
+        $0.mouthTickAt = base + Double(n) * 0.12; $0.drivenSince = base
+    } else {
+        $0.mouthOverride = nil; $0.mouthFrom = shape(n); $0.mouthTickAt = base + 2; $0.drivenSince = base + 2
+    }
 }
 // A look to the right and back.
 write("look", from: base - 0.5, seconds: 3.5) {

@@ -319,15 +319,17 @@ enum Motion {
         // Every airborne curve starts, peaks and ends at zero speed (sin squared), so the
         // spacing between frames grows and shrinks smoothly; the squash sells the impact.
         let s2 = { (x: Double) -> Double in let v = sin(x); return v * v }
-        if t < 0.09 { return (0, 1 - 0.08 * easeOut(t / 0.09)) }
-        if t < 0.27 { let p = (t - 0.09) / 0.18; return (height * s2(p * .pi / 2), 0.92 + 0.15 * sin(p * .pi / 2)) }
-        if t < 0.42 { let p = (t - 0.27) / 0.15; return (height * (1 - s2(p * .pi / 2)), 1.07 - 0.07 * p) }
+        // The crouch and the stretch ease in and out, so the head riding the squash never kinks.
+        if t < 0.09 { return (0, 1 - 0.08 * easeInOut(t / 0.09)) }
+        if t < 0.27 { let p = (t - 0.09) / 0.18; return (height * s2(p * .pi / 2), 0.92 + 0.15 * smooth(0, 1, p)) }
+        if t < 0.42 { let p = (t - 0.27) / 0.15; return (height * (1 - s2(p * .pi / 2)), 1.07 - 0.07 * smooth(0, 1, p)) }
         // Landing squash, then two small settling bounces. Each bounce starts while the
         // squash before it is still springing back, so the motion never pauses.
         var lift = 0.0, squash = 1.0
-        if t < 0.54 { squash -= 0.09 * sin((t - 0.42) / 0.12 * .pi) }
+        // the landing hits at speed and eases out of the squash
+        if t < 0.54 { let u = (t - 0.42) / 0.12; squash -= 0.095 * sin(u * .pi) * (1 - pow(u, 4)) }
         if t >= 0.49 && t < 0.67 { lift += height * 0.09 * s2((t - 0.49) / 0.18 * .pi) }
-        if t >= 0.64 && t < 0.72 { squash -= 0.035 * sin((t - 0.64) / 0.08 * .pi) }
+        if t >= 0.62 && t < 0.74 { squash -= 0.035 * s2((t - 0.62) / 0.12 * .pi) }
         if t >= 0.69 && t < 0.81 { lift += height * 0.03 * s2((t - 0.69) / 0.12 * .pi) }
         return (lift, squash)
     }

@@ -72,8 +72,11 @@ struct LanviMotion {
     var lookAt: Double                   // when the target changed
     var talking = false                  // `.lanviTalking`
     var talkingSince: Double = -100      // when talking started or stopped
+    var talkStart: Double = -100         // when the current (or last) talk began
     var mouthOverride: MouthShape? = nil // `.lanviMouth` (a speech bubble driving the mouth)
+    var mouthFrom: MouthShape? = nil     // the driven mouth before its last change
     var mouthTickAt: Double = -100       // when that mouth last changed
+    var drivenSince: Double = -100       // when a bubble started or stopped driving it
     var moment: LanviMoment? = nil       // a moment asked for by hand (the preview screen)
     var momentAt: Double = -100
     var momentSide: Double = 1
@@ -324,7 +327,7 @@ struct LanviMotion {
         let to = Self.lookPose(look), from = Self.lookPose(lookFrom)
         let lt = x - lookAt
         // Eyes lead: they jump in 70 ms; the head turns after them 0.1 s later, on a spring.
-        let e = Motion.easeOut(lt / 0.07)
+        let e = Motion.smooth(0, 0.08, lt)
         let h = Motion.spring(lt - 0.1, response: 0.38, damping: 0.72)
         if let shape = (lt >= 0.035 ? to.shape : from.shape), face.eyes == .open { face.eyes = shape }
         p.eyeX += from.ex + (to.ex - from.ex) * e
@@ -353,7 +356,9 @@ struct LanviMotion {
         let w = Motion.smooth(heldSince, heldSince + 0.4, x)
         b = max(b, busyMood(heldFrom) * (1 - w) + busyMood(held) * w)
         let talkW = Motion.smooth(talkingSince, talkingSince + 0.3, x)
-        b = max(b, mouthOverride != nil ? 1 : (talking ? talkW : 1 - talkW))
+        b = max(b, talking ? talkW : 1 - talkW)
+        let drivenW = Motion.smooth(drivenSince, drivenSince + 0.3, x)
+        b = max(b, mouthOverride != nil ? drivenW : 1 - drivenW)
         return b
     }
 
@@ -521,16 +526,17 @@ struct LanviMotion {
     // MARK: Talking
 
     private func talkLayer(_ x: Double, _ p: inout Pose, _ face: inout Face) {
-        if let m = mouthOverride {
-            // A speech bubble drives the mouth: each change is a word beat, the head bobs.
-            face.mouth = m
-            let bob = Motion.bump(x, mouthTickAt, mouthTickAt + 0.22)
-            p.headY += 1.6 * bob; p.dirY += 0.04 * bob
-            return
-        }
-        let lt = x - talkingSince
-        let on = talking ? Motion.smooth(0, 0.25, lt) : 1 - Motion.smooth(0, 0.25, lt)
+        // A speech bubble drives the mouth shape (before its last change it was
+        // `mouthFrom`, so each swap cross-fades). No head bob per change: a bubble may
+        // flip the mouth many times a second, and the head must never vibrate.
+        if let m = x >= mouthTickAt ? mouthOverride : mouthFrom { face.mouth = m; return }
+        // Talking by itself: syllables counted from when the talk began, so stopping
+        // only fades it out (the head never jumps).
+        let on = talking ? Motion.smooth(talkingSince, talkingSince + 0.25, x)
+                         : 1 - Motion.smooth(talkingSince, talkingSince + 0.25, x)
         guard on > 0.001 else { return }
+        let lt = x - talkStart
+        let speaking = talking ? x >= talkingSince : x < talkingSince
         // Syllables of 0.15 s: the mouth opens and closes on each (its size is smooth);
         // the shape changes only between syllables, when the mouth is smallest.
         let len = 0.15
@@ -538,7 +544,7 @@ struct LanviMotion {
         let ph = lt / len - Double(k)
         let r = Motion.rnd(k, seed &+ 51)
         let open = sin(.pi * ph)
-        if talking, on > 0.5 {
+        if speaking, lt >= 0 {
             if r < 0.16 {
                 face.mouth = .smile                       // a little pause between words
             } else if r < 0.64 {
@@ -599,7 +605,7 @@ struct LanviMotion {
         case .surprised:
             // A tiny dip, a jolt up with a stretch, ears shoot up, head pulls back, tail puffs.
             if Motion.inside(rt, 0.07, 1.4) { face.eyes = .wide; face.mouth = .o }
-            let dip = Motion.bump(rt, 0, 0.1)
+            let dip = Motion.bump(rt, 0, 0.13)
             p.rootSY -= 0.03 * dip; p.headY += 3 * dip
             let jolt = Motion.pulse(rt, start: 0.06, end: 0.38, response: 0.16, damping: 0.5, settle: 0.7)
             p.rootY -= 22 * jolt; p.bodySY += 0.03 * jolt; p.rootSY += 0.02 * jolt
@@ -611,8 +617,9 @@ struct LanviMotion {
             let tilt = Motion.pulse(rt, start: 0.05, end: 1.6, response: 0.4, damping: 0.55, settle: 0.65)
             p.headTilt += 9 * tilt; p.dirX += 0.2 * tilt; p.dirY -= 0.12 * tilt; p.headX += 4 * tilt
             p.earR -= 6 * tilt; p.earL += 3 * tilt; p.tail += 4 * tilt
-            if look == nil, Motion.inside(rt, 0.05, 1.7), face.eyes == .open {
-                face.eyes = .up; p.eyeX += 4 * tilt; p.eyeY -= 3 * tilt
+            if look == nil {
+                p.eyeX += 4 * tilt; p.eyeY -= 3 * tilt
+                if Motion.inside(rt, 0.05, 1.7), face.eyes == .open { face.eyes = .up }
             }
         case .sleepy:
             yawn(&p, &face, yt: rt)

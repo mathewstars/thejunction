@@ -38,6 +38,9 @@ struct LanviPuppet: View {
     @State private var lookAt: Double = -100
     @State private var talkingSince: Double = -100
     @State private var mouthTickAt: Double = -100
+    @State private var mouthFrom: MouthShape?
+    @State private var drivenSince: Double = -100
+    @State private var talkStart: Double = -100
     @State private var moment: LanviMoment?
     @State private var momentAt: Double = -100
     @State private var momentSide: Double = 1
@@ -91,8 +94,15 @@ struct LanviPuppet: View {
         }
         .onChange(of: held) { old, _ in heldFrom = old; heldSince = now }
         .onChange(of: reactionRequest) { _, new in if let new { play(new.mood) } }
-        .onChange(of: talking) { talkingSince = now }
-        .onChange(of: mouthOverride) { _, new in if new != nil && new != .smile { mouthTickAt = now } }
+        .onChange(of: talking) { _, on in
+            talkingSince = now
+            if on { talkStart = now }
+        }
+        .onChange(of: mouthOverride) { old, new in
+            mouthFrom = old
+            mouthTickAt = now
+            if (old == nil) != (new == nil) { drivenSince = now }
+        }
         .onChange(of: momentRequest) { _, new in
             guard let new else { return }
             moment = new.moment
@@ -132,8 +142,11 @@ struct LanviPuppet: View {
         m.prevReactionAt = prevReactionAt
         m.talking = talking
         m.talkingSince = talkingSince
+        m.talkStart = talkStart
         m.mouthOverride = mouthOverride
+        m.mouthFrom = mouthFrom
         m.mouthTickAt = mouthTickAt
+        m.drivenSince = drivenSince
         m.moment = moment
         m.momentAt = momentAt
         m.momentSide = momentSide
