@@ -61,6 +61,9 @@ enum RevontuletTune {
     // Snow leaving the fur: a few grainy ticks.
     static let snowTicks: [Double] = [0, 0.035, 0.08, 0.11], snowTickI = 0.18, snowTickS = 1.0
 
+    // A first-time coach appearing: a soft double tick.
+    static let coachI = 0.22, coachS = 0.45, coachGap = 0.09
+
     // Falling asleep: one slow pulse that fades away.
     static let sleepSwell = (t: 0.5, i: 0.36), sleepFade = 1.4, sleepS = 0.04
 
@@ -81,7 +84,7 @@ final class RevontuletFeel {
     private typealias T = RevontuletTune
     private enum Key: Hashable {
         case choose(Bool), bead, charged, click, snap(Int), emberShown(Int), emberHit
-        case whoosh(Int), thud(Int), crackle(Int), ribbon, burstCrack, burstTicks, burstSwell, celebrate, snow, sleep
+        case whoosh(Int), thud(Int), crackle(Int), ribbon, burstCrack, burstTicks, burstSwell, celebrate, snow, sleep, coach
     }
 
     private let supported = CHHapticEngine.capabilitiesForHardware().supportsHaptics
@@ -242,6 +245,12 @@ final class RevontuletFeel {
     /// Snow leaving the fur.
     func snowOff() { fire(.snow) }
 
+    /// A first-time coach appears: one soft double tick.
+    func coachTick() { fire(.coach) }
+
+    /// An ember flashing now (when a coach holds time, its tick cannot be scheduled ahead).
+    func emberShown(_ i: Int) { fire(.emberShown(min(i, 1))) }
+
     // MARK: Scheduled on the engine's clock
 
     /// The spark left the sling (or the fox launched it): the whoosh now, each ember's tick
@@ -324,6 +333,7 @@ final class RevontuletFeel {
         built[.burstSwell] = make([hum(T.sweepSwell.delay, T.sweepSwell.t, T.sweepSwell.i, T.sweepSwell.s)],
                                   [bell(.hapticIntensityControl, start: T.sweepSwell.delay, length: T.sweepSwell.t)])
         built[.celebrate] = make(T.celebrate.map { tap($0.t, $0.i, T.celebrateS) })
+        built[.coach] = make([tap(0, T.coachI, T.coachS), tap(T.coachGap, T.coachI * 0.7, T.coachS)])
         built[.snow] = make(T.snowTicks.enumerated().map { tap($0.element, T.snowTickI * (1 - 0.15 * Double($0.offset)), T.snowTickS) })
         built[.sleep] = make([hum(0, T.sleepSwell.t + T.sleepFade, T.sleepSwell.i, T.sleepS)],
                              [CHHapticParameterCurve(parameterID: .hapticIntensityControl, controlPoints: [
