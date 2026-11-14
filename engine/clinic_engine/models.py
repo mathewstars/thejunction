@@ -197,6 +197,52 @@ class FaceSummary(Strict):
                                     "kept but never used for the person's own normal.")
 
 
+class FaceRawIn(Strict):
+    """Raw ARKit frames from the front camera during the activity, when the
+    person allowed it. The phone computes nothing: the server derives the face
+    summary (docs/face-raw.md). Numbers only: blend-shape coefficients 0 to 1
+    and head angles in degrees. No image, no video, no mesh, no identifiers."""
+    rate_hz: float = Field(ge=5, le=60, description="Frames per second of `samples`. 30 is enough.")
+    channels: list[Annotated[str, StringConstraints(min_length=1, max_length=40)]] = Field(
+        min_length=4, max_length=60,
+        description="Names in the order of each sample's values: ARKit blend-shape identifiers "
+                    "(e.g. mouthSmileLeft) and headPitch, headYaw, headRoll (degrees, headPitch "
+                    "positive = chin down). Must include mouthSmileLeft, mouthSmileRight, "
+                    "eyeBlinkLeft, eyeBlinkRight.")
+    samples: list[list[float]] = Field(min_length=1, max_length=12000,
+                                       description="One row per frame, len(channels) values each.")
+    tracked: Optional[list[Annotated[int, Field(ge=0, le=1)]]] = Field(
+        None, description="Optional, one per frame: 1 when ARKit tracked the face. Default all 1.")
+    moments_ms: Optional[list[Annotated[int, Field(ge=0, le=3_600_000)]]] = Field(
+        None, max_length=20,
+        description="Optional: times of marked pleasant moments, ms from the first frame.")
+
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [{
+        "rate_hz": 30, "channels": ["mouthSmileLeft", "mouthSmileRight", "eyeBlinkLeft",
+                                    "eyeBlinkRight", "headPitch", "headYaw", "headRoll"],
+        "samples": [[0.04, 0.05, 0.08, 0.07, 6.2, -1.4, 0.8],
+                    [0.05, 0.05, 0.09, 0.08, 6.1, -1.3, 0.8],
+                    [0.31, 0.29, 0.07, 0.07, 6.0, -1.3, 0.9]],
+        "tracked": [1, 1, 1], "moments_ms": [40]}]})
+
+    @model_validator(mode="after")
+    def _check(self):
+        from .mind.face_features import check_raw
+        problem = check_raw({"channels": self.channels, "samples": self.samples,
+                             "tracked": self.tracked, "moments_ms": self.moments_ms})
+        if problem:
+            raise ValueError(problem)
+        return self
+
+
+class _FaceOneWay(Strict):
+    @model_validator(mode="after")
+    def _one_face(self):
+        if getattr(self, "face", None) is not None and getattr(self, "face_raw", None) is not None:
+            raise ValueError("send either face (a summary) or face_raw (raw frames), not both")
+        return self
+
+
 class _ActivityBase(Strict):
     id: ClientId = Field(description="Client-generated id. Re-sending the same record is safe "
                                      "and earns nothing twice; a different record under the same "
@@ -216,7 +262,7 @@ class _ActivityBase(Strict):
         return v
 
 
-class FocusActivityIn(_ActivityBase):
+class FocusActivityIn(_ActivityBase, _FaceOneWay):
     """Sparks and snow, about 45 seconds."""
     type: Literal["focus"]
     correct_taps: int = Field(ge=0, le=1000)
@@ -226,15 +272,21 @@ class FocusActivityIn(_ActivityBase):
         default_factory=list, max_length=200,
         description="Reaction time per tap in whole milliseconds. The server computes its own "
                     "statistics.")
-    face: Optional[FaceSummary] = None
+    face: Optional[FaceSummary] = Field(None, description="A summary the phone computed. "
+                                        "Prefer face_raw: the server computes the summary.")
+    face_raw: Optional[FaceRawIn] = Field(None, description="Raw ARKit frames; the server "
+                                          "computes the face summary. Not with face.")
 
 
-class BreathingActivityIn(_ActivityBase):
+class BreathingActivityIn(_ActivityBase, _FaceOneWay):
     """Breathe with Lanvi, 1 minute."""
     type: Literal["breathing"]
     time_played_s: float = Field(ge=0, le=3600)
     breaths_completed: Optional[int] = Field(None, ge=0, le=200)
-    face: Optional[FaceSummary] = None
+    face: Optional[FaceSummary] = Field(None, description="A summary the phone computed. "
+                                        "Prefer face_raw: the server computes the summary.")
+    face_raw: Optional[FaceRawIn] = Field(None, description="Raw ARKit frames; the server "
+                                          "computes the face summary. Not with face.")
 
 
 GoodThingId = Annotated[str, StringConstraints(pattern=r"^[a-z_]{2,40}$")]
@@ -591,6 +643,32 @@ class ReviewIn(Strict):
     patient_id: ServerId
 
 
+class RecomputeFaceIn(Strict):
+    patient_id: ServerId
+
+
+class RecomputeFaceOut(BaseModel):
+    patient_id: str
+    recomputed: int = Field(description="Raw sessions whose face summary was computed again.")
+
+
+class FaceRawOut(BaseModel):
+    """The stored raw frames of one activity, as the phone sent them, for
+    research download. Numbers only."""
+    activity_id: str
+    type: Literal["focus", "breathing"]
+    started_at: str
+    received_at: str
+    rate_hz: float
+    channels: list[str]
+    samples: list[list[float]]
+    tracked: Optional[list[int]] = Field(description="As sent; null means all frames tracked.")
+    moments_ms: Optional[list[int]]
+    frames: int
+    channel_count: int
+    tracked_frames: int
+
+
 class AnalyzeIn(Strict):
     patient_id: ServerId
     round_id: Optional[ClientId] = Field(None, description="An AR round (earlier design).")
@@ -651,7 +729,7 @@ class AssocRowOut(BaseModel):
     status: Literal["tested", "insufficient", "no_variation", "is_reference"] = Field(
         description="insufficient: fewer paired days than design.min_n, no statistics. "
                     "is_reference: this measure is the proxy reference itself.")
-    n: int = Field(description="Paired days.")
+    n: int = Field(description="Paired observations: ratings (design.unit rating) or days.")
     rho: Optional[float] = Field(None, description="Spearman rho, oriented: positive = moves in "
                                  "the expected direction when symptoms are worse. For 'mixed' "
                                  "positive = higher when the reference is worse.")
@@ -695,6 +773,10 @@ class AssocDesignOut(BaseModel):
     last_day: str
     rows_tested: int
     min_n: int
+    unit: Optional[Literal["rating", "day"]] = Field(None, description="What one observation is: "
+                                                     "a rating (the measure is averaged over the week "
+                                                     "up to it) or a day (proxy reference).")
+    observations: Optional[int] = None
 
 
 class AssocReferenceOut(BaseModel):
@@ -741,4 +823,7 @@ class AssociationsOut(BaseModel):
     corrections: list[AssocCorrectionOut] = Field(default_factory=list)
     hypotheses_reviewed_by_clinician: bool = False
     disclaimer: str
+    series: Optional[dict] = Field(None, description="Day-by-day values behind the statistics, "
+                                   "for charts: first_day, last_day, reference [[day, value]] and "
+                                   "measures {key: [[day, value]]}; day counts from first_day.")
     inputs: Optional[AssocInputsOut] = None

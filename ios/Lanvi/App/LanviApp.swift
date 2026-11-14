@@ -2,41 +2,88 @@ import SwiftUI
 
 @main
 struct LanviApp: App {
+    @State private var store = AppStore()
+
     var body: some Scene {
         WindowGroup {
-            if UserDefaults.standard.string(forKey: "screen") == "puppet" {
-                LanviPuppetPreview()   // `-screen puppet`: judge the living fox
-            } else {
-                RootView()
-            }
+            RootView()
+                .environment(store)
         }
     }
 }
 
-/// Welcome first, then Home. Launch with the argument `-demo` to play an automatic
-/// walk-through (useful for recording the pitch video).
+/// First run: Welcome, then "What usually helps you?", then Home. Later opens go
+/// straight to Home.
+///
+/// Launch arguments:
+/// - `-demo`: the whole story by itself for the pitch video (under a minute):
+///   Welcome, Home with today's one thing, Breathe with Lanvi, the XP and glow
+///   moment, growing up, done for today, a wandering and its story, a word with
+///   Lanvi. Always uses the offline demo data.
+/// - `-screen <name>`: open one screen straight away: `home`, `whathelps`,
+///   `focus`, `breathe`, `checkin`, `checkin-plan`, `puppet`.
+/// - `-offline`: use the offline demo data even when a server is configured.
+/// - Screenshot moments on Home: see `DemoBackend` and `HomeView.runDemo`.
 struct RootView: View {
-    @State private var onHome = false
+    private enum Step { case welcome, helps, home }
+
+    @Environment(AppStore.self) private var store
+    @Environment(\.scenePhase) private var scenePhase
     private let demo = ProcessInfo.processInfo.arguments.contains("-demo")
+    @State private var step: Step = {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-demo") { return .welcome }
+        return UserDefaults.standard.bool(forKey: "lanvi.welcomed") ? .home : .welcome
+    }()
+    /// `-screen <name>` (UserDefaults reads launch arguments of this form).
+    private let screen = UserDefaults.standard.string(forKey: "screen")
 
     var body: some View {
         ZStack {
-            if onHome {
+            switch screen {
+            case "home":
                 HomeView(demo: demo)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-            } else {
-                WelcomeView(demo: demo) { goHome() }
-                    .transition(.opacity)
+            case "whathelps":
+                WhatHelpsView(demo: demo) {}
+            case "focus":
+                FocusGameView { print("focus: done \(String(describing: $0))") }
+            case "breathe":
+                BreatheView { _ in }
+            case "puppet":
+                LanviPuppetPreview()   // judge the living fox on its own
+            case let s? where s.hasPrefix("checkin"):
+                CheckinView.preview(s)
+            default:
+                switch step {
+                case .welcome:
+                    WelcomeView(demo: demo) { go(demo ? .home : .helps) }
+                        .transition(.opacity)
+                case .helps:
+                    WhatHelpsView(demo: demo) { go(.home) }
+                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
+                                                removal: .move(edge: .leading).combined(with: .opacity)))
+                case .home:
+                    HomeView(demo: demo)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
+        }
+        .task {
+            // Pair and load while the welcome is showing.
+            await store.start()
         }
         .task {
             guard demo else { return }
             try? await Task.sleep(for: .seconds(4.2))
-            goHome()
+            go(.home)
+        }
+        .onChange(of: scenePhase) { old, phase in
+            if phase == .active, old == .background { Task { await store.resume() } }
         }
     }
 
-    private func goHome() {
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) { onHome = true }
+    private func go(_ next: Step) {
+        if next == .home { UserDefaults.standard.set(true, forKey: "lanvi.welcomed") }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) { step = next }
     }
 }

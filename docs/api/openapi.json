@@ -180,7 +180,7 @@
           "device"
         ],
         "summary": "Send one activity record: focus, breathing or check-in",
-        "description": "One record per activity, idempotent by `id`: the same record again is\nanswered without new XP; a different record under a used id is refused\n(409). Values that cannot be true are rejected (422) and logged.\n\nTyped words in a check-in are untrusted data with exactly the note's\ntreatment: classified into enums only, never followed, never logged,\nnever sent outside the server. If they ask for help, `crisis` is true and\nthe help block is included, as for a note.\n\nThe answer says what Lanvi shows next: XP gained, the new total, stage,\nglow and one line from the fixed set. XP is for showing up: the same\nwhatever the score.",
+        "description": "One record per activity, idempotent by `id`: the same record again is\nanswered without new XP; a different record under a used id is refused\n(409). Values that cannot be true are rejected (422) and logged.\n\nTyped words in a check-in are untrusted data with exactly the note's\ntreatment: classified into enums only, never followed, never logged,\nnever sent outside the server. If they ask for help, `crisis` is true and\nthe help block is included, as for a note.\n\nThe answer says what Lanvi shows next: XP gained, the new total, stage,\nglow and one line from the fixed set. XP is for showing up: the same\nwhatever the score.\n\nThe face: send `face_raw` (raw ARKit frames, numbers only; the server\ncomputes every face measure, docs/face-raw.md) or, from older clients,\n`face` (a summary the phone computed). Not both (422). This route accepts\nbodies up to MAX_FACE_RAW_BODY_BYTES (4 MiB by default); other routes keep\nthe general limit.",
         "operationId": "activities_v1_activities_post",
         "requestBody": {
           "content": {
@@ -1834,6 +1834,105 @@
         }
       }
     },
+    "/v1/clinic/patients/{patient_id}/activities/{activity_id}/face-raw": {
+      "get": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "Raw face frames of one activity, as the phone sent them (research download)",
+        "description": "Only for focus and breathing sessions sent with `face_raw`; 404 otherwise.\nNumbers only: blend-shape coefficients and head angles per frame. Each\ndownload is audited (which activity, never any values).",
+        "operationId": "patient_face_raw_v1_clinic_patients__patient_id__activities__activity_id__face_raw_get",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "activity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$",
+              "title": "Activity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaceRawOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/clinic/patients/{patient_id}/exchanges": {
       "get": {
         "tags": [
@@ -3041,6 +3140,93 @@
           }
         ]
       }
+    },
+    "/v1/demo/recompute-face": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Compute the face summary of a patient's raw sessions again",
+        "description": "For every focus or breathing session sent with raw face frames: compute\nthe summary again from the stored frames with the current thresholds, and\nrewrite its face summary, face quality and face z values. Sessions sent with\na summary are left as they are. Returns how many were recomputed.",
+        "operationId": "demo_recompute_face_v1_demo_recompute_face_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecomputeFaceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecomputeFaceOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3419,6 +3605,33 @@
           "min_n": {
             "type": "integer",
             "title": "Min N"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "rating",
+                  "day"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit",
+            "description": "What one observation is: a rating (the measure is averaged over the week up to it) or a day (proxy reference)."
+          },
+          "observations": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observations"
           }
         },
         "type": "object",
@@ -3681,7 +3894,7 @@
           "n": {
             "type": "integer",
             "title": "N",
-            "description": "Paired days."
+            "description": "Paired observations: ratings (design.unit rating) or days."
           },
           "rho": {
             "anyOf": [
@@ -3963,6 +4176,19 @@
             "type": "string",
             "title": "Disclaimer"
           },
+          "series": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series",
+            "description": "Day-by-day values behind the statistics, for charts: first_day, last_day, reference [[day, value]] and measures {key: [[day, value]]}; day counts from first_day."
+          },
           "inputs": {
             "anyOf": [
               {
@@ -4058,7 +4284,19 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "A summary the phone computed. Prefer face_raw: the server computes the summary."
+          },
+          "face_raw": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FaceRawIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Raw ARKit frames; the server computes the face summary. Not with face."
           }
         },
         "additionalProperties": false,
@@ -4501,6 +4739,240 @@
         ],
         "title": "ErrorResponse"
       },
+      "FaceRawIn": {
+        "properties": {
+          "rate_hz": {
+            "type": "number",
+            "maximum": 60.0,
+            "minimum": 5.0,
+            "title": "Rate Hz",
+            "description": "Frames per second of `samples`. 30 is enough."
+          },
+          "channels": {
+            "items": {
+              "type": "string",
+              "maxLength": 40,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 60,
+            "minItems": 4,
+            "title": "Channels",
+            "description": "Names in the order of each sample's values: ARKit blend-shape identifiers (e.g. mouthSmileLeft) and headPitch, headYaw, headRoll (degrees, headPitch positive = chin down). Must include mouthSmileLeft, mouthSmileRight, eyeBlinkLeft, eyeBlinkRight."
+          },
+          "samples": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "maxItems": 12000,
+            "minItems": 1,
+            "title": "Samples",
+            "description": "One row per frame, len(channels) values each."
+          },
+          "tracked": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer",
+                  "maximum": 1.0,
+                  "minimum": 0.0
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracked",
+            "description": "Optional, one per frame: 1 when ARKit tracked the face. Default all 1."
+          },
+          "moments_ms": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer",
+                  "maximum": 3600000.0,
+                  "minimum": 0.0
+                },
+                "type": "array",
+                "maxItems": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moments Ms",
+            "description": "Optional: times of marked pleasant moments, ms from the first frame."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rate_hz",
+          "channels",
+          "samples"
+        ],
+        "title": "FaceRawIn",
+        "description": "Raw ARKit frames from the front camera during the activity, when the\nperson allowed it. The phone computes nothing: the server derives the face\nsummary (docs/face-raw.md). Numbers only: blend-shape coefficients 0 to 1\nand head angles in degrees. No image, no video, no mesh, no identifiers.",
+        "examples": [
+          {
+            "channels": [
+              "mouthSmileLeft",
+              "mouthSmileRight",
+              "eyeBlinkLeft",
+              "eyeBlinkRight",
+              "headPitch",
+              "headYaw",
+              "headRoll"
+            ],
+            "moments_ms": [
+              40
+            ],
+            "rate_hz": 30,
+            "samples": [
+              [
+                0.04,
+                0.05,
+                0.08,
+                0.07,
+                6.2,
+                -1.4,
+                0.8
+              ],
+              [
+                0.05,
+                0.05,
+                0.09,
+                0.08,
+                6.1,
+                -1.3,
+                0.8
+              ],
+              [
+                0.31,
+                0.29,
+                0.07,
+                0.07,
+                6.0,
+                -1.3,
+                0.9
+              ]
+            ],
+            "tracked": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      "FaceRawOut": {
+        "properties": {
+          "activity_id": {
+            "type": "string",
+            "title": "Activity Id"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "focus",
+              "breathing"
+            ],
+            "title": "Type"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "received_at": {
+            "type": "string",
+            "title": "Received At"
+          },
+          "rate_hz": {
+            "type": "number",
+            "title": "Rate Hz"
+          },
+          "channels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Channels"
+          },
+          "samples": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Samples"
+          },
+          "tracked": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracked",
+            "description": "As sent; null means all frames tracked."
+          },
+          "moments_ms": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moments Ms"
+          },
+          "frames": {
+            "type": "integer",
+            "title": "Frames"
+          },
+          "channel_count": {
+            "type": "integer",
+            "title": "Channel Count"
+          },
+          "tracked_frames": {
+            "type": "integer",
+            "title": "Tracked Frames"
+          }
+        },
+        "type": "object",
+        "required": [
+          "activity_id",
+          "type",
+          "started_at",
+          "received_at",
+          "rate_hz",
+          "channels",
+          "samples",
+          "tracked",
+          "moments_ms",
+          "frames",
+          "channel_count",
+          "tracked_frames"
+        ],
+        "title": "FaceRawOut",
+        "description": "The stored raw frames of one activity, as the phone sent them, for\nresearch download. Numbers only."
+      },
       "FaceSummary": {
         "properties": {
           "smile_rate_per_min": {
@@ -4876,7 +5348,19 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "A summary the phone computed. Prefer face_raw: the server computes the summary."
+          },
+          "face_raw": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FaceRawIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Raw ARKit frames; the server computes the face summary. Not with face."
           }
         },
         "additionalProperties": false,
@@ -5559,6 +6043,40 @@
           "ratings"
         ],
         "title": "RatingsOut"
+      },
+      "RecomputeFaceIn": {
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+            "title": "Patient Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "patient_id"
+        ],
+        "title": "RecomputeFaceIn"
+      },
+      "RecomputeFaceOut": {
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "title": "Patient Id"
+          },
+          "recomputed": {
+            "type": "integer",
+            "title": "Recomputed",
+            "description": "Raw sessions whose face summary was computed again."
+          }
+        },
+        "type": "object",
+        "required": [
+          "patient_id",
+          "recomputed"
+        ],
+        "title": "RecomputeFaceOut"
       },
       "Rejected": {
         "properties": {

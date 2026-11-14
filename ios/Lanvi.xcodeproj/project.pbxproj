@@ -7,41 +7,131 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		053EBA860422BF2F170DD9E5 /* APIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D93B9957583CC3DB996A3C8 /* APIModels.swift */; };
+		09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB97273333C0DBAE7FC11418 /* FocusEngine.swift */; };
 		14D52ABE9497798035286052 /* LanviArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B5136458E518ED70EBBEF0 /* LanviArt.swift */; };
+		151BF5444E01D40CF03FB960 /* ChatLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84158FA0F8C7B4E9A416B47C /* ChatLink.swift */; };
+		1D2F0537C7AAB50875AA6F3B /* ActivityRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F685787902006429E41D5A7 /* ActivityRouter.swift */; };
 		20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CA1C956F7514A490E2C77E /* Theme.swift */; };
+		2A64688C8640CBD20F6751CE /* Nunito-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */; };
+		378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */; };
 		43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856CB611495D91BE8B81E2D4 /* WelcomeView.swift */; };
+		45C0A7261327E95CF788718C /* FocusResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E369E41135184A2334A61A6 /* FocusResult.swift */; };
 		471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4534A11EF57C9E6ACC5030B /* HomeView.swift */; };
 		4ABAE2E43A171B3B8395BD70 /* LanviMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2CF64DD8486227CA2F2DC5B /* LanviMotion.swift */; };
 		4B8E994B97B8B69A57E5C727 /* LanviPuppet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8863592B90900967DE7CA797 /* LanviPuppet.swift */; };
+		5049EED66C9F32131E68F66D /* HomeSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 166A2EF8FECA301AACE53B2A /* HomeSheets.swift */; };
+		51DD8A76B382F693BF1DE2B8 /* TokenKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 561A37AABE894380B546DE42 /* TokenKeychain.swift */; };
+		52849D842800BB2FC9D57F97 /* CheckinParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */; };
+		5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */; };
+		70C6A7B3EB4DC1265714772A /* CheckinModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C049B0C402500302F08D494 /* CheckinModels.swift */; };
+		7E44533D8B224A540E1246AA /* WhatHelpsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55866B9F718B556BABB20541 /* WhatHelpsView.swift */; };
 		83D94EC75E881A9964282D4B /* LanviFrameLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC85635871F0B51CDE8BF590 /* LanviFrameLog.swift */; };
+		85913E78D8BD74C9E1F25A7E /* CheckinView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E77620D747F3E1491FF87DCE /* CheckinView.swift */; };
+		922984AB73EB11C13340245F /* HomeParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607DA0BDB68AC9211EAADA43 /* HomeParts.swift */; };
+		942A29C36871C91B6C4230BA /* BreathePieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29013F2F7831D454F4237DF1 /* BreathePieces.swift */; };
+		966709A0031A479E6D292413 /* HomeMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */; };
 		A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */; };
+		A99C233C3D469D27695CFD77 /* Nunito-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 264F14E3AC63B96BC18A9088 /* Nunito-Bold.ttf */; };
 		AF042D25043E7247AD53A177 /* LanviRig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 743C0B865552B2E8824FA20B /* LanviRig.swift */; };
 		B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA73738285D12F12C9ADB24B /* Chunky.swift */; };
+		B366EDE9B773EEA90854B56A /* HomeChatScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */; };
+		B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B8C888729DE19EB41449A4 /* HomeOverlays.swift */; };
+		B50D10905664FAEB774A40AE /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 883989149D83098DC4D7155A /* AppStore.swift */; };
+		B6A861C26917D5B2F511CE9C /* BreatheResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B1F65C7973CFFB5D41825 /* BreatheResult.swift */; };
+		C8EBD236C0121CE58A89C106 /* DemoBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575A49BAC44D679FBA763541 /* DemoBackend.swift */; };
+		D8C2589303E6EFD2CBBF8440 /* FocusArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 974C2744C4CA94D5857C75A3 /* FocusArt.swift */; };
+		DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8451A836E61C66138838EE /* PaintedWorld.swift */; };
+		DD756509C515F4C1509219AD /* HomeMindScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252A074008D2696F20B23913 /* HomeMindScreen.swift */; };
 		DDD5D6ED52809D10373598F9 /* SkyScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A53ADD818B703E6EC089EFE /* SkyScene.swift */; };
 		E2EA7F75523F7FE49830A106 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */; };
+		EDAB3E53B21FBF2A45578C8D /* LanviClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */; };
+		EEDB19C869011580DA5780AC /* BreatheView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E9EB5764D665F8A8B7399B /* BreatheView.swift */; };
+		EF19B31CB4510B47533E7D06 /* Nunito-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B4817EE878DEB9396B0E72CB /* Nunito-ExtraBold.ttf */; };
 		F143A28682E5808FBAD2EB81 /* LanviPuppetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E91BDD22A3D7AF3A6B1F654 /* LanviPuppetPreview.swift */; };
+		F290EE901462103738396F40 /* Nunito-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */; };
 		F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */; };
+		F735D4D61BE5160191678CB8 /* ActivityOutbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A2759DCEF87679E894DADAF /* ActivityOutbox.swift */; };
+		F969A651BB389BD4688E0C75 /* Nunito-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D3C73568A4E2AF330F3A6A0E /* Nunito-SemiBold.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Black.ttf"; sourceTree = "<group>"; };
+		0E369E41135184A2334A61A6 /* FocusResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusResult.swift; sourceTree = "<group>"; };
 		11CA1C956F7514A490E2C77E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		15B8C888729DE19EB41449A4 /* HomeOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOverlays.swift; sourceTree = "<group>"; };
+		166A2EF8FECA301AACE53B2A /* HomeSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSheets.swift; sourceTree = "<group>"; };
+		1C049B0C402500302F08D494 /* CheckinModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinModels.swift; sourceTree = "<group>"; };
 		248059A5DA624F501FEE521B /* Lanvi.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lanvi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		252A074008D2696F20B23913 /* HomeMindScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMindScreen.swift; sourceTree = "<group>"; };
+		264F14E3AC63B96BC18A9088 /* Nunito-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Bold.ttf"; sourceTree = "<group>"; };
+		29013F2F7831D454F4237DF1 /* BreathePieces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreathePieces.swift; sourceTree = "<group>"; };
+		455B1F65C7973CFFB5D41825 /* BreatheResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheResult.swift; sourceTree = "<group>"; };
+		4A2759DCEF87679E894DADAF /* ActivityOutbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityOutbox.swift; sourceTree = "<group>"; };
+		55866B9F718B556BABB20541 /* WhatHelpsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatHelpsView.swift; sourceTree = "<group>"; };
+		561A37AABE894380B546DE42 /* TokenKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenKeychain.swift; sourceTree = "<group>"; };
+		575A49BAC44D679FBA763541 /* DemoBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoBackend.swift; sourceTree = "<group>"; };
 		590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviApp.swift; sourceTree = "<group>"; };
+		5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviClient.swift; sourceTree = "<group>"; };
 		5E91BDD22A3D7AF3A6B1F654 /* LanviPuppetPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviPuppetPreview.swift; sourceTree = "<group>"; };
+		60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Nunito-OFL.txt"; sourceTree = "<group>"; };
+		607DA0BDB68AC9211EAADA43 /* HomeParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeParts.swift; sourceTree = "<group>"; };
 		743C0B865552B2E8824FA20B /* LanviRig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviRig.swift; sourceTree = "<group>"; };
+		7726B251A5F3DA944BA275A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfig.swift; sourceTree = "<group>"; };
+		7D93B9957583CC3DB996A3C8 /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
+		84158FA0F8C7B4E9A416B47C /* ChatLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatLink.swift; sourceTree = "<group>"; };
+		84FCE02422EF7AD37B7EF8F0 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		856CB611495D91BE8B81E2D4 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		883989149D83098DC4D7155A /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
 		8863592B90900967DE7CA797 /* LanviPuppet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviPuppet.swift; sourceTree = "<group>"; };
+		8F685787902006429E41D5A7 /* ActivityRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityRouter.swift; sourceTree = "<group>"; };
 		96B5136458E518ED70EBBEF0 /* LanviArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviArt.swift; sourceTree = "<group>"; };
+		974C2744C4CA94D5857C75A3 /* FocusArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusArt.swift; sourceTree = "<group>"; };
+		98E9EB5764D665F8A8B7399B /* BreatheView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheView.swift; sourceTree = "<group>"; };
 		9A53ADD818B703E6EC089EFE /* SkyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyScene.swift; sourceTree = "<group>"; };
 		B2CF64DD8486227CA2F2DC5B /* LanviMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviMotion.swift; sourceTree = "<group>"; };
+		B4817EE878DEB9396B0E72CB /* Nunito-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraBold.ttf"; sourceTree = "<group>"; };
 		BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviView.swift; sourceTree = "<group>"; };
 		CA73738285D12F12C9ADB24B /* Chunky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chunky.swift; sourceTree = "<group>"; };
+		CB97273333C0DBAE7FC11418 /* FocusEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusEngine.swift; sourceTree = "<group>"; };
+		CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinParts.swift; sourceTree = "<group>"; };
+		CD8451A836E61C66138838EE /* PaintedWorld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintedWorld.swift; sourceTree = "<group>"; };
+		D3C73568A4E2AF330F3A6A0E /* Nunito-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-SemiBold.ttf"; sourceTree = "<group>"; };
+		DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMoments.swift; sourceTree = "<group>"; };
 		E4534A11EF57C9E6ACC5030B /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		E77620D747F3E1491FF87DCE /* CheckinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinView.swift; sourceTree = "<group>"; };
 		EC85635871F0B51CDE8BF590 /* LanviFrameLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviFrameLog.swift; sourceTree = "<group>"; };
 		EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeChatScreen.swift; sourceTree = "<group>"; };
+		F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusGameView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		0D7E93C8CF5FB597A3B43917 /* Breathe */ = {
+			isa = PBXGroup;
+			children = (
+				29013F2F7831D454F4237DF1 /* BreathePieces.swift */,
+				455B1F65C7973CFFB5D41825 /* BreatheResult.swift */,
+				98E9EB5764D665F8A8B7399B /* BreatheView.swift */,
+			);
+			path = Breathe;
+			sourceTree = "<group>";
+		};
+		3117C03181DB791606EFF3AD /* Net */ = {
+			isa = PBXGroup;
+			children = (
+				4A2759DCEF87679E894DADAF /* ActivityOutbox.swift */,
+				7D93B9957583CC3DB996A3C8 /* APIModels.swift */,
+				84158FA0F8C7B4E9A416B47C /* ChatLink.swift */,
+				575A49BAC44D679FBA763541 /* DemoBackend.swift */,
+				5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */,
+				7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */,
+				561A37AABE894380B546DE42 /* TokenKeychain.swift */,
+			);
+			path = Net;
+			sourceTree = "<group>";
+		};
 		34E5733CDBCA97363404C909 /* Mascot */ = {
 			isa = PBXGroup;
 			children = (
@@ -70,10 +160,14 @@
 			isa = PBXGroup;
 			children = (
 				EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */,
+				7726B251A5F3DA944BA275A6 /* Info.plist */,
 				4F606C670065BC511016C9E0 /* App */,
 				36B552B215523292A0F4EB76 /* Design */,
+				BAEB71A27059AB4B724A6A48 /* Fonts */,
 				34E5733CDBCA97363404C909 /* Mascot */,
+				3117C03181DB791606EFF3AD /* Net */,
 				F0A030A22324AB7E17D462AE /* Screens */,
+				D5318346F329C50845551088 /* State */,
 			);
 			path = Lanvi;
 			sourceTree = "<group>";
@@ -89,6 +183,7 @@
 		3FDFC24BB2362B33AAB64101 = {
 			isa = PBXGroup;
 			children = (
+				9710B256CE97B28519162F9F /* ios */,
 				3F0EBB194C53EDDC4A2C5862 /* Lanvi */,
 				3FC900789D97517605FE2E00 /* Products */,
 			);
@@ -102,11 +197,81 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		9710B256CE97B28519162F9F /* ios */ = {
+			isa = PBXGroup;
+			children = (
+				84FCE02422EF7AD37B7EF8F0 /* Base.xcconfig */,
+			);
+			name = ios;
+			path = .;
+			sourceTree = "<group>";
+		};
+		BAEB71A27059AB4B724A6A48 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */,
+				264F14E3AC63B96BC18A9088 /* Nunito-Bold.ttf */,
+				B4817EE878DEB9396B0E72CB /* Nunito-ExtraBold.ttf */,
+				60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */,
+				D3C73568A4E2AF330F3A6A0E /* Nunito-SemiBold.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		D1A262F183C53F9B7602400F /* Checkin */ = {
+			isa = PBXGroup;
+			children = (
+				1C049B0C402500302F08D494 /* CheckinModels.swift */,
+				CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */,
+				E77620D747F3E1491FF87DCE /* CheckinView.swift */,
+			);
+			path = Checkin;
+			sourceTree = "<group>";
+		};
+		D5318346F329C50845551088 /* State */ = {
+			isa = PBXGroup;
+			children = (
+				883989149D83098DC4D7155A /* AppStore.swift */,
+			);
+			path = State;
+			sourceTree = "<group>";
+		};
+		DD50134CD3D249E677BC4BC0 /* Focus */ = {
+			isa = PBXGroup;
+			children = (
+				974C2744C4CA94D5857C75A3 /* FocusArt.swift */,
+				CB97273333C0DBAE7FC11418 /* FocusEngine.swift */,
+				F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */,
+				0E369E41135184A2334A61A6 /* FocusResult.swift */,
+			);
+			path = Focus;
+			sourceTree = "<group>";
+		};
+		E4073053305CA28D4D60131E /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */,
+				252A074008D2696F20B23913 /* HomeMindScreen.swift */,
+				DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */,
+				15B8C888729DE19EB41449A4 /* HomeOverlays.swift */,
+				607DA0BDB68AC9211EAADA43 /* HomeParts.swift */,
+				166A2EF8FECA301AACE53B2A /* HomeSheets.swift */,
+				CD8451A836E61C66138838EE /* PaintedWorld.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
 		F0A030A22324AB7E17D462AE /* Screens */ = {
 			isa = PBXGroup;
 			children = (
+				8F685787902006429E41D5A7 /* ActivityRouter.swift */,
 				E4534A11EF57C9E6ACC5030B /* HomeView.swift */,
 				856CB611495D91BE8B81E2D4 /* WelcomeView.swift */,
+				55866B9F718B556BABB20541 /* WhatHelpsView.swift */,
+				0D7E93C8CF5FB597A3B43917 /* Breathe */,
+				D1A262F183C53F9B7602400F /* Checkin */,
+				DD50134CD3D249E677BC4BC0 /* Focus */,
+				E4073053305CA28D4D60131E /* Home */,
 			);
 			path = Screens;
 			sourceTree = "<group>";
@@ -168,6 +333,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				E2EA7F75523F7FE49830A106 /* Assets.xcassets in Resources */,
+				F290EE901462103738396F40 /* Nunito-Black.ttf in Resources */,
+				A99C233C3D469D27695CFD77 /* Nunito-Bold.ttf in Resources */,
+				EF19B31CB4510B47533E7D06 /* Nunito-ExtraBold.ttf in Resources */,
+				2A64688C8640CBD20F6751CE /* Nunito-OFL.txt in Resources */,
+				F969A651BB389BD4688E0C75 /* Nunito-SemiBold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -178,19 +348,46 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				053EBA860422BF2F170DD9E5 /* APIModels.swift in Sources */,
+				F735D4D61BE5160191678CB8 /* ActivityOutbox.swift in Sources */,
+				1D2F0537C7AAB50875AA6F3B /* ActivityRouter.swift in Sources */,
+				B50D10905664FAEB774A40AE /* AppStore.swift in Sources */,
+				942A29C36871C91B6C4230BA /* BreathePieces.swift in Sources */,
+				B6A861C26917D5B2F511CE9C /* BreatheResult.swift in Sources */,
+				EEDB19C869011580DA5780AC /* BreatheView.swift in Sources */,
+				151BF5444E01D40CF03FB960 /* ChatLink.swift in Sources */,
+				70C6A7B3EB4DC1265714772A /* CheckinModels.swift in Sources */,
+				52849D842800BB2FC9D57F97 /* CheckinParts.swift in Sources */,
+				85913E78D8BD74C9E1F25A7E /* CheckinView.swift in Sources */,
 				B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */,
+				C8EBD236C0121CE58A89C106 /* DemoBackend.swift in Sources */,
+				D8C2589303E6EFD2CBBF8440 /* FocusArt.swift in Sources */,
+				09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */,
+				5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */,
+				45C0A7261327E95CF788718C /* FocusResult.swift in Sources */,
+				B366EDE9B773EEA90854B56A /* HomeChatScreen.swift in Sources */,
+				DD756509C515F4C1509219AD /* HomeMindScreen.swift in Sources */,
+				966709A0031A479E6D292413 /* HomeMoments.swift in Sources */,
+				B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */,
+				922984AB73EB11C13340245F /* HomeParts.swift in Sources */,
+				5049EED66C9F32131E68F66D /* HomeSheets.swift in Sources */,
 				471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */,
 				A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */,
 				14D52ABE9497798035286052 /* LanviArt.swift in Sources */,
+				EDAB3E53B21FBF2A45578C8D /* LanviClient.swift in Sources */,
 				83D94EC75E881A9964282D4B /* LanviFrameLog.swift in Sources */,
 				4ABAE2E43A171B3B8395BD70 /* LanviMotion.swift in Sources */,
 				4B8E994B97B8B69A57E5C727 /* LanviPuppet.swift in Sources */,
 				F143A28682E5808FBAD2EB81 /* LanviPuppetPreview.swift in Sources */,
 				AF042D25043E7247AD53A177 /* LanviRig.swift in Sources */,
 				F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */,
+				DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */,
+				378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */,
 				DDD5D6ED52809D10373598F9 /* SkyScene.swift in Sources */,
 				20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */,
+				51DD8A76B382F693BF1DE2B8 /* TokenKeychain.swift in Sources */,
 				43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */,
+				7E44533D8B224A540E1246AA /* WhatHelpsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -199,6 +396,7 @@
 /* Begin XCBuildConfiguration section */
 		508D4D4C556DB56F8EACAA50 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 84FCE02422EF7AD37B7EF8F0 /* Base.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -260,6 +458,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Lanvi/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Lanvi;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -279,6 +478,7 @@
 		};
 		922970F5DEBD0601D8E41D52 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 84FCE02422EF7AD37B7EF8F0 /* Base.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -347,6 +547,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Lanvi/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Lanvi;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

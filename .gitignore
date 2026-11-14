@@ -29,3 +29,7 @@ DerivedData/
 
 # iCloud conflict copies ("name 2.ext")
 * 2.*
+
+# iOS: local server address and pairing code, and local build folder
+ios/Config.xcconfig
+build/
