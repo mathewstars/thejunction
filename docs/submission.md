@@ -12,7 +12,7 @@ The platform does not read this file. After a change here, the same change has t
 |---|---|---|
 | Project name | 30 characters | Lanvi |
 | Punchline | 200 characters | See below (181 characters) |
-| Description | 5,000 characters | See below (4,990 characters) |
+| Description | 5,000 characters | See below (4,998 characters) |
 | Challenge | one | Aalto University, Beyond the Clinic |
 | Tech challenge | any number | Google DeepMind, Best Use of Gemini API |
 | Project demo | link | https://lanvi.app/demo (no login, read only; https://lanvi.app itself needs a login, which is no longer published) |
@@ -48,19 +48,21 @@ The clinic hears before the next appointment, in two ways. When someone drifts f
 
 WOULD SOMEONE RECOVERING FROM DEPRESSION USE IT EVERY DAY?
 
-One thing a day, ninety seconds or less: a game, a minute of breathing together, three good things in the evening. No score, no streak, nothing to set up, and a bad day costs nothing. After a week away the fox says "I kept the light on for you." The camera is optional and everything works without it.
+One thing a day, 90 seconds or less: a game, a minute of breathing together, three good things in the evening. No score, no streak, nothing to set up, and a bad day costs nothing. After a week away the fox says "I kept the light on for you." The camera is optional.
 
 SMART SENSING: WHAT THE PHONE MEASURES
 
-During the game and the breathing, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. Gemini gets a reduced stream of numbers, no name or date, with consent (that screen is not built yet). The server computes 18 measures: smiles and whether they reach the eyes, blinks, gaze, brows, how much the face moves at all. The game, Revontulet, borrows from published tasks, far shorter than the originals: an easy or a hard shot (effort for reward), a traced half circle (drawing speed), reaction to embers, slow strokes over the sleeping fox (swipe speed). Steps and walking speed come from Apple Health. Each number is compared only with the person's own earlier days.
+During the game and the breathing, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. Gemini gets a reduced stream of numbers, no name or date, with consent (that screen is not built yet). The server computes 18 measures: smiles and whether they reach the eyes, blinks, gaze, how much the face moves at all. The game, Revontulet, borrows from published tasks, far shorter than the originals: an easy or a hard shot (effort for reward), a traced half circle (drawing speed), reaction to embers, slow strokes over the sleeping fox (swipe speed). Steps and walking speed come from Apple Health. Each number is compared only with the person's own earlier days.
 
-Two readers go through each face session: a fixed rule in code, and Gemini, whose every reported smile is checked against the numbers. On ten hard sessions we generated, with talking and a moving phone and smiles planted at known places, the fixed rule found 20 of 28 clear smiles and none of 13 faint ones. A simple rule relative to the person's own rest found all but also reported 22 things that were not smiles. Gemini found all 41 and nothing else. Gemini had been told what talking looks like; the rule had not. Generated data is cleaner than a face; step one of the study repeats this on real recordings.
+On real people: in the public Depresjon recordings (wrist movement, 23 depressed patients, 32 controls) patients moved about a third less, and a short-history version of our movement rule flagged none of 27 controls. They are too short for the full rule.
 
-We fixed 24 hypotheses before any data (three redefined when the game changed). For each person the server relates every measure to their PHQ-9 with a rank correlation, a permutation test and a correction for many measures. For an example whose score stayed stable, it says: too little change to tell.
+Two readers go through each face session: a fixed rule in code, and Gemini, whose every reported smile is checked against the numbers. On ten hard generated sessions, with talking, a moving phone and smiles planted at known places, the fixed rule found 20 of 28 clear smiles and none of 13 faint ones. A simple rule relative to the person's own rest found all but also reported 22 things that were not smiles. Gemini found all 41 and nothing else. Gemini had been told what talking looks like; the rule had not. Generated data is cleaner than a face; step one of the study repeats this on real recordings.
+
+We fixed 24 hypotheses before any data (three redefined when the game changed). For each person the server relates every measure to their PHQ-9 with a rank correlation, a permutation test and a correction for many measures.
 
 THE MIND, AND HOW WE TESTED IT
 
-Plain rules we can explain notice a change and raise a flag. Two models weigh it: a small one on the clinic's own hardware sets how soon someone should look, and Gemini, as second reader, agrees, raises or lowers one step. Code guards both: help is always urgent, no model can lower what the rules call "needs review today", and the rules stand when no model answers. A clinician can add a rule for one person in plain words.
+Plain rules we can explain notice a change and raise a flag. Two models weigh it: a small one on the clinic's own hardware sets how soon someone should look, and Gemini agrees, raises or lowers one step. Code guards both: help is always urgent, no model can lower what the rules call "needs review today", and the rules stand when no model answers. A clinician can add a rule for one person in plain words.
 
 On 40 generated cases read by the real models, each as it is, again, strictly worse, and with a clinic rule:
 Worse never meant lower: 0 of 107 flags.
@@ -79,8 +81,6 @@ WHAT IS REAL AND WHAT IS NOT
 A weekend prototype. Live: the server, the clinician page, both models, the alert; one team member's iPhone sent real games, face numbers and Apple Health days through the whole path. The other people on the page are generated examples. Nothing is tested with patients and nothing here shows these measures follow depression. That is the study we want to run with Aalto: 20 to 30 people after TMS, twelve weeks, each compared only with themselves.
 
 The research and the mind in depth: lanvi.app/demo#/blueprint.
-
-Built with Swift, SwiftUI, ARKit, HealthKit, Python, FastAPI, a local open model and the Gemini API.
 ```
 
 ## Rules for the wording
