@@ -17,16 +17,16 @@ The platform does not read this file. After a change here, the same change has t
 | Tech challenge | any number | Google DeepMind, Best Use of Gemini API |
 | Project demo | link | https://lanvi.app |
 | Source code | link | https://github.com/mathewstars/thejunction |
-| Video | public link, at most 2:00 | missing |
+| Video | public link, at most 2:00 | the film is ready (1:49); the link is missing until it is uploaded |
 | Other link | link | empty |
-| Presentation | PDF or slides, at most 20 MB | missing |
+| Presentation | PDF or slides, at most 20 MB | deck ready as a PDF (8 slides, 1.1 MB); not uploaded yet |
 
 Still to do before Sunday 10:00:
 
 - The video. At most 2:00, and they are strict about it. Aim for 1:50. It must be public, for example on YouTube.
 - The pitch deck as a PDF.
 - The description below is the one version. "What is real and what is not" was filled in on Saturday evening from the server side. Still to check with Peter before the final submission: that the phone build really sends Apple Health days and the face numbers from a real iPhone, since the description says so.
-- The team is still named "coderama" on the platform's Team page. That is the name of an existing company; rename it.
+- Team name on the platform stays "coderama" (Matej's decision, 15 Nov); the project name is Lanvi.
 - Check the Gemini tech challenge is still true: it stays only if Gemini really runs in the demo.
 
 ## Punchline
