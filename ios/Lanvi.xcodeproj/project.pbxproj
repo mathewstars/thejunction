@@ -21,19 +21,24 @@
 		246F5298B66DEE487E49BD3E /* Harness.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; };
 		2A64688C8640CBD20F6751CE /* Nunito-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */; };
 		378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */; };
+		3CC1F58056F91770D13441AE /* LanviClipPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = E96038024D45EFD23EA3C437 /* LanviClipPreview.swift */; };
 		3F11B1A55A50095524067A63 /* HealthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7415116ED3C0D377127D698 /* HealthTests.swift */; };
 		42388E6A19E9972BFD34235B /* FaceRawTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9880ABDFC5EF111BB77915E2 /* FaceRawTests.swift */; };
 		43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856CB611495D91BE8B81E2D4 /* WelcomeView.swift */; };
 		45C0A7261327E95CF788718C /* FocusResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E369E41135184A2334A61A6 /* FocusResult.swift */; };
+		4696588ABF5B1A769D9B3F20 /* fox-look.mov in Resources */ = {isa = PBXBuildFile; fileRef = EF414236FA35E80AFC8D38A3 /* fox-look.mov */; };
 		471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4534A11EF57C9E6ACC5030B /* HomeView.swift */; };
+		478310D189E92E96C4F14FD9 /* FoxClipDirector.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCA79E0987357478F2B9F790 /* FoxClipDirector.swift */; };
 		4ABAE2E43A171B3B8395BD70 /* LanviMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2CF64DD8486227CA2F2DC5B /* LanviMotion.swift */; };
 		4B8E994B97B8B69A57E5C727 /* LanviPuppet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8863592B90900967DE7CA797 /* LanviPuppet.swift */; };
 		5049EED66C9F32131E68F66D /* HomeSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 166A2EF8FECA301AACE53B2A /* HomeSheets.swift */; };
 		51DD8A76B382F693BF1DE2B8 /* TokenKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 561A37AABE894380B546DE42 /* TokenKeychain.swift */; };
 		52849D842800BB2FC9D57F97 /* CheckinParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */; };
 		5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */; };
+		5F858BFF723D82571F69429B /* FoxClipArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE64AB9C43078B56A25FE4D7 /* FoxClipArt.swift */; };
 		63F055804A5075D00F92CCF8 /* FaceSense.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0FB8AE15346D15FAA5BA3AF /* FaceSense.swift */; };
 		65D2DC99CA91B8EF96FAEC64 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC334EE89ADCF793E4BC0D9B /* SharedModels.swift */; };
+		6ECA2ED8B79067B680AC2FFD /* fox-idle.mov in Resources */ = {isa = PBXBuildFile; fileRef = 7B328106B159B46D1C747F55 /* fox-idle.mov */; };
 		70C6A7B3EB4DC1265714772A /* CheckinModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C049B0C402500302F08D494 /* CheckinModels.swift */; };
 		7E44533D8B224A540E1246AA /* WhatHelpsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55866B9F718B556BABB20541 /* WhatHelpsView.swift */; };
 		801BB5516A9A840A6B6373FC /* HealthSummaryBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D140086C7FF38F31C3EE8E /* HealthSummaryBuilder.swift */; };
@@ -42,6 +47,7 @@
 		85913E78D8BD74C9E1F25A7E /* CheckinView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E77620D747F3E1491FF87DCE /* CheckinView.swift */; };
 		86FA2AE12B3177708A7A23B2 /* HealthDays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BE5BB327EC6AAE2BE8CF146 /* HealthDays.swift */; };
 		922984AB73EB11C13340245F /* HomeParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607DA0BDB68AC9211EAADA43 /* HomeParts.swift */; };
+		935708F22A01DB7BFD9524D6 /* FoxClip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3630CD76447F82E1AE6DE650 /* FoxClip.swift */; };
 		942A29C36871C91B6C4230BA /* BreathePieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29013F2F7831D454F4237DF1 /* BreathePieces.swift */; };
 		96313F278A5FBE5EEE2B2790 /* FrameMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */; };
 		966709A0031A479E6D292413 /* HomeMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */; };
@@ -68,6 +74,7 @@
 		DBE064B344FE5E0C63C77FB2 /* SenseViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61DEB6AEE62EA63867535515 /* SenseViews.swift */; };
 		DD756509C515F4C1509219AD /* HomeMindScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252A074008D2696F20B23913 /* HomeMindScreen.swift */; };
 		DDD5D6ED52809D10373598F9 /* SkyScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A53ADD818B703E6EC089EFE /* SkyScene.swift */; };
+		DF75B7FF7E5041F6EDBB9A94 /* fox-happy.mov in Resources */ = {isa = PBXBuildFile; fileRef = 725F4BCC9AB351DF23429E11 /* fox-happy.mov */; };
 		E044BA2BBFDCB474374856BB /* HealthTypeCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1CB7C86C24141AF8D7F012 /* HealthTypeCatalog.swift */; };
 		E2E8D980A111E7995312B471 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5278EF530C0374EA70D2B2B /* HealthKitManager.swift */; };
 		E2EA7F75523F7FE49830A106 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */; };
@@ -75,6 +82,7 @@
 		EDAB3E53B21FBF2A45578C8D /* LanviClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */; };
 		EEDB19C869011580DA5780AC /* BreatheView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E9EB5764D665F8A8B7399B /* BreatheView.swift */; };
 		EF19B31CB4510B47533E7D06 /* Nunito-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B4817EE878DEB9396B0E72CB /* Nunito-ExtraBold.ttf */; };
+		F02B0D9660E6C5E5A115D5E1 /* LanviClipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DC8906D0A14B8C2D8D0EE0D /* LanviClipView.swift */; };
 		F143A28682E5808FBAD2EB81 /* LanviPuppetPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E91BDD22A3D7AF3A6B1F654 /* LanviPuppetPreview.swift */; };
 		F290EE901462103738396F40 /* Nunito-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */; };
 		F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */; };
@@ -143,7 +151,9 @@
 		264F14E3AC63B96BC18A9088 /* Nunito-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Bold.ttf"; sourceTree = "<group>"; };
 		272A9EA4CC647F200AE95283 /* FaceRawRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceRawRecorder.swift; sourceTree = "<group>"; };
 		29013F2F7831D454F4237DF1 /* BreathePieces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreathePieces.swift; sourceTree = "<group>"; };
+		3630CD76447F82E1AE6DE650 /* FoxClip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoxClip.swift; sourceTree = "<group>"; };
 		39D140086C7FF38F31C3EE8E /* HealthSummaryBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSummaryBuilder.swift; sourceTree = "<group>"; };
+		3DC8906D0A14B8C2D8D0EE0D /* LanviClipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviClipView.swift; sourceTree = "<group>"; };
 		455B1F65C7973CFFB5D41825 /* BreatheResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheResult.swift; sourceTree = "<group>"; };
 		47EB2CBCF8B846132146AC4C /* Harness.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Harness.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A2759DCEF87679E894DADAF /* ActivityOutbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityOutbox.swift; sourceTree = "<group>"; };
@@ -160,8 +170,10 @@
 		61DEB6AEE62EA63867535515 /* SenseViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenseViews.swift; sourceTree = "<group>"; };
 		63DA8488EFBF26C7B0DF5DCB /* HealthSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSync.swift; sourceTree = "<group>"; };
 		66066ACFCC6856BAFA1A7DED /* SenseRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenseRoot.swift; sourceTree = "<group>"; };
+		725F4BCC9AB351DF23429E11 /* fox-happy.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = "fox-happy.mov"; sourceTree = "<group>"; };
 		743C0B865552B2E8824FA20B /* LanviRig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviRig.swift; sourceTree = "<group>"; };
 		7726B251A5F3DA944BA275A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		7B328106B159B46D1C747F55 /* fox-idle.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = "fox-idle.mov"; sourceTree = "<group>"; };
 		7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfig.swift; sourceTree = "<group>"; };
 		7D93B9957583CC3DB996A3C8 /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
 		84158FA0F8C7B4E9A416B47C /* ChatLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatLink.swift; sourceTree = "<group>"; };
@@ -193,18 +205,22 @@
 		CC334EE89ADCF793E4BC0D9B /* SharedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
 		CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinParts.swift; sourceTree = "<group>"; };
 		CD8451A836E61C66138838EE /* PaintedWorld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintedWorld.swift; sourceTree = "<group>"; };
+		CE64AB9C43078B56A25FE4D7 /* FoxClipArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoxClipArt.swift; sourceTree = "<group>"; };
 		D3C73568A4E2AF330F3A6A0E /* Nunito-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-SemiBold.ttf"; sourceTree = "<group>"; };
 		D60D7109047F207FBF71FBE2 /* LanviFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviFlowUITests.swift; sourceTree = "<group>"; };
 		DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMoments.swift; sourceTree = "<group>"; };
 		E4534A11EF57C9E6ACC5030B /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		E77620D747F3E1491FF87DCE /* CheckinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinView.swift; sourceTree = "<group>"; };
+		E96038024D45EFD23EA3C437 /* LanviClipPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviClipPreview.swift; sourceTree = "<group>"; };
 		EC85635871F0B51CDE8BF590 /* LanviFrameLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviFrameLog.swift; sourceTree = "<group>"; };
 		EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		EF414236FA35E80AFC8D38A3 /* fox-look.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = "fox-look.mov"; sourceTree = "<group>"; };
 		F06C37D8A2F572DC15C68D65 /* FileExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileExport.swift; sourceTree = "<group>"; };
 		F5278EF530C0374EA70D2B2B /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeChatScreen.swift; sourceTree = "<group>"; };
 		F7415116ED3C0D377127D698 /* HealthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthTests.swift; sourceTree = "<group>"; };
 		F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusGameView.swift; sourceTree = "<group>"; };
+		FCA79E0987357478F2B9F790 /* FoxClipDirector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoxClipDirector.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -286,6 +302,7 @@
 				5E91BDD22A3D7AF3A6B1F654 /* LanviPuppetPreview.swift */,
 				743C0B865552B2E8824FA20B /* LanviRig.swift */,
 				BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */,
+				77FCE6E1111B7C172EF9C8E4 /* Clips */,
 			);
 			path = Mascot;
 			sourceTree = "<group>";
@@ -349,6 +366,19 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		77FCE6E1111B7C172EF9C8E4 /* Clips */ = {
+			isa = PBXGroup;
+			children = (
+				3630CD76447F82E1AE6DE650 /* FoxClip.swift */,
+				CE64AB9C43078B56A25FE4D7 /* FoxClipArt.swift */,
+				FCA79E0987357478F2B9F790 /* FoxClipDirector.swift */,
+				E96038024D45EFD23EA3C437 /* LanviClipPreview.swift */,
+				3DC8906D0A14B8C2D8D0EE0D /* LanviClipView.swift */,
+				CAB6CDB98A982C64007F9B49 /* Media */,
+			);
+			path = Clips;
+			sourceTree = "<group>";
+		};
 		8AE6FF46D0E450DC82377D45 /* Sense */ = {
 			isa = PBXGroup;
 			children = (
@@ -391,6 +421,16 @@
 				D60D7109047F207FBF71FBE2 /* LanviFlowUITests.swift */,
 			);
 			path = LanviUITests;
+			sourceTree = "<group>";
+		};
+		CAB6CDB98A982C64007F9B49 /* Media */ = {
+			isa = PBXGroup;
+			children = (
+				725F4BCC9AB351DF23429E11 /* fox-happy.mov */,
+				7B328106B159B46D1C747F55 /* fox-idle.mov */,
+				EF414236FA35E80AFC8D38A3 /* fox-look.mov */,
+			);
+			path = Media;
 			sourceTree = "<group>";
 		};
 		D1A262F183C53F9B7602400F /* Checkin */ = {
@@ -590,6 +630,9 @@
 				EF19B31CB4510B47533E7D06 /* Nunito-ExtraBold.ttf in Resources */,
 				2A64688C8640CBD20F6751CE /* Nunito-OFL.txt in Resources */,
 				F969A651BB389BD4688E0C75 /* Nunito-SemiBold.ttf in Resources */,
+				DF75B7FF7E5041F6EDBB9A94 /* fox-happy.mov in Resources */,
+				6ECA2ED8B79067B680AC2FFD /* fox-idle.mov in Resources */,
+				4696588ABF5B1A769D9B3F20 /* fox-look.mov in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -643,6 +686,9 @@
 				09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */,
 				5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */,
 				45C0A7261327E95CF788718C /* FocusResult.swift in Sources */,
+				935708F22A01DB7BFD9524D6 /* FoxClip.swift in Sources */,
+				5F858BFF723D82571F69429B /* FoxClipArt.swift in Sources */,
+				478310D189E92E96C4F14FD9 /* FoxClipDirector.swift in Sources */,
 				96313F278A5FBE5EEE2B2790 /* FrameMeter.swift in Sources */,
 				0CFF1ACB5D8BF4C22E1BCCBE /* GameMoments.swift in Sources */,
 				0288D785F813107D48C46B3A /* HarnessHealth.swift in Sources */,
@@ -659,6 +705,8 @@
 				A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */,
 				14D52ABE9497798035286052 /* LanviArt.swift in Sources */,
 				EDAB3E53B21FBF2A45578C8D /* LanviClient.swift in Sources */,
+				3CC1F58056F91770D13441AE /* LanviClipPreview.swift in Sources */,
+				F02B0D9660E6C5E5A115D5E1 /* LanviClipView.swift in Sources */,
 				83D94EC75E881A9964282D4B /* LanviFrameLog.swift in Sources */,
 				4ABAE2E43A171B3B8395BD70 /* LanviMotion.swift in Sources */,
 				4B8E994B97B8B69A57E5C727 /* LanviPuppet.swift in Sources */,
