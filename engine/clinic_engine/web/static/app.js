@@ -1321,16 +1321,16 @@
     ["Gemini, after code's check", "8 of 8", "8 of 8", "0 of 16"]];
   function bpGemini(wrap) {
     wrap.appendChild(el("p", { class: "lead" }, "Gemini is the second reader. It reads numbers that plain code has already read with fixed rules, and code then checks every single item Gemini reports. It sees no name, no date, no picture and none of the person's words. What it returns is shown to the clinician beside code's own reading; it never reaches the patient and never decides anything."));
-    const W = 960, H = 150, BW = 172, BH = 96, GAP = 25;
+    const W = 960, H = 150, BW = 176, BH = 96, GAP = 19;
     const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "bp", role: "img",
       "aria-label": "How a Gemini reading is made: numbers only, an input gate in code, Gemini, an output gate in code, then code checks each item before the clinician sees it." });
-    const boxes = [["1", "Numbers only", ["face movement per moment,", "or one row per day;", "rounded, no name or date"], "code"],
+    const boxes = [["1", "Numbers only", ["how a face moved, or", "one row per day;", "no name, no date"], "code"],
       ["2", "Input gate · code", ["a fixed list of allowed", "fields; checked again", "right before sending"], "code"],
       ["3", "Gemini reads", ["a fixed instruction,", "a fixed answer shape,", "nothing else"], "model"],
       ["4", "Output gate · code", ["the exact shape, or the", "whole answer is refused", "and logged"], "code"],
-      ["5", "Each item checked", ["same as code · Gemini", "only, in the numbers ·", "not in the numbers: dropped"], "code"]];
+      ["5", "Each item checked", ["same as code, or only", "Gemini's and confirmed", "in the numbers, or dropped"], "code"]];
     boxes.forEach(([n, t, lines, cls], i) => {
-      const x = 4 + i * (BW + GAP), y = 26;
+      const x = 2 + i * (BW + GAP), y = 26;
       s.appendChild(svg("rect", { x, y, width: BW, height: BH, rx: 10, class: "bp-box " + cls }));
       s.appendChild(svg("text", { x: x + 12, y: y + 24, class: "bp-t" }, n + "  " + t));
       lines.forEach((l, k) => s.appendChild(svg("text", { x: x + 12, y: y + 46 + k * 17, class: "bp-s" }, l)));
