@@ -220,6 +220,6 @@ private struct MindSmallButtonStyle: ButtonStyle {
             .offset(y: pressed ? 3 : 0)
             .background(shape.fill(filled ? Theme.brandEdge : Theme.line).offset(y: 3))
             .animation(LanviTiming.press, value: pressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: pressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: pressed) { wasDown, isDown in isDown && !wasDown }
     }
 }
