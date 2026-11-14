@@ -1,10 +1,10 @@
-# Lanvi submission film (v5): pictures cut to track5.m4a. Run: python3 build5.py
+# Lanvi submission film (v5): pictures cut to track6.m4a. Run: python3 build5.py
 import os, subprocess, json
 from PIL import Image, ImageDraw, ImageFont
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 OLD = ".."; F = "/System/Library/Fonts/Helvetica.ttc"; BGHEX = "0x0b131e"
 V = "-c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p -r 24 -an".split()
-os.system("rm -rf seg5"); os.makedirs("seg5")
+os.system("rm -rf seg6"); os.makedirs("seg6")
 def run(a): subprocess.run(["ffmpeg", "-loglevel", "error", "-nostdin", "-y"] + a, check=True)
 def dur_of(p): return float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", p], capture_output=True, text=True).stdout)
 def text_png(name, lines, bg=None, size=(1280, 720)):
@@ -18,6 +18,8 @@ INK, AMB, MUT, GLOW, DK = (243, 240, 234, 255), (240, 138, 28, 255), (157, 157, 
 text_png("cap_help.png", [("“I need help.”", 54, 560, (255, 255, 255, 255))])
 im_ = Image.new("RGBA", (1280, 720), (0, 0, 0, 0)); g_ = ImageDraw.Draw(im_); g_.text((34, 676), "The real app, simulator recording", font=ImageFont.truetype(F, 17), fill=MUT); im_.save("cap_app.png")
 text_png("tag_none.png", [])
+_t = Image.open(f"{OLD}/tag_gen.png").convert("RGBA"); _g = ImageDraw.Draw(_t); _f = ImageFont.truetype(F, 34); _s = "The next morning, her clinic calls."
+_w = _g.textlength(_s, font=_f); _g.text(((1280 - _w) / 2 + 2, 602), _s, font=_f, fill=(0, 0, 0, 220)); _g.text(((1280 - _w) / 2, 600), _s, font=_f, fill=(255, 255, 255, 255)); _t.save("tag_morning.png")
 text_png("c_yes.png", [("She said yes to one more thing.", 50, 292, INK), ("While she cares for him, the phone keeps count.", 30, 372, GLOW)])
 text_png("c_num.png", [("Numbers only. Never pictures.", 60, 286, INK), ("How far each part of the face moved, thirty times a second. No photo or video leaves the phone.", 22, 378, GLOW)], bg=(11, 19, 30, 150))
 text_png("c_gem.png", [("Gemini reads the raw numbers. Code checks its work.", 40, 150, INK),
@@ -62,8 +64,24 @@ def over(src, png, d, ss=0.0, speed=1.0):
     if ss + d * speed > L: speed = (L - ss) / d
     vf = f"[0:v]setpts=PTS/{speed},scale=1280:720,fps=24,eq=brightness=-0.22:saturation=0.8,gblur=sigma=3[b];[b][1:v]overlay=0:0[w];[w][2:v]overlay=0:0[v]"
     run(["-ss", str(ss), "-i", src, "-i", png, "-i", f"{OLD}/tag_gen.png", "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
+def windows(src, d, wins, ss=0.0, tag=None, dim=-0.10, fin=0.0, fout=0.0):
+    """The clip (or still) stays as it was; framed windows come up over it."""
+    o = out(); img = src.endswith(".png")
+    if img:
+        ins = ["-loop", "1", "-t", str(d), "-i", src]; vf = f"[0:v]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,fps=24,eq=brightness={dim}[b0];"
+    else:
+        L = dur_of(src) - 0.1; speed = min(1.0, (L - ss) / d); ins = ["-ss", str(ss), "-i", src]
+        slow = ",minterpolate=fps=24:mi_mode=blend" if speed < 0.7 else ""
+        vf = f"[0:v]setpts=PTS/{speed}{slow},scale=1280:720,fps=24,eq=brightness={dim}[b0];"
+    cur = "[b0]"
+    for i, (png, a, b) in enumerate(wins):
+        ins += ["-loop", "1", "-t", str(d), "-i", png]
+        vf += f"[{i+1}:v]format=rgba,fade=t=in:st={a}:d=0.3:alpha=1,fade=t=out:st={b-0.3}:d=0.3:alpha=1[w{i}];{cur}[w{i}]overlay=0:0:enable='between(t,{a},{b})'[b{i+1}];"; cur = f"[b{i+1}]"
+    fades = (f",fade=t=in:d={fin}" if fin else "") + (f",fade=t=out:st={d - fout:.3f}:d={fout}" if fout else "")
+    ins += ["-i", tag or f"{OLD}/tag_gen.png"]; vf += f"{cur}[{len(wins)+1}:v]overlay=0:0{fades}[v]"
+    run(ins + ["-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
 n = [0]
-def out(): n[0] += 1; return f"seg5/{n[0]:03d}.mp4"
+def out(): n[0] += 1; return f"seg6/{n[0]:03d}.mp4"
 def check(o, d):
     got = dur_of(o); assert abs(got - d) < 0.09, (o, d, got)
 def clip(src, d, ss=0.0, speed=1.0, zoom=1.0, fx=0.5, fy=0.5, tag="tag_gen.png", cap=None):
@@ -98,52 +116,46 @@ def split(left, right, d, ss=1.0, app=True):
 G = lambda k: f"{OLD}/clips/{k}.mp4"; K = lambda k: f"clips/{k}.mp4"; S = lambda k: f"stills/{k}.png"; A = lambda k: f"app/{k}.mov"
 T = []
 def at(t, fn): T.append((t, fn))
+# Times are those of the take itself: nothing in the sound is cut, joined or sped up.
 # 1 the door closes
 at(0.0,  lambda d: clip(G("g1"), d))
-at(2.2,  lambda d: clip(G("g2"), d, ss=0.6))
-at(5.4,  lambda d: clip(G("g3"), d, ss=0.8))
-at(7.6,  lambda d: clip(G("g6"), d))
+at(3.2,  lambda d: clip(G("g2"), d, ss=0.6))
+at(6.9,  lambda d: clip(G("g3"), d, ss=0.8))
+at(9.6,  lambda d: clip(G("g6"), d))
 # 2 she finds him
-at(9.4,  lambda d: clip(G("g6"), d, ss=2.6, zoom=1.25, fy=0.6))
-at(10.8, lambda d: clip(K("k1"), d))
-at(12.5, lambda d: clip(K("k1"), d, ss=2.9, zoom=1.35, fx=0.5, fy=0.2))
-at(14.3, lambda d: clip(K("k2"), d, ss=1.6))
-at(16.0, lambda d: clip(K("k6"), d))
-at(17.2, lambda d: phone(A("home"), d, ss=1.0))                       # "He lives in her phone now."
-# 3 one small thing a day, in the real app
-at(19.9, lambda d: phone(A("home"), d, ss=3.0))
-at(22.7, lambda d: phone(A("focus"), d, ss=2.0))
-at(24.0, lambda d: phone(A("breathe"), d, ss=2.0))
-at(25.3, lambda d: phone(A("checkin"), d, ss=2.0))
-at(27.2, lambda d: clip(G("g4"), d, ss=0.2))                          # "Some days, she would stay in bed."
-at(29.9, lambda d: still(S("s5"), d, z0=1.0, z1=1.14, fx=0.4, fy=0.7))   # "For him, she gets up."
+at(11.8, lambda d: clip(G("g6"), d, ss=2.6, zoom=1.25, fy=0.6))
+at(13.4, lambda d: clip(K("k1"), d))
+at(15.6, lambda d: clip(K("k1"), d, ss=2.9, zoom=1.35, fx=0.5, fy=0.2))
+at(18.1, lambda d: clip(K("k2"), d, ss=1.6))
+at(19.6, lambda d: clip(K("k6"), d))
+at(20.7, lambda d: phone(A("home"), d, ss=1.0))                       # "He lives in her phone now."
+# 3 one small thing a day: the real app shows which things
+at(24.5, lambda d: phone(A("focus"), d, ss=2.0))
+at(25.8, lambda d: phone(A("breathe"), d, ss=2.0))
+at(27.0, lambda d: phone(A("checkin"), d, ss=2.0))
+at(28.3, lambda d: clip(G("g4"), d, ss=0.2))                          # "Some days, she would stay in bed."
+at(31.5, lambda d: still(S("s5"), d, z0=1.0, z1=1.14, fx=0.4, fy=0.7))   # "For him, she gets up."
 # 4 she said yes; every moment with him is a number
-at(33.3, lambda d: over(K("k6"), "c_yes.png", d, speed=0.6))
-at(41.0, lambda d: split(A("focus"), "single1.mp4", d, ss=3.5))
-at(43.6, lambda d: split(A("breathe"), "single0.mp4", d, ss=3.5))
-at(47.3, lambda d: card_wall("c_num.png", d))
-at(50.8, lambda d: split(G("g6"), "single2.mp4", d, ss=0.5, app=False))
-at(53.6, lambda d: card_wall("c_gem.png", d))
+at(35.4, lambda d: over(K("k6"), "c_yes.png", d, speed=0.6))
+at(42.5, lambda d: split(A("focus"), "single1.mp4", d, ss=3.5))
+at(45.6, lambda d: split(A("breathe"), "single0.mp4", d, ss=3.5))
+at(49.2, lambda d: split(G("g6"), "single2.mp4", d, ss=0.5, app=False))
+at(51.1, lambda d: card_wall("c_num.png", d))
+at(55.2, lambda d: card_wall("c_gem.png", d))
 # 5 the questionnaire beside the lines
-at(59.7, lambda d: chart("chart_a.mp4", d))
-at(65.7, lambda d: chart("chart_b.mp4", d))
+at(60.8, lambda d: chart("chart_a.mp4", d))
+at(64.6, lambda d: chart("chart_b.mp4", d))
 # 6 November
-at(76.3, lambda d: still("chart_end.png", d, z0=1.0, z1=1.07, fx=1.0, fy=0.5, tag="tag_ex.png"))
-at(78.0, lambda d: clip(K("k5"), d, ss=0.2, zoom=1.9, fx=0.12, fy=0.8))    # the boots alone
-at(80.4, lambda d: clip(K("k4"), d, ss=0.4, cap=("cap_help.png", 1.3)))
-at(84.1, lambda d: clip(K("k7"), d, ss=1.8))
-at(85.5, lambda d: still("c_tg.png", d, z0=1.0, z1=1.05, fx=0.3, fy=1.0, tag="tag_none.png"))   # the real alert
-at(87.9, lambda d: still(S("morning"), d, z0=1.0, z1=1.05, fx=0.6, fy=0.5))  # the phone buzzes
-at(89.3, lambda d: clip(K("k8"), d, speed=0.78))                            # "Anna? I read your note. I'm here."
-# 7 honest
-at(95.6, lambda d: still(f"{OLD}/screens/r4_anna.jpg", d, z0=1.3, z1=1.4, fx=0.0, fy=0.14, tag="tag_ex.png", fit=True))
-at(98.4, lambda d: still(f"{OLD}/screens/r5_elina.jpg", d, z0=1.3, z1=1.4, fx=0.0, fy=0.14, tag="tag_ex.png", fit=True))
-at(102.7, lambda d: card("c_study.png", d))
-# 8 the name and the motto
-at(106.6, lambda d: card("c_brand.png", d, fade=0.8))
-END = 116.6
-FIXED = {0.0, 87.9, 89.3, 95.6, 106.6}        # cuts that belong to the sound and must not move
-B = json.load(open("beats5.json"))
+at(75.5, lambda d: still("chart_end.png", d, z0=1.0, z1=1.07, fx=1.0, fy=0.5, tag="tag_ex.png"))
+at(77.1, lambda d: clip(K("k5"), d, ss=0.2, zoom=1.9, fx=0.12, fy=0.8))                                   # the boots alone
+at(78.6, lambda d: clip(K("k4"), d, ss=0.2, cap=("cap_help.png", 2.3)))                                   # "At one a.m. she writes: I need help."
+at(83.5, lambda d: windows(K("k7"), d, [("w_tg.png", 0.3, d + 0.3)], ss=0.4))                             # "Her words go straight to her clinic": the real alert
+at(87.1, lambda d: windows(K("k8"), d, [("w_anna.png", 0.5, 4.6)], tag="tag_morning.png", dim=0.0, fout=0.9))       # the nurse calls; her profile on the clinician page comes up over the morning
+# 7 the name and the motto: spoken, and on screen
+at(98.6, lambda d: card("c_brand6.png", d, fade=0.8))
+END = 108.6
+FIXED = {0.0, 83.5, 87.1, 98.6}
+B = json.load(open("beats6.json"))
 def snap(t, prev):
     best, bs = t, -9
     for b, st in zip(B["beats"], B["strength"]):
@@ -157,11 +169,11 @@ for i in range(1, len(T)):
 for i, (t, fn) in enumerate(T):
     nxt = T[i + 1][0] if i + 1 < len(T) else END
     fn(round(round((nxt - t) * 24) / 24, 4))
-open("list5.txt", "w").write("".join(f"file 'seg5/{i:03d}.mp4'\n" for i in range(1, n[0] + 1)))
-run(["-f", "concat", "-safe", "0", "-i", "list5.txt", "-c", "copy", "silent5.mp4"])
+open("list6.txt", "w").write("".join(f"file 'seg6/{i:03d}.mp4'\n" for i in range(1, n[0] + 1)))
+run(["-f", "concat", "-safe", "0", "-i", "list6.txt", "-c", "copy", "silent6.mp4"])
 FOX, BRAND = T[5][0], T[-1][0]
 fc = (f"[1:v]format=rgba,fade=t=in:st={FOX}:d=0.6:alpha=1,fade=t=out:st={BRAND - 0.6}:d=0.6:alpha=1[lg];"
       f"[0:v][lg]overlay=0:0:shortest=0[v1];[v1]fade=t=out:st={END - 1.2}:d=1.2[v];[2:a]afade=t=out:st={END - 1.2}:d=1.2,apad=whole_dur={END}[a]")
-run(["-i", "silent5.mp4", "-loop", "1", "-t", str(END), "-i", "logo_corner.png", "-i", "track5.m4a", "-filter_complex", fc,
-     "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-t", str(END), "film5.mp4"])
-print(round(dur_of("film5.mp4"), 2), "s,", n[0], "shots, picture", round(dur_of("silent5.mp4"), 2))
+run(["-i", "silent6.mp4", "-loop", "1", "-t", str(END), "-i", "logo_corner.png", "-i", "track6.m4a", "-filter_complex", fc,
+     "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-t", str(END), "film6.mp4"])
+print(round(dur_of("film6.mp4"), 2), "s,", n[0], "shots, picture", round(dur_of("silent6.mp4"), 2))

@@ -75,7 +75,6 @@ struct HomeSpeech: View {
     var target: CGPoint
     var width: CGFloat
     @Binding var mouth: MouthShape?
-    var zoom: Namespace.ID
     var onTap: () -> Void
 
     @State private var shown = ""
@@ -108,8 +107,6 @@ struct HomeSpeech: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background(LanviBubbleBackground(tailX: tailX))
-                // The chat grows out of the bubble itself, not out of its wider frame.
-                .homeZoomSource("speech", in: zoom)
                 .background(GeometryReader { g in
                     Color.clear.preference(key: BubbleSizeKey.self, value: g.size)
                 })

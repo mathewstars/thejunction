@@ -156,9 +156,37 @@ extension Rig {
         return CGPoint(x: u.x * headSphereRadius.width * w + headSphereCenter.x * w - w / 2,
                        y: u.y * headSphereRadius.height * h + headSphereCenter.y * h - h / 2)
     }
-    /// Biggest turn (radians) at a head direction of 1: about 19 degrees across, 14 up and down.
-    static let maxYaw = 0.33
-    static let maxPitch = 0.25
+    /// Biggest turn (radians) at a head direction of 1 (the direction is kept inside the
+    /// unit circle). Chosen so the eyes and their white patches move at most 0.06 of the
+    /// head's width sideways and 0.04 up or down: the face never slides off the head.
+    static let maxYaw = 0.15
+    static let maxPitch = 0.11
+
+    /// The most a look shifts each eye on its white patch (head pixels), on top of the
+    /// patch's own move: the eye always stays inside its patch, with a margin.
+    static let eyeTravel = CGSize(width: 7, height: 6)
+
+    /// Where a face point (head pixels from the head's centre) moves when the head faces
+    /// `dirX`, `dirY` (head pixels), and how much the face squeezes there.
+    static func faceShift(_ base: CGPoint, dirX: Double, dirY: Double) -> (dx: CGFloat, dy: CGFloat, sx: CGFloat, sy: CGFloat) {
+        let t = turn(sphere(base), yaw: dirX * maxYaw, pitch: dirY * maxPitch)
+        let to = headPixels(t.p)
+        return (to.x - base.x, to.y - base.y, t.sx, t.sy)
+    }
+
+    /// Where an eye's centre and its white patch's centre sit for a pose (head pixels from
+    /// the head's centre). The eye rides its patch, plus a small look shift that is
+    /// limited by `eyeTravel`. The puppet draws with this; the eye tests check it.
+    static func eyeOnPatch(left: Bool, dropY: CGFloat, pose q: Pose) -> (eye: CGPoint, patch: CGPoint) {
+        let patchHome = marking(left ? "face-patch-l" : "face-patch-r")
+        let s = faceShift(patchHome, dirX: q.dirX, dirY: q.dirY)
+        let home = left ? eyeL : eyeR
+        let w = Double(eyeTravel.width), h = Double(eyeTravel.height)
+        let gx = CGFloat(w * tanh((q.eyeX + (left ? q.eyeCross : -q.eyeCross)) / w))
+        let gy = CGFloat(h * tanh(q.eyeY / h))
+        return (CGPoint(x: home.x + gx + s.dx, y: home.y + dropY + gy + s.dy),
+                CGPoint(x: patchHome.x + s.dx, y: patchHome.y + s.dy))
+    }
 
     /// The chest bib swells around this point of the body picture when breathing in.
     static let chestCenter = UnitPoint(x: 0.496, y: 0.36)

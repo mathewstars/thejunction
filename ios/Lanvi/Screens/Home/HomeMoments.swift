@@ -131,15 +131,3 @@ struct HomeGrowUpMoment: View {
 
     private func frac(_ v: Double) -> Double { v - floor(v) }
 }
-
-// MARK: - Zoom from the tapped card (iOS 18 and later; a normal slide on 17)
-
-extension View {
-    @ViewBuilder func homeZoomSource(_ id: String, in ns: Namespace.ID) -> some View {
-        if #available(iOS 18.0, *) { matchedTransitionSource(id: id, in: ns) } else { self }
-    }
-
-    @ViewBuilder func homeZoomTarget(_ id: String, in ns: Namespace.ID) -> some View {
-        if #available(iOS 18.0, *) { navigationTransition(.zoom(sourceID: id, in: ns)) } else { self }
-    }
-}

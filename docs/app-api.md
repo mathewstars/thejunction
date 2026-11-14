@@ -211,7 +211,7 @@ The answer (to the focus record above):
 
 **`face_raw`** is what the phone sends when the person allowed the camera: the numbers ARKit gives per frame, nothing computed. The server computes every face measure and keeps the frames. Shape, channel names, how to get the head angles, limits and every error message: `docs/face-raw.md`. In short: `rate_hz` 5 to 60, at most 60 `channels` (the 52 ARKit blend shapes plus `headPitch`, `headYaw`, `headRoll`), four required channels (`mouthSmileLeft`, `mouthSmileRight`, `eyeBlinkLeft`, `eyeBlinkRight`), at most 12,000 `samples`, optional `tracked` (one 0 or 1 per frame), optional `moments_ms` (at most 20). The frames may not last longer than 1.2 times `duration_s` plus 5 seconds.
 
-**`face`** is the older way: a summary the phone computed. Still accepted, numbers only. `tracking_quality` (0 to 1) is required; below 0.6 the summary is kept but not used. The first six optional fields: `smile_rate_per_min` (0 to 120), `smile_intensity` (0 to 1), `facial_activity` (0 to 1), `blink_rate_per_min` (0 to 120), `look_down_share` (0 to 1), `head_tilt_deg` (-90 to 90). The ten newer ones, all optional:
+**`face`** is the older way: a summary the phone computed. Still accepted, numbers only. `tracking_quality` (0 to 1) is required; below 0.6 the summary is kept but not used. The first six optional fields: `smile_rate_per_min` (0 to 120), `smile_intensity` (0 to 1), `facial_activity` (0 to 1), `blink_rate_per_min` (0 to 120), `look_down_share` (0 to 1), `head_tilt_deg` (-90 to 90). The twelve newer ones, all optional:
 
 | Field | Range | What |
 |---|---|---|
@@ -225,6 +225,8 @@ The answer (to the focus record above):
 | `head_pitch_deg` | -90 to 90 | average head angle; looking down is higher |
 | `head_movement` | 0 to 1 | how much the head moved |
 | `smile_asymmetry` | 0 to 1 | left-right difference of smiles |
+| `lip_down_share` | 0 to 1 | share of the time with the lip corners pulled down |
+| `lip_press_share` | 0 to 1 | share of the time with the lips pressed together |
 
 **The reading.** `GET /v1/activities/{id}/reading` returns `{"status": ..., "line": ...}`. `status` is `pending`, `ready`, `failed`, `off`, `not_allowed` or `not_applicable`. When `ready`, `line` is one neutral sentence per type ("Thanks for playing Sparks and snow with me."). It never says anything about the face. The app does not call this today and loses nothing: it is a model's reading for the clinician, and it is off unless the server's outside model is switched on.
 

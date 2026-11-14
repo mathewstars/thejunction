@@ -9,7 +9,6 @@ struct HomeView: View {
 
     @Environment(AppStore.self) private var store
     @Environment(\.scenePhase) private var scenePhase
-    @Namespace private var zoom
 
     private enum Cover: Identifiable {
         case activity(ActivityKind), help, mind, chat
@@ -29,38 +28,20 @@ struct HomeView: View {
     }
 
     /// Where things sit, for a screen size. Shared by the drawing and the moments.
+    /// Home's layout: Lanvi's place comes from the shared `FoxStage`.
     private struct Layout {
-        var size: CGSize
-        var compact: Bool
-        var fox: CGFloat
-        var feetY: CGFloat
-        var hill: CGFloat
-        var buttonY: CGFloat      // centre of the primary button
-        var foxCenter: CGPoint
+        let stage: FoxStage
+        var size: CGSize { stage.size }
+        var compact: Bool { stage.compact }
+        var fox: CGFloat { stage.fox }
+        var feetY: CGFloat { stage.feetY }
+        var buttonY: CGFloat { stage.buttonY }
+        var foxCenter: CGPoint { stage.foxCenter }
+        var foxTop: CGFloat { stage.foxTop }
 
         init(size: CGSize, insets: EdgeInsets, away: Bool) {
-            self.size = size
-            compact = size.height < 700
-            let bottomGap: CGFloat = compact ? 16 : 8
-            buttonY = size.height - bottomGap - 30
-            // Where the painting's hollow lands on this screen: Lanvi sits in it.
-            let screen = CGSize(width: size.width, height: size.height + insets.top + insets.bottom)
-            let world = WorldFrame(screen: screen)
-            let hollow = world.point(WorldFrame.hollow.x, WorldFrame.hollow.y)
-            let big = min(size.height * 0.46, size.width * 0.86)
-            fox = away ? big * 0.30 : big
-            feetY = min(hollow.y - insets.top + big * 0.03, buttonY - 30 - 24)
-            hill = world.point(0.5, 0.56).y - insets.top
-            if away {
-                // Off in the distance, by the pines on the right.
-                let far = world.point(0.80, 0.60)
-                foxCenter = CGPoint(x: far.x, y: far.y - insets.top - fox / 2)
-            } else {
-                foxCenter = CGPoint(x: size.width / 2, y: feetY - fox / 2)
-            }
+            stage = FoxStage(size: size, insets: insets)
         }
-
-        var foxTop: CGFloat { foxCenter.y - fox / 2 }
     }
 
     @State private var cover: Cover?
@@ -81,23 +62,39 @@ struct HomeView: View {
     /// The mouth Lanvi shows while saying a new line (nil = the puppet decides).
     @State private var mouth: MouthShape?
     /// What the chat grows out of: the bubble or the round chat button.
-    @State private var chatFrom: String? = "speech"
     /// A screen to open once the sheet on top has gone.
-    @State private var pendingCover: Cover?
 
     var body: some View {
+        // Home itself never moves for a keyboard; what is presented over it
+        // (the chat) sits beside it and does make room for the keyboard.
+        ZStack {
+            home
+                .ignoresSafeArea(.keyboard)
+            // ONE way to present anything over Home: it rises from the bottom on one
+            // spring, over one scrim, and goes back down the same way. Home underneath
+            // never changes, scales, blurs or snapshots while it moves.
+            LanviOverlayHost(
+                screen: cover.map { c in AnyView(coverContent(c)) },
+                screenID: cover?.id,
+                panel: sheet.map { s in AnyView(sheetContent(s)) },
+                panelID: sheet?.id,
+                onClosePanel: { sheet = nil })
+        }
+    }
+
+    private var home: some View {
         #if DEBUG
         let _ = FrameMeter.count("Home")
         #endif
-        GeometryReader { geo in
+        return GeometryReader { geo in
             let w = geo.size.width
             let L = Layout(size: geo.size, insets: geo.safeAreaInsets, away: away)
 
             ZStack(alignment: .top) {
                 PaintedWorld(scene: store.worldScene)
 
-                // Lanvi, large on the snow, with the fox fire behind the tail.
-                ZStack {
+                // Lanvi, settled in the snow of the clearing (the shared fox layout).
+                GroundedFox(stage: L.stage, scene: store.worldScene) {
                     LanviView(pose: pose, size: L.fox)
                         // Lanvi leaves the snow only for the reward after an activity.
                         .lanviHops(celebrating)
@@ -107,8 +104,6 @@ struct HomeView: View {
                         .lanviMouth(mouth)
                         // A tap is only the puppet's own touch reaction; growth opens from the Day pill.
                 }
-                .frame(width: L.fox * 2, height: L.fox * 2)
-                .position(x: L.foxCenter.x, y: L.foxCenter.y)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Lanvi")
                 .accessibilityIdentifier("home.fox")
@@ -128,7 +123,6 @@ struct HomeView: View {
                 HStack {
                     Button { open(.help) } label: { Image(systemName: "lifepreserver.fill") }
                         .buttonStyle(HomeCornerRoundStyle())
-                        .homeZoomSource("help", in: zoom)
                         .accessibilityLabel("Help")
                     if store.mode == .live, store.link == .offline {
                         Image(systemName: "icloud.slash.fill")
@@ -154,8 +148,6 @@ struct HomeView: View {
                 }
 
                 // One action, pinned above the home bar.
-                // The zoom source is the whole action area, which is always there:
-                // closing a screen must never zoom back into a button that is gone.
                 // When today's thing changes, the row swaps by fading at a fixed size,
                 // so no button ever animates its width.
                 ZStack {
@@ -165,7 +157,6 @@ struct HomeView: View {
                 }
                 .frame(width: w - 48, height: 60)
                 .animation(LanviTiming.swap, value: actionsKey)
-                    .homeZoomSource("today", in: zoom)
                     .position(x: w / 2, y: L.buttonY)
                     .opacity(arrived && !showGrowth ? 1 : 0)
                     .offset(y: arrived ? 0 : 24)
@@ -181,35 +172,6 @@ struct HomeView: View {
             .onChange(of: geo.size) { _, s in size = s; insets = geo.safeAreaInsets }
         }
         .sensoryFeedback(.success, trigger: haptic)
-        // The chat's keyboard must never reach Home underneath it.
-        .ignoresSafeArea(.keyboard)
-        .fullScreenCover(item: $cover) { c in
-            // Screens grow out of what was tapped; Help and notes slide up plainly
-            // (a tiny icon ballooning into a whole screen looks broken).
-            if let source = zoomSource(for: c) {
-                coverContent(c).homeZoomTarget(source, in: zoom)
-            } else {
-                coverContent(c)
-            }
-        }
-        .sheet(item: $sheet, onDismiss: {
-            // A screen picked in a sheet opens only once the sheet has fully gone,
-            // so the two never fight.
-            if let next = pendingCover {
-                pendingCover = nil
-                cover = next
-            }
-        }) { s in
-            switch s {
-            case .more:
-                HomeMoreSheet { k in openAfterSheet(.activity(k)) }
-            case .growth:
-                HomeGrowthSheet(stage: store.stage, xp: store.xp, stageStart: store.stageRange.start,
-                                nextStageAt: store.stageRange.next, daysTogether: store.daysTogether) {
-                    openAfterSheet(.mind)
-                }
-            }
-        }
         .onChange(of: store.celebration) { _, c in
             if let c { celebrate(c) }
         }
@@ -256,8 +218,7 @@ struct HomeView: View {
         let target = away
             ? CGPoint(x: L.foxCenter.x - L.fox * 0.1, y: L.foxCenter.y - L.fox * 0.55)
             : CGPoint(x: L.foxCenter.x + L.fox * 0.10, y: L.foxTop + L.fox * 0.04)
-        return HomeSpeech(text: bubbleText, target: target, width: L.size.width, mouth: $mouth, zoom: zoom) {
-            chatFrom = "speech"
+        return HomeSpeech(text: bubbleText, target: target, width: L.size.width, mouth: $mouth) {
             open(.chat)
         }
             .accessibilityIdentifier("home.speech")
@@ -341,7 +302,6 @@ struct HomeView: View {
 
     private var chatButton: some View {
         Button {
-            chatFrom = nil          // from the small button: a plain slide, no ballooning icon
             open(.chat)
         } label: { Image(systemName: "bubble.left.fill") }
             .buttonStyle(HomeQuietRoundStyle())
@@ -402,16 +362,6 @@ struct HomeView: View {
     }
     private var isDoneToday: Bool { if case .done = store.todayThing { return true } else { return false } }
 
-    private func zoomSource(for c: Cover) -> String? {
-        switch c {
-        case .activity(let k):
-            if case .game(let g) = store.todayThing, g == k { return "today" }
-            return nil                     // opened from the more sheet: slides up
-        case .chat: return chatFrom        // the bubble or the chat button, whichever was tapped
-        case .help, .mind: return nil
-        }
-    }
-
     /// Which view the current row of actions is, so it swaps as a whole.
     private var actionsKey: String {
         switch store.todayThing {
@@ -444,9 +394,22 @@ struct HomeView: View {
         cover = c
     }
 
+    /// From a panel to a screen: the screen rises over the panel in one move.
     private func openAfterSheet(_ c: Cover) {
-        pendingCover = c
+        cover = c
         sheet = nil
+    }
+
+    @ViewBuilder private func sheetContent(_ s: Sheet) -> some View {
+        switch s {
+        case .more:
+            HomeMoreSheet { k in openAfterSheet(.activity(k)) }
+        case .growth:
+            HomeGrowthSheet(stage: store.stage, xp: store.xp, stageStart: store.stageRange.start,
+                            nextStageAt: store.stageRange.next, daysTogether: store.daysTogether) {
+                openAfterSheet(.mind)
+            }
+        }
     }
 
     /// The resting pose for the state Lanvi is in and the time of day. Pose, mood and
@@ -546,6 +509,7 @@ struct HomeView: View {
             await store.finish(Self.sample(kind), kind: kind)
         }
         if args.contains("-flow") { await runFlow(); return }
+        if args.contains("-feel") { await runFeel(); return }
         guard demo else { return }
 
         try? await Task.sleep(for: .seconds(3))
@@ -564,11 +528,32 @@ struct HomeView: View {
         settle()
     }
 
+    /// `-feel`: opens and closes every overlay twice, at a person's pace, for
+    /// every-frame checks of the transitions. Prints `FEEL <step> <time>`.
+    private func runFeel() async {
+        func wait(_ s: Double) async { try? await Task.sleep(for: .seconds(s)) }
+        func mark(_ n: String) { print(String(format: "FEEL %@ %.3f", n, Date().timeIntervalSince1970)) }
+        await wait(2.5)
+        for round in 1...2 {
+            mark("chat.open.\(round)"); open(.chat); await wait(1.6)
+            mark("chat.close.\(round)"); cover = nil; await wait(1.4)
+            mark("help.open.\(round)"); open(.help); await wait(1.6)
+            mark("help.close.\(round)"); cover = nil; await wait(1.4)
+            mark("more.open.\(round)"); sheet = .more; await wait(1.6)
+            mark("more.close.\(round)"); sheet = nil; await wait(1.4)
+            mark("growth.open.\(round)"); sheet = .growth; await wait(1.6)
+            mark("growth.close.\(round)"); sheet = nil; await wait(1.4)
+            mark("more.pick.\(round)"); sheet = .more; await wait(1.4)
+            mark("more.to.activity.\(round)"); openAfterSheet(.activity(.breathing)); await wait(1.8)
+            mark("activity.close.\(round)"); cover = nil; await wait(1.6)
+        }
+        mark("end")
+    }
+
     /// `-flow`: a short tour of Home, opening and closing each screen and sheet.
     private func runFlow() async {
         func wait(_ s: Double) async { try? await Task.sleep(for: .seconds(s)) }
         await wait(3)
-        chatFrom = "speech"
         open(.chat)
         await wait(3)
         cover = nil

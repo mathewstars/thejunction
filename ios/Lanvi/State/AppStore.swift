@@ -44,12 +44,6 @@ final class AppStore {
 
     let mode: Mode
     private let backend: any LanviBackend
-    /// The real server's client (nil in the offline demo), for pairing.
-    private var client: LanviClient?
-    /// Live, but this phone has no token yet: first run shows the pairing step.
-    private(set) var needsPairing = false
-    /// A person can type a code (no tester code in the private config).
-    private var canTypeCode = false
     private var outbox = ActivityOutbox()
     private var feedbackOutbox = FeedbackOutbox()
 
@@ -94,14 +88,13 @@ final class AppStore {
             ?? (arguments.contains("-demo") ? 20 : nil)
         let config = ServerConfig.current
         // The -demo walk-through always uses the offline demo, so the video is the same every time.
-        if config.isLive, !arguments.contains("-demo"), let url = config.serverURL {
+        // The app never asks for a pairing code (the captain): it talks to the server only
+        // when this phone is already paired or a tester code sits in the private config;
+        // otherwise it quietly runs on offline sample data.
+        let canPair = config.serverURL.map { TokenKeychain.token(for: $0) != nil } == true || config.pairingCode != nil
+        if config.isLive, canPair, !arguments.contains("-demo"), let url = config.serverURL {
             mode = .live
-            let c = LanviClient(base: url, pairingCode: config.pairingCode)
-            client = c
-            backend = c
-            // No token yet and no tester code in the private config: first run asks for the code.
-            needsPairing = TokenKeychain.token(for: url) == nil && config.pairingCode == nil
-            canTypeCode = config.pairingCode == nil
+            backend = LanviClient(base: url, pairingCode: config.pairingCode)
             daysFile = "days.json"
             days = DaysTogether.load("days.json")
             chatFile = "chat.json"
@@ -344,42 +337,6 @@ final class AppStore {
         return (starts[stage] ?? 0, today?.lanvi.nextStageAt)
     }
 
-    // MARK: Pairing
-
-    enum PairResult: Equatable { case ok, badCode, offline, busy, failed }
-
-    /// Pair this phone with the code the clinic gave the person, then load today.
-    func pair(code: String) async -> PairResult {
-        guard let client else { return .failed }
-        do {
-            try await client.pair(code: code)
-            needsPairing = false
-            link = .online
-            await load()
-            return .ok
-        } catch APIError.badPairingCode {
-            return .badCode
-        } catch APIError.rejected {
-            return .badCode            // a code in the wrong shape
-        } catch APIError.offline {
-            return .offline
-        } catch APIError.rateLimited {
-            return .busy
-        } catch {
-            return .failed
-        }
-    }
-
-    /// Help, "Disconnect this phone": forget the token so the phone can pair again.
-    func disconnect() async {
-        await client?.forget()
-        LanviDisk.remove("today.json")
-        needsPairing = canTypeCode
-    }
-
-    /// Whether this build talks to a server and is paired (for Help's disconnect action).
-    var isConnected: Bool { mode == .live && !needsPairing }
-
     // MARK: Loading
 
     private var startTask: Task<Void, Never>?
@@ -403,8 +360,6 @@ final class AppStore {
     }
 
     private func load() async {
-        // Nothing to ask the server until this phone is paired.
-        guard !needsPairing else { return }
         await flushOutbox()
         await flushFeedback()
         await refresh()
@@ -417,9 +372,6 @@ final class AppStore {
             apply(t)
             link = .online
             if mode == .live { LanviDisk.save(t, "today.json") }
-        } catch APIError.unauthorized where mode == .live && canTypeCode {
-            // The server no longer knows this phone (or it was never paired): ask for a code.
-            needsPairing = true
         } catch {
             link = .offline
             if today == nil, mode == .live {

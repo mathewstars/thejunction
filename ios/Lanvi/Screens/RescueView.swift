@@ -30,13 +30,13 @@ struct RescueView: View {
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width, h = geo.size.height
-            let world = WorldFrame(screen: CGSize(width: w, height: h + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom))
-            let hollow = world.point(WorldFrame.hollow.x, WorldFrame.hollow.y)
-            let feetY = min(hollow.y - geo.safeAreaInsets.top + 10, h - 70)
-            let kitW = min(w * 0.58, 260)
+            // The same place, size and ground line as Home (the shared fox layout).
+            let stage = FoxStage(size: geo.size, insets: geo.safeAreaInsets)
+            let feetY = stage.feetY
+            let kitW = min(stage.fox * 0.80, w * 0.62)
             let kitH = kitW * 794 / 900
-            let kit = CGPoint(x: w / 2, y: feetY - kitH / 2)
-            let fox = min(h * 0.40, w * 0.78)
+            let kit = CGPoint(x: w / 2, y: feetY - kitH / 2 + stage.fox * 0.02)
+            let fox = stage.fox
 
             ZStack(alignment: .top) {
                 PaintedWorld(scene: .night)
@@ -62,13 +62,13 @@ struct RescueView: View {
 
                 // Awake: Lanvi sits up where the kit lay.
                 if awake {
-                    LanviView(pose: .curious, size: fox)
-                        .lanviReaction(.surprised, trigger: wakeTick)
-                        .lanviHops(false)
-                        .frame(width: fox, height: fox)
-                        .position(x: w / 2, y: feetY - fox / 2)
-                        .transition(.opacity.combined(with: .scale(scale: 0.88, anchor: .bottom)))
-                        .accessibilityHidden(true)
+                    GroundedFox(stage: stage, scene: .night) {
+                        LanviView(pose: .curious, size: fox)
+                            .lanviReaction(.surprised, trigger: wakeTick)
+                            .lanviHops(false)
+                    }
+                    .transition(.opacity)
+                    .accessibilityHidden(true)
                     SnowShakeOff(start: shakeOff, center: CGPoint(x: w / 2, y: feetY - fox * 0.55), size: fox)
                         .allowsHitTesting(false)
                 }

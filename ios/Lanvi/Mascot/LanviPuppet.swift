@@ -21,6 +21,7 @@ struct LanviPuppet: View {
     @Environment(\.lanviTouchRequest) private var touchRequest
     @Environment(\.lanviHops) private var hops
     @Environment(\.lanviDebugFreeze) private var freeze
+    @Environment(\.lanviDebugBounds) private var debugBounds
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Fixed per fox size, so a screen rebuilding the fox never makes it jump.
@@ -225,7 +226,8 @@ struct LanviPuppet: View {
     private func setLook(_ p: CGPoint?) {
         var steps = lookSteps
         steps.append(LookStep(at: now, target: p))
-        while steps.count > 2, now - steps[1].at > 2 || steps.count > 40 {
+        // (only settled changes fold: folding an unsettled one would make it jump)
+        while steps.count > 2, now - steps[1].at > 2 || steps.count > 400 {
             steps[0] = LookStep(at: -100, target: steps[1].target)
             steps.remove(at: 1)
         }
@@ -548,6 +550,7 @@ struct LanviPuppet: View {
                 let c = layerCentre(name, p)
                 let t = faceShift(markingHome(name), q)
                 layerImage(name, p)
+                    .overlay { if debugBounds && squeeze { Rectangle().stroke(.yellow, lineWidth: 1) } }
                     .scaleEffect(x: squeeze ? 1 + (t.sx - 1) * 0.8 : 1, y: squeeze ? 1 + (t.sy - 1) * 0.8 : 1)
                     .transformEffect(CGAffineTransform(translationX: t.dx * depth, y: t.dy * depth))
                     .position(x: c.x, y: c.y)
@@ -575,10 +578,9 @@ struct LanviPuppet: View {
     /// Where a face point (head pixels from the head's centre) moves with the turn, in
     /// points, and the squeeze there.
     private func faceShift(_ base: CGPoint, _ q: Pose) -> (dx: CGFloat, dy: CGFloat, sx: CGFloat, sy: CGFloat) {
-        let t = Rig.turn(Rig.sphere(base), yaw: q.dirX * Rig.maxYaw, pitch: q.dirY * Rig.maxPitch)
-        let to = Rig.headPixels(t.p)
+        let t = Rig.faceShift(base, dirX: q.dirX, dirY: q.dirY)
         let s = Rig.head.scale * k
-        return ((to.x - base.x) * s, (to.y - base.y) * s, t.sx, t.sy)
+        return (t.dx * s, t.dy * s, t.sx, t.sy)
     }
 
     /// The eyes: the eye set fading out (if any) under the one fading in, each half on
@@ -606,16 +608,17 @@ struct LanviPuppet: View {
         let base = CGPoint(x: home.x, y: home.y + shape.dropY)
         // the eye rides its patch (so it never slides off the white), and squeezes with it
         let turn = faceShift(markingHome(left ? "face-patch-l" : "face-patch-r"), q)
+        let placed = Rig.eyeOnPatch(left: left, dropY: shape.dropY, pose: q).eye
         let c = Rig.headToCanvas(base)
         let hs = Rig.head.scale * k
         return Image("puppet-" + name)
             .resizable()
             .interpolation(.high)
             .frame(width: px.width * s, height: px.height * s)
+            .overlay { if debugBounds { Rectangle().stroke(.red, lineWidth: 1) } }
             .scaleEffect(x: 1 + (turn.sx - 1) * 0.8, y: 1 + (turn.sy - 1) * 0.8,
                          anchor: UnitPoint(x: centre.x / px.width, y: centre.y / px.height))
-            .transformEffect(CGAffineTransform(translationX: (q.eyeX + (left ? q.eyeCross : -q.eyeCross)) * hs + turn.dx,
-                                               y: q.eyeY * hs + turn.dy))
+            .transformEffect(CGAffineTransform(translationX: (placed.x - base.x) * hs, y: (placed.y - base.y) * hs))
             .position(x: c.x * k + (px.width / 2 - centre.x) * s, y: c.y * k + (px.height / 2 - centre.y) * s)
     }
 

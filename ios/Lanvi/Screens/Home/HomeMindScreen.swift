@@ -8,7 +8,6 @@ struct HomeMindScreen: View {
 
     @Environment(AppStore.self) private var store
     @State private var pose: LanviPose = .curious
-    @State private var bounce = 0
     @State private var say = "Here is what I've noticed so far. Tell me if I got something wrong."
     @State private var busy: String?
 
@@ -25,7 +24,8 @@ struct HomeMindScreen: View {
                         .frame(maxWidth: .infinity)
                         .padding(.bottom, fox * 0.55)
                     ZStack {
-                        LanviView(pose: pose, size: fox, bounceTrigger: bounce)
+                        LanviView(pose: pose, size: fox)
+                            .lanviHops(false)
                     }
                     .frame(width: fox, height: fox)
                 }

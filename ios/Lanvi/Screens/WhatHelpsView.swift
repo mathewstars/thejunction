@@ -32,51 +32,45 @@ struct WhatHelpsView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let compact = geo.size.height < 700
-            let hill = geo.size.height * (compact ? 0.54 : 0.60)
-            let fox: CGFloat = compact ? 150 : 190
+            let chipsHeight: CGFloat = 66 * 2 + 12
+            // The shared fox layout, raised just enough for the chips in front of him.
+            let stage = FoxStage(size: geo.size, insets: geo.safeAreaInsets, controls: chipsHeight)
             ZStack(alignment: .top) {
                 PaintedWorld(scene: store.worldScene)
 
-                ZStack {
-                    LanviView(pose: .curious, size: fox)
+                GroundedFox(stage: stage, scene: store.worldScene) {
+                    LanviView(pose: .curious, size: stage.fox)
                         .lanviReaction(reaction, trigger: reactTick)
                         .lanviMood(proud ? .happy : nil)
                         .lanviHops(false)
                 }
-                .frame(width: fox * 2, height: fox * 2)
-                .position(x: geo.size.width / 2, y: hill - fox / 2 + 14)
 
                 VStack {
                     Spacer(minLength: 0)
                     HomeSpeechBubble(text: say)
                 }
-                .frame(width: geo.size.width - 40, height: max(hill + 14 - fox - 30, 60))
-                .padding(.top, 20)
+                .frame(width: geo.size.width - 48, height: max(stage.foxTop - (stage.compact ? 40 : 56), 60))
+                .padding(.top, stage.compact ? 28 : 44)
 
-                VStack(spacing: compact ? 12 : 16) {
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                        ForEach(choices) { c in
-                            chip(c)
-                        }
+                // Chips on the snow in front of Lanvi; they never animate their place.
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                    ForEach(choices) { c in
+                        chip(c)
                     }
-                    Spacer(minLength: 0)
-                    Button(chosen.isEmpty ? "Skip for now" : "That's it") { finish() }
-                        .buttonStyle(chosen.isEmpty
-                                     ? ChunkyButtonStyle(fill: .white, edge: Theme.line, text: Theme.brand)
-                                     : ChunkyButtonStyle())
-                        .overlay {
-                            if chosen.isEmpty {
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(Theme.line, lineWidth: 2).allowsHitTesting(false)
-                            }
-                        }
-                        .disabled(sending)
-                        .animation(LanviTiming.swap, value: chosen.isEmpty)
                 }
-                .padding(.horizontal, 24)   // the same margins as Welcome, so the button never moves
-                .padding(.top, hill + (compact ? 26 : 36))
-                .padding(.bottom, 12)
+                .frame(height: chipsHeight)
+                .padding(.horizontal, 24)
+                .position(x: geo.size.width / 2, y: stage.buttonY - 30 - 16 - chipsHeight / 2)
+
+                // The button in the same place as on every first-run page and Home.
+                Button(chosen.isEmpty ? "Skip for now" : "That's it") { finish() }
+                    .buttonStyle(HomePrimaryStyle(fill: chosen.isEmpty ? .white : Theme.brand,
+                                                  edge: chosen.isEmpty ? Theme.line : Theme.brandEdge,
+                                                  text: chosen.isEmpty ? Theme.brand : .white))
+                    .disabled(sending)
+                    .frame(width: geo.size.width - 48)
+                    .position(x: geo.size.width / 2, y: stage.buttonY)
+                    .animation(LanviTiming.swap, value: chosen.isEmpty)
             }
         }
         .task {
@@ -101,20 +95,24 @@ struct WhatHelpsView: View {
                         .foregroundStyle(on ? .white : Theme.brand)
                 }
                 .frame(width: 42, height: 42)
+                // One line, always: a selected chip must keep exactly the same size.
                 Text(c.title)
                     .font(Theme.rounded(18, .heavy))
                     .foregroundStyle(on ? .white : Theme.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 Spacer(minLength: 0)
-                if let order {
-                    Text("\(order)")
-                        .font(Theme.rounded(14, .black))
-                        .foregroundStyle(Theme.brand)
-                        .frame(width: 26, height: 26)
-                        .background(Circle().fill(.white))
-                        .transition(.scale.combined(with: .opacity))
-                }
+                // The order badge's place is always reserved; it only fades and pops.
+                Text("\(order ?? 0)")
+                    .font(Theme.rounded(14, .black))
+                    .foregroundStyle(Theme.brand)
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(.white))
+                    .scaleEffect(on ? 1 : 0.4)
+                    .opacity(on ? 1 : 0)
             }
             .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity)
             .frame(height: 66)
         }
         .buttonStyle(HelpsChipStyle(on: on))
@@ -122,9 +120,9 @@ struct WhatHelpsView: View {
     }
 
     private func toggle(_ id: String) {
-        withAnimation(LanviTiming.pop) {
-            if let i = chosen.firstIndex(of: id) { chosen.remove(at: i) } else if chosen.count < 4 { chosen.append(id) }
-        }
+        // Only the chips' own colour and badge change (each chip animates itself);
+        // nothing is wrapped in a transaction, so no chip can travel to a new place.
+        if let i = chosen.firstIndex(of: id) { chosen.remove(at: i) } else if chosen.count < 4 { chosen.append(id) }
         // A happy squint for a choice, a head tilt for the next one, and so on.
         react(reaction == .happy ? .curious : .happy)
     }

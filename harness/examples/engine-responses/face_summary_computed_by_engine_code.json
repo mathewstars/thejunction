@@ -1,0 +1,39 @@
+{
+  "_about": "Output of engine/clinic_engine/mind/face_features.summarize() run locally on engine-requests/activity_*_face_raw.json. This is what the server stores as the activity's `face` (face_source: raw).",
+  "build_report": {
+    "channels": 55,
+    "blend_shapes": 52,
+    "dropped": [],
+    "samples": 1350,
+    "rate_hz": 30.0,
+    "tracked_fraction": 0.9652,
+    "span_s": 44.967,
+    "head_angle_source": "head_view_*_rad",
+    "warnings": []
+  },
+  "describe": {
+    "rate_hz": 30.0,
+    "frames": 1350,
+    "tracked_share": 0.965,
+    "channels": 55
+  },
+  "face_summary": {
+    "smile_rate_per_min": 1.38,
+    "smile_intensity": 0.543,
+    "facial_activity": 0.173,
+    "blink_rate_per_min": 22.1,
+    "look_down_share": 0.0,
+    "head_tilt_deg": 0.57,
+    "smile_time_share": 0.166,
+    "eye_smile_share": 0.0,
+    "smile_response_share": 0.25,
+    "smile_response_latency_s": 0.0,
+    "brow_down_share": 0.0,
+    "inner_brow_up_share": 0.0,
+    "blink_duration_ms": 100.0,
+    "head_pitch_deg": -0.04,
+    "head_movement": 0.163,
+    "smile_asymmetry": 0.06,
+    "tracking_quality": 0.965
+  }
+}

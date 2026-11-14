@@ -1,0 +1,280 @@
+{
+  "sent_at": "2026-11-14T08:52:03.131116+00:00",
+  "experiment": "combined",
+  "request_id": "live-1794646164",
+  "thinking_level": "medium",
+  "proxy_reply": {
+    "request_id": "live-1794646164",
+    "model": "gemini-4-carbon",
+    "status": "success",
+    "text": "{\"experiment_type\":\"combined\",\"baseline_summary\":{\"HeartRateVariabilitySDNN\":\"Personal historical reference from 2026-10-15T22:00:00.000Z to 2026-11-13T22:00:00.000Z across 30 days (95 samples, coverageFraction 0.968): median 44.6 ms, medianAbsoluteDeviation 4.4 ms, mean 43.2 ms, standardDeviation 6.1 ms, interquartile range 38.9 to 47.5 ms, and personal usual range 28.3 to 60.9 ms.\",\"blinkRatePerMinute\":\"Personal historical reference across 9 recording days (sampleCount 9): median 20.2 blinks/min, medianAbsoluteDeviation 1.2, mean 20.8, standardDeviation 1.9, 25th to 75th percentile 19.5 to 21.4, and personal usual range 15.8 to 24.6 blinks/min.\",\"missing_baselines\":\"No baseline reference profiles are present in baseline_profile for SleepAnalysis, RestingHeartRate, StepCount, AppleExerciseTime, energy expenditure, facialVariability, headPoseVariabilityRad, or eyeOpennessMean.\",\"baseline_caveat\":\"All reference ranges describe this individual's own recorded history (median +/- 2.5 robust SD) rather than a healthy norm, and the recorded period may include unwell days.\"},\"health_observations\":[{\"observation\":\"HeartRateVariabilitySDNN was recorded 95 times across 30 of 31 days, with a daily mean of 43.2 ms, daily median of 44.6 ms (range 31.4 to 54.0 ms, standardDeviation 6.1 ms), and per-sample mean of 43.1 ms (range 18.2 to 66.7 ms, standardDeviation 9.4 ms), with 0 robust-z outliers.\",\"supporting_measurements\":[\"HeartRateVariabilitySDNN: sample_count 95, daysWithData 30, daysInRange 31\",\"statistics_per_day: mean 43.2, median 44.6, minimum 31.4, maximum 54.0, standardDeviation 6.1\",\"statistics_per_sample: mean 43.1, median 43.9, minimum 18.2, maximum 66.7, standardDeviation 9.4\",\"outliers: outlierCount 0 (threshold 3.5)\"],\"time_range\":{\"start\":\"2026-10-16T00:12:00.000Z\",\"end\":\"2026-11-14T04:40:00.000Z\"},\"kind\":\"direct_observation\",\"data_quality\":\"Coverage is 0.968 (1 missing day), but sampling is sparse and irregular at 3.25 samples per day (medianIntervalSeconds 15420, meanIntervalSeconds 26826, largestGapSeconds 79200 starting 2026-10-28T03:10:00.000Z); 25 of 30 daily points are omitted from the daily list.\",\"limitations\":\"Sparse point measurements (n = 2 to 4 per day in the 5 listed daily points) cannot represent continuous 24-hour autonomic variation and are sensitive to the times of day when readings occurred.\"},{\"observation\":\"Across the 5 listed daily rows (plus 1 prior day via previousDayHealth on 2026-11-10), SleepAnalysis ranged from 6.2 (2026-11-11) to 8.1 (2026-11-13), RestingHeartRate ranged from 56 (2026-11-13) to 60 (2026-11-11), StepCount ranged from 7310 (2026-11-11) to 13420 (2026-11-13), and 8 walking workouts were logged over the full period.\",\"supporting_measurements\":[\"daily_rows SleepAnalysis: 7.1 (prev 2026-11-10), 7.8, 6.2, 7.4, 8.1, 7.5\",\"daily_rows RestingHeartRate: 58 (prev 2026-11-10), 57, 60, 58, 56, 58\",\"daily_rows StepCount: 9020 (prev 2026-11-10), 11840, 7310, 12970, 13420, 12225\",\"health.workouts: count 8, walking 8\"],\"time_range\":{\"start\":\"2026-10-15T21:17:00.000Z\",\"end\":\"2026-11-14T21:59:00.000Z\"},\"kind\":\"direct_observation\",\"data_quality\":\"Full-period descriptive statistics, units, sampling frequencies, and coverage reports are absent from health.metrics for SleepAnalysis, RestingHeartRate, StepCount, and AppleExerciseTime; BloodPressureSystolic, BloodPressureDiastolic, VO2Max, and BodyFatPercentage are empty; energy metrics and self-reported wellbeing are absent.\",\"limitations\":\"Sleep and steps each combine 2 overlapping sources by selecting the single source with the largest daily total, which may introduce step changes if different devices were worn on different days.\"}],\"facial_behavior_observations\":[{\"observation\":\"In the single detailed ARKit session 20261114-060000-synth01 (duration 44.967 s, 1348 frames, 1303 tracked frames), recorded during prompted markers ['Look left', 'Look right', 'Neutral face', 'Smile'], blink rate was 21.4 per minute (count 16, meanDurationSeconds 0.111, exportedDerivedMeans blink_rate_per_min 20.8), eyeOpenness mean was 0.942, facialMovement variability was 0.041 (amplitude 0.21, activityPerSecond 0.33), headMovement poseVariabilityRad was 0.038 (yaw amplitude 0.375 rad), gaze directionChangeCount was 4, and overallMeanAbsoluteDifference asymmetry was 0.017.\",\"supporting_measurements\":[\"arkit.sessions[0]: duration_s 44.967, frame_count 1348, trackedFrameCount 1303, tracked_fraction 0.9666\",\"blink: count 16, ratePerMinute 21.4, meanDurationSeconds 0.111; exportedDerivedMeans.blink_rate_per_min: 20.8\",\"facialMovement: amplitude 0.21, variability 0.041, activityPerSecond 0.33, activeCoefficientFraction 0.19\",\"headMovement: poseVariabilityRad 0.038, meanAmplitudeRad 0.16, yaw 0.375; asymmetry: overallMeanAbsoluteDifference 0.017, smile 0.06\"],\"time_range\":{\"start\":\"2026-11-14T06:00:00.000Z\",\"end\":\"2026-11-14T06:00:44.967Z\"},\"kind\":\"direct_observation\",\"data_quality\":\"High face tracking (tracked_fraction 0.9666, quality_score 0.98, missingBlendShapeFraction 0), with cameraStateDistribution limited for 0.044 of frames (insufficientFeatures: 60), 1 faceLostEvents, and 2 estimated dropped frames; windows.60s is empty because the 44.967 s recording is shorter than 60 s.\",\"limitations\":\"Movements reflect execution of explicit session markers ('Look left', 'Look right', 'Neutral face', 'Smile'), so blend-shape activations such as mouthSmile_L (mean 0.112, maximum 0.68) and head yaw represent task-directed physical motion rather than spontaneous facial behavior or any emotional state.\"},{\"observation\":\"Across the 5 daily rows from 2026-11-10 to 2026-11-14 (1 facial window per day), blinkRatePerMinute ranged from 18.7 (2026-11-13) to 24.1 (2026-11-11), facialVariability ranged from 0.031 (2026-11-11) to 0.043 (2026-11-13), headPoseVariabilityRad ranged from 0.029 (2026-11-11) to 0.04 (2026-11-13), and eyeOpennessMean ranged from 0.931 (2026-11-11) to 0.947 (2026-11-13).\",\"supporting_measurements\":[\"daily_rows facial.blinkRatePerMinute: 19.5, 24.1, 20.2, 18.7, 21.4\",\"daily_rows facial.facialVariability: 0.039, 0.031, 0.04, 0.043, 0.041\",\"daily_rows facial.headPoseVariabilityRad: 0.036, 0.029, 0.037, 0.04, 0.038\",\"daily_rows facial.eyeOpennessMean: 0.944, 0.931, 0.94, 0.947, 0.942\"],\"time_range\":{\"start\":\"2026-11-10\",\"end\":\"2026-11-14\"},\"kind\":\"direct_observation\",\"data_quality\":\"Only 5 daily rows and 1 full ARKit session object are provided in detail, whereas baseline_profile.facialReferences reports 9 daysCovered; trackedFraction varied from 0.91 on 2026-11-11 to 0.99 on 2026-11-13.\",\"limitations\":\"Each day's facial summary rests on facialWindowCount 1 (a single brief morning session around 06:00 to 06:15 in session IDs), which cannot capture daytime variability in facial, eye, or head movement.\"}],\"cross_modal_patterns\":[{\"observation\":\"HRV and facial movement variability showed a positive descriptive association over 9 paired days at lag 0 (pearsonR 0.62, spearmanRho 0.58), but day-to-day values in the 5 visible daily rows were not strictly monotonic: for example, on 2026-11-14 HRV was 41.7 ms with facialVariability 0.041, whereas 2026-11-10 and 2026-11-12 had higher HRV (46.2 and 44.6 ms) with lower facialVariability (0.039 and 0.04).\",\"supporting_measurements\":[\"correlations: HeartRateVariabilitySDNN vs facialVariability, lagDays 0, pairedPoints 9, pearsonR 0.62, spearmanRho 0.58\",\"daily_rows 2026-11-11: HRV 38.9, facialVariability 0.031; 2026-11-13: HRV 49.1, facialVariability 0.043\",\"daily_rows non-monotonic points: 2026-11-10 (HRV 46.2, facialVariability 0.039), 2026-11-12 (HRV 44.6, facialVariability 0.04), 2026-11-14 (HRV 41.7, facialVariability 0.041)\"],\"time_range\":{\"start\":\"2026-10-15T21:17:00.000Z\",\"end\":\"2026-11-14T21:59:00.000Z\"},\"kind\":\"direct_observation\",\"data_quality\":\"Computed on 9 paired days (4 paired days are not shown in daily_rows); daily HRV is averaged from sparse readings (2 to 4 samples/day in listed days) and facialVariability comes from 1 short session per day.\",\"limitations\":\"Descriptive correlation with n = 9 and no significance or multiple-comparison testing; could be confounded by how vigorously prompted tasks ('Smile', 'Look left', 'Look right') were performed, face tracking fraction (0.91 on 2026-11-11 vs 0.99 on 2026-11-13), lighting, or HRV measurement timing.\"},{\"observation\":\"No correlation entry is provided between SleepAnalysis (wake-up day) and general facial or head movement variability; across the 5 visible daily rows, the shortest sleep day (2026-11-11: 6.2) coincided with the lowest facialVariability (0.031) and headPoseVariabilityRad (0.029) and the longest sleep day (2026-11-13: 8.1) coincided with the highest facialVariability (0.043) and headPoseVariabilityRad (0.04), whereas 2026-11-10 had more sleep (7.8) than 2026-11-12 (7.4) and 2026-11-14 (7.5) but lower facialVariability (0.039 vs 0.04 and 0.041) and headPoseVariabilityRad (0.036 vs 0.037 and 0.038).\",\"supporting_measurements\":[\"daily_rows SleepAnalysis vs facialVariability: 2026-11-10 (7.8, 0.039), 2026-11-11 (6.2, 0.031), 2026-11-12 (7.4, 0.04), 2026-11-13 (8.1, 0.043), 2026-11-14 (7.5, 0.041) and headPoseVariabilityRad (0.036, 0.029, 0.037, 0.04, 0.038)\"],\"time_range\":{\"start\":\"2026-11-10\",\"end\":\"2026-11-14\"},\"kind\":\"direct_observation\",\"data_quality\":\"Correlation coefficients for SleepAnalysis vs facialVariability or headPoseVariabilityRad are omitted from correlations, and 4 of the 9 recording days are absent from daily_rows.\",\"limitations\":\"With only 5 visible paired days, missing correlation coefficients, 2-source sleep aggregation, and task-prompted recording sessions, a consistent relationship between wake-day sleep duration and overall facial movement cannot be established.\"},{\"observation\":\"RestingHeartRate and facialVariability had a negative descriptive correlation across 9 paired days at lag 0 (pearsonR -0.49, spearmanRho -0.45), with extremes in daily_rows on 2026-11-11 (RHR 60, facialVariability 0.031) and 2026-11-13 (RHR 56, facialVariability 0.043), but contradictory ordering among middle days where 2026-11-10 had lower RHR (57) yet lower facialVariability (0.039) than 2026-11-12 and 2026-11-14 (both RHR 58, facialVariability 0.04 and 0.041).\",\"supporting_measurements\":[\"correlations: RestingHeartRate vs facialVariability, lagDays 0, pairedPoints 9, pearsonR -0.49, spearmanRho -0.45\",\"daily_rows: 2026-11-10 (RHR 57, facialVariability 0.039), 2026-11-11 (RHR 60, facialVariability 0.031), 2026-11-12 (RHR 58, facialVariability 0.04), 2026-11-13 (RHR 56, facialVariability 0.043), 2026-11-14 (RHR 58, facialVariability 0.041)\"],\"time_range\":{\"start\":\"2026-10-15T21:17:00.000Z\",\"end\":\"2026-11-14T21:59:00.000Z\"},\"kind\":\"direct_observation\",\"data_quality\":\"RestingHeartRate lacks sampling frequency, unit, and coverage metadata in health.metrics, and only 5 of the 9 paired days appear in daily_rows.\",\"limitations\":\"Small sample (9 paired days) where extreme days (such as 2026-11-11, which also had lower trackedFraction 0.91) can heavily influence Pearson and Spearman coefficients; potential confounders include illness, medication, hydration, phone positioning, and task prompt execution.\"},{\"observation\":\"Activity metrics showed weak or uncomputed associations with facial and head movement: StepCount vs next-day headPoseVariabilityRad (lagDays 1) had near-zero correlation over 8 paired days (pearsonR 0.12, spearmanRho 0.1), AppleExerciseTime vs facialVariability at lagDays 0 was not computed because it had only 5 paired days (fewer than 7), same-day (lag 0) step correlations are not listed, and active/basal energy measurements are entirely absent.\",\"supporting_measurements\":[\"correlations: StepCount vs headPoseVariabilityRad, lagDays 1, pairedPoints 8, pearsonR 0.12, spearmanRho 0.1\",\"correlations: AppleExerciseTime vs facialVariability, lagDays 0, pairedPoints 5, pearsonR null, spearmanRho null\",\"daily_rows StepCount and previousDayHealth.StepCount (2026-11-10 to 2026-11-14)\"],\"time_range\":{\"start\":\"2026-10-15T21:17:00.000Z\",\"end\":\"2026-11-14T21:59:00.000Z\"},\"kind\":\"direct_observation\",\"data_quality\":\"StepCount merges 2 overlapping sources using the daily maximum; AppleExerciseTime has no daily values or summary statistics in the input; energy expenditure metrics are completely missing; morning ARKit sessions around 06:00 UTC occur before most same-day step accumulation.\",\"limitations\":\"Morning facial recordings precede the rest of that day's physical activity (making lag-0 activity associations temporally ambiguous), while lag-1 steps showed practically no linear or rank association over 8 paired days.\"},{\"observation\":\"SleepAnalysis and blinkRatePerMinute at lag 0 had the largest-magnitude correlation among reported pairs over 9 paired days (pearsonR -0.71, spearmanRho -0.67); across all 5 visible daily rows, shorter wake-day sleep aligned with higher blinkRatePerMinute and slightly lower eyeOpennessMean (ranging from SleepAnalysis 6.2 with blinkRatePerMinute 24.1 and eyeOpennessMean 0.931 on 2026-11-11 to SleepAnalysis 8.1 with blinkRatePerMinute 18.7 and eyeOpennessMean 0.947 on 2026-11-13).\",\"supporting_measurements\":[\"correlations: SleepAnalysis vs blinkRatePerMinute, lagDays 0, pairedPoints 9, pearsonR -0.71, spearmanRho -0.67\",\"daily_rows SleepAnalysis, blinkRatePerMinute, eyeOpennessMean: 2026-11-10 (7.8, 19.5, 0.944), 2026-11-11 (6.2, 24.1, 0.931), 2026-11-12 (7.4, 20.2, 0.94), 2026-11-13 (8.1, 18.7, 0.947), 2026-11-14 (7.5, 21.4, 0.942)\"],\"time_range\":{\"start\":\"2026-10-15T21:17:00.000Z\",\"end\":\"2026-11-14T21:59:00.000Z\"},\"kind\":\"direct_observation\",\"data_quality\":\"Based on 9 paired days (4 days omitted from daily_rows); other blink statistics (such as meanDurationSeconds 0.111 and meanInterBlinkIntervalSeconds 2.79) are only present for the single 2026-11-14 session, so their relationship with sleep cannot be checked.\",\"limitations\":\"Purely descriptive over 9 brief (~45 s) windows without multiple-comparison adjustment across 56 candidate pairs; plausible confounders include tracking quality (0.91 on 2026-11-11 vs 0.99 on 2026-11-13), ambient light, ocular surface dryness, contact lens or screen use, time elapsed since waking, and 2-source sleep selection.\"},{\"observation\":\"Self-reported wellbeing, mood, or symptom ratings are completely absent from the input data, so no relationship between self-reported wellbeing and physiological or facial measurements can be examined.\",\"supporting_measurements\":[\"health.metrics (only HeartRateVariabilitySDNN present; no wellbeing entries in daily_rows, correlations, or baseline_profile)\"],\"time_range\":{\"start\":\"2026-10-15T21:17:00.000Z\",\"end\":\"2026-11-14T21:59:00.000Z\"},\"kind\":\"direct_observation\",\"data_quality\":\"Zero self-report records exist anywhere in the JSON input.\",\"limitations\":\"Without timestamped self-report questionnaires, subjective state cannot be compared against HealthKit or ARKit variables.\"}],\"longitudinal_changes\":[{\"observation\":\"HeartRateVariabilitySDNN showed minimal overall difference between the first and last weeks of the 30-day period (firstPeriod 2026-10-16…2026-10-22 median 45.3 ms vs lastPeriod 2026-11-08…2026-11-14 median 44.6 ms; absoluteChange -0.7 ms, relativeChange -0.015, slopePerDay -0.04), though intermediate weekly summaries fluctuated from a mean of 36.4 ms (median 35.9) in the week of 2026-10-26 to 45.8 ms (median 46.0) in the week of 2026-11-02 and 44.5 ms (median 45.4) in the week of 2026-11-09.\",\"supporting_measurements\":[\"longitudinal_change: firstPeriodMedian 45.3, lastPeriodMedian 44.6, absoluteChange -0.7, relativeChange -0.015, slopePerDay -0.04, daysCovered 30\",\"weekly: 2026-10-26 mean 36.4 (7 days), 2026-11-02 mean 45.8 (7 days), 2026-11-09 mean 44.5 (6 days)\"],\"time_range\":{\"start\":\"2026-10-16T00:12:00.000Z\",\"end\":\"2026-11-14T04:40:00.000Z\"},\"kind\":\"direct_observation\",\"data_quality\":\"Covers 30 of 31 days (95 samples), but 25 daily points and any weekly summary prior to 2026-10-26 are omitted, and a 79200 s sampling gap occurred starting 2026-10-28T03:10:00.000Z during the lower-mean week.\",\"limitations\":\"Sparse daily sampling (~3.25 readings/day) and the 79200 s gap during the week of 2026-10-26 could contribute to the lower weekly mean of 36.4 ms without necessarily reflecting a sustained physiological shift.\"},{\"observation\":\"Longitudinal trends over the 31-day study window cannot be evaluated for facial features or for SleepAnalysis, RestingHeartRate, and StepCount because baseline_profile.longitudinalChanges is empty ([]) and daily_rows covers only 5 consecutive days (2026-11-10 to 2026-11-14), within which metrics fluctuated up and down rather than moving monotonically.\",\"supporting_measurements\":[\"baseline_profile.longitudinalChanges: []\",\"daily_rows (2026-11-10 to 2026-11-14): blinkRatePerMinute 19.5, 24.1, 20.2, 18.7, 21.4; facialVariability 0.039, 0.031, 0.04, 0.043, 0.041\"],\"time_range\":{\"start\":\"2026-10-15T21:17:00.000Z\",\"end\":\"2026-11-14T21:59:00.000Z\"},\"kind\":\"direct_observation\",\"data_quality\":\"4 of the 9 facial recording days and ~25 days of non-HRV daily health data are not included in the input.\",\"limitations\":\"Five days of paired rows are too short to distinguish multi-week longitudinal change from ordinary day-to-day fluctuation.\"}],\"potential_confounders\":[{\"observation\":\"Variations in ARKit tracking quality and camera state—such as lower trackedFraction on 2026-11-11 (0.91) compared with 2026-11-13 (0.99), and limited camera tracking (0.044 of frames due to insufficientFeatures: 60) on 2026-11-14—could influence measured blink detection and blend-shape variability independently of physiology.\",\"supporting_measurements\":[\"daily_rows facial.trackedFraction: 0.97, 0.91, 0.98, 0.99, 0.9666\",\"arkit.sessions[0].validation: cameraStateDistribution normal 0.956, limited 0.044, insufficientFeatures 60, faceLostEvents 1, meanAmbientIntensity 902, meanDistanceToOriginM 0.422\"],\"time_range\":{\"start\":\"2026-11-10\",\"end\":\"2026-11-14\"},\"kind\":\"hypothesis\",\"data_quality\":\"Detailed lighting, head distance, and camera tracking state breakdown are only provided for 1 session (20261114-060000-synth01) and are missing for the other 8 recording days.\",\"limitations\":\"Without session-level ambient light, exposure, and limited-tracking counts for all 9 sessions, technical measurement artifacts cannot be separated from physical movement differences.\"},{\"observation\":\"Execution of prompted recording markers ('Look left', 'Look right', 'Neutral face', 'Smile'), small paired-day counts (5 to 9 days across 56 screened pairs without multiple-comparison correction), multi-source device selection for sleep and steps, sparse HRV sampling, and unrecorded factors (medication, illness, caffeine, ocular dryness, or time since waking) may drive or obscure the observed correlations.\",\"supporting_measurements\":[\"arkit.sessions[0].markers: ['Look left', 'Look right', 'Neutral face', 'Smile']\",\"processing_notes: 8 of 56 health×facial pairs had at least 7 paired days; Sleep: 2 sources; Steps: 2 sources; HRV samplesPerDay: 3.25\"],\"time_range\":{\"start\":\"2026-10-15T21:17:00.000Z\",\"end\":\"2026-11-14T21:59:00.000Z\"},\"kind\":\"hypothesis\",\"data_quality\":\"Marker adherence timing, device source switches per day, exact wake-up timestamps relative to the ~06:00 UTC recordings, and clinical/context logs are absent.\",\"limitations\":\"With 56 health-by-facial pairs screened on n = 8 to 9 days, moderate-to-large correlation magnitudes (such as -0.71 or 0.62) can arise by chance or from a single atypical day.\"}],\"data_quality\":{\"hrv_sampling\":\"HeartRateVariabilitySDNN has 0.968 day coverage (30/31 days), 95 total samples, mean 3.25 samples/day, medianIntervalSeconds 15420, and largestGapSeconds 79200; it is a sparse point series, not continuous.\",\"missing_and_empty_health_metrics\":\"BloodPressureSystolic, BloodPressureDiastolic, VO2Max, and BodyFatPercentage are empty; active/basal energy and self-reported wellbeing are absent; SleepAnalysis, RestingHeartRate, StepCount, and AppleExerciseTime lack full-period summary blocks in health.metrics.\",\"multi_source_aggregation\":\"SleepAnalysis and StepCount each merge 2 sources by taking the source with the largest daily total per night/day in Europe/Helsinki time.\",\"arkit_coverage_and_omissions\":\"9 recording days exist according to baseline_profile.facialReferences, but only 5 daily_rows (2026-11-10 to 2026-11-14) and 1 full ARKit session (20261114-060000-synth01, 44.967 s) are included; processing notes mention 60 s windows, whereas the single detailed session is 44.967 s and has an empty 60s windows array.\",\"correlation_completeness\":\"Processing notes state 8 of 56 health×facial pairs had at least 7 paired days, but only 5 entries (4 with n >= 7 and 1 uncomputed with n = 5) are provided in correlations.\"},\"uncertainties\":[\"Whether the 4 omitted paired days follow or contradict the patterns seen in the 5 visible daily_rows (2026-11-10 to 2026-11-14).\",\"What the correlation coefficients and pair counts are for SleepAnalysis vs facialVariability/headPoseVariabilityRad, same-day (lag 0) StepCount vs facial movement, and the other 3 unreported pairs that met the >= 7 paired-day threshold.\",\"Whether blink duration (meanDurationSeconds) or inter-blink interval (meanInterBlinkIntervalSeconds) covary with sleep across days, since those metrics are only given for 2026-11-14.\",\"How much time elapsed between waking up in Europe/Helsinki and each morning ARKit session (~06:00 to 06:15 in session IDs), and whether identical task markers ('Look left', 'Look right', 'Neutral face', 'Smile') were used in all 9 sessions.\",\"Whether any longitudinal shift occurred in facial metrics, sleep, RHR, or steps across the full 31-day window, and whether any days included illness, medication changes, or device swaps.\",\"How self-reported wellbeing or active/basal energy expenditure relate to any measurement, as both are completely absent.\"],\"recommended_tracking\":[\"Collect daily ARKit recordings across at least 21 to 30+ days at a standardized post-wake interval, separating unprompted neutral-gaze segments from prompted movement tasks ('Look left', 'Look right', 'Smile') and logging ambient light, phone distance (meanDistanceToOriginM), and camera tracking quality for every session.\",\"Export complete daily series and summary statistics (including units, device source IDs, and timestamps) for SleepAnalysis, RestingHeartRate, StepCount, AppleExerciseTime, and active/basal energy expenditure so morning recordings can be aligned strictly with prior-day vs post-recording activity.\",\"Include session-level blink duration, inter-blink interval, and recorder-derived blink rates across all days to cross-check hysteresis blink counts (e.g., 21.4 vs 20.8 per min on 2026-11-14).\",\"Add brief, timestamped daily self-report logs for perceived wellbeing plus contextual confounders (caffeine, medication, illness, contact lens or screen use, and eye dryness) if wellbeing associations are to be studied.\"],\"plain_language_explanation\":\"Over the 31-day period from October 15 to November 14, 2026, Apple Health recorded heart rate variability (HRV) on 30 days (median 44.6 ms across 95 sparse readings, averaging 3.25 per day) alongside 9 days of brief morning face-tracking recordings (~45 seconds on November 14, using prompted movements: 'Look left', 'Look right', 'Neutral face', 'Smile'). Across the 9 paired days, higher daily HRV had a moderate positive descriptive association with facial movement variability (Pearson r = 0.62, Spearman rho = 0.58), higher resting heart rate had a moderate negative association with facial movement variability (r = -0.49, rho = -0.45), and longer wake-day sleep duration had a negative association with blink rate (r = -0.71, rho = -0.67). However, in the 5 days of detailed daily rows (November 10–14), day-to-day values for HRV and resting heart rate were not strictly ordered with facial variability, previous-day step counts showed virtually no association with head pose variability (r = 0.12 over 8 days), exercise minutes had too few paired days (5) to compute a correlation, and neither energy expenditure nor self-reported wellbeing was present in the data. HRV median was nearly unchanged from the first week (45.3 ms) to the last week (44.6 ms), despite a lower weekly average during the week of October 26 (36.4 ms), while multi-week trends for facial movement and other health metrics could not be assessed from the 5 detailed days. All observed associations describe physical movement and physiological readings in a very small sample without implying causation, emotion, or clinical conditions, and they could easily reflect differences in face-tracking quality (0.91 to 0.99), lighting, how prompted facial tasks were performed, or sparse watch sampling.\"}",
+    "usage": {
+      "prompt_tokens": 6938,
+      "output_tokens": 8131,
+      "thought_tokens": 6665,
+      "total_tokens": 21734
+    },
+    "latency_ms": 159078.0,
+    "upstream_status": 200,
+    "finish_reason": "STOP",
+    "error": null
+  },
+  "validation": {
+    "schema_errors": [],
+    "unsupported_numbers": [],
+    "forbidden_terms": [
+      {
+        "location": "facial_behavior_observations[0]",
+        "term": "emotion"
+      }
+    ],
+    "observations": 14,
+    "numbers_checked": 778,
+    "is_valid": true
+  },
+  "parsed": {
+    "experiment_type": "combined",
+    "baseline_summary": {
+      "HeartRateVariabilitySDNN": "Personal historical reference from 2026-10-15T22:00:00.000Z to 2026-11-13T22:00:00.000Z across 30 days (95 samples, coverageFraction 0.968): median 44.6 ms, medianAbsoluteDeviation 4.4 ms, mean 43.2 ms, standardDeviation 6.1 ms, interquartile range 38.9 to 47.5 ms, and personal usual range 28.3 to 60.9 ms.",
+      "blinkRatePerMinute": "Personal historical reference across 9 recording days (sampleCount 9): median 20.2 blinks/min, medianAbsoluteDeviation 1.2, mean 20.8, standardDeviation 1.9, 25th to 75th percentile 19.5 to 21.4, and personal usual range 15.8 to 24.6 blinks/min.",
+      "missing_baselines": "No baseline reference profiles are present in baseline_profile for SleepAnalysis, RestingHeartRate, StepCount, AppleExerciseTime, energy expenditure, facialVariability, headPoseVariabilityRad, or eyeOpennessMean.",
+      "baseline_caveat": "All reference ranges describe this individual's own recorded history (median +/- 2.5 robust SD) rather than a healthy norm, and the recorded period may include unwell days."
+    },
+    "health_observations": [
+      {
+        "observation": "HeartRateVariabilitySDNN was recorded 95 times across 30 of 31 days, with a daily mean of 43.2 ms, daily median of 44.6 ms (range 31.4 to 54.0 ms, standardDeviation 6.1 ms), and per-sample mean of 43.1 ms (range 18.2 to 66.7 ms, standardDeviation 9.4 ms), with 0 robust-z outliers.",
+        "supporting_measurements": [
+          "HeartRateVariabilitySDNN: sample_count 95, daysWithData 30, daysInRange 31",
+          "statistics_per_day: mean 43.2, median 44.6, minimum 31.4, maximum 54.0, standardDeviation 6.1",
+          "statistics_per_sample: mean 43.1, median 43.9, minimum 18.2, maximum 66.7, standardDeviation 9.4",
+          "outliers: outlierCount 0 (threshold 3.5)"
+        ],
+        "time_range": {
+          "start": "2026-10-16T00:12:00.000Z",
+          "end": "2026-11-14T04:40:00.000Z"
+        },
+        "kind": "direct_observation",
+        "data_quality": "Coverage is 0.968 (1 missing day), but sampling is sparse and irregular at 3.25 samples per day (medianIntervalSeconds 15420, meanIntervalSeconds 26826, largestGapSeconds 79200 starting 2026-10-28T03:10:00.000Z); 25 of 30 daily points are omitted from the daily list.",
+        "limitations": "Sparse point measurements (n = 2 to 4 per day in the 5 listed daily points) cannot represent continuous 24-hour autonomic variation and are sensitive to the times of day when readings occurred."
+      },
+      {
+        "observation": "Across the 5 listed daily rows (plus 1 prior day via previousDayHealth on 2026-11-10), SleepAnalysis ranged from 6.2 (2026-11-11) to 8.1 (2026-11-13), RestingHeartRate ranged from 56 (2026-11-13) to 60 (2026-11-11), StepCount ranged from 7310 (2026-11-11) to 13420 (2026-11-13), and 8 walking workouts were logged over the full period.",
+        "supporting_measurements": [
+          "daily_rows SleepAnalysis: 7.1 (prev 2026-11-10), 7.8, 6.2, 7.4, 8.1, 7.5",
+          "daily_rows RestingHeartRate: 58 (prev 2026-11-10), 57, 60, 58, 56, 58",
+          "daily_rows StepCount: 9020 (prev 2026-11-10), 11840, 7310, 12970, 13420, 12225",
+          "health.workouts: count 8, walking 8"
+        ],
+        "time_range": {
+          "start": "2026-10-15T21:17:00.000Z",
+          "end": "2026-11-14T21:59:00.000Z"
+        },
+        "kind": "direct_observation",
+        "data_quality": "Full-period descriptive statistics, units, sampling frequencies, and coverage reports are absent from health.metrics for SleepAnalysis, RestingHeartRate, StepCount, and AppleExerciseTime; BloodPressureSystolic, BloodPressureDiastolic, VO2Max, and BodyFatPercentage are empty; energy metrics and self-reported wellbeing are absent.",
+        "limitations": "Sleep and steps each combine 2 overlapping sources by selecting the single source with the largest daily total, which may introduce step changes if different devices were worn on different days."
+      }
+    ],
+    "facial_behavior_observations": [
+      {
+        "observation": "In the single detailed ARKit session 20261114-060000-synth01 (duration 44.967 s, 1348 frames, 1303 tracked frames), recorded during prompted markers ['Look left', 'Look right', 'Neutral face', 'Smile'], blink rate was 21.4 per minute (count 16, meanDurationSeconds 0.111, exportedDerivedMeans blink_rate_per_min 20.8), eyeOpenness mean was 0.942, facialMovement variability was 0.041 (amplitude 0.21, activityPerSecond 0.33), headMovement poseVariabilityRad was 0.038 (yaw amplitude 0.375 rad), gaze directionChangeCount was 4, and overallMeanAbsoluteDifference asymmetry was 0.017.",
+        "supporting_measurements": [
+          "arkit.sessions[0]: duration_s 44.967, frame_count 1348, trackedFrameCount 1303, tracked_fraction 0.9666",
+          "blink: count 16, ratePerMinute 21.4, meanDurationSeconds 0.111; exportedDerivedMeans.blink_rate_per_min: 20.8",
+          "facialMovement: amplitude 0.21, variability 0.041, activityPerSecond 0.33, activeCoefficientFraction 0.19",
+          "headMovement: poseVariabilityRad 0.038, meanAmplitudeRad 0.16, yaw 0.375; asymmetry: overallMeanAbsoluteDifference 0.017, smile 0.06"
+        ],
+        "time_range": {
+          "start": "2026-11-14T06:00:00.000Z",
+          "end": "2026-11-14T06:00:44.967Z"
+        },
+        "kind": "direct_observation",
+        "data_quality": "High face tracking (tracked_fraction 0.9666, quality_score 0.98, missingBlendShapeFraction 0), with cameraStateDistribution limited for 0.044 of frames (insufficientFeatures: 60), 1 faceLostEvents, and 2 estimated dropped frames; windows.60s is empty because the 44.967 s recording is shorter than 60 s.",
+        "limitations": "Movements reflect execution of explicit session markers ('Look left', 'Look right', 'Neutral face', 'Smile'), so blend-shape activations such as mouthSmile_L (mean 0.112, maximum 0.68) and head yaw represent task-directed physical motion rather than spontaneous facial behavior or any emotional state."
+      },
+      {
+        "observation": "Across the 5 daily rows from 2026-11-10 to 2026-11-14 (1 facial window per day), blinkRatePerMinute ranged from 18.7 (2026-11-13) to 24.1 (2026-11-11), facialVariability ranged from 0.031 (2026-11-11) to 0.043 (2026-11-13), headPoseVariabilityRad ranged from 0.029 (2026-11-11) to 0.04 (2026-11-13), and eyeOpennessMean ranged from 0.931 (2026-11-11) to 0.947 (2026-11-13).",
+        "supporting_measurements": [
+          "daily_rows facial.blinkRatePerMinute: 19.5, 24.1, 20.2, 18.7, 21.4",
+          "daily_rows facial.facialVariability: 0.039, 0.031, 0.04, 0.043, 0.041",
+          "daily_rows facial.headPoseVariabilityRad: 0.036, 0.029, 0.037, 0.04, 0.038",
+          "daily_rows facial.eyeOpennessMean: 0.944, 0.931, 0.94, 0.947, 0.942"
+        ],
+        "time_range": {
+          "start": "2026-11-10",
+          "end": "2026-11-14"
+        },
+        "kind": "direct_observation",
+        "data_quality": "Only 5 daily rows and 1 full ARKit session object are provided in detail, whereas baseline_profile.facialReferences reports 9 daysCovered; trackedFraction varied from 0.91 on 2026-11-11 to 0.99 on 2026-11-13.",
+        "limitations": "Each day's facial summary rests on facialWindowCount 1 (a single brief morning session around 06:00 to 06:15 in session IDs), which cannot capture daytime variability in facial, eye, or head movement."
+      }
+    ],
+    "cross_modal_patterns": [
+      {
+        "observation": "HRV and facial movement variability showed a positive descriptive association over 9 paired days at lag 0 (pearsonR 0.62, spearmanRho 0.58), but day-to-day values in the 5 visible daily rows were not strictly monotonic: for example, on 2026-11-14 HRV was 41.7 ms with facialVariability 0.041, whereas 2026-11-10 and 2026-11-12 had higher HRV (46.2 and 44.6 ms) with lower facialVariability (0.039 and 0.04).",
+        "supporting_measurements": [
+          "correlations: HeartRateVariabilitySDNN vs facialVariability, lagDays 0, pairedPoints 9, pearsonR 0.62, spearmanRho 0.58",
+          "daily_rows 2026-11-11: HRV 38.9, facialVariability 0.031; 2026-11-13: HRV 49.1, facialVariability 0.043",
+          "daily_rows non-monotonic points: 2026-11-10 (HRV 46.2, facialVariability 0.039), 2026-11-12 (HRV 44.6, facialVariability 0.04), 2026-11-14 (HRV 41.7, facialVariability 0.041)"
+        ],
+        "time_range": {
+          "start": "2026-10-15T21:17:00.000Z",
+          "end": "2026-11-14T21:59:00.000Z"
+        },
+        "kind": "direct_observation",
+        "data_quality": "Computed on 9 paired days (4 paired days are not shown in daily_rows); daily HRV is averaged from sparse readings (2 to 4 samples/day in listed days) and facialVariability comes from 1 short session per day.",
+        "limitations": "Descriptive correlation with n = 9 and no significance or multiple-comparison testing; could be confounded by how vigorously prompted tasks ('Smile', 'Look left', 'Look right') were performed, face tracking fraction (0.91 on 2026-11-11 vs 0.99 on 2026-11-13), lighting, or HRV measurement timing."
+      },
+      {
+        "observation": "No correlation entry is provided between SleepAnalysis (wake-up day) and general facial or head movement variability; across the 5 visible daily rows, the shortest sleep day (2026-11-11: 6.2) coincided with the lowest facialVariability (0.031) and headPoseVariabilityRad (0.029) and the longest sleep day (2026-11-13: 8.1) coincided with the highest facialVariability (0.043) and headPoseVariabilityRad (0.04), whereas 2026-11-10 had more sleep (7.8) than 2026-11-12 (7.4) and 2026-11-14 (7.5) but lower facialVariability (0.039 vs 0.04 and 0.041) and headPoseVariabilityRad (0.036 vs 0.037 and 0.038).",
+        "supporting_measurements": [
+          "daily_rows SleepAnalysis vs facialVariability: 2026-11-10 (7.8, 0.039), 2026-11-11 (6.2, 0.031), 2026-11-12 (7.4, 0.04), 2026-11-13 (8.1, 0.043), 2026-11-14 (7.5, 0.041) and headPoseVariabilityRad (0.036, 0.029, 0.037, 0.04, 0.038)"
+        ],
+        "time_range": {
+          "start": "2026-11-10",
+          "end": "2026-11-14"
+        },
+        "kind": "direct_observation",
+        "data_quality": "Correlation coefficients for SleepAnalysis vs facialVariability or headPoseVariabilityRad are omitted from correlations, and 4 of the 9 recording days are absent from daily_rows.",
+        "limitations": "With only 5 visible paired days, missing correlation coefficients, 2-source sleep aggregation, and task-prompted recording sessions, a consistent relationship between wake-day sleep duration and overall facial movement cannot be established."
+      },
+      {
+        "observation": "RestingHeartRate and facialVariability had a negative descriptive correlation across 9 paired days at lag 0 (pearsonR -0.49, spearmanRho -0.45), with extremes in daily_rows on 2026-11-11 (RHR 60, facialVariability 0.031) and 2026-11-13 (RHR 56, facialVariability 0.043), but contradictory ordering among middle days where 2026-11-10 had lower RHR (57) yet lower facialVariability (0.039) than 2026-11-12 and 2026-11-14 (both RHR 58, facialVariability 0.04 and 0.041).",
+        "supporting_measurements": [
+          "correlations: RestingHeartRate vs facialVariability, lagDays 0, pairedPoints 9, pearsonR -0.49, spearmanRho -0.45",
+          "daily_rows: 2026-11-10 (RHR 57, facialVariability 0.039), 2026-11-11 (RHR 60, facialVariability 0.031), 2026-11-12 (RHR 58, facialVariability 0.04), 2026-11-13 (RHR 56, facialVariability 0.043), 2026-11-14 (RHR 58, facialVariability 0.041)"
+        ],
+        "time_range": {
+          "start": "2026-10-15T21:17:00.000Z",
+          "end": "2026-11-14T21:59:00.000Z"
+        },
+        "kind": "direct_observation",
+        "data_quality": "RestingHeartRate lacks sampling frequency, unit, and coverage metadata in health.metrics, and only 5 of the 9 paired days appear in daily_rows.",
+        "limitations": "Small sample (9 paired days) where extreme days (such as 2026-11-11, which also had lower trackedFraction 0.91) can heavily influence Pearson and Spearman coefficients; potential confounders include illness, medication, hydration, phone positioning, and task prompt execution."
+      },
+      {
+        "observation": "Activity metrics showed weak or uncomputed associations with facial and head movement: StepCount vs next-day headPoseVariabilityRad (lagDays 1) had near-zero correlation over 8 paired days (pearsonR 0.12, spearmanRho 0.1), AppleExerciseTime vs facialVariability at lagDays 0 was not computed because it had only 5 paired days (fewer than 7), same-day (lag 0) step correlations are not listed, and active/basal energy measurements are entirely absent.",
+        "supporting_measurements": [
+          "correlations: StepCount vs headPoseVariabilityRad, lagDays 1, pairedPoints 8, pearsonR 0.12, spearmanRho 0.1",
+          "correlations: AppleExerciseTime vs facialVariability, lagDays 0, pairedPoints 5, pearsonR null, spearmanRho null",
+          "daily_rows StepCount and previousDayHealth.StepCount (2026-11-10 to 2026-11-14)"
+        ],
+        "time_range": {
+          "start": "2026-10-15T21:17:00.000Z",
+          "end": "2026-11-14T21:59:00.000Z"
+        },
+        "kind": "direct_observation",
+        "data_quality": "StepCount merges 2 overlapping sources using the daily maximum; AppleExerciseTime has no daily values or summary statistics in the input; energy expenditure metrics are completely missing; morning ARKit sessions around 06:00 UTC occur before most same-day step accumulation.",
+        "limitations": "Morning facial recordings precede the rest of that day's physical activity (making lag-0 activity associations temporally ambiguous), while lag-1 steps showed practically no linear or rank association over 8 paired days."
+      },
+      {
+        "observation": "SleepAnalysis and blinkRatePerMinute at lag 0 had the largest-magnitude correlation among reported pairs over 9 paired days (pearsonR -0.71, spearmanRho -0.67); across all 5 visible daily rows, shorter wake-day sleep aligned with higher blinkRatePerMinute and slightly lower eyeOpennessMean (ranging from SleepAnalysis 6.2 with blinkRatePerMinute 24.1 and eyeOpennessMean 0.931 on 2026-11-11 to SleepAnalysis 8.1 with blinkRatePerMinute 18.7 and eyeOpennessMean 0.947 on 2026-11-13).",
+        "supporting_measurements": [
+          "correlations: SleepAnalysis vs blinkRatePerMinute, lagDays 0, pairedPoints 9, pearsonR -0.71, spearmanRho -0.67",
+          "daily_rows SleepAnalysis, blinkRatePerMinute, eyeOpennessMean: 2026-11-10 (7.8, 19.5, 0.944), 2026-11-11 (6.2, 24.1, 0.931), 2026-11-12 (7.4, 20.2, 0.94), 2026-11-13 (8.1, 18.7, 0.947), 2026-11-14 (7.5, 21.4, 0.942)"
+        ],
+        "time_range": {
+          "start": "2026-10-15T21:17:00.000Z",
+          "end": "2026-11-14T21:59:00.000Z"
+        },
+        "kind": "direct_observation",
+        "data_quality": "Based on 9 paired days (4 days omitted from daily_rows); other blink statistics (such as meanDurationSeconds 0.111 and meanInterBlinkIntervalSeconds 2.79) are only present for the single 2026-11-14 session, so their relationship with sleep cannot be checked.",
+        "limitations": "Purely descriptive over 9 brief (~45 s) windows without multiple-comparison adjustment across 56 candidate pairs; plausible confounders include tracking quality (0.91 on 2026-11-11 vs 0.99 on 2026-11-13), ambient light, ocular surface dryness, contact lens or screen use, time elapsed since waking, and 2-source sleep selection."
+      },
+      {
+        "observation": "Self-reported wellbeing, mood, or symptom ratings are completely absent from the input data, so no relationship between self-reported wellbeing and physiological or facial measurements can be examined.",
+        "supporting_measurements": [
+          "health.metrics (only HeartRateVariabilitySDNN present; no wellbeing entries in daily_rows, correlations, or baseline_profile)"
+        ],
+        "time_range": {
+          "start": "2026-10-15T21:17:00.000Z",
+          "end": "2026-11-14T21:59:00.000Z"
+        },
+        "kind": "direct_observation",
+        "data_quality": "Zero self-report records exist anywhere in the JSON input.",
+        "limitations": "Without timestamped self-report questionnaires, subjective state cannot be compared against HealthKit or ARKit variables."
+      }
+    ],
+    "longitudinal_changes": [
+      {
+        "observation": "HeartRateVariabilitySDNN showed minimal overall difference between the first and last weeks of the 30-day period (firstPeriod 2026-10-16…2026-10-22 median 45.3 ms vs lastPeriod 2026-11-08…2026-11-14 median 44.6 ms; absoluteChange -0.7 ms, relativeChange -0.015, slopePerDay -0.04), though intermediate weekly summaries fluctuated from a mean of 36.4 ms (median 35.9) in the week of 2026-10-26 to 45.8 ms (median 46.0) in the week of 2026-11-02 and 44.5 ms (median 45.4) in the week of 2026-11-09.",
+        "supporting_measurements": [
+          "longitudinal_change: firstPeriodMedian 45.3, lastPeriodMedian 44.6, absoluteChange -0.7, relativeChange -0.015, slopePerDay -0.04, daysCovered 30",
+          "weekly: 2026-10-26 mean 36.4 (7 days), 2026-11-02 mean 45.8 (7 days), 2026-11-09 mean 44.5 (6 days)"
+        ],
+        "time_range": {
+          "start": "2026-10-16T00:12:00.000Z",
+          "end": "2026-11-14T04:40:00.000Z"
+        },
+        "kind": "direct_observation",
+        "data_quality": "Covers 30 of 31 days (95 samples), but 25 daily points and any weekly summary prior to 2026-10-26 are omitted, and a 79200 s sampling gap occurred starting 2026-10-28T03:10:00.000Z during the lower-mean week.",
+        "limitations": "Sparse daily sampling (~3.25 readings/day) and the 79200 s gap during the week of 2026-10-26 could contribute to the lower weekly mean of 36.4 ms without necessarily reflecting a sustained physiological shift."
+      },
+      {
+        "observation": "Longitudinal trends over the 31-day study window cannot be evaluated for facial features or for SleepAnalysis, RestingHeartRate, and StepCount because baseline_profile.longitudinalChanges is empty ([]) and daily_rows covers only 5 consecutive days (2026-11-10 to 2026-11-14), within which metrics fluctuated up and down rather than moving monotonically.",
+        "supporting_measurements": [
+          "baseline_profile.longitudinalChanges: []",
+          "daily_rows (2026-11-10 to 2026-11-14): blinkRatePerMinute 19.5, 24.1, 20.2, 18.7, 21.4; facialVariability 0.039, 0.031, 0.04, 0.043, 0.041"
+        ],
+        "time_range": {
+          "start": "2026-10-15T21:17:00.000Z",
+          "end": "2026-11-14T21:59:00.000Z"
+        },
+        "kind": "direct_observation",
+        "data_quality": "4 of the 9 facial recording days and ~25 days of non-HRV daily health data are not included in the input.",
+        "limitations": "Five days of paired rows are too short to distinguish multi-week longitudinal change from ordinary day-to-day fluctuation."
+      }
+    ],
+    "potential_confounders": [
+      {
+        "observation": "Variations in ARKit tracking quality and camera state—such as lower trackedFraction on 2026-11-11 (0.91) compared with 2026-11-13 (0.99), and limited camera tracking (0.044 of frames due to insufficientFeatures: 60) on 2026-11-14—could influence measured blink detection and blend-shape variability independently of physiology.",
+        "supporting_measurements": [
+          "daily_rows facial.trackedFraction: 0.97, 0.91, 0.98, 0.99, 0.9666",
+          "arkit.sessions[0].validation: cameraStateDistribution normal 0.956, limited 0.044, insufficientFeatures 60, faceLostEvents 1, meanAmbientIntensity 902, meanDistanceToOriginM 0.422"
+        ],
+        "time_range": {
+          "start": "2026-11-10",
+          "end": "2026-11-14"
+        },
+        "kind": "hypothesis",
+        "data_quality": "Detailed lighting, head distance, and camera tracking state breakdown are only provided for 1 session (20261114-060000-synth01) and are missing for the other 8 recording days.",
+        "limitations": "Without session-level ambient light, exposure, and limited-tracking counts for all 9 sessions, technical measurement artifacts cannot be separated from physical movement differences."
+      },
+      {
+        "observation": "Execution of prompted recording markers ('Look left', 'Look right', 'Neutral face', 'Smile'), small paired-day counts (5 to 9 days across 56 screened pairs without multiple-comparison correction), multi-source device selection for sleep and steps, sparse HRV sampling, and unrecorded factors (medication, illness, caffeine, ocular dryness, or time since waking) may drive or obscure the observed correlations.",
+        "supporting_measurements": [
+          "arkit.sessions[0].markers: ['Look left', 'Look right', 'Neutral face', 'Smile']",
+          "processing_notes: 8 of 56 health×facial pairs had at least 7 paired days; Sleep: 2 sources; Steps: 2 sources; HRV samplesPerDay: 3.25"
+        ],
+        "time_range": {
+          "start": "2026-10-15T21:17:00.000Z",
+          "end": "2026-11-14T21:59:00.000Z"
+        },
+        "kind": "hypothesis",
+        "data_quality": "Marker adherence timing, device source switches per day, exact wake-up timestamps relative to the ~06:00 UTC recordings, and clinical/context logs are absent.",
+        "limitations": "With 56 health-by-facial pairs screened on n = 8 to 9 days, moderate-to-large correlation magnitudes (such as -0.71 or 0.62) can arise by chance or from a single atypical day."
+      }
+    ],
+    "data_quality": {
+      "hrv_sampling": "HeartRateVariabilitySDNN has 0.968 day coverage (30/31 days), 95 total samples, mean 3.25 samples/day, medianIntervalSeconds 15420, and largestGapSeconds 79200; it is a sparse point series, not continuous.",
+      "missing_and_empty_health_metrics": "BloodPressureSystolic, BloodPressureDiastolic, VO2Max, and BodyFatPercentage are empty; active/basal energy and self-reported wellbeing are absent; SleepAnalysis, RestingHeartRate, StepCount, and AppleExerciseTime lack full-period summary blocks in health.metrics.",
+      "multi_source_aggregation": "SleepAnalysis and StepCount each merge 2 sources by taking the source with the largest daily total per night/day in Europe/Helsinki time.",
+      "arkit_coverage_and_omissions": "9 recording days exist according to baseline_profile.facialReferences, but only 5 daily_rows (2026-11-10 to 2026-11-14) and 1 full ARKit session (20261114-060000-synth01, 44.967 s) are included; processing notes mention 60 s windows, whereas the single detailed session is 44.967 s and has an empty 60s windows array.",
+      "correlation_completeness": "Processing notes state 8 of 56 health×facial pairs had at least 7 paired days, but only 5 entries (4 with n >= 7 and 1 uncomputed with n = 5) are provided in correlations."
+    },
+    "uncertainties": [
+      "Whether the 4 omitted paired days follow or contradict the patterns seen in the 5 visible daily_rows (2026-11-10 to 2026-11-14).",
+      "What the correlation coefficients and pair counts are for SleepAnalysis vs facialVariability/headPoseVariabilityRad, same-day (lag 0) StepCount vs facial movement, and the other 3 unreported pairs that met the >= 7 paired-day threshold.",
+      "Whether blink duration (meanDurationSeconds) or inter-blink interval (meanInterBlinkIntervalSeconds) covary with sleep across days, since those metrics are only given for 2026-11-14.",
+      "How much time elapsed between waking up in Europe/Helsinki and each morning ARKit session (~06:00 to 06:15 in session IDs), and whether identical task markers ('Look left', 'Look right', 'Neutral face', 'Smile') were used in all 9 sessions.",
+      "Whether any longitudinal shift occurred in facial metrics, sleep, RHR, or steps across the full 31-day window, and whether any days included illness, medication changes, or device swaps.",
+      "How self-reported wellbeing or active/basal energy expenditure relate to any measurement, as both are completely absent."
+    ],
+    "recommended_tracking": [
+      "Collect daily ARKit recordings across at least 21 to 30+ days at a standardized post-wake interval, separating unprompted neutral-gaze segments from prompted movement tasks ('Look left', 'Look right', 'Smile') and logging ambient light, phone distance (meanDistanceToOriginM), and camera tracking quality for every session.",
+      "Export complete daily series and summary statistics (including units, device source IDs, and timestamps) for SleepAnalysis, RestingHeartRate, StepCount, AppleExerciseTime, and active/basal energy expenditure so morning recordings can be aligned strictly with prior-day vs post-recording activity.",
+      "Include session-level blink duration, inter-blink interval, and recorder-derived blink rates across all days to cross-check hysteresis blink counts (e.g., 21.4 vs 20.8 per min on 2026-11-14).",
+      "Add brief, timestamped daily self-report logs for perceived wellbeing plus contextual confounders (caffeine, medication, illness, contact lens or screen use, and eye dryness) if wellbeing associations are to be studied."
+    ],
+    "plain_language_explanation": "Over the 31-day period from October 15 to November 14, 2026, Apple Health recorded heart rate variability (HRV) on 30 days (median 44.6 ms across 95 sparse readings, averaging 3.25 per day) alongside 9 days of brief morning face-tracking recordings (~45 seconds on November 14, using prompted movements: 'Look left', 'Look right', 'Neutral face', 'Smile'). Across the 9 paired days, higher daily HRV had a moderate positive descriptive association with facial movement variability (Pearson r = 0.62, Spearman rho = 0.58), higher resting heart rate had a moderate negative association with facial movement variability (r = -0.49, rho = -0.45), and longer wake-day sleep duration had a negative association with blink rate (r = -0.71, rho = -0.67). However, in the 5 days of detailed daily rows (November 10–14), day-to-day values for HRV and resting heart rate were not strictly ordered with facial variability, previous-day step counts showed virtually no association with head pose variability (r = 0.12 over 8 days), exercise minutes had too few paired days (5) to compute a correlation, and neither energy expenditure nor self-reported wellbeing was present in the data. HRV median was nearly unchanged from the first week (45.3 ms) to the last week (44.6 ms), despite a lower weekly average during the week of October 26 (36.4 ms), while multi-week trends for facial movement and other health metrics could not be assessed from the 5 detailed days. All observed associations describe physical movement and physiological readings in a very small sample without implying causation, emotion, or clinical conditions, and they could easily reflect differences in face-tracking quality (0.91 to 0.99), lighting, how prompted facial tasks were performed, or sparse watch sampling."
+  }
+}

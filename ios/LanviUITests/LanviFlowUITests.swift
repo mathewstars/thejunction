@@ -101,7 +101,7 @@ final class LanviFlowUITests: XCTestCase {
             pause(1.0)
             field.typeText("The coffee outside was nice")
             pause(0.6)
-            tap(app.buttons, "Send", "chat.send")
+            tap(app.buttons, "chat.send", "chat.send")
             pause(3.0)
         }
         tap(app.buttons, "Close", "chat.close")
@@ -167,6 +167,65 @@ final class LanviFlowUITests: XCTestCase {
         pause(2.0)
         tap(app.buttons, "Close", "flow.helpclose")
         pause(2.5)
+    }
+
+    /// The chat keyboard can always be put away, and the buttons still work.
+    /// Run with the on-screen keyboard on (simulator: ConnectHardwareKeyboard off).
+    func test4ChatKeyboard() {
+        launch(["-senseScreen", "none", "-screen", "home", "-demoOpen", "chat"])
+        let field = app.textFields["Write to Lanvi"].firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 6))
+        let kb = app.keyboards.firstMatch
+        func up() { field.tap(); XCTAssertTrue(kb.waitForExistence(timeout: 3), "keyboard up") }
+        func gone(_ why: String) {
+            let p = NSPredicate(format: "exists == false")
+            expectation(for: p, evaluatedWith: kb)
+            waitForExpectations(timeout: 3)
+            event("kbd.gone.\(why)")
+        }
+
+        // 1. Tap on the list puts it away.
+        up(); pause(0.6)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42)).tap()
+        gone("tap-list")
+
+        // 2. Tap on the scene at the top (beside Lanvi) puts it away.
+        up(); pause(0.6)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.30, dy: 0.17)).tap()
+        gone("tap-scene")
+
+        // 3. Dragging the list down puts it away.
+        up(); pause(0.6)
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.30))
+        start.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85)))
+        gone("drag")
+
+        // 4. Return on an empty field puts it away.
+        up(); pause(0.6)
+        field.typeText("\n")
+        gone("return-empty")
+
+        // 5. Return with text sends and keeps it up.
+        up(); pause(0.4)
+        field.typeText("Hello Lanvi\n")
+        pause(2.5)
+        XCTAssertTrue(kb.exists, "keyboard stays up after sending")
+        XCTAssertTrue(app.staticTexts["Hello Lanvi"].exists, "message sent with Return")
+        event("kbd.return-sends")
+
+        // 6. The send button works with the keyboard up.
+        field.typeText("Second one")
+        app.buttons["chat.send"].tap()
+        pause(2.5)
+        XCTAssertTrue(app.staticTexts["Second one"].exists, "send button works")
+        XCTAssertTrue(kb.exists)
+        event("kbd.send-button")
+
+        // 7. X with the keyboard up closes the chat.
+        app.buttons["Close"].tap()
+        pause(1.5)
+        XCTAssertFalse(field.exists, "chat closed with X")
+        event("kbd.x-closes")
     }
 
     func test2RealWorldAndDone() {
