@@ -136,7 +136,7 @@ struct HomeGrowUpMoment: View {
                         .font(Theme.rounded(36, .black))
                         .foregroundStyle(.white)
                         .shadow(color: Color(hex: 0x7CF5C4).opacity(0.6), radius: 12)
-                    Text(HomeGrowthCard.name(stage))
+                    Text(TodayCopy.stageName(stage))
                         .font(Theme.rounded(18, .heavy))
                         .foregroundStyle(Theme.brand)
                         .padding(.horizontal, 18)

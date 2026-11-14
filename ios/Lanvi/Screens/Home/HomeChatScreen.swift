@@ -197,17 +197,17 @@ struct HomeChatScreen: View {
     private func suggestionCard(_ kind: ActivityKind) -> some View {
         Button { onActivity(kind) } label: {
             HStack(spacing: 10) {
-                Image(systemName: HomeTodayCard.icon(kind))
+                Image(systemName: TodayCopy.icon(kind))
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 34, height: 34)
                     .background(Circle().fill(LinearGradient(colors: [Color(hex: 0x7C9BFF), Theme.brand],
                                                              startPoint: .top, endPoint: .bottom)))
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(HomeTodayCard.gameTitle(kind))
+                    Text(TodayCopy.title(kind))
                         .font(Theme.rounded(16, .heavy))
                         .foregroundStyle(Theme.ink)
-                    Text(HomeTodayCard.gameDuration(kind))
+                    Text(TodayCopy.duration(kind))
                         .font(Theme.rounded(12, .bold))
                         .foregroundStyle(Theme.inkSecondary)
                 }
