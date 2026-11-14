@@ -115,6 +115,7 @@ enum FocusArt {
 
     // MARK: The snowflake
 
+    /// A crisp, cool, matte crystal. `squash` flattens it as it tumbles, so it turns in 3D.
     static func snowflake(_ ctx: GraphicsContext, at c: CGPoint, arm L: CGFloat = 15, alpha: Double,
                           angle: Double, squash: CGFloat = 1) {
         guard alpha > 0.01 else { return }
@@ -129,47 +130,62 @@ enum FocusArt {
             let b = pt(c, a, L * 0.56)
             p.move(to: b); p.addLine(to: pt(b, a + .pi / 4, L * 0.32))
             p.move(to: b); p.addLine(to: pt(b, a - .pi / 4, L * 0.32))
+            let tip = pt(c, a, L * 0.84)
+            p.move(to: tip); p.addLine(to: pt(tip, a + .pi / 4, L * 0.16))
+            p.move(to: tip); p.addLine(to: pt(tip, a - .pi / 4, L * 0.16))
         }
-        ctx.stroke(p, with: .color(Theme.nightTop.opacity(0.3 * alpha)),
-                   style: StrokeStyle(lineWidth: 4.6, lineCap: .round))
-        ctx.stroke(p, with: .color(snow.opacity(alpha)),
-                   style: StrokeStyle(lineWidth: 2.4, lineCap: .round))
-        ctx.fill(circle(c, 2.6), with: .color(snow.opacity(alpha)))
+        // A cool soft shadow so it reads on any sky, then the crystal, then a frosty centre.
+        ctx.fill(circle(c, L * 1.25), with: .radialGradient(
+            Gradient(colors: [Theme.nightTop.opacity(0.22 * alpha), Theme.nightTop.opacity(0)]),
+            center: c, startRadius: 0, endRadius: L * 1.25))
+        ctx.stroke(p, with: .color(Theme.nightTop.opacity(0.32 * alpha)),
+                   style: StrokeStyle(lineWidth: 4.4, lineCap: .round, lineJoin: .round))
+        ctx.stroke(p, with: .linearGradient(Gradient(colors: [.white.opacity(alpha), snow.opacity(alpha), Color(hex: 0xCFE0FF).opacity(alpha)]),
+                                            startPoint: CGPoint(x: c.x - L, y: c.y - L), endPoint: CGPoint(x: c.x + L, y: c.y + L)),
+                   style: StrokeStyle(lineWidth: 2.3, lineCap: .round, lineJoin: .round))
+        ctx.fill(circle(c, 2.8), with: .color(.white.opacity(alpha)))
     }
 
     // MARK: Effects
 
-    /// Draws one layer of a tap effect. Melting snow lives on the snow canvas and ignores `layer`.
-    static func draw(_ e: FocusEffect, _ ctx: GraphicsContext, _ layer: Layer, at t: TimeInterval, tail: CGPoint) {
+    /// Draws one layer of a tap effect. Melting snow and touch ripples live on the snow canvas and ignore `layer`.
+    /// `landing` says where on the aurora a rising light is headed right now.
+    static func draw(_ e: FocusEffect, _ ctx: GraphicsContext, _ layer: Layer, at t: TimeInterval,
+                     landing: (CGFloat) -> CGPoint) {
         let k = min(1, max(0, (t - e.t0) / e.life))
         switch e.kind {
         case .burst: burst(ctx, layer, at: e.at, k: k, life: e.life, seed: e.angle)
-        case .flight: ribbon(ctx, layer, from: e.at, to: tail, k: k, seed: e.angle)
+        case .flight: rise(ctx, layer, from: e.at, to: landing(e.u), k: k, seed: e.angle)
         case .melt: melt(ctx, at: e.at, k: k, angle: e.angle)
+        case .touch: touch(ctx, at: e.at, k: k)
         }
     }
 
-    /// Caught: the core flashes, a thin ring of light opens, and motes scatter and fall with a little gravity.
+    /// Caught: the core flashes white, a thin ring of light opens, and motes scatter and fall
+    /// with a little gravity. Crisp and over in half a second.
     private static func burst(_ ctx: GraphicsContext, _ layer: Layer, at c: CGPoint, k: Double, life: Double, seed: Double) {
         let edge = tint(seed)
         let fade = 1 - k
-        let out = CGFloat(1 - pow(1 - k, 3))
+        let out = CGFloat(1 - pow(1 - k, 4))
         let tau = k * life
 
         func mote(_ i: Int) -> (CGPoint, CGFloat) {
             let jitter = fract(sin(Double(i) * 12.9898 + seed) * 43758.5453)
             let a = seed + Double(i) * 2 * .pi / 9 + jitter * 0.5
-            let speed = 120 + 80 * jitter
-            let p = CGPoint(x: c.x + CGFloat(cos(a) * speed * tau),
-                            y: c.y + CGFloat(sin(a) * speed * tau + 0.5 * 560 * tau * tau))
-            return (p, 1.7 * CGFloat(fade) + 0.4)
+            let speed = 150 + 90 * jitter
+            // Fast at first, then slowed by the air, then pulled down a little.
+            let travel = speed * (1 - exp(-tau * 5)) / 5
+            let p = CGPoint(x: c.x + CGFloat(cos(a) * travel),
+                            y: c.y + CGFloat(sin(a) * travel + 0.5 * 420 * tau * tau))
+            return (p, 1.8 * CGFloat(fade) + 0.4)
         }
 
         switch layer {
         case .warm:
-            let body = 14 * (1 + 0.5 * out)
+            let f3 = fade * fade * fade
+            let body = 14 * (1 + 0.6 * out)
             ctx.fill(circle(c, body), with: .radialGradient(
-                Gradient(colors: [gold.opacity(0.85 * fade * fade * fade), ember.opacity(0.3 * fade * fade * fade), ember.opacity(0)]),
+                Gradient(colors: [gold.opacity(0.85 * f3), ember.opacity(0.3 * f3), ember.opacity(0)]),
                 center: c, startRadius: 0, endRadius: body))
             for i in 0..<9 {
                 let (p, r) = mote(i)
@@ -177,19 +193,22 @@ enum FocusArt {
             }
 
         case .light:
-            let flash = 6 + 22 * CGFloat(min(1, k * 2.5))
+            // The flash peaks almost at once (crisp), then falls away.
+            let pop = min(1, k / 0.12)
+            let flash = 8 + 26 * CGFloat(pop)
             let f3 = fade * fade * fade
             ctx.fill(circle(c, flash), with: .radialGradient(
                 Gradient(stops: [
                     .init(color: core.opacity(f3), location: 0),
-                    .init(color: edge.opacity(0.4 * f3), location: 0.45),
+                    .init(color: core.opacity(0.6 * f3), location: 0.2),
+                    .init(color: edge.opacity(0.4 * f3), location: 0.5),
                     .init(color: edge.opacity(0), location: 1),
                 ]),
                 center: c, startRadius: 0, endRadius: flash))
-            let ring = circle(c, 10 + 34 * out)
+            let ring = circle(c, 10 + 40 * out)
             let ringFade = fade * fade
-            ctx.stroke(ring, with: .color(edge.opacity(0.25 * ringFade)), lineWidth: 5 * CGFloat(fade) + 0.5)
-            ctx.stroke(ring, with: .color(core.opacity(0.55 * ringFade)), lineWidth: 0.8 * CGFloat(fade) + 0.2)
+            ctx.stroke(ring, with: .color(edge.opacity(0.28 * ringFade)), lineWidth: 6 * CGFloat(fade) + 0.5)
+            ctx.stroke(ring, with: .color(core.opacity(0.6 * ringFade)), lineWidth: 1 * CGFloat(fade) + 0.2)
             for i in 0..<9 {
                 let (p, r) = mote(i)
                 ctx.fill(circle(p, r * 4.5), with: .radialGradient(
@@ -199,28 +218,30 @@ enum FocusArt {
         }
     }
 
-    /// A ribbon of light with a tapering glowing tail sweeps down into Lanvi's tail.
-    /// It first lifts and curls outward a little, then swoops down; the ribbon is one smooth tapered shape.
-    private static func ribbon(_ ctx: GraphicsContext, _ layer: Layer, from a: CGPoint, to b: CGPoint, k: Double, seed: Double) {
-        let edge = tint(seed)
-        let side: CGFloat = a.x < b.x ? -1 : 1
-        let c1 = CGPoint(x: a.x + side * 70, y: a.y - 40)
-        let c2 = CGPoint(x: b.x + side * 50, y: b.y - 180)
+    /// The caught light rises into the sky as a ribbon with a tapering glowing tail and
+    /// becomes part of the aurora: it leaves warm and gold and arrives as aurora colour.
+    /// It first curls out a little to the side, then sweeps up; the head slows as it arrives.
+    private static func rise(_ ctx: GraphicsContext, _ layer: Layer, from a: CGPoint, to b: CGPoint, k: Double, seed: Double) {
+        let edge = GameAurora.mint
+        let side: CGFloat = sin(seed * 3.1) > 0 ? 1 : -1
+        let c1 = CGPoint(x: a.x + side * 64, y: a.y - 26)
+        let c2 = CGPoint(x: b.x - side * 30, y: b.y + 150)
         func at(_ u: Double) -> CGPoint {
             let x = CGFloat(min(1, max(0, u)))
-            let e = x * x * (3 - 2 * x)
-            let m = 1 - e
+            let m = 1 - x
             return CGPoint(
-                x: m * m * m * a.x + 3 * m * m * e * c1.x + 3 * m * e * e * c2.x + e * e * e * b.x,
-                y: m * m * m * a.y + 3 * m * m * e * c1.y + 3 * m * e * e * c2.y + e * e * e * b.y)
+                x: m * m * m * a.x + 3 * m * m * x * c1.x + 3 * m * x * x * c2.x + x * x * x * b.x,
+                y: m * m * m * a.y + 3 * m * m * x * c1.y + 3 * m * x * x * c2.y + x * x * x * b.y)
         }
-        let head = min(1, k * 1.12)
-        let fadeOut = k > 0.86 ? (1 - k) / 0.14 : 1
-        let tailStart = max(0, head - 0.3)
+        // Quick lift-off, gentle arrival.
+        let head = 1 - pow(1 - min(1, k * 1.08), 2.6)
+        let fadeOut = k > 0.82 ? max(0, (1 - k) / 0.18) : 1
+        let tailStart = max(0, head - 0.34)
         guard head > 0.001 else { return }
+        let warmth = 1 - GameEase.smooth(k / 0.75)
 
         // Points along the ribbon from its faint end to the head, and a tapered outline around them.
-        let n = 18
+        let n = 20
         let pts = (0...n).map { at(tailStart + (head - tailStart) * Double($0) / Double(n)) }
         func taper(_ halfWidth: CGFloat) -> Path {
             var left: [CGPoint] = [], right: [CGPoint] = []
@@ -246,37 +267,50 @@ enum FocusArt {
         let p = pts[n]
         switch layer {
         case .warm:
-            ctx.fill(taper(3.2), with: along(gold, 0.9))
+            guard warmth > 0.01 else { return }
+            ctx.fill(taper(3.2), with: along(gold, 0.9 * warmth))
             ctx.fill(circle(p, 10), with: .radialGradient(
-                Gradient(colors: [gold.opacity(fadeOut), ember.opacity(0)]),
+                Gradient(colors: [gold.opacity(fadeOut * warmth), ember.opacity(0)]),
                 center: p, startRadius: 0, endRadius: 10))
         case .light:
-            ctx.fill(taper(9), with: along(edge, 0.35))
-            ctx.fill(taper(1.6), with: along(core, 0.9))
-            ctx.fill(circle(p, 18), with: .radialGradient(
+            let cool = 1 - warmth
+            ctx.fill(taper(10), with: along(edge, 0.22 + 0.25 * cool))
+            ctx.fill(taper(1.7), with: along(core, 0.9))
+            ctx.fill(circle(p, 20), with: .radialGradient(
                 Gradient(stops: [
                     .init(color: core.opacity(fadeOut), location: 0),
-                    .init(color: edge.opacity(0.35 * fadeOut), location: 0.35),
+                    .init(color: edge.opacity((0.3 + 0.3 * cool) * fadeOut), location: 0.35),
                     .init(color: edge.opacity(0), location: 1),
                 ]),
-                center: p, startRadius: 0, endRadius: 18))
+                center: p, startRadius: 0, endRadius: 20))
         }
     }
 
     /// The snowflake softens, shrinks and becomes a drop that slides away. No colour change, no fuss.
     private static func melt(_ ctx: GraphicsContext, at c: CGPoint, k: Double, angle: Double) {
-        let shrink = CGFloat(1 - k * 0.8)
-        snowflake(ctx, at: CGPoint(x: c.x, y: c.y + CGFloat(k) * 6), arm: 17 * shrink,
+        let shrink = CGFloat(1 - GameEase.smooth(k) * 0.8)
+        snowflake(ctx, at: CGPoint(x: c.x, y: c.y + CGFloat(GameEase.smooth(k)) * 6), arm: 17 * shrink,
                   alpha: max(0, 1 - k * 1.4), angle: angle, squash: 1 - CGFloat(k) * 0.4)
         if k > 0.25 {
             let d = (k - 0.25) / 0.75
-            let p = CGPoint(x: c.x, y: c.y + 6 + CGFloat(d) * 18)
+            let fall = CGFloat(d * d) * 22
+            let p = CGPoint(x: c.x, y: c.y + 6 + fall)
             var drop = Path()
             drop.move(to: CGPoint(x: p.x, y: p.y - 7))
             drop.addQuadCurve(to: CGPoint(x: p.x, y: p.y + 4), control: CGPoint(x: p.x + 7, y: p.y + 2))
             drop.addQuadCurve(to: CGPoint(x: p.x, y: p.y - 7), control: CGPoint(x: p.x - 7, y: p.y + 2))
-            ctx.fill(drop, with: .color(Theme.aurora.opacity(0.8 * (1 - d))))
+            ctx.fill(drop, with: .linearGradient(Gradient(colors: [.white.opacity(0.9 * (1 - d)), Theme.aurora.opacity(0.85 * (1 - d))]),
+                                                 startPoint: CGPoint(x: p.x - 4, y: p.y - 7), endPoint: CGPoint(x: p.x + 4, y: p.y + 4)))
         }
+    }
+
+    /// A finger touched empty sky: a small soft ripple of frost, so every touch is felt.
+    private static func touch(_ ctx: GraphicsContext, at c: CGPoint, k: Double) {
+        let out = CGFloat(GameEase.outCubic(k))
+        let fade = pow(1 - k, 2)
+        ctx.stroke(circle(c, 8 + 18 * out), with: .color(.white.opacity(0.35 * fade)), lineWidth: 2.5 * CGFloat(1 - k) + 0.4)
+        ctx.fill(circle(c, 14), with: .radialGradient(Gradient(colors: [.white.opacity(0.18 * fade), .white.opacity(0)]),
+                                                      center: c, startRadius: 0, endRadius: 14))
     }
 
     // MARK: Shapes and helpers
@@ -308,7 +342,7 @@ enum FocusArt {
 }
 
 /// Two canvases for the sparks: the warm ember bodies drawn normally, and their light added on top.
-private struct SparkLayers: View {
+struct SparkLayers: View {
     let draw: (GraphicsContext, FocusArt.Layer, CGSize) -> Void
 
     var body: some View {
@@ -320,133 +354,94 @@ private struct SparkLayers: View {
     }
 }
 
-/// The live play field: draws the engine's drops and effects every frame.
+/// The whole live sky of the game in one `TimelineView`: the aurora the sparks feed, then the
+/// snowflakes, then the sparks and their effects. Works before the round (no engine: a faint
+/// aurora), during it, and after it (the finished aurora keeps rippling).
 struct FocusSky: View {
-    let engine: FocusEngine
+    let engine: FocusEngine?
     let field: CGRect
-    let tail: CGPoint
+    let auroraRect: CGRect
 
     private static let trailSteps: [Double] = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
 
     var body: some View {
         TimelineView(.animation) { timeline in
             let now = timeline.date
+            let wall = now.timeIntervalSinceReferenceDate
             let t = advance(to: now)
             ZStack {
                 Canvas { ctx, _ in
-                    for d in engine.drops where d.kind == .snow {
-                        FocusArt.snowflake(ctx, at: engine.position(of: d, at: t), arm: 17,
-                                           alpha: engine.opacity(of: d, at: t), angle: d.phase + (t - d.born) * 0.6)
-                    }
-                    for e in engine.effects where e.kind == .melt {
-                        FocusArt.draw(e, ctx, .warm, at: t, tail: tail)
-                    }
+                    let finale = engine?.endedAt.map { GameEase.smooth((t - $0) / 2.4) } ?? 0
+                    let flares = engine?.flares.map { GameAurora.Flare(u: $0.u, age: t - $0.t0) } ?? []
+                    GameAurora.draw(ctx, in: auroraRect, level: engine?.auroraShown ?? 0.1, t: wall,
+                                    flares: flares, brightness: 1 + 0.25 * finale)
                 }
-                SparkLayers { ctx, layer, _ in
-                    let wall = now.timeIntervalSinceReferenceDate
-                    for d in engine.drops where d.kind == .spark {
-                        let age = t - d.born
-                        let trail = Self.trailSteps.filter { $0 < age }.map { engine.position(of: d, at: t - $0) }
-                        FocusArt.spark(ctx, layer, at: engine.position(of: d, at: t), scale: 1.1,
-                                       alpha: engine.opacity(of: d, at: t), time: wall, seed: d.phase,
-                                       trail: trail, bloom: age / 0.45)
+                .blendMode(.plusLighter)
+
+                if let engine {
+                    Canvas { ctx, _ in
+                        for d in engine.drops where d.kind == .snow {
+                            let age = t - d.born
+                            FocusArt.snowflake(ctx, at: engine.position(of: d, at: t), arm: 17,
+                                               alpha: engine.opacity(of: d, at: t), angle: d.phase + age * 0.55,
+                                               squash: 0.72 + 0.28 * CGFloat(cos(d.phase + age * 1.25)))
+                        }
+                        for e in engine.effects where e.kind == .melt || e.kind == .touch {
+                            FocusArt.draw(e, ctx, .warm, at: t, landing: { engine.landing($0, at: t) })
+                        }
                     }
-                    for e in engine.effects where e.kind != .melt {
-                        FocusArt.draw(e, ctx, layer, at: t, tail: tail)
+                    SparkLayers { ctx, layer, _ in
+                        for d in engine.drops where d.kind == .spark {
+                            let age = t - d.born
+                            let trail = Self.trailSteps.filter { $0 < age }.map { engine.position(of: d, at: t - $0) }
+                            FocusArt.spark(ctx, layer, at: engine.position(of: d, at: t), scale: 1.1,
+                                           alpha: engine.opacity(of: d, at: t), time: wall, seed: d.phase,
+                                           trail: trail, bloom: age / 0.45)
+                        }
+                        for e in engine.effects where e.kind == .burst || e.kind == .flight {
+                            FocusArt.draw(e, ctx, layer, at: t, landing: { engine.landing($0, at: t) })
+                        }
                     }
                 }
             }
         }
+        .allowsHitTesting(false)
     }
 
-    /// Moves the round along to `now` (new drops, fallen drops, finished effects) and returns the round time.
+    /// Moves the round along to `now` (new drops, fallen drops, light landing) and returns the round time.
     private func advance(to now: Date) -> TimeInterval {
+        guard let engine else { return 0 }
         engine.field = field
+        engine.auroraRect = auroraRect
         engine.step(now: now)
         return engine.clock(now)
     }
 }
 
-/// Decoration for the intro and the finish: a few sparks and flakes drifting on a loop.
-/// `rising` sends sparks up from the bottom, like fox fires leaving Lanvi's tail.
-struct FocusDecor: View {
-    var rising = false
-
-    private struct Lane {
-        let x: CGFloat, period: Double, offset: Double, spark: Bool
-    }
-
-    private let lanes: [Lane] = [
-        Lane(x: 0.12, period: 7.5, offset: 0.0, spark: true), Lane(x: 0.30, period: 9.0, offset: 3.1, spark: false),
-        Lane(x: 0.52, period: 8.0, offset: 5.4, spark: true), Lane(x: 0.70, period: 10.0, offset: 1.7, spark: false),
-        Lane(x: 0.88, period: 7.0, offset: 4.2, spark: true), Lane(x: 0.40, period: 11.0, offset: 7.9, spark: true),
-        Lane(x: 0.20, period: 9.5, offset: 6.3, spark: false), Lane(x: 0.80, period: 8.5, offset: 2.6, spark: true),
-    ]
-
-    /// Where lane `i` is at `time`, and how far along its loop (0 to 1).
-    private func spot(_ i: Int, _ time: Double, _ size: CGSize) -> (CGPoint, CGFloat) {
-        let lane = lanes[i]
-        let p = CGFloat((time + lane.offset).truncatingRemainder(dividingBy: lane.period) / lane.period)
-        let travel = rising ? 1 - p : p
-        let x = lane.x * size.width + 16 * CGFloat(sin(time * 1.1 + Double(i)))
-        return (CGPoint(x: x, y: -30 + travel * (size.height + 30)), p)
-    }
+/// A live spark or snowflake on its own, floating gently, for the intro's "how to play"
+/// and the finish line. No box around it: it sits right on the sky.
+struct FocusArtPreview: View {
+    var spark: Bool
+    var size: CGFloat = 72
 
     var body: some View {
         TimelineView(.animation) { timeline in
             let t = timeline.date.timeIntervalSinceReferenceDate
-            ZStack {
-                if !rising {
-                    Canvas { ctx, size in
-                        for i in lanes.indices where !lanes[i].spark {
-                            let (pos, p) = spot(i, t, size)
-                            let a = Double(min(1, min(p / 0.15, (1 - p) / 0.2)))
-                            FocusArt.snowflake(ctx, at: pos, arm: 13, alpha: a * 0.85, angle: t * 0.5 + Double(i))
-                        }
-                    }
+            let bob = CGFloat(sin(t * 1.6 + (spark ? 0 : 1.3))) * 4
+            if spark {
+                SparkLayers { ctx, layer, s in
+                    FocusArt.spark(ctx, layer, at: CGPoint(x: s.width / 2, y: s.height / 2 + bob),
+                                   scale: size / 72, alpha: 1, time: t, seed: 0.4)
                 }
-                SparkLayers { ctx, layer, size in
-                    for i in lanes.indices where lanes[i].spark {
-                        let (pos, p) = spot(i, t, size)
-                        let a = Double(min(1, min(p / 0.15, (1 - p) / 0.2)))
-                        let trail = [0.06, 0.12, 0.18, 0.24].map { spot(i, t - $0, size) }.filter { $0.1 < p }.map(\.0)
-                        FocusArt.spark(ctx, layer, at: pos, scale: 0.85, alpha: a, time: t, seed: Double(i) * 1.37,
-                                       trail: trail, bloom: Double(p) / 0.06)
-                    }
+            } else {
+                Canvas { ctx, s in
+                    FocusArt.snowflake(ctx, at: CGPoint(x: s.width / 2, y: s.height / 2 + bob), arm: 15 * size / 72,
+                                       alpha: 1, angle: t * 0.4, squash: 0.8 + 0.2 * CGFloat(cos(t * 1.1)))
                 }
             }
         }
-        .clipped()
+        .frame(width: size, height: size)
         .allowsHitTesting(false)
-    }
-}
-
-/// A small round icon with a live spark or snowflake, for the intro's "how to play" cards.
-struct FocusArtIcon: View {
-    var spark: Bool
-
-    var body: some View {
-        ZStack {
-            Circle().fill(LinearGradient(colors: [Theme.nightTop, Theme.nightBottom],
-                                         startPoint: .top, endPoint: .bottom))
-            TimelineView(.animation) { timeline in
-                let t = timeline.date.timeIntervalSinceReferenceDate
-                if spark {
-                    SparkLayers { ctx, layer, size in
-                        FocusArt.spark(ctx, layer, at: CGPoint(x: size.width / 2, y: size.height / 2),
-                                       scale: 0.85, alpha: 1, time: t, seed: 0.4)
-                    }
-                } else {
-                    Canvas { ctx, size in
-                        FocusArt.snowflake(ctx, at: CGPoint(x: size.width / 2, y: size.height / 2),
-                                           arm: 14, alpha: 1, angle: t * 0.5)
-                    }
-                }
-            }
-        }
-        .frame(width: 56, height: 56)
-        .compositingGroup()
-        .clipShape(Circle())
-        .overlay(Circle().stroke(.white.opacity(0.25), lineWidth: 1.5).padding(1))
+        .accessibilityHidden(true)
     }
 }
