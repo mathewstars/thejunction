@@ -177,3 +177,13 @@ Not a public dataset: the sessions on the team's test profile, read on the serve
 Reach and top speed of the fine signal are the most repeatable numbers we have: sessions differ two to three times more than the halves of one session do. Brief movements are not (the halves differ as much as the sessions), which fits what the LMVD run showed about that rule. Of the blend-shape measures only overall facial movement is somewhat repeatable; time smiling is not, because in a game of a minute or so a smile is a rare event and falls in one half or the other.
 
 Limits: few sessions, one evening, halves of 15 to 30 seconds, and the profile has seven paired phones, so some of the difference between sessions is a difference between people and phones, which makes the sessions look easier to tell apart than one person's days will be.
+
+### LMVD: can the people with more than one video be found? (no)
+
+`lmvd_people.py`, output `lmvd-people-2026-11-15.json`. LMVD has 1,823 videos from about 1,475 people and no person id. We tried to guess who is who from the shape of the face alone (the median place of the landmarks of the upper face, nose and eyes, with position, size and tilt taken out), to see whether one person's videos could be followed.
+
+The test was fixed before looking: two videos of one person must carry the same label, so matched pairs should agree on the label nearly always; chance is one half. **The matching failed that test.** Among the 5% of videos with the closest match, the match carries the same label in 71%; among 131 mutual closest pairs, in 67%. So at best about four pairs in ten are really one person, and probably fewer, because the way a video was filmed shapes the landmarks too.
+
+In those pairs, reach and speed agree far more than in two random videos with the same label (0.52 against about 0.1). We do not read that as "a person's face moves alike in their videos": two videos matched by landmark shape were probably filmed from a similar angle, and the angle alone moves these numbers.
+
+And even a perfect matching could not show a life track here: a person's videos all carry one label and no date, so nobody's depression changes within this dataset. Following one person over time needs data we have to collect.
