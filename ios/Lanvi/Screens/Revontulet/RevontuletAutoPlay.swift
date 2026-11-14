@@ -7,10 +7,14 @@ import CoreGraphics
 /// `-revontuletAuto` plays a mixed game; `-revontuletAuto hard` picks the vein every round
 /// and lights every ember; `-revontuletAuto easy` picks the crack twice, then the vein and
 /// misses both embers; `-revontuletAuto idle` presses Start and then does nothing (the
-/// clock breaks the wall, the fox's own spark finishes it, the fox falls asleep).
+/// clock breaks the wall, the fox's own spark finishes it, the fox falls asleep);
+/// `-revontuletAuto close` closes the game in the middle of the burst. `mixed` and `hard`
+/// end the goodnight with a tap; `easy` and `idle` let it end by itself.
 struct RevontuletAutoPlay {
     enum Style: String {
         case mixed, hard, easy, idle
+        /// Plays like `mixed`, then presses the close button in the middle of the burst.
+        case close
     }
 
     let style: Style
@@ -25,8 +29,12 @@ struct RevontuletAutoPlay {
         var input: RevontuletInput
     }
 
-    init(style: Style, seed: UInt64 = 7) {
+    /// Waits are multiplied by `pace` (the self-test plays fast and slow people).
+    let pace: Double
+
+    init(style: Style, seed: UInt64 = 7, pace: Double = 1) {
         self.style = style
+        self.pace = pace
         rng = Rng(seed: seed)
     }
 
@@ -74,15 +82,15 @@ struct RevontuletAutoPlay {
         case .choice:
             let effort = effortFor(round: e.round)
             let target = L.target(round: e.round, effort: effort)
-            let wait: Double = 1.5 + 0.35 * Double(e.round)
+            let wait: Double = (1.5 + 0.35 * Double(e.round)) * pace
             let at: Double = t0 + wait + rng.next() * 0.5
             return tap(jitter(target, 6), at: at)
 
         case .trace:
             let arc = e.arc
             var steps: [Step] = []
-            let start = t0 + 0.75 + rng.next() * 0.35
-            let duration = 1.35 + rng.next() * 0.5 + (style == .easy ? 0.5 : 0)
+            let start = t0 + (0.75 + rng.next() * 0.35) * pace
+            let duration = (1.35 + rng.next() * 0.5 + (style == .easy ? 0.5 : 0)) * max(0.6, min(pace, 2))
             // One lift halfway in the easy game's second round.
             let liftAt: Double? = (style == .easy && e.round == 1) ? 0.52 : nil
             let n = Int(duration * 60)
@@ -115,7 +123,7 @@ struct RevontuletAutoPlay {
             return steps
 
         case .sling:
-            let start = t0 + 0.55 + rng.next() * 0.3
+            let start = t0 + (0.55 + rng.next() * 0.3) * pace
             let from = jitter(L.anchor, 4)
             // Mostly straight down and a little to one side, eased, then a short hold.
             let side = CGFloat(rng.next() - 0.5) * L.maxPull * 0.5
@@ -142,20 +150,20 @@ struct RevontuletAutoPlay {
             guard let f = e.flight, f.hard, !f.foxOwn else { return [] }
             var steps: [Step] = []
             for i in f.emberU.indices where hitsEmber(i, round: e.round) {
-                let at = f.launch + f.emberT[i] - RevontuletFlight.emberLead + 0.32 + rng.next() * 0.18
+                let at = f.launch + f.emberT[i] - RevontuletFlight.emberLead + 0.22 + rng.next() * 0.18 * pace
                 steps += tap(jitter(f.emberPoint(i), 7), at: at)
             }
             return steps
 
         case .warmth:
             guard let w = e.warmthAt, e.strokesCounted < RevontuletEngine.strokesWanted else { return [] }
-            let start = max(t0, w + RevontuletEngine.strokesFrom) + (e.strokesCounted == 0 ? 0.5 : 0.75) + rng.next() * 0.3
-            let k = RevontuletView.warmthZoom
-            let fox = L.foxCenter
-            let dx: [CGFloat] = [-0.1, 0.06, -0.02]
-            let x = fox.x + dx[min(e.strokesCounted, 2)] * L.foxSize * k
-            let y0 = fox.y - L.foxSize * 0.36 * k, y1 = fox.y + L.foxSize * 0.04 * k
-            let duration = 1.25 + rng.next() * 0.35
+            let start = max(t0, w + RevontuletEngine.strokesFrom) + ((e.strokesCounted == 0 ? 0.5 : 0.75) + rng.next() * 0.3) * pace
+            let sq = L.foxSquare(.warm)
+            let dx: [CGFloat] = [-0.12, 0.1, -0.01]
+            let x = sq.midX + dx[min(e.strokesCounted, 2)] * sq.width
+            // A real, slow pass down most of the fox.
+            let y0 = sq.minY + sq.height * 0.16, y1 = sq.minY + sq.height * 0.78
+            let duration = 1.9 + rng.next() * 0.5
             var steps = [Step(at: start, input: .down(CGPoint(x: x, y: y0), radius: nil))]
             let n = Int(duration * 60)
             for i in 1...n {
@@ -167,6 +175,14 @@ struct RevontuletAutoPlay {
             steps.append(Step(at: start + duration + 0.02, input: .up(CGPoint(x: x, y: y1))))
             return steps
 
+        case .burst where style == .close:
+            return [Step(at: e.beatStart + 0.5, input: .close)]
+
+        case .sleep where style == .mixed || style == .hard:
+            // A tap anywhere on the goodnight ends it at once.
+            let p = CGPoint(x: L.size.width * 0.5, y: L.size.height * 0.4)
+            return tap(p, at: t0 + 1.1)
+
         default:
             return []
         }
@@ -176,7 +192,7 @@ struct RevontuletAutoPlay {
         switch style {
         case .hard: return .hard
         case .easy: return round < 2 ? .easy : .hard
-        case .mixed, .idle: return [RevontuletEffort.hard, .easy, .hard][min(round, 2)]
+        case .mixed, .idle, .close: return [RevontuletEffort.hard, .easy, .hard][min(round, 2)]
         }
     }
 
@@ -184,7 +200,7 @@ struct RevontuletAutoPlay {
         switch style {
         case .hard: return true
         case .easy, .idle: return false
-        case .mixed: return round == 0 ? i == 0 : true
+        case .mixed, .close: return round == 0 ? i == 0 : true
         }
     }
 

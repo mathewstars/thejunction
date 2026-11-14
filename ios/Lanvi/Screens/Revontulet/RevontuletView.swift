@@ -12,8 +12,6 @@ import QuartzCore
 /// Launch arguments (read here only): `-revontuletAuto [mixed|hard|easy|idle]` plays itself;
 /// `-revontuletFreeze <beat>` opens frozen on one beat for stills.
 struct RevontuletView: View {
-    /// How far the view eases in on the fox for the warmth beat.
-    static let warmthZoom: CGFloat = 1.42
 
     private let onDone: (RevontuletResult?) -> Void
 
@@ -37,7 +35,6 @@ struct RevontuletView: View {
     // The screen.
     @State private var line = ""
     @State private var finger: CGPoint?
-    @State private var zoomed = false
     @State private var saidEmbers = false
     @Environment(\.scenePhase) private var scenePhase
 
@@ -61,9 +58,6 @@ struct RevontuletView: View {
                 ZStack {
                     if let engine, let art {
                         scene(engine, art)
-                            .scaleEffect(zoomed ? Self.warmthZoom : 1,
-                                         anchor: UnitPoint(x: L.foxCenter.x / max(1, L.size.width), y: L.foxCenter.y / max(1, L.size.height)))
-                            .animation(.spring(response: 1.9, dampingFraction: 0.95), value: zoomed)
                         RevontuletTouchSurface { input, time in feed(input, at: time) }
                         overlay(engine)
                     } else {
@@ -80,6 +74,9 @@ struct RevontuletView: View {
         .onDisappear { feel.stop() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { feel.start() } else { feel.stop() }
+            // Leaving the app mid-game (home, a call, the lock button) ends it cleanly as
+            // interrupted, with a valid record; a pull-down or a banner only pauses the haptics.
+            if phase == .background { interrupt() }
         }
     }
 
@@ -92,18 +89,19 @@ struct RevontuletView: View {
             TimelineView(.animation(minimumInterval: 1.0 / 60, paused: frozenAt != nil)) { _ in
                 let painter = RevontuletPainter(e: e, art: art, now: frozenAt ?? CACurrentMediaTime())
                 ZStack {
-                    Canvas { ctx, size in painter.sky(&ctx, size: size) }
-                    // The frosted glass: the painted sky behind the standing ice, blurred.
-                    Rectangle()
-                        .fill(.ultraThinMaterial)
-                        .environment(\.colorScheme, .dark)
-                        .mask { Canvas { ctx, _ in painter.standing(&ctx) } }
-                    Canvas { ctx, size in painter.ice(&ctx, size: size) }
+                    Canvas { ctx, size in
+                        painter.sky(&ctx, size: size)
+                        painter.ice(&ctx, size: size)
+                    }
+                    // Lower-left and smaller while playing; at the burst it springs to the centre.
                     RevontuletFox(act: act(e), size: L.foxSize, reaction: reaction, reactionTick: reactionTick,
                                   look: look, yawnTick: yawnTick, petTick: petTick)
                         .equatable()
                         .frame(width: L.foxSize, height: L.foxSize)
-                        .position(L.foxCenter)
+                        .scaleEffect(Self.foxScale(e))
+                        .position(Self.foxPoint(e))
+                        .animation(.spring(response: 0.5, dampingFraction: 0.72), value: Self.foxPlace(e))
+                        .animation(.spring(response: 1.1, dampingFraction: 0.9), value: e.beat == .warmth)
                     Canvas { ctx, size in painter.front(&ctx, size: size) }
                 }
             }
@@ -113,32 +111,26 @@ struct RevontuletView: View {
 
     private func overlay(_ e: RevontuletEngine) -> some View {
         let L = e.layout
-        let h = L.size.height
-        let lineY: CGFloat = switch e.beat {
-        case .intro: L.feetY + 30
-        case .warmth, .sleep, .done: h - L.safeBottom - 40
-        default: L.feetY + (h - L.safeBottom - L.feetY) * 0.45
-        }
+        let lineY: CGFloat = e.beat == .intro ? L.startY - 27 - 30 : L.lineY
         return ZStack {
             if e.beat == .intro {
-                VStack(spacing: 6) {
+                VStack(spacing: 2) {
                     Text("Revontulet")
-                        .font(Theme.rounded(44, .black))
-                        .foregroundStyle(.white)
-                        .shadow(color: RevontuletColor.teal.opacity(0.55), radius: 18)
-                    Text("FOX FIRES")
-                        .font(Theme.rounded(14, .heavy))
-                        .tracking(3)
-                        .foregroundStyle(.white.opacity(0.72))
+                        .font(Theme.rounded(38, .black))
+                        .foregroundStyle(Theme.ink)
+                    Text("Help me light up the sky")
+                        .font(Theme.rounded(17, .heavy))
+                        .foregroundStyle(Theme.inkSecondary)
                 }
-                .position(x: L.size.width / 2, y: L.wall.minY + L.wall.height * 0.36)
+                .shadow(color: .white.opacity(0.7), radius: 10)
+                .position(x: L.size.width / 2, y: L.startY - 27 - 22 - 36)
                 .allowsHitTesting(false)
                 .transition(.opacity)
 
                 Button("Start") { feed(.start, at: CACurrentMediaTime()) }
                     .buttonStyle(ChunkyButtonStyle())
                     .padding(.horizontal, 24)
-                    .position(x: L.size.width / 2, y: h - L.safeBottom - 16 - 27)
+                    .position(x: L.size.width / 2, y: L.startY)
                     .transition(.opacity)
             }
 
@@ -149,7 +141,9 @@ struct RevontuletView: View {
                     .shadow(color: .white.opacity(0.8), radius: 8)
                     .multilineTextAlignment(.center)
                     .id(line)
-                    .transition(.opacity.combined(with: .offset(y: 5)))
+                    // One line at a time: the old one leaves before the new one arrives.
+                    .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: 6)).animation(.easeOut(duration: 0.22).delay(0.16)),
+                                            removal: .opacity.animation(.easeOut(duration: 0.14))))
                     .position(x: L.size.width / 2, y: lineY)
                     .allowsHitTesting(false)
             }
@@ -173,7 +167,31 @@ struct RevontuletView: View {
             .accessibilityLabel("Close")
             .position(x: 20 + 22, y: L.safeTop + 6 + 22)
         }
-        .animation(.easeInOut(duration: 0.4), value: e.beat == .intro)
+        .animation(.easeOut(duration: 0.25), value: e.beat == .intro)
+    }
+
+    private static func foxPlace(_ e: RevontuletEngine) -> RevontuletLayout.FoxPlace {
+        switch e.beat {
+        case .burst, .celebrate: return .full
+        case .warmth, .sleep, .done: return .warm
+        default: return .play
+        }
+    }
+
+    private static func foxScale(_ e: RevontuletEngine) -> CGFloat {
+        switch foxPlace(e) {
+        case .play: return e.layout.playFoxScale
+        case .full: return 1
+        case .warm: return e.layout.warmFoxScale
+        }
+    }
+
+    private static func foxPoint(_ e: RevontuletEngine) -> CGPoint {
+        switch foxPlace(e) {
+        case .play: return e.layout.playFoxCenter
+        case .full: return e.layout.foxCenter
+        case .warm: return e.layout.warmFoxCenter
+        }
     }
 
     private func act(_ e: RevontuletEngine) -> RevontuletFox.Act {
@@ -188,6 +206,12 @@ struct RevontuletView: View {
 
     private func setUp(_ L: RevontuletLayout) {
         guard engine == nil, L.size.width > 10, L.size.height > 10 else { return }
+        if ProcessInfo.processInfo.arguments.contains("-revontuletSelfTest") {
+            let report = RevontuletSelfTest.run(layout: L)
+            for f in report.failures.prefix(40) { print("revontulet selftest FAIL \(f)") }
+            print(report.summary)
+            line = report.failures.isEmpty ? "Self-test passed" : "Self-test: \(report.failures.count) failures"
+        }
         if let beat = Self.freezeBeat {
             freeze(L, at: beat)
             return
@@ -195,7 +219,6 @@ struct RevontuletView: View {
         engine = RevontuletEngine(layout: L)
         art = RevontuletArt(layout: L)
         box.auto = RevontuletAutoPlay.fromArguments().map { RevontuletAutoPlay(style: $0) }
-        say("Help me light up the sky?")
     }
 
     /// `-revontuletFreeze <beat>`: play the game on a made-up clock with the pretend finger
@@ -218,7 +241,6 @@ struct RevontuletView: View {
         art = a
         frozenAt = now
         finger = auto.finger
-        if beat == .intro { say("Help me light up the sky?") }
         react(all, e, now: now)
         steerFox(e, now: now, force: true)
     }
@@ -254,7 +276,15 @@ struct RevontuletView: View {
         box.frame &+= 1
         var events: [RevontuletEvent] = []
         if box.auto != nil {
-            for input in box.auto!.step(e, now: now) { events += e.handle(input, at: now) }
+            for input in box.auto!.step(e, now: now) {
+                // The pretend finger presses the real close button.
+                if input == .close {
+                    engine = e
+                    close()
+                    return
+                }
+                events += e.handle(input, at: now)
+            }
             if box.auto!.finger != finger { finger = box.auto!.finger }
         }
         events += e.tick(now)
@@ -263,11 +293,8 @@ struct RevontuletView: View {
         steerFox(e, now: now)
         // Snow right under a stroking finger comes off at once.
         if e.beat == .warmth, e.stroking, let f = e.finger, let art {
-            let L = e.layout
-            let k = zoomed ? Self.warmthZoom : 1
-            let p = CGPoint(x: L.foxCenter.x + (f.x - L.foxCenter.x) / k, y: L.foxCenter.y + (f.y - L.foxCenter.y) / k)
             let before = art.speckGone.count
-            art.brush(near: p, at: now)
+            art.brush(near: f, at: now)
             if art.speckGone.count > before { feel.snowOff() }
         }
     }
@@ -339,6 +366,7 @@ struct RevontuletView: View {
                 if !quiet { feel.landing(at: at, hard: hard, embersHit: hits, ribbon: ribbon, burstAt: burstAt) }
             case let .impact(r, _, breaking):
                 art?.sync(e)
+                say(nil)
                 emit(.iceImpact(round: r + 1))
                 foxReact(.surprised)
                 if !breaking, !quiet {
@@ -371,10 +399,10 @@ struct RevontuletView: View {
                     }
                 }
             case .warmthBegan:
-                zoomed = true
                 say("Brush the snow off me?")
-            case .strokeBegan:
+            case let .strokeBegan(n):
                 petTick += 1
+                if n >= 2 { foxReact(n == 2 ? .proud : .happy) }
             case let .strokeMoved(speed):
                 if !quiet { feel.purr(speed: speed) }
             case let .strokeEnded(n, counted):
@@ -409,7 +437,7 @@ struct RevontuletView: View {
     private func say(_ text: String?) {
         let t = text ?? ""
         guard t != line else { return }
-        withAnimation(.easeInOut(duration: 0.45)) { line = t }
+        line = t
     }
 
     private func foxReact(_ mood: LanviMood) {
@@ -443,8 +471,8 @@ struct RevontuletView: View {
         default:
             target = nil
         }
-        let s = L.foxSize
-        let u = target.map { UnitPoint(x: ($0.x - (L.foxCenter.x - s / 2)) / s, y: ($0.y - (L.foxCenter.y - s / 2)) / s) }
+        let sq = L.foxSquare(Self.foxPlace(e))
+        let u = target.map { UnitPoint(x: ($0.x - sq.minX) / sq.width, y: ($0.y - sq.minY) / sq.height) }
         let moved: Bool
         switch (u, look) {
         case (nil, nil): moved = false
@@ -472,13 +500,22 @@ struct RevontuletView: View {
         handBack(e)
     }
 
+    private func interrupt() {
+        guard !handedBack, frozenAt == nil, var e = engine, e.startUptime != nil, e.beat != .done else { return }
+        let events = e.handle(.interrupt, at: CACurrentMediaTime())
+        engine = e
+        react(events, e, now: CACurrentMediaTime())
+        handBack(e)
+    }
+
     private func handBack(_ e: RevontuletEngine) {
         guard !handedBack else { return }
         handedBack = true
         feel.stop()
         let result = e.result()
+        print("revontulet: handed back \(result == nil ? "nothing" : result!.completed ? "a finished game" : "a stopped game")")
         if box.auto != nil, let r = result {
-            print("revontulet: result completed=\(r.completed) launches=\(r.launches) embers=\(r.embersHit)/\(r.embersShown) reactions=\(r.reactionMs) strokes=\(r.strokes.count) foxFinished=\(r.foxFinishedWall)")
+            print("revontulet: result completed=\(r.completed) interrupted=\(r.interrupted) seconds=\(String(format: "%.1f", r.endUptime - r.startUptime)) launches=\(r.launches) embers=\(r.embersHit)/\(r.embersShown) reactions=\(r.reactionMs) strokes=\(r.strokes.count) foxFinished=\(r.foxFinishedWall)")
         }
         onDone(result)
     }

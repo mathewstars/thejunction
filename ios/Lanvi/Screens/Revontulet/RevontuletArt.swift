@@ -1,4 +1,6 @@
 import SwiftUI
+import UIKit
+import CoreImage
 
 /// The shapes the game draws, worked out once per screen: the pane of ice as real fracture
 /// pieces (the same pieces fall out on impacts and fly apart in the burst), the cracks each
@@ -45,6 +47,9 @@ final class RevontuletArt {
     let frost: [(p: CGPoint, r: CGFloat, a: Double, phase: Double)]
     let specks: [Speck]
     let motes: [Mote]
+    /// The night painting, blurred once, and where it sits on screen: seen through the ice.
+    let frostedSky: CGImage?
+    let skyRect: CGRect
 
     /// When each facet fell out (by index).
     private(set) var fallAt: [Int: Double] = [:]
@@ -55,6 +60,7 @@ final class RevontuletArt {
     private(set) var speckGone: [Int: Double] = [:]
     private var impactsSeen = 0
     private var strokesSeen = 0
+    private var standingCache: (fallen: Int, burst: Bool, path: Path)?
 
     init(layout: RevontuletLayout, seed: UInt64 = 11) {
         self.layout = layout
@@ -150,6 +156,10 @@ final class RevontuletArt {
         }
         specks = s
 
+        let sky = Self.blurredWorld(screen: layout.size)
+        frostedSky = sky?.image
+        skyRect = sky?.rect ?? .zero
+
         motes = (0..<28).map { _ in
             Mote(angle: rng.next() * 6.28, speed: 50 + rng.next() * 170, size: r(0.7, 2.1), life: 0.55 + rng.next() * 0.5)
         }
@@ -192,23 +202,45 @@ final class RevontuletArt {
         }
     }
 
-    /// Snow directly under a stroking finger comes off at once (`p` in scene points).
+    /// Snow directly under a stroking finger comes off at once: a band follows the hand.
     func brush(near p: CGPoint, at now: Double) {
-        let L = layout
+        let sq = layout.foxSquare(.warm)
         for (i, s) in specks.enumerated() where speckGone[i] == nil {
-            let q = CGPoint(x: L.foxCenter.x + s.offset.x * L.foxSize, y: L.foxCenter.y + s.offset.y * L.foxSize)
-            if dist(q, p) < L.foxSize * 0.09 { speckGone[i] = now }
+            let q = CGPoint(x: sq.midX + s.offset.x * sq.width, y: sq.midY + s.offset.y * sq.height)
+            if abs(q.x - p.x) < sq.width * 0.13, abs(q.y - p.y) < sq.height * 0.1 { speckGone[i] = now }
         }
     }
 
-    /// The pieces still standing at `now` (before the burst), as one path.
+    /// The pieces still standing at `now` (before the burst), as one path. Rebuilt only
+    /// when a piece falls.
     func standing(at now: Double, burstAt: Double?) -> Path {
+        let burst = burstAt.map { now >= $0 } ?? false
+        var fallen = 0
+        for t in fallAt.values where t <= now { fallen += 1 }
+        if let c = standingCache, c.fallen == fallen, c.burst == burst { return c.path }
         var p = Path()
-        if let b = burstAt, now >= b { return p }
-        for (i, f) in facets.enumerated() where (fallAt[i].map { $0 > now } ?? true) {
-            p.addPath(f.path)
+        if !burst {
+            for (i, f) in facets.enumerated() where (fallAt[i].map { $0 > now } ?? true) {
+                p.addPath(f.path)
+            }
         }
+        standingCache = (fallen, burst, p)
         return p
+    }
+
+    /// A small copy of the night painting with a wide blur, made once: the sky as seen
+    /// through thick ice, with no live blur while playing.
+    private static func blurredWorld(screen: CGSize) -> (image: CGImage, rect: CGRect)? {
+        guard let ui = UIImage(named: "world-night"), let cg = ui.cgImage else { return nil }
+        let w = 260.0
+        let k = w / Double(cg.width)
+        let small = CGRect(x: 0, y: 0, width: w, height: Double(cg.height) * k)
+        let input = CIImage(cgImage: cg).transformed(by: CGAffineTransform(scaleX: k, y: k))
+        let blurred = input.clampedToExtent().applyingGaussianBlur(sigma: 4.5).cropped(to: small)
+        guard let out = CIContext().createCGImage(blurred, from: small) else { return nil }
+        let s = max(screen.width / 1520, screen.height / 2688)
+        let rect = CGRect(x: (screen.width - 1520 * s) / 2, y: (screen.height - 2688 * s) / 2, width: 1520 * s, height: 2688 * s)
+        return (out, rect)
     }
 
     // MARK: Cracks

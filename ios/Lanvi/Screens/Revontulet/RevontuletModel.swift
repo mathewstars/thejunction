@@ -28,6 +28,8 @@ enum RevontuletInput: Equatable {
     case move(CGPoint, radius: CGFloat?)
     case up(CGPoint)
     case close
+    /// The app left the foreground mid-game: the game ends, recorded as interrupted.
+    case interrupt
 }
 
 /// What just happened, for the screen (haptics, the fox, `GameMoments`). Rounds count from 0.
@@ -67,23 +69,41 @@ enum RevontuletEvent: Equatable {
 // MARK: - Where everything is
 
 /// The game's geometry for one screen size, in full-screen points.
+///
+/// During the rounds the fox sits lower-left, a little smaller, watching; the spark lives
+/// over the snow lower-centre-right, in the thumb's reach, where the half-circle is traced
+/// and the pull goes down into open snow. At the burst the fox springs to the centre and
+/// grows. The one line of words sits at the bottom, below everything that moves.
 struct RevontuletLayout: Equatable {
     var size: CGSize
     var safeTop: CGFloat
     var safeBottom: CGFloat
-    /// The fox's square side and centre, and where its feet touch the snow.
+    /// The fox at full size (celebration, warmth, sleep): its square's side and centre, and
+    /// where its feet touch the snow (the painted hollow).
     var foxSize: CGFloat
     var foxCenter: CGPoint
     var feetY: CGFloat
-    /// The pane of ice (its base is buried in the snow behind the fox).
+    /// The fox during the rounds: scale of the full size, and centre.
+    var playFoxScale: CGFloat
+    var playFoxCenter: CGPoint
+    /// The fox in the warmth and the sleep: large in the lower half, the won sky above it.
+    var warmFoxScale: CGFloat
+    var warmFoxCenter: CGPoint
+    /// How long a stroke must be to count: a real pass over most of the fox.
+    var strokeLength: CGFloat
+    /// The pane of ice: wider than the screen, a jagged top about an eighth of the way down,
+    /// its base sunk in the snow.
     var wall: CGRect
-    /// Where the fox's spark rests, above the fox.
+    /// Where the fox's spark rests.
     var anchor: CGPoint
     /// The half-circle's radius, and the farthest the spark can be pulled.
     var arcRadius: CGFloat
     var maxPull: CGFloat
     /// Where the fox's own spark goes if the wall is still standing at 1:12.
     var foxTarget: CGPoint
+    /// The one line of words, and the Start button's centre.
+    var lineY: CGFloat
+    var startY: CGFloat
 
     init(size: CGSize, safeTop: CGFloat, safeBottom: CGFloat) {
         self.size = size
@@ -91,41 +111,60 @@ struct RevontuletLayout: Equatable {
         self.safeBottom = safeBottom
         let w = size.width, h = size.height
         // The painted hollow (see `WorldFrame`): the picture fills the screen.
-        let imageW: CGFloat = 1520, imageH: CGFloat = 2688
-        let s = max(w / imageW, h / imageH)
-        let originY = (h - imageH * s) / 2
-        let hollowY = originY + 0.786 * imageH * s
-        foxSize = min(w * 0.5, h * 0.235)
-        feetY = min(hollowY + foxSize * 0.03, h - safeBottom - 64)
+        let frame = WorldFrame(screen: size)
+        let hollowY = frame.point(WorldFrame.hollow.x, WorldFrame.hollow.y).y
+        foxSize = min(w * 0.62, h * 0.3)
+        feetY = min(hollowY + foxSize * 0.03, h - safeBottom - 96)
         foxCenter = CGPoint(x: w / 2, y: feetY - foxSize / 2)
-        let foxTop = feetY - foxSize
-        arcRadius = min(w * 0.25, h * 0.115)
-        anchor = CGPoint(x: w / 2, y: foxTop - arcRadius - h * 0.012)
-        maxPull = arcRadius * 0.95
-        let top = safeTop + 58
-        let bottom = feetY - foxSize * 0.42
-        wall = CGRect(x: w * 0.055, y: top, width: w * 0.89, height: bottom - top)
-        foxTarget = CGPoint(x: w * 0.5, y: top + (bottom - top) * 0.3)
+        playFoxScale = min(w * 0.38, h * 0.19) / foxSize
+        let playFeet = min(h * 0.8, h - safeBottom - 96)
+        playFoxCenter = CGPoint(x: w * 0.27, y: playFeet - foxSize * playFoxScale / 2)
+        let warmSize = min(w * 0.8, h * 0.44)
+        warmFoxScale = warmSize / foxSize
+        let warmFeet = min(h * 0.875, h - safeBottom - 70)
+        warmFoxCenter = CGPoint(x: w / 2, y: warmFeet - warmSize / 2)
+        strokeLength = warmSize * 0.36
+        anchor = CGPoint(x: w * 0.64, y: h * 0.62)
+        arcRadius = min(w * 0.27, h * 0.125)
+        maxPull = h * 0.2
+        let top = max(h * 0.115, safeTop + 30)
+        let bottom = h * 0.565
+        wall = CGRect(x: -30, y: top, width: w + 60, height: bottom - top)
+        foxTarget = CGPoint(x: w * 0.5, y: top + (bottom - top) * 0.45)
+        startY = h - safeBottom - 16 - 27
+        lineY = h - safeBottom - max(28, h * 0.055)
+    }
+
+    enum FoxPlace { case play, full, warm }
+
+    /// Where the fox's square is: during the rounds, at the celebration, in the warmth.
+    func foxSquare(_ place: FoxPlace) -> CGRect {
+        let (k, c): (CGFloat, CGPoint) = switch place {
+        case .play: (playFoxScale, playFoxCenter)
+        case .full: (1, foxCenter)
+        case .warm: (warmFoxScale, warmFoxCenter)
+        }
+        let s = foxSize * k
+        return CGRect(x: c.x - s / 2, y: c.y - s / 2, width: s, height: s)
     }
 
     /// The two fault lines for a round, as polylines in screen points, easy first.
-    /// They move each round to ice that is still standing.
+    /// Each round's lines sit on ice no earlier impact has touched and clear of that round's
+    /// half-circle: the crack always low and thin, the vein always higher and long.
     func faults(round: Int) -> (easy: [CGPoint], hard: [CGPoint]) {
         func p(_ fx: CGFloat, _ fy: CGFloat) -> CGPoint {
-            CGPoint(x: wall.minX + fx * wall.width, y: wall.minY + fy * wall.height)
+            CGPoint(x: fx * size.width, y: wall.minY + fy * wall.height)
         }
-        // Each round's lines sit on ice no earlier impact has touched, clear of that
-        // round's half-circle: the crack always low, the vein always high.
         switch round % 3 {
         case 0:
-            return ([p(0.04, 0.79), p(0.09, 0.775), p(0.14, 0.795), p(0.19, 0.78), p(0.24, 0.795)],
-                    [p(0.60, 0.13), p(0.66, 0.19), p(0.72, 0.16), p(0.79, 0.235), p(0.85, 0.21), p(0.91, 0.28), p(0.97, 0.26)])
+            return ([p(0.07, 0.79), p(0.13, 0.775), p(0.19, 0.795), p(0.25, 0.78), p(0.3, 0.79)],
+                    [p(0.48, 0.12), p(0.55, 0.19), p(0.62, 0.15), p(0.7, 0.24), p(0.78, 0.2), p(0.86, 0.28), p(0.94, 0.25)])
         case 1:
-            return ([p(0.76, 0.795), p(0.81, 0.78), p(0.86, 0.8), p(0.91, 0.785), p(0.96, 0.8)],
-                    [p(0.03, 0.27), p(0.09, 0.21), p(0.15, 0.24), p(0.21, 0.17), p(0.28, 0.2), p(0.34, 0.13), p(0.40, 0.15)])
+            return ([p(0.3, 0.8), p(0.36, 0.785), p(0.42, 0.805), p(0.48, 0.79), p(0.53, 0.8)],
+                    [p(0.04, 0.25), p(0.11, 0.18), p(0.18, 0.22), p(0.25, 0.14), p(0.33, 0.17), p(0.41, 0.1), p(0.48, 0.12)])
         default:
-            return ([p(0.04, 0.6), p(0.09, 0.585), p(0.14, 0.605), p(0.19, 0.59), p(0.24, 0.61)],
-                    [p(0.30, 0.17), p(0.37, 0.11), p(0.43, 0.14), p(0.50, 0.07), p(0.57, 0.10), p(0.64, 0.05), p(0.70, 0.08)])
+            return ([p(0.66, 0.77), p(0.72, 0.755), p(0.78, 0.775), p(0.84, 0.76), p(0.9, 0.775)],
+                    [p(0.24, 0.5), p(0.32, 0.44), p(0.4, 0.48), p(0.49, 0.4), p(0.58, 0.44), p(0.67, 0.37), p(0.76, 0.4)])
         }
     }
 
@@ -136,13 +175,19 @@ struct RevontuletLayout: Equatable {
         return line[line.count / 2]
     }
 
-    /// The half-circle for a round: a quarter turn clockwise each round
-    /// (bulging left, then up, then right), always clear of the fox.
+    /// The half-circle for a round, around the spark: a quarter turn clockwise each round
+    /// (bulging up, then right, then down), always clear of the fox.
     func arc(round: Int) -> RevontuletArc {
-        let bulge: Double = [Double.pi, Double.pi * 1.5, 0][round % 3]
-        // A bulge to the side spans its full height, so it sits a little higher.
-        let lift: CGFloat = round % 3 == 1 ? -arcRadius * 0.15 : arcRadius * 0.08
-        return RevontuletArc(center: CGPoint(x: anchor.x, y: anchor.y - lift), radius: arcRadius, bulge: bulge)
+        let bulge: Double = [Double.pi * 1.5, 0, Double.pi / 2][round % 3]
+        return RevontuletArc(center: anchor, radius: arcRadius, bulge: bulge)
+    }
+
+    /// The bend of a flight from `from` to `to`: the aim is helped all the way; the pull
+    /// only bends the arc a little. Shared by the engine and the path of light beads.
+    static func flightControl(from: CGPoint, to: CGPoint, pull: CGVector) -> CGPoint {
+        let dist = hypot(to.x - from.x, to.y - from.y)
+        return CGPoint(x: (from.x + to.x) / 2 - pull.dx * 0.6,
+                       y: min(from.y, to.y) - dist * 0.18 - max(0, pull.dy) * 0.25)
     }
 }
 
@@ -209,8 +254,9 @@ struct RevontuletFlight: Equatable {
         return launch + last + Self.emberGrace
     }
 
-    static let emberLead = 0.62      // an ember flashes this long before the spark reaches it
-    static let emberGrace = 0.38     // and can still be tapped this long after
+    static let emberLead = 0.42      // an ember flashes this long before the spark reaches it
+    static let emberGrace = 0.32     // and can still be tapped this long after
+    static let emberEarly = 0.12     // a tap this much before the flash still counts
 
     func bezier(_ u: Double) -> CGPoint {
         let a = 1 - u
@@ -331,6 +377,8 @@ struct RevontuletResult: Equatable {
     /// The wall still stood at 1:12 and the fox's own spark broke it.
     var foxFinishedWall: Bool
     var surpriseRibbons: Int
+    /// The app left the foreground mid-game.
+    var interrupted = false
 
     // What goes into the `focus` record.
     var launches: Int { rounds.filter { $0.launchUptime != nil }.count }

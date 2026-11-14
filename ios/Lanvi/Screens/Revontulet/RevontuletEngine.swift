@@ -17,20 +17,22 @@ struct RevontuletEngine: Equatable {
     static let sleepLatest: Double = 88
 
     static let rounds = 3
-    static let easyFlight = 0.8
-    static let hardFlight = 2.05
+    static let easyFlight = 0.7
+    static let hardFlight = 1.25
     static let foxFlight = 1.0
     /// Where the two embers sit along a hard path, and when the spark reaches each.
     static let emberU = [0.36, 0.7]
-    static let emberT = [0.74, 1.44]
-    static let impactHold = 1.75        // cracks, the falling piece, the fox's flinch and smile
+    static let emberT = [0.45, 0.88]
+    static let impactHold = 0.95        // the next lines light while the debris still falls
     static let breakDelay = 0.55        // the breaking impact's cracks race before the burst
     static let celebrateDelay = 0.8     // the burst, then the fox's celebration
-    static let warmthDelay = 7.5        // the burst to the view easing in on the fox
-    static let strokesFrom = 1.3        // after the warmth begins, strokes count
+    static let warmthDelay = 4.2        // three calm seconds for the smile, then the warmth
+    static let strokesFrom = 0.6        // after the warmth begins, strokes count
     static let strokesWanted = 3
-    static let minStroke: CGFloat = 30
-    static let sleepAfterStrokes = 1.4
+    static let sleepAfterStrokes = 1.0
+    /// Lead-ins: the half-circle after a choice, the sling after the trace.
+    static let arcLead = 0.22
+    static let slingLead = 0.08
 
     let layout: RevontuletLayout
     let seed: UInt64
@@ -80,6 +82,13 @@ struct RevontuletEngine: Equatable {
     private(set) var sleepAt: Double?
     private(set) var endAt: Double?
     private(set) var completed = false
+    /// The app left the foreground mid-game: ended, recorded as interrupted.
+    private(set) var interrupted = false
+    /// The last finger down (for the touch's answering flash) and the last input of any kind
+    /// (for the gentle hint after a few seconds of nothing).
+    private(set) var lastDown: CGPoint?
+    private(set) var lastDownAt: Double = 0
+    private(set) var lastInputAt: Double = 0
 
     // The finger
     private(set) var finger: CGPoint?
@@ -121,11 +130,21 @@ struct RevontuletEngine: Equatable {
         case .start:
             guard beat == .intro else { return ev }
             startUptime = now
+            lastInputAt = now
             startDate = Date().addingTimeInterval(now - Self.uptimeNow())
             ev.append(.started)
             records = [RevontuletResult.Round(number: 1)]
             setBeat(.choice, at: now)
             ev.append(.choiceShown(round: 0))
+        case .interrupt:
+            guard beat != .done, startUptime != nil else { return ev }
+            if stroking { ev += endStroke(at: now) }
+            beat = .done
+            beatStart = now
+            endAt = now
+            completed = false
+            interrupted = true
+            ev.append(.ended(completed: false))
         case .close:
             guard beat != .done else { return ev }
             if stroking { ev += endStroke(at: now) }
@@ -135,15 +154,33 @@ struct RevontuletEngine: Equatable {
             completed = false
             ev.append(.ended(completed: false))
         case let .down(p, r):
+            // One finger plays. A second finger landing while one is down is ignored (unless
+            // the first went quiet long ago: then its lift was lost, so lift it now).
+            if let f = finger {
+                if let l = last, now - l.t < 2 { return ev }
+                ev += up(f, at: now)
+            }
             finger = p
             last = Sample(p: p, t: now)
             speed = 0
             staleTouch = false
+            lastDown = p
+            lastDownAt = now
+            lastInputAt = now
+            if beat == .intro {
+                // The game starts on the first touch.
+                ev += handle(.start, at: now)
+                staleTouch = true
+                return ev
+            }
             ev += down(p, radius: r, at: now)
         case let .move(p, r):
+            guard finger != nil else { return ev }
             ev += move(p, radius: r, at: now)
             finger = p
+            lastInputAt = now
         case let .up(p):
+            guard finger != nil else { return ev }
             ev += move(p, radius: nil, at: now)
             ev += up(p, at: now)
             finger = nil
@@ -170,6 +207,13 @@ struct RevontuletEngine: Equatable {
             return [.pullStarted]
         case .flight:
             return tapEmber(p, at: now)
+        case .sleep:
+            // Goodnight: a touch anywhere ends it at once (it ends by itself within 3 s anyway).
+            endAt = now
+            beat = .done
+            beatStart = now
+            completed = true
+            return [.ended(completed: true)]
         case .warmth:
             guard let w = warmthAt, now >= w + Self.strokesFrom, strokes.count < Self.strokesWanted else { return [] }
             stroking = true
@@ -253,7 +297,7 @@ struct RevontuletEngine: Equatable {
         records[round].effort = effort
         records[round].decisionMs = Self.ms(now - beatStart)
         records[round].chosenUptime = now
-        setBeat(.trace, at: now + 0.7)
+        setBeat(.trace, at: now + Self.arcLead)
         records[round].arcShownUptime = beatStart
         progress = 0
         reversed = false
@@ -273,9 +317,9 @@ struct RevontuletEngine: Equatable {
         var ev: [RevontuletEvent] = []
         let arc = self.arc
         var spot = arc.locate(p, reversed: reversed)
-        let near = spot.off < arc.radius * 0.55 && spot.s > -0.15 && spot.s < 1.15
+        let near = spot.off < arc.radius * 0.7 && spot.s > -0.18 && spot.s < 1.18
         if !tracing {
-            guard near || (isDown && spot.off < arc.radius * 0.8) else { return ev }
+            guard near || (isDown && spot.off < arc.radius * 0.95) else { return ev }
             // Starting at the far end is fine: the light then runs the other way.
             if progress == 0, spot.s > 0.72 {
                 reversed = true
@@ -292,7 +336,7 @@ struct RevontuletEngine: Equatable {
         }
         guard near else { return ev }
         // The light follows the finger forwards; it never skips ahead and never goes back.
-        if spot.s >= progress - 0.08, spot.s <= progress + 0.2 {
+        if spot.s >= progress - 0.1, spot.s <= progress + 0.24 {
             progress = min(1, max(progress, spot.s))
         }
         let stepNow = Int(progress * 12)
@@ -314,7 +358,7 @@ struct RevontuletEngine: Equatable {
                 records[round].traceTouchRadius = traceRadii.reduce(0, +) / Double(traceRadii.count)
             }
             ev.append(.traceEnded(round: round))
-            setBeat(.sling, at: now + 0.45)
+            setBeat(.sling, at: now + Self.slingLead)
             pull = .zero
             staleTouch = true
         }
@@ -332,10 +376,7 @@ struct RevontuletEngine: Equatable {
         records[round].launchDate = date(now)
         let from = CGPoint(x: layout.anchor.x + pull.dx, y: layout.anchor.y + pull.dy)
         let to = layout.target(round: round, effort: effort)
-        let dist = hypot(to.x - from.x, to.y - from.y)
-        // The aim is helped all the way: the pull only bends the arc a little.
-        let control = CGPoint(x: (from.x + to.x) / 2 - pull.dx * 0.9,
-                              y: min(from.y, to.y) - dist * 0.22 - max(0, pull.dy) * 0.4)
+        let control = RevontuletLayout.flightControl(from: from, to: to, pull: pull)
         var f = RevontuletFlight(launch: now, from: from, control: control, to: to,
                                  duration: effort == .hard ? Self.hardFlight : Self.easyFlight, hard: effort == .hard, foxOwn: false)
         if effort == .hard {
@@ -376,9 +417,10 @@ struct RevontuletEngine: Equatable {
         let t = now - f.launch
         var best: (i: Int, d: CGFloat)?
         for i in f.emberU.indices where f.emberHitAt[i] == nil && !f.emberMissed[i] {
-            guard t >= f.emberT[i] - RevontuletFlight.emberLead, t <= f.emberT[i] + RevontuletFlight.emberGrace else { continue }
+            guard t >= f.emberT[i] - RevontuletFlight.emberLead - RevontuletFlight.emberEarly,
+                  t <= f.emberT[i] + RevontuletFlight.emberGrace else { continue }
             let d = hypot(p.x - f.emberPoint(i).x, p.y - f.emberPoint(i).y)
-            if d < layout.size.width * 0.19, d < (best?.d ?? .infinity) { best = (i, d) }
+            if d < max(64, layout.size.width * 0.2), d < (best?.d ?? .infinity) { best = (i, d) }
         }
         guard let hit = best else { return [] }
         let shown = f.launch + f.emberT[hit.i] - RevontuletFlight.emberLead
@@ -432,7 +474,7 @@ struct RevontuletEngine: Equatable {
         stroke = nil
         stroking = false
         let duration = max(now - s.start, 0.001)
-        let counted = s.length >= Self.minStroke && strokes.count < Self.strokesWanted
+        let counted = s.length >= layout.strokeLength && strokes.count < Self.strokesWanted
         let number = strokes.count + 1
         if counted {
             let dy = Double(s.lastPoint.y - s.from.y)
@@ -520,7 +562,7 @@ struct RevontuletEngine: Equatable {
             pulling = false
             tracing = false
             setBeat(.sleep, at: s)
-            endAt = min(s + 3.0, t0 + Self.cap)
+            endAt = min(s + 3.4, t0 + Self.cap)
             ev.append(.sleep)
         }
         if beat == .sleep, let e = endAt, now >= e {
@@ -541,7 +583,8 @@ struct RevontuletEngine: Equatable {
         return RevontuletResult(startedAt: d0, endedAt: date(end), startUptime: u0, endUptime: end,
                                 completed: completed, rounds: records.filter { $0.effort != nil || $0.number == 1 },
                                 strokes: strokes, burstUptime: burstAt, celebrateUptime: celebrateAt,
-                                foxFinishedWall: foxFinished, surpriseRibbons: impacts.filter(\.ribbon).count)
+                                foxFinishedWall: foxFinished, surpriseRibbons: impacts.filter(\.ribbon).count,
+                                interrupted: interrupted)
     }
 
     // MARK: Helpers

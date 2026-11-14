@@ -82,7 +82,7 @@ struct ActivityRouter: View {
         let correct = r.launches + r.embersHit
         return API.ActivityIn(id: API.ActivityIn.newId(), type: .focus,
                               startedAt: API.isoString(r.startedAt), durationS: (duration * 10).rounded() / 10,
-                              completed: r.completed, endedBy: r.completed ? .finished : .userStopped,
+                              completed: r.completed, endedBy: r.completed ? .finished : r.interrupted ? .interrupted : .userStopped,
                               correctTaps: correct, wrongTaps: 0, misses: max(0, r.embersShown - r.embersHit),
                               reactionMs: Array(r.reactionMs.prefix(min(200, correct))).map { min(max($0, 0), 10_000) })
     }
