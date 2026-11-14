@@ -80,7 +80,7 @@ def test_a_correct_reading_is_stored_checked_and_shown_safely():
     assert a["reading"]["reactions"] == "slower" and a["dropped"] == []
     assert len(a["reading"]["evidence"]) == 2
     r = env.client.get("/v1/activities/act-read-0001/reading", headers=env.H).json()
-    assert r == {"status": "ready", "line": PATIENT_LINES["revontulet"]}
+    assert r == {"status": "ready", "line": PATIENT_LINES["focus"]}
     # The clinician sees it, marked as read by a model and checked by code.
     d = env.client.get(f"/v1/clinic/patients/{env.demo['patient_id']}", headers=env.C()).json()
     s = next(x for x in d["activities"]["focus"]["sessions"] if x["id"] == "act-read-0001")

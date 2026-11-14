@@ -522,7 +522,6 @@ def _activity_out(ctx: Ctx, repo: PatientRepo, rec: dict, xp_gained: int, crisis
 def activity_reading(ctx: Ctx, p: Principal, activity_id: str) -> dict:
     """The patient-safe side of the session reading: a status and, when ready,
     one neutral line. Never the reading itself, never a mood or a face."""
-    from .mind.activities import game_kind
     from .mind.session_reading import PATIENT_LINES
     rec = repo_for(ctx, p).get(f"activities/{activity_id}.json")
     if rec is None:
@@ -530,7 +529,7 @@ def activity_reading(ctx: Ctx, p: Principal, activity_id: str) -> dict:
     a = rec.get("analysis") or {"status": "not_applicable"}
     status = a["status"]
     return {"status": status,
-            "line": PATIENT_LINES.get(game_kind(rec)) if status == "ready" else None}
+            "line": PATIENT_LINES.get(rec["type"]) if status == "ready" else None}
 
 
 async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:

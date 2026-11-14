@@ -32,12 +32,12 @@ Lanvi is a little Arctic fox whose tail glows. In Finland the northern lights ar
 
 ## The three activities
 
-### 1. Sparks and snow (focus, about 45 seconds)
+### 1. Revontulet (focus, up to about 90 seconds)
 
-- Warm sparks and snowflakes drift down. Tap the sparks, let the snowflakes fall.
-- Starts slow, speeds up a little. A missed spark just fades, nothing is lost.
+- Three rounds: pick a crack in the ice (an easier or a harder one), trace a half-circle, pull the spark back like a slingshot and let go; on a harder shot two embers flash to tap. When the wall of ice bursts the fox fires rise, and the game ends with slow strokes over the sleeping fox.
+- Nothing is lost by missing: if time runs out, the fox's own spark breaks the wall.
 - Normal screen, works sitting or lying down.
-- App records: reaction times, correct taps, wrong taps (tapped a snowflake), misses, completed or stopped early.
+- App records: reaction times to the embers, launches and embers tapped, embers missed, finished or stopped early, and the game's own measures (`docs/revontulet-measures.md`).
 - Why: trains focus and self-control. Aalto's own depression game (Meliora, by Soihtu) trains the same skills, and slower reactions are a known sign of low mood.
 
 ### 2. Breathe with Lanvi (1 minute)
@@ -56,7 +56,7 @@ Lanvi is a little Arctic fox whose tail glows. In Finland the northern lights ar
 
 ## Face measurements (Peter, from FaceMetrics)
 
-Only during Sparks and snow and Breathe with Lanvi, and only if the person allowed the camera.
+Only during Revontulet and Breathe with Lanvi, and only if the person allowed the camera.
 
 Per activity the app sends (the face part is now raw frames of numbers, never a picture, and the server computes the face measures below; see `docs/face-raw.md`):
 
@@ -72,7 +72,7 @@ The server compares each summary with that person's own normal, never with other
 
 | Action | XP |
 |---|---|
-| Sparks and snow played | 10 |
+| Revontulet played | 10 |
 | Breathe with Lanvi done | 10 |
 | Evening check-in done | 10 |
 | Yesterday's plan done | 15 |

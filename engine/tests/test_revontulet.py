@@ -71,26 +71,26 @@ def test_a_full_game_is_accepted_and_stored_whole(env):
     assert stored["features"]["reaction_spread_ms"] is None  # the spread needs four
 
 
-def test_no_embers_means_no_error_rate_and_sparks_keeps_its_own_rule(env):
+def test_no_embers_means_no_error_rate_and_a_game_without_measures_is_read_from_its_taps(env):
     easy = copy.deepcopy(MEASURES)
     easy["rounds"] = [ROUND_EASY, ROUND_EASY, ROUND_EASY]
     assert post(env, game("rv-easy-000001", measures=easy, correct_taps=3, misses=0,
                           reaction_ms=[])).status_code == 200
     f = env.repo().get("activities/rv-easy-000001.json")["features"]
     assert f["error_rate"] is None and f["median_reaction_ms"] is None
-    # A Sparks and snow record keeps its own rule: five reaction times, taps over taps.
+    # Sent without the measures: the same rule for reaction times, the taps for the rest.
     assert post(env, game("rv-plain-00001", measures=None)).status_code == 200
     f = env.repo().get("activities/rv-plain-00001.json")["features"]
-    assert f["median_reaction_ms"] is None and f["error_rate"] == round(1 / 7, 3)
+    assert f["median_reaction_ms"] == 380.0 and f["error_rate"] == round(1 / 7, 3)
 
 
-def test_the_two_focus_games_are_never_compared_with_each_other(env):
-    """A real Revontulet game on 14 November, set after Sparks and snow games,
-    came out 2.9 away on error rate only because the game had changed."""
-    sparks = dict(measures=None, duration_s=45.0, correct_taps=16, wrong_taps=1, misses=1,
+def test_games_with_and_without_the_measures_are_never_compared_with_each_other(env):
+    """A real game with its measures on 14 November, set after records that had
+    only taps, came out 2.9 away on error rate only because the counting differs."""
+    plain = dict(measures=None, duration_s=45.0, correct_taps=16, wrong_taps=1, misses=1,
                   reaction_ms=[500 + 7 * i for i in range(16)])
     for k in range(6):
-        assert post(env, game(f"kind-sparks-{k:04d}", started_at=_days_ago(20 - k), **sparks)).status_code == 200
+        assert post(env, game(f"kind-plain-{k:04d}", started_at=_days_ago(20 - k), **plain)).status_code == 200
     assert post(env, game("kind-rv-0000001", started_at=_days_ago(10))).status_code == 200
     first = env.repo().get("activities/kind-rv-0000001.json")
     assert first["baseline_sessions"] == 0 and first["usual"] == {}
@@ -100,9 +100,9 @@ def test_the_two_focus_games_are_never_compared_with_each_other(env):
     sixth = env.repo().get("activities/kind-rv-0000006.json")
     assert sixth["baseline_sessions"] == 5 and sixth["usual"]["error_rate"]["n"] == 5
     assert sixth["z"]["error_rate"] == 0.0 and sixth["z"]["median_reaction_ms"] == 0.0
-    # And the other way: a Sparks game after them sees only the Sparks games.
-    assert post(env, game("kind-sparks-last", started_at=_days_ago(1), **sparks)).status_code == 200
-    last = env.repo().get("activities/kind-sparks-last.json")
+    # And the other way: a record without the measures sees only records like it.
+    assert post(env, game("kind-plain-last", started_at=_days_ago(1), **plain)).status_code == 200
+    last = env.repo().get("activities/kind-plain-last.json")
     assert last["baseline_sessions"] == 6 and last["usual"]["median_reaction_ms"]["n"] == 6
 
 
@@ -137,9 +137,8 @@ def test_a_coached_round_and_a_flick_are_left_out_of_the_four_numbers(env):
 
 
 def test_a_games_few_ember_taps_give_a_reaction_time(env):
-    """A game has at most six ember taps, so two are enough for the median (the
-    other focus game, with about seventeen taps, keeps needing five). The spread
-    needs four. An easy-only game sends none and gets none."""
+    """A game has at most six ember taps, so two are enough for the median. The
+    spread needs four. An easy-only game sends none and gets none."""
     post(env, game("rv-rt-00000001", reaction_ms=[410, 380]))
     f = env.repo().get("activities/rv-rt-00000001.json")["features"]
     assert f["median_reaction_ms"] == 395.0 and f["reactions_used"] == 2
@@ -152,9 +151,9 @@ def test_a_games_few_ember_taps_give_a_reaction_time(env):
     # Anticipations (under 120 ms) still do not count.
     post(env, game("rv-rt-00000004", reaction_ms=[80, 410]))
     assert env.repo().get("activities/rv-rt-00000004.json")["features"]["median_reaction_ms"] is None
-    # Without the measures the record is the old game: five reactions or nothing.
+    # A record sent without the measures follows the same rule.
     post(env, game("rv-rt-00000005", measures=None, reaction_ms=[410, 380, 350]))
-    assert env.repo().get("activities/rv-rt-00000005.json")["features"]["median_reaction_ms"] is None
+    assert env.repo().get("activities/rv-rt-00000005.json")["features"]["median_reaction_ms"] == 380.0
 
 
 def test_a_record_without_the_measures_means_what_it_always_did(env):
@@ -302,13 +301,13 @@ def test_the_fixed_start_is_games_three_to_twelve_and_does_not_move(env):
     assert last["revontulet_start_z"]["trace_speed_cm_s"] < -2        # far under the start
 
 
-def test_sparks_games_never_enter_revontulet_normal_and_get_no_such_keys(env):
+def test_games_without_the_measures_never_enter_their_normal_and_get_no_such_keys(env):
     for k in range(9):
-        assert post(env, game(f"rv-sparks-{k:06d}", measures=None, started_at=_days_ago(10 - k))).status_code == 200
-    assert post(env, game("rv-after-sparks-01", started_at=_days_ago(0))).status_code == 200
-    plain = env.repo().get("activities/rv-sparks-000008.json")
+        assert post(env, game(f"rv-plain-{k:06d}", measures=None, started_at=_days_ago(10 - k))).status_code == 200
+    assert post(env, game("rv-after-plain-001", started_at=_days_ago(0))).status_code == 200
+    plain = env.repo().get("activities/rv-plain-000008.json")
     assert not [k for k in plain if k.startswith("revontulet")]
-    rv = env.repo().get("activities/rv-after-sparks-01.json")
+    rv = env.repo().get("activities/rv-after-plain-001.json")
     assert rv["revontulet_baseline_sessions"] == 0 and rv["revontulet_usual"] == {}
 
 
