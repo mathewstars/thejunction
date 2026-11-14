@@ -3,11 +3,28 @@ options:
   bundleIdPrefix: app.lanvi
   deploymentTarget:
     iOS: "17.0"
+configFiles:
+  Debug: Base.xcconfig
+  Release: Base.xcconfig
 targets:
   Lanvi:
     type: application
     platform: iOS
     sources: [Lanvi]
+    info:
+      path: Lanvi/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LanviServerURL: $(LANVI_SERVER_URL)
+        LanviPairingCode: $(LANVI_PAIRING_CODE)
+        UIAppFonts:
+          - Nunito-SemiBold.ttf
+          - Nunito-Bold.ttf
+          - Nunito-ExtraBold.ttf
+          - Nunito-Black.ttf
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.lanvi.Lanvi
