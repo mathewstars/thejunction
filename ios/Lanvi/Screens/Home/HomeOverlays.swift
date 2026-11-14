@@ -9,6 +9,7 @@ struct HomeHelpScreen: View {
     var onClose: () -> Void
 
     @Environment(AppStore.self) private var store
+    @State private var closing = false
 
 
     var body: some View {
@@ -21,6 +22,7 @@ struct HomeHelpScreen: View {
 
                 LanviView(pose: .love, size: fox)
                     .lanviHops(false)
+                    .showsAfterRise(closing: closing)
                     .position(x: geo.size.width / 2, y: hill - fox / 2 + 12)
 
                 ScrollView {
@@ -69,7 +71,7 @@ struct HomeHelpScreen: View {
                 .scrollBounceBehavior(.basedOnSize)
 
                 HStack {
-                    HomeCloseButton(action: onClose)
+                    HomeCloseButton { closing = true; onClose() }
                     Spacer()
                 }
                 .padding(.horizontal, 20)

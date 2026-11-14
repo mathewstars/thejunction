@@ -89,3 +89,27 @@ private struct PanelChrome<Content: View>: View {
         )
     }
 }
+
+/// A presented screen's own fox shows only once the screen has fully risen over
+/// Home, and is hidden the moment the screen starts to close: Home's fox and the
+/// screen's fox are never on screen together, not even for a frame.
+private struct ShowsAfterRise: ViewModifier {
+    var closing: Bool
+    @State private var risen = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(risen && !closing ? 1 : 0)
+            .animation(closing ? nil : .easeOut(duration: 0.22), value: risen)
+            .task {
+                // The rise is LanviTiming.overlay (response 0.4): by then Home is covered.
+                try? await Task.sleep(for: .milliseconds(430))
+                risen = true
+            }
+    }
+}
+
+extension View {
+    /// For a fox drawn by a screen presented over Home (see `ShowsAfterRise`).
+    func showsAfterRise(closing: Bool) -> some View { modifier(ShowsAfterRise(closing: closing)) }
+}
