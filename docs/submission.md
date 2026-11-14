@@ -57,7 +57,7 @@ Lanvi stays with the person through good weeks and dips, and steps in early.
 
 HOW IT NOTICES
 
-Behind the fox is a set of plain rules that we can explain: attention, memory and learning. Small watchers check every new day, activity or note, and once something needs attention Lanvi holds on to it until things really recover. One good day doesn't make it forget a slow slide.
+Behind the fox, plain rules that we can explain raise a flag when something changes, and two models then decide how much it matters: a small one on the clinic's own hardware sets the level and Gemini, as the second reader, agrees, raises or lowers. A request for help is always urgent by rule and never waits for a model. Attention, memory and learning: Small watchers check every new day, activity or note, and once something needs attention Lanvi holds on to it until things really recover. One good day doesn't make it forget a slow slide.
 
 It has two kinds of memory: the person's own rules, like "not before 9", which come first, and the lessons it learns about what helps them. Each lesson is checked against the person's real data, and they can see it and say "not true".
 

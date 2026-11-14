@@ -93,7 +93,7 @@
           "device"
         ],
         "summary": "Upload one day or a batch of history",
-        "description": "Upsert by date. Values that cannot be true (negative, absurd, future\ndates, conflicting duplicates in one batch) are rejected per day, logged,\nand never used for the baseline.",
+        "description": "Merged by date: a field left out of a day keeps the value the server\nholds (a watch may sync sleep or HRV late), a changed field replaces it,\nand a day identical to the stored one is accepted but not written again.\nSo the phone may re-send recent days on every open. Values that cannot be\ntrue (negative, absurd, future dates, conflicting duplicates in one batch)\nare rejected per day, logged, and never used for the baseline.",
         "operationId": "daily_v1_daily_post",
         "requestBody": {
           "content": {
@@ -4684,7 +4684,7 @@
             "maxItems": 400,
             "minItems": 1,
             "title": "Days",
-            "description": "One day, or a batch of history. Upsert by date."
+            "description": "One day, or a batch of history. Merged by date: a field left out keeps the stored value."
           }
         },
         "additionalProperties": false,

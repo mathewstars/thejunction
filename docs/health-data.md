@@ -4,7 +4,7 @@ For Peter. Two ways in, both with the device token from pairing (`Authorization:
 
 ## What is in the system today
 
-- The Lanvi app already sends days. On first run it asks for Apple Health, sends the history once, and then the missing days each time the app comes to the front (`ios/Lanvi/Sense/HealthSync.swift`). It sends four values per day to `POST /v1/daily`: steps, walking speed, sleep hours and HRV.
+- The Lanvi app already sends days. On first run it asks for Apple Health, sends the history once, and then, each time the app comes to the front, the missing days plus the last 14 sent days again, because a watch syncs sleep and HRV late (`ios/Lanvi/Sense/HealthSync.swift`). The server merges each day into what it holds: a field left out keeps its stored value. It sends four values per day to `POST /v1/daily`: steps, walking speed, sleep hours and HRV.
 - It does not send while the app is closed. There is no background delivery yet (no `HKObserverQuery`, no background task). If the watch app or the harness should send on its own schedule, use the second endpoint below; any app that holds a device token can call it.
 - On the demo server the days of the example patients are example data. Real days arrive as soon as a paired phone opens the app.
 

@@ -80,6 +80,35 @@ def single(i, t, head):          # one measure on its own, for the split screens
     if run: g.ellipse((run[-1][0] - 7 * S, run[-1][1] - 7 * S, run[-1][0] + 7 * S, run[-1][1] + 7 * S), fill=GLOW)
     g.text((40 * S, 560 * S), "Example data, invented patient", font=small, fill=MUTED)
     return im.resize((640, 720), Image.LANCZOS)
+def triple(t_now, starts, draw=2.0):
+    """Right half of the measurement screen: three rows, each appearing when the voice names it."""
+    w, h = 640 * S, 720 * S; im = Image.new("RGB", (w, h), BG); g = ImageDraw.Draw(im)
+    heads = [("His game", "reaction speed", 1), ("Breathing with him", "face movement", 0), ("All day", "steps", 2)]
+    for k, (head, sub, ri) in enumerate(heads):
+        if t_now < starts[k]: continue
+        y0 = (70 + k * 200) * S; a = min(1.0, (t_now - starts[k]) / 0.4); col = tuple(int(BG[c] + (INK[c] - BG[c]) * a) for c in range(3)); mc = tuple(int(BG[c] + (MUTED[c] - BG[c]) * a) for c in range(3))
+        g.text((40 * S, y0), head, font=big, fill=col); g.text((40 * S, y0 + 46 * S), sub + ", week by week", font=small, fill=mc)
+        zz = rows[ri][1]; prog = min(1.0, (t_now - starts[k]) / draw); upto = 0.86 * prog * (N - 1); x0, x1, ym, amp = 40 * S, w - 50 * S, y0 + 125 * S, 42 * S
+        g.line((x0, ym, x1, ym), fill=LINE, width=S); run = []
+        for p_ in zz:
+            if p_[0] > upto: break
+            if run and p_[0] - run[-1][2] > 7:
+                if len(run) > 1: g.line([(q, r) for q, r, _ in run], fill=GLOW, width=4 * S, joint="curve")
+                run = []
+            run.append((x0 + p_[0] / (N - 1) * (x1 - x0), ym - max(-1.9, min(1.9, p_[1])) * amp / 1.9, p_[0]))
+        nx = [p_ for p_ in zz if p_[0] > upto]
+        if run and nx and nx[0][0] - run[-1][2] <= 7:
+            lastp = [p_ for p_ in zz if p_[0] <= upto][-1]; f = (upto - lastp[0]) / (nx[0][0] - lastp[0]); zv = lastp[1] + (nx[0][1] - lastp[1]) * f
+            run.append((x0 + upto / (N - 1) * (x1 - x0), ym - max(-1.9, min(1.9, zv)) * amp / 1.9, upto))
+        if len(run) > 1: g.line([(q, r) for q, r, _ in run], fill=GLOW, width=4 * S, joint="curve")
+        if len(run) > 1: g.ellipse((run[-1][0] - 6 * S, run[-1][1] - 6 * S, run[-1][0] + 6 * S, run[-1][1] + 6 * S), fill=GLOW)
+    g.text((40 * S, 672 * S), "Example data, invented patient", font=small, fill=MUTED)
+    return im.resize((640, 720), Image.LANCZOS)
+if sys.argv[1] == "triple":
+    out, secs = sys.argv[2], float(sys.argv[3]); starts = [float(x) for x in sys.argv[4].split(",")]
+    os.makedirs(out, exist_ok=True); n = int(secs * 24)
+    for k in range(n): triple(k / 24, starts).save(f"{out}/{k:04d}.png")
+    print(out, n); sys.exit()
 if sys.argv[1] == "single":
     i, out, secs, head = int(sys.argv[2]), sys.argv[3], float(sys.argv[4]), sys.argv[5]
     os.makedirs(out, exist_ok=True); n = int(secs * 24)

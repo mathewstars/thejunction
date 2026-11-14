@@ -1354,7 +1354,7 @@
     ["Gemini, as reported", "8 of 8", "8 of 8", "2 of 18"],
     ["Gemini, after code's check (3 correct ones dropped)", "8 of 8", "5 of 8", "1 of 14"]];
   function bpGemini(wrap) {
-    wrap.appendChild(el("p", { class: "lead" }, "Gemini is the second reader. It reads numbers that plain code has already read with fixed rules, and code checks every item it reports. When Gemini finds something the fixed rules missed and code confirms it in the numbers, the system raises a low-level flag for the clinic: noticed by the model, confirmed by code. It can also stop a lesson that code accepted; it cannot add one. It gets no name, no date, no photo or video of the person and, unless the clinic turns on the chat mode, none of the person's words."));
+    wrap.appendChild(el("p", { class: "lead" }, "Gemini is the second reader. It reads numbers that plain code has already read with fixed rules, and code checks every item it reports. When Gemini finds something the fixed rules missed and code confirms it in the numbers, the system raises a low-level flag for the clinic: noticed by the model, confirmed by code. On the demo server it is also the second of two readers that set how much each flag for the clinic matters: the local model sets a level, Gemini agrees, raises or lowers, and the page shows both beside what the fixed rules alone would say. It can also stop a lesson that code accepted; it cannot add one. It gets no name, no date, no photo or video of the person and, unless the clinic turns on the chat mode, none of the person's words."));
     const W = 960, H = 150, BW = 176, BH = 96, GAP = 19;
     const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "bp", role: "img",
       "aria-label": "How a Gemini reading is made: numbers only, an input gate in code, Gemini, an output gate in code, then code checks each item before the clinician sees it." });
@@ -1375,7 +1375,7 @@
       }
     });
     wrap.appendChild(el("section", { class: "panel" }, el("figure", { class: "bp-fig" }, s,
-      el("figcaption", { class: "muted small" }, "The amber box is Gemini; the others are plain code. These five steps are the three reading jobs below. Nothing is sent to Gemini unless the patient's record allows outside processing."))));
+      el("figcaption", { class: "muted small" }, "The amber box is Gemini; the others are plain code. These five steps are the three reading jobs below (jobs 1 to 3). Nothing is sent to Gemini unless the patient's record allows outside processing."))));
 
     wrap.appendChild(panel("What Gemini adds over code", null, el("div", { class: "bp-say" },
       el("p", null, "On clean generated sessions a short code rule, relative to the person's own resting level, finds exactly what Gemini finds. Gemini is ahead in two places."),
@@ -1429,7 +1429,7 @@
     const part = (k, v) => el("p", null, el("b", null, k + " "), v);
     const job = (n, t, tag, sent, back, check, see) => el("div", { class: "row" }, el("div", { class: "top" }, el("span", { class: "chip" }, n), el("span", { class: "t" }, t), el("span", { class: "chip" }, tag)),
       el("div", { class: "d bp-job" }, part("Sent:", sent), part("Gemini returns:", back), part("Code then:", check), part("See it:", see)));
-    wrap.appendChild(panel("The four jobs", null, el("div", { class: "rows" },
+    wrap.appendChild(panel("The five jobs", null, el("div", { class: "rows" },
       job("1", "Reads how a face moved during one short game", "measured above",
         "about 225 rows, five per second, each with a time and up to 14 numbers (smile, cheeks, blink, brows, gaze, head angle). The phone sent numbers only; a picture never existed on the server.",
         "every smile with its start and end, a blink count, longer stretches such as looking down, and whether a smile followed each pleasant moment.",
@@ -1449,7 +1449,12 @@
         "the lessons code has already accepted and the evidence rows: rounded values, days counted back from today, a random label used once.",
         "only objections, each one of three codes: weak evidence, contradicts recent days, too broad.",
         "does not add that lesson in this run. This is the one place where Gemini's answer is acted on without code testing it against numbers, and all it can do is hold a lesson back. It cannot add or change one.",
-        [go2(anna, "mind", "Anna Korhonen → Learned"), ", “How it learns”, and the Blueprint section of the same name."])),
+        [go2(anna, "mind", "Anna Korhonen → Learned"), ", “How it learns”, and the Blueprint section of the same name."]),
+      job("5", "Weighs each flag for the clinic, as the second of two readers", "not measured yet",
+        "the open flags of one person (kind, days held, the rules' level, the flag's own numbers), the last 14 days of movement against own normal, and what the local model answered. No name, date or text. A request for help is never sent: it is urgent by rule.",
+        "for every flag: agree, raise or lower, with one of nine fixed reasons.",
+        "applies it: the flag's level moves by one step from the local model's level. This is a decision by the models, not checked against numbers. What code keeps is the list of flags, the rule for a request for help, and the fixed rules' own level, which is shown beside it and stands whenever no model answers.",
+        [go2(anna, "overview", "Anna Korhonen → Overview"), ", the list “Needs attention”: under each flag, what each model said and what the rules alone would say."])),
       el("p", { class: "small" }, "Still switched on in the server, from an earlier design: a reading of a movement round, which sends the path of the phone in metres and two small drawings of that path seen from above (no photo). The app no longer sends rounds.")));
 
     wrap.appendChild(el("div", { class: "grid even" },

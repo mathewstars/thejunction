@@ -46,7 +46,7 @@ Times are for the two-minute version. Lines in quotes are short cues; the full w
 | 6 | 1:08 | Laptop, Patients | Driver: point at Anna Korhonen at the top, open her | "One line per patient. This one needs a look." |
 | 7 | 1:15 | Laptop, Overview | Driver: hover the chart where it drops | "Compared with her own normal, not an average." |
 | 8 | 1:22 | Laptop, Conversation | Driver: open the tab, the help note is at the bottom | "What she wrote, the fixed line Lanvi answered, what the system did." |
-| 9 | 1:30 | Laptop, Timeline | Driver: open the newest row with a change | Who decides: plain rules decide, a small local model puts it into words, Gemini reads the face and daily numbers as a second pair of eyes, and code checks every statement. A finding of Gemini that the numbers confirm becomes a flag for the clinic. |
+| 9 | 1:30 | Laptop, Timeline | Driver: open the newest row with a change | Who decides: plain rules raise each flag; the small local model sets how much it matters and Gemini agrees, raises or lowers (the page shows what each said and what the rules alone would say); a request for help is urgent by rule. Gemini also reads the face and daily numbers, and code checks every item. |
 | 10 | 1:40 | Laptop, Log | Driver: scroll to the refusals | "We tried to make it learn something harmful. Here is what it refused." Point at the note that tried to give it instructions. |
 | 11 | 1:48 | Speaker only | | What we know and do not know. The study we would like to run. |
 | 12 | 1:55 | Phone, Lanvi | | Close. |

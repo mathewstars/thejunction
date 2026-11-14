@@ -48,7 +48,7 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
    ```
    The code works once and expires (24 h by default). A second use is refused.
 
-2. **Send daily data** (Apple Health). One day, or a batch of history on first launch (up to 400 days). Upsert by date, so re-sending a day is fine.
+2. **Send daily data** (Apple Health). One day, or a batch of history on first launch (up to 400 days). Merged by date: a field left out keeps the stored value, an unchanged day is not written again, so re-sending days is fine (the app re-sends the last 14 days on every open).
    ```sh
    curl -X POST $B/v1/daily -H "Authorization: Bearer $DT" -H 'Content-Type: application/json' \
      -d '{"days":[{"date":"2026-11-13","steps":6400,"walking_speed_m_s":1.24,"hrv_ms":42,"sleep_h":7.1}]}'
@@ -259,6 +259,16 @@ The engine serves a plain web page for clinicians at `/` (files in `engine/clini
 | `GET /v1/clinic/patients/{id}/activities/{activity_id}/face-raw` | Research download: the stored raw frames of one session as the phone sent them, plus `frames`, `channel_count`, `tracked_frames`. 404 when the session has no frames. Each download is audited (activity id only, no values) |
 | `POST /v1/clinic/attention/{id}/ack` | The Acknowledge button |
 | `/v1/demo/...`, `/v1/review/run` | The demo panel, only for the demo clinic while demo mode is on. `POST /v1/demo/recompute-face {"patient_id"}` computes the face summary of every raw session of the patient again from the stored frames with the current thresholds and returns `{"patient_id", "recomputed": n}`. `POST /v1/demo/analyze {"patient_id", "activity_id", "what": "frames"}` runs the frame reading of one raw session now and returns its `frames_reading` (`what` defaults to `session`, the session reading) |
+
+### Who sets the level of an attention item (`TRIAGE_MODE`)
+
+The watchers decide which attention items exist; that never changes. `TRIAGE_MODE` decides who sets each item's level:
+
+- `rules` (the default): the fixed rules in `engine/clinic_engine/mind/watchers.py` (`escalate`).
+- `models`: the two model levels. Level 1 (the local model) reads the whole picture and sets `watch`, `attention` or `urgent` for every open item, with one of nine fixed reason codes. Level 2 (Gemini, only when the patient's record allows outside processing) reads the same picture with level 1's answer and answers `agree`, `raise` or `lower` (one step). The picture is numbers and fixed codes only: per item its kind, days held, the rules' level and the item's own numeric facts; the last 14 days of movement against own normal (rounded to 0.5); three counts. No ids, dates, names or text; checked by `check_triage_outbound`. A new triage runs when that picture changes.
+- Kept in code in both modes: only watchers open and close items; a request for help is always `urgent` and is never sent to a model; the rules' own level is stored beside the models' (`rules_level`) and stands whenever no model answered; replies outside the fixed form are refused.
+
+`GET /v1/clinic/patients/{id}` has `triage` {`mode`, `status` (`ready` or `no_models`), `at`, `models`, `levels` {item id: {`level`, `rules_level`, `level1`, `reason1`, `verdict2`, `reason2`}}}, and each attention item has `rules_level` and `level_source` (`models` when the models set it). The demo server runs with `TRIAGE_MODE=models` since 14 November 2026.
 
 ### Apple Health summary and the day reading
 
