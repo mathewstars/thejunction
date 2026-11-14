@@ -66,9 +66,10 @@ struct LanviBubbleBackground: View {
 }
 
 /// Home's speech: the bubble sits up and to one side of Lanvi's head with its
-/// tail pointing to the face. It pops from the tail tip, the words appear one
-/// at a time while Lanvi's mouth opens and closes, and an old line shrinks
-/// back to the mouth before a new one arrives. Tap opens the chat.
+/// tail pointing to the face. The tail's tip never moves. A new line fades the old
+/// words out, the bubble resizes to the new line in one smooth spring (placed by a
+/// layout, never by a size measured a frame late), then the words appear one at a
+/// time while Lanvi's mouth opens and closes. Tap opens the chat.
 struct HomeSpeech: View {
     var text: String
     /// Where the tail tip points, in the parent's coordinates.
@@ -81,52 +82,48 @@ struct HomeSpeech: View {
 
     @State private var shown = ""
     @State private var revealed = 0
-    @State private var scale: CGFloat = 0.6
-    @State private var opacity: Double = 0
-    @State private var size: CGSize = .zero
+    @State private var wordsOpacity: Double = 1
+    @State private var appeared = false
     @State private var speaking: Task<Void, Never>?
 
-    private var maxWidth: CGFloat { width * 0.72 }
     private var long: Bool { shown.count > 64 }
+    private static let space = "lanvi.speech"
 
     var body: some View {
-        let bw = max(size.width, 1), bh = max(size.height, 1)
-        // Sit up and to the right of the head, but stay on screen.
-        let minX = min(max(target.x - 34, 20), width - 20 - bw)
-        let tailX = min(max(target.x - minX + 6, 30), bw - 30)
-        let bottom = target.y - LanviBubbleShape.tailHeight
-        let tip = CGPoint(x: tailX - 12, y: bh + LanviBubbleShape.tailHeight)
-
-        Button(action: onTap) {
-            words
-                .font(Theme.rounded(long ? 15 : 17, .bold))
-                .foregroundStyle(Theme.ink)
-                .lineSpacing(2)
-                .multilineTextAlignment(.leading)
-                .lineLimit(shown.count > 90 ? 4 : (long ? 3 : 2))
-                .minimumScaleFactor(0.9)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(LanviBubbleBackground(tailX: tailX))
-                .background(GeometryReader { g in
-                    Color.clear.preference(key: BubbleSizeKey.self, value: g.size)
-                })
+        SpeechLayout(leftX: target.x - 34,
+                     bottom: target.y - LanviBubbleShape.tailHeight,
+                     maxWidth: width * 0.72) {
+            Button(action: onTap) {
+                words
+                    .font(Theme.rounded(long ? 15 : 17, .bold))
+                    .foregroundStyle(Theme.ink)
+                    .opacity(wordsOpacity)
+                    .lineSpacing(2)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(shown.count > 90 ? 4 : (long ? 3 : 2))
+                    .minimumScaleFactor(0.9)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(GeometryReader { g in
+                        let minX = g.frame(in: .named(Self.space)).minX
+                        LanviBubbleBackground(tailX: min(max(target.x - minX + 6, 30), g.size.width - 30))
+                    })
+            }
+            .buttonStyle(BubblePress())
+            .scaleEffect(appeared ? 1 : 0.8, anchor: UnitPoint(x: 0.2, y: 1))
+            .opacity(appeared ? 1 : 0)
+            .accessibilityLabel(shown)
+            .accessibilityHint(hint ?? "")
+            .accessibilityIdentifier("home.speech")
         }
-        .buttonStyle(BubblePress())
-        .frame(width: maxWidth, alignment: .leading)
-        .onPreferenceChange(BubbleSizeKey.self) { size = $0 }
-        .scaleEffect(scale, anchor: UnitPoint(x: tip.x / maxWidth, y: tip.y / bh))
-        .opacity(opacity)
-        .position(x: minX + maxWidth / 2, y: bottom - bh / 2)
-        .accessibilityLabel(shown)
-        .accessibilityHint(hint ?? "")
+        .coordinateSpace(name: Self.space)
         .onAppear { speak(text) }
         .onChange(of: text) { _, t in speak(t) }
     }
 
-    /// The whole line is laid out from the start (so the bubble never resizes);
-    /// words not yet said are transparent.
+    /// The whole line is laid out from the start (so the bubble never resizes
+    /// while the words appear); words not yet said are transparent.
     private var words: Text {
         let parts = shown.split(separator: " ", omittingEmptySubsequences: true)
         var a = AttributedString()
@@ -141,17 +138,25 @@ struct HomeSpeech: View {
     private func speak(_ t: String) {
         speaking?.cancel()
         speaking = Task { @MainActor in
-            if opacity > 0 {
-                // The old line shrinks back to the mouth first.
-                withAnimation(.easeIn(duration: 0.14)) { scale = 0.6; opacity = 0 }
-                try? await Task.sleep(for: .milliseconds(150))
+            if appeared, !shown.isEmpty {
+                // The old words fade; the bubble itself stays where it is.
+                withAnimation(.easeOut(duration: 0.12)) { wordsOpacity = 0 }
+                try? await Task.sleep(for: .milliseconds(130))
+                guard !Task.isCancelled else { return }
+                // One smooth spring to the new line's size; the tail tip stays put.
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
+                    shown = t
+                    revealed = 0
+                }
+                try? await Task.sleep(for: .milliseconds(120))
+                guard !Task.isCancelled else { return }
+                wordsOpacity = 1
+            } else {
+                shown = t
+                revealed = 0
+                wordsOpacity = 1
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.7)) { appeared = true }
             }
-            guard !Task.isCancelled else { return }
-            shown = t
-            revealed = 0
-            try? await Task.sleep(for: .milliseconds(40))   // let it measure itself
-            guard !Task.isCancelled else { return }
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.6)) { scale = 1; opacity = 1 }
             let n = max(t.split(separator: " ").count, 1)
             let start = Date()
             var open = false
@@ -174,9 +179,27 @@ struct HomeSpeech: View {
     }
 }
 
-private struct BubbleSizeKey: PreferenceKey {
-    static let defaultValue: CGSize = .zero
-    static func reduce(value: inout CGSize, nextValue: () -> CGSize) { value = nextValue() }
+/// Places the bubble: its left edge just left of the face (or pulled in so it stays
+/// 20 points from the screen's right edge), its bottom on the tail's line. It takes
+/// the whole parent, so the coordinates are the parent's.
+private struct SpeechLayout: Layout {
+    var leftX: CGFloat
+    var bottom: CGFloat
+    var maxWidth: CGFloat
+    var edge: CGFloat = 20
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        proposal.replacingUnspecifiedDimensions()
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let bubble = subviews.first else { return }
+        let size = bubble.sizeThatFits(ProposedViewSize(width: maxWidth, height: nil))
+        let x = max(min(leftX, bounds.width - edge - size.width), edge)
+        bubble.place(at: CGPoint(x: bounds.minX + x, y: bounds.minY + bottom - size.height),
+                     anchor: .topLeading,
+                     proposal: ProposedViewSize(width: size.width, height: size.height))
+    }
 }
 
 /// The bubble gives a little when pressed.
