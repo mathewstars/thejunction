@@ -961,7 +961,7 @@
   }
   // the score above, "smiling less" below, on one time axis; big for the first screen, tiny for the cards
   function bpPair(weeks, o) {
-    const big = !!o.big, CW = big ? 960 : 420, L = big ? 250 : 8, R = big ? 16 : 8;
+    const big = !!o.big, CW = big ? 960 : 420, L = big ? 286 : 8, R = big ? 16 : 8;
     const AT = big ? 30 : 6, AH = big ? 96 : 34, GAP = big ? 44 : 8, BT = AT + AH + GAP, BH = big ? 96 : 34, CH = BT + BH + (big ? 30 : 6);
     const n0 = weeks[0].day, n1 = weeks[weeks.length - 1].day;
     const x = (d) => L + ((d - n0) / ((n1 - n0) || 1)) * (CW - L - R);
@@ -978,7 +978,8 @@
       c.appendChild(svg("text", { x: 4, y: AT + 26, class: "bp-l" }, "EVERY WEEK"));
       c.appendChild(svg("text", { x: 4, y: AT + 50, class: "bp-t" }, "Questionnaire score"));
       c.appendChild(svg("text", { x: 4, y: AT + 70, class: "bp-s" }, "nine questions, 0 to 27 · up = worse"));
-      c.appendChild(svg("text", { x: CW - R, y: ya(10) - 6, class: "tg-ax", "text-anchor": "end" }, "10: the line clinics watch"));
+      const calm = weeks.reduce((m, w) => (w.score < m.score ? w : m), weeks[0]);  // put the label where the line is far below it
+      c.appendChild(svg("text", { x: Math.min(CW - R - 90, Math.max(L + 90, x(calm.day))), y: ya(10) - 7, class: "tg-ax", "text-anchor": "middle" }, "10: the line clinics watch"));
       c.appendChild(svg("text", { x: 4, y: BT + 26, class: "bp-l" }, "EVERY DAY"));
       c.appendChild(svg("text", { x: 4, y: BT + 50, class: "bp-t" }, "The phone: smiling less"));
       c.appendChild(svg("text", { x: 4, y: BT + 70, class: "bp-s" }, "counted during a short game · up = worse"));
