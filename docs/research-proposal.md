@@ -48,7 +48,7 @@ No team can collect real recordings from patients in a weekend, and we did not t
 
 ## A finer signal we would try next (not built)
 
-Peter's idea, written down on 14 November. Nothing here exists in the app; it is the next experiment we would run, not a result and not a feature.
+Peter's idea, written down on 14 November. The app does not send it yet. The server can already take it: the record format, the checks and a first summary of movement are in place (`docs/face-fine.md`), and nothing reads that summary for any flag or level. It is the next experiment we would run, not a result and not a feature.
 
 **The idea.** What we use today are ARKit's blend shapes: about fifty numbers per frame that Apple computes for animating faces. They are smoothed, and each one sums up a whole region. The same sensor that Face ID uses (the TrueDepth camera) gives an app two finer things through Apple's public interfaces: the fitted face mesh, about 1,200 points per frame, and the depth map itself. With those we could look for movements a blend shape averages away: a brief twitch on one side, how fast a smile rises and how fast it fades, small tremor, a face that moves less in one region than the other.
 
@@ -59,6 +59,7 @@ Peter's idea, written down on 14 November. Nothing here exists in the app; it is
 - Time. Face tracking gives up to 60 frames a second and the depth map 30. A movement shorter than a few hundredths of a second cannot be resolved, so the very shortest micro-expressions are out of reach.
 - Depth noise. At phone distance we expect noise of around a millimetre. A twitch smaller than the noise cannot be told from it.
 - Head movement. The head moves far more than any muscle. It has to be removed first, and what is left is small.
+- The mesh may add nothing. ARKit builds the mesh from the same fit as the blend shapes, so it may show little that the blend shapes do not. The depth map is the independent measurement, and the first experiment has to show which of the two is worth keeping.
 - It is not a hidden sensor. Apps cannot read the infrared dot pattern Face ID itself uses; only the mesh and the depth map that Apple derives from it.
 
 **What it changes for privacy.** A mesh and a depth map are the shape of a face, and our rule is that no face shape leaves the phone (`ios/SENSORS.md`). So this would be the one place where the phone computes before it sends: for each region, how far it moved after the head's movement and the person's own resting shape are taken out. Only those movement numbers would leave. That gives up, for this signal only, the ability to recompute everything on the server later, and it would need its own line in the consent.

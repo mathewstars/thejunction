@@ -184,6 +184,31 @@ async def patient_face_raw(request: Request, patient_id: str = Path(pattern=SID)
     return raw
 
 
+@router.get("/patients/{patient_id}/activities/{activity_id}/face-fine",
+            responses=errors(401, 403, 404, 429),
+            summary="Fine facial movement of one activity: the server's summary and the "
+                    "stream as the phone sent it (research download)")
+async def patient_face_fine(request: Request, patient_id: str = Path(pattern=SID),
+                            activity_id: str = Path(pattern=CID),
+                            p: Principal = Depends(clinician_only)):
+    """Only for focus and breathing sessions sent with `face_fine`; 404 otherwise.
+    `summary` is movement per region (level, reach, speed, brief twitches per
+    minute) and left-right asymmetry; `stream` is millimetres per region and
+    frame. Research only: no flag, level or reading is derived from it. Each
+    download is audited (which activity, never any values)."""
+    ctx = ctx_of(request)
+    repo = _patient_repo(request, p, patient_id)
+    stream = repo.get(f"facefine/{activity_id}.json")
+    if stream is None:
+        raise ApiError(404, "not_found", "No fine movement stream for this activity.")
+    rec = repo.get(f"activities/{activity_id}.json") or {}
+    write_audit(ctx.store, ctx.clock.now(), clinic_id=p.clinic_id, patient_id=patient_id,
+                actor=p.actor, action="face_fine_read", detail={"activity_id": activity_id},
+                request_id=rid_of(request))
+    return {"activity_id": activity_id, "summary": rec.get("face_fine"),
+            "info": rec.get("face_fine_info"), "stream": stream}
+
+
 @router.get("/patients/{patient_id}/exchanges", responses=errors(401, 403, 404, 422, 429),
             summary="Raw model exchanges: what was sent to a model and what it answered")
 async def patient_exchanges(request: Request, patient_id: str = Path(pattern=SID),

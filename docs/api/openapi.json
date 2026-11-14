@@ -267,7 +267,7 @@
           "device"
         ],
         "summary": "Send one activity record: focus, breathing or check-in",
-        "description": "One record per activity, idempotent by `id`: the same record again is\nanswered without new XP; a different record under a used id is refused\n(409). Values that cannot be true are rejected (422) and logged.\n\nTyped words in a check-in are untrusted data with exactly the note's\ntreatment: classified into enums only, never followed, never logged,\nnever sent outside the server. If they ask for help, `crisis` is true and\nthe help block is included, as for a note.\n\nThe answer says what Lanvi shows next: XP gained, the new total, stage,\nglow and one line from the fixed set. XP is for showing up: the same\nwhatever the score.\n\nThe face: send `face_raw` (raw ARKit frames, numbers only; the server\ncomputes every face measure, docs/face-raw.md) or, from older clients,\n`face` (a summary the phone computed). Not both (422). This route accepts\nbodies up to MAX_FACE_RAW_BODY_BYTES (4 MiB by default); other routes keep\nthe general limit.",
+        "description": "One record per activity, idempotent by `id`: the same record again is\nanswered without new XP; a different record under a used id is refused\n(409). Values that cannot be true are rejected (422) and logged.\n\nTyped words in a check-in are untrusted data with exactly the note's\ntreatment: classified into enums only, never followed, never logged,\nnever sent outside the server. If they ask for help, `crisis` is true and\nthe help block is included, as for a note.\n\nThe answer says what Lanvi shows next: XP gained, the new total, stage,\nglow and one line from the fixed set. XP is for showing up: the same\nwhatever the score.\n\nThe face: send `face_raw` (raw ARKit frames, numbers only; the server\ncomputes every face measure, docs/face-raw.md) or, from older clients,\n`face` (a summary the phone computed). Not both (422). This route accepts\nbodies up to MAX_FACE_RAW_BODY_BYTES (4 MiB by default); other routes keep\nthe general limit.\n\nResearch only: `face_fine` (docs/face-fine.md) carries fine facial movement\nthe phone computed from the TrueDepth mesh or depth map, in millimetres per\nregion and frame. The server sums it up and keeps it; nothing in triage,\nthe baseline or any model reads it.",
         "operationId": "activities_v1_activities_post",
         "requestBody": {
           "content": {
@@ -2006,6 +2006,103 @@
                 "schema": {
                   "$ref": "#/components/schemas/FaceRawOut"
                 }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clinic/patients/{patient_id}/activities/{activity_id}/face-fine": {
+      "get": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "Fine facial movement of one activity: the server's summary and the stream as the phone sent it (research download)",
+        "description": "Only for focus and breathing sessions sent with `face_fine`; 404 otherwise.\n`summary` is movement per region (level, reach, speed, brief twitches per\nminute) and left-right asymmetry; `stream` is millimetres per region and\nframe. Research only: no flag, level or reading is derived from it. Each\ndownload is audited (which activity, never any values).",
+        "operationId": "patient_face_fine_v1_clinic_patients__patient_id__activities__activity_id__face_fine_get",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{1,6}_[0-9a-f]{24}$",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "activity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$",
+              "title": "Activity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -4928,6 +5025,17 @@
               }
             ],
             "description": "Raw ARKit frames; the server computes the face summary. Not with face."
+          },
+          "face_fine": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FaceFineIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fine facial movement the phone computed from the TrueDepth mesh or depth map (research only, docs/face-fine.md). With or without face_raw."
           }
         },
         "additionalProperties": false,
@@ -5473,6 +5581,129 @@
           "error"
         ],
         "title": "ErrorResponse"
+      },
+      "FaceFineIn": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "mesh",
+              "depth"
+            ],
+            "title": "Source",
+            "description": "What the phone measured on: the ARKit face mesh or the TrueDepth depth map."
+          },
+          "rate_hz": {
+            "type": "number",
+            "maximum": 60.0,
+            "minimum": 5.0,
+            "title": "Rate Hz",
+            "description": "Frames per second of `samples`."
+          },
+          "regions": {
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z_]{2,30}$"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "minItems": 2,
+            "title": "Regions",
+            "description": "Names in the order of each sample's values, from the fixed list in docs/face-fine.md. Must include mouth_left and mouth_right."
+          },
+          "samples": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "maxItems": 12000,
+            "minItems": 1,
+            "title": "Samples",
+            "description": "One row per frame, len(regions) values each, in millimetres, 0 to 50."
+          },
+          "tracked": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer",
+                  "maximum": 1.0,
+                  "minimum": 0.0
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracked",
+            "description": "Optional, one per frame: 1 when the face was tracked. Default all 1."
+          },
+          "noise_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 5.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Noise Mm",
+            "description": "Optional: the noise floor the phone measured on still frames of this session, in millimetres."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "rate_hz",
+          "regions",
+          "samples"
+        ],
+        "title": "FaceFineIn",
+        "description": "Fine facial movement, computed on the phone from the TrueDepth mesh or\ndepth map (docs/face-fine.md). For each named region and each frame: how far\nthe region is from the person's own resting shape after the head's movement\nis removed, in millimetres. Numbers only: the mesh, the depth map and every\ncoordinate stay on the phone. Research only: nothing reads this for triage.",
+        "examples": [
+          {
+            "noise_mm": 0.25,
+            "rate_hz": 60,
+            "regions": [
+              "mouth_left",
+              "mouth_right",
+              "brow_left",
+              "brow_right"
+            ],
+            "samples": [
+              [
+                0.21,
+                0.19,
+                0.08,
+                0.07
+              ],
+              [
+                0.24,
+                0.2,
+                0.08,
+                0.08
+              ],
+              [
+                1.31,
+                0.42,
+                0.09,
+                0.08
+              ]
+            ],
+            "source": "mesh",
+            "tracked": [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
       },
       "FaceRawIn": {
         "properties": {
@@ -6181,6 +6412,17 @@
               }
             ],
             "description": "Raw ARKit frames; the server computes the face summary. Not with face."
+          },
+          "face_fine": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FaceFineIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fine facial movement the phone computed from the TrueDepth mesh or depth map (research only, docs/face-fine.md). With or without face_raw."
           },
           "revontulet": {
             "anyOf": [

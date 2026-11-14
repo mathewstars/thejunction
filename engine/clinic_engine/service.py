@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 
 from .audit import write_audit
 from .config import Settings
-from .mind import face_features, lines, xp
+from .mind import face_features, face_fine, lines, xp
 from .mind import notes as note_logic
 from .mind.activities import check_activity, played_to_the_end, process_activity
 from .mind.engine import Clock, Mind
@@ -627,6 +627,16 @@ async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
                               face_raw_info=face_features.describe(raw))
             elif stored.get("face") is not None:
                 stored["face_source"] = "summary"
+            fine = stored.pop("face_fine", None)
+            if fine is not None:
+                # Research only. The stream is its own object, like the raw frames;
+                # the record keeps a summary of movement and counts, nothing else.
+                repo.put(f"facefine/{body['id']}.json",
+                         {"activity_id": body["id"], "type": body["type"],
+                          "started_at": body["started_at"], "received_at": now.isoformat(),
+                          **fine, "frames": len(fine["samples"])})
+                stored.update(face_fine=face_fine.summarize(fine),
+                              face_fine_info=face_fine.describe(fine))
             previous = [a for a in repo.activities() if a["started_at"] < body["started_at"]]
             rec = process_activity(stored, previous)
             rec.update(received_at=now.isoformat(), example=False, content_sha256=sha,
