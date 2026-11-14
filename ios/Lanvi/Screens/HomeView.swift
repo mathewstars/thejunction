@@ -48,6 +48,8 @@ struct HomeView: View {
     @State private var sheet: Sheet?
     @State private var pose: LanviPose = .curious
     @State private var pop: HomeCelebration?
+    /// When the reward last played: the sky flares with it.
+    @State private var skyFlare: Date?
     @State private var celebrating = false
     @State private var showGrowth = false
     @State private var helpBlock: API.CrisisBlock?
@@ -95,7 +97,7 @@ struct HomeView: View {
             let L = Layout(size: geo.size, insets: geo.safeAreaInsets, away: away)
 
             ZStack(alignment: .top) {
-                PaintedWorld(scene: store.worldScene)
+                PaintedWorld(scene: store.worldScene, glow: store.today?.lanvi.glow ?? 0, flareAt: skyFlare)
 
                 // Lanvi, settled in the snow of the clearing (the shared fox layout).
                 GroundedFox(stage: L.stage, scene: store.worldScene) {
@@ -481,6 +483,8 @@ struct HomeView: View {
         celebrating = true
         if c.xpGained > 0 {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { showGrowth = true }
+            // What they did lights up Lanvi's sky.
+            skyFlare = Date()
         }
         Task {
             try? await Task.sleep(for: .milliseconds(c.xpGained > 0 ? 350 : 150))
