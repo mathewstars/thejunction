@@ -19,12 +19,12 @@
 		1DCC6987446B4B58F5E32D82 /* SenseRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66066ACFCC6856BAFA1A7DED /* SenseRoot.swift */; };
 		20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CA1C956F7514A490E2C77E /* Theme.swift */; };
 		246F5298B66DEE487E49BD3E /* Harness.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; };
+		29E67CCEC71332BFCD470B39 /* RescueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D56B6AE8D26C23CF005FB03 /* RescueView.swift */; };
 		2A64688C8640CBD20F6751CE /* Nunito-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */; };
 		3483B1C13131906BB13DF27E /* LanviTouch.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE302A87F06086F1486E7DCF /* LanviTouch.swift */; };
 		378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */; };
 		3F11B1A55A50095524067A63 /* HealthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7415116ED3C0D377127D698 /* HealthTests.swift */; };
 		42388E6A19E9972BFD34235B /* FaceRawTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9880ABDFC5EF111BB77915E2 /* FaceRawTests.swift */; };
-		43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856CB611495D91BE8B81E2D4 /* WelcomeView.swift */; };
 		45C0A7261327E95CF788718C /* FocusResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E369E41135184A2334A61A6 /* FocusResult.swift */; };
 		471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4534A11EF57C9E6ACC5030B /* HomeView.swift */; };
 		4ABAE2E43A171B3B8395BD70 /* LanviMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2CF64DD8486227CA2F2DC5B /* LanviMotion.swift */; };
@@ -65,6 +65,7 @@
 		BED78E7017B94186F183E51E /* LocalStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85FD261A32144F8643C6EE7E /* LocalStatistics.swift */; };
 		C8EBD236C0121CE58A89C106 /* DemoBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575A49BAC44D679FBA763541 /* DemoBackend.swift */; };
 		CF120166C3B2436312B64F79 /* Harness.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		D0BDF6C9B48F191D24D61137 /* FoxStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = C962121826B8FE96E44B0F86 /* FoxStage.swift */; };
 		D8C2589303E6EFD2CBBF8440 /* FocusArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 974C2744C4CA94D5857C75A3 /* FocusArt.swift */; };
 		DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8451A836E61C66138838EE /* PaintedWorld.swift */; };
 		DBE064B344FE5E0C63C77FB2 /* SenseViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61DEB6AEE62EA63867535515 /* SenseViews.swift */; };
@@ -157,6 +158,7 @@
 		590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviApp.swift; sourceTree = "<group>"; };
 		5B006DA55F144DD2BA237BBE /* LanviOverlayHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviOverlayHost.swift; sourceTree = "<group>"; };
 		5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviClient.swift; sourceTree = "<group>"; };
+		5D56B6AE8D26C23CF005FB03 /* RescueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RescueView.swift; sourceTree = "<group>"; };
 		5D91945D05F0DA6BDBC2AB0A /* FaceTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTracker.swift; sourceTree = "<group>"; };
 		5E91BDD22A3D7AF3A6B1F654 /* LanviPuppetPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviPuppetPreview.swift; sourceTree = "<group>"; };
 		60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Nunito-OFL.txt"; sourceTree = "<group>"; };
@@ -170,7 +172,6 @@
 		7D93B9957583CC3DB996A3C8 /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
 		84158FA0F8C7B4E9A416B47C /* ChatLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatLink.swift; sourceTree = "<group>"; };
 		84FCE02422EF7AD37B7EF8F0 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
-		856CB611495D91BE8B81E2D4 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		85FD261A32144F8643C6EE7E /* LocalStatistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStatistics.swift; sourceTree = "<group>"; };
 		883989149D83098DC4D7155A /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
 		8863592B90900967DE7CA797 /* LanviPuppet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviPuppet.swift; sourceTree = "<group>"; };
@@ -191,6 +192,7 @@
 		BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviView.swift; sourceTree = "<group>"; };
 		C3595C8C9C83D14C2B300184 /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
 		C8082B9E5762CA3450E914CE /* HomeSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeech.swift; sourceTree = "<group>"; };
+		C962121826B8FE96E44B0F86 /* FoxStage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoxStage.swift; sourceTree = "<group>"; };
 		CA73738285D12F12C9ADB24B /* Chunky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chunky.swift; sourceTree = "<group>"; };
 		CB97273333C0DBAE7FC11418 /* FocusEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusEngine.swift; sourceTree = "<group>"; };
 		CC334EE89ADCF793E4BC0D9B /* SharedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
@@ -432,6 +434,7 @@
 		E4073053305CA28D4D60131E /* Home */ = {
 			isa = PBXGroup;
 			children = (
+				C962121826B8FE96E44B0F86 /* FoxStage.swift */,
 				F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */,
 				252A074008D2696F20B23913 /* HomeMindScreen.swift */,
 				DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */,
@@ -451,7 +454,7 @@
 			children = (
 				8F685787902006429E41D5A7 /* ActivityRouter.swift */,
 				E4534A11EF57C9E6ACC5030B /* HomeView.swift */,
-				856CB611495D91BE8B81E2D4 /* WelcomeView.swift */,
+				5D56B6AE8D26C23CF005FB03 /* RescueView.swift */,
 				55866B9F718B556BABB20541 /* WhatHelpsView.swift */,
 				0D7E93C8CF5FB597A3B43917 /* Breathe */,
 				D1A262F183C53F9B7602400F /* Checkin */,
@@ -649,6 +652,7 @@
 				09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */,
 				5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */,
 				45C0A7261327E95CF788718C /* FocusResult.swift in Sources */,
+				D0BDF6C9B48F191D24D61137 /* FoxStage.swift in Sources */,
 				96313F278A5FBE5EEE2B2790 /* FrameMeter.swift in Sources */,
 				0CFF1ACB5D8BF4C22E1BCCBE /* GameMoments.swift in Sources */,
 				0288D785F813107D48C46B3A /* HarnessHealth.swift in Sources */,
@@ -675,13 +679,13 @@
 				3483B1C13131906BB13DF27E /* LanviTouch.swift in Sources */,
 				F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */,
 				DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */,
+				29E67CCEC71332BFCD470B39 /* RescueView.swift in Sources */,
 				1DCC6987446B4B58F5E32D82 /* SenseRoot.swift in Sources */,
 				DBE064B344FE5E0C63C77FB2 /* SenseViews.swift in Sources */,
 				378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */,
 				DDD5D6ED52809D10373598F9 /* SkyScene.swift in Sources */,
 				20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */,
 				51DD8A76B382F693BF1DE2B8 /* TokenKeychain.swift in Sources */,
-				43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */,
 				7E44533D8B224A540E1246AA /* WhatHelpsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
