@@ -9,11 +9,12 @@ The message after this one is a single JSON object, built by software. It contai
 - "activity": "focus" (a 45-second tapping game) or "breathing" (a one-minute breathing exercise).
 - "rate_hz": how many rows there are per second.
 - "channels": the name of each column, in order.
-- "frames": the recording, one row per moment, oldest first. Row i is at time i / rate_hz seconds.
+- "frames": the recording, one row per moment, oldest first. The first value of every row, "t", is the time of that row in seconds from the start. Read times from "t"; do not count rows.
 - "moments_s": times, in seconds, at which something pleasant happened in the activity (for example a small reward). May be empty.
 
 The channels, all between 0 and 1 unless said otherwise:
 
+- "t": the time of the row, in seconds from the start of the recording.
 - "smile": how far both mouth corners are pulled up (the mean of left and right).
 - "smile_left", "smile_right": each mouth corner on its own.
 - "cheek": how far the cheeks are raised. With a smile, raised cheeks mean the smile reaches the eyes.
@@ -33,11 +34,16 @@ HOW TO READ IT
 Work through the recording in order, silently, then answer.
 
 1. Find where the face was not tracked. Nothing can be said about those stretches.
-2. Find smiles. A smile is a stretch where "smile" rises clearly above its resting level and stays up for at least about a third of a second. A single high row is not a smile. Two rises separated by a clear return to rest are two smiles. For each smile note when it starts and ends, whether "cheek" rises with it (it reaches the eyes), and whether one corner is clearly higher than the other.
+2. Find smiles. First find this person's resting level of "smile": the value it sits at most of the time. A smile is a stretch where "smile" rises clearly above that resting level and stays up for at least about a third of a second. Judge it against this person's own rest, not against a fixed number: a small rise from a low rest is a smile too, and it matters, so report it. A single high row is not a smile. Two rises separated by a clear return to rest are two smiles. Two things move the same numbers and are not smiles. Talking: while "jaw_open" keeps going up and down, the mouth corners are pulled with the syllables; short pulls of "smile" during such a stretch are speech, not smiles. A shift of the resting level: when "smile" steps to a new level and stays there to the end or for many seconds (the phone or the head moved), that is a new resting level, not a smile; judge what follows against the new level. For each smile give the time it starts to rise and the time it is back near rest, as tightly as the rows allow; whether "cheek" rises with it (it reaches the eyes); and whether one corner is clearly higher than the other (the difference between "smile_left" and "smile_right" is 0.15 or more on average).
 3. Count blinks: brief peaks of "blink". A long closure of the eyes is not a blink; report it as a segment.
 4. Find longer stretches, of two seconds or more, where one thing holds: the eyes look down, the brows are drawn down, the inner brows are raised, the head hangs forward, or the face hardly moves at all.
 5. If there are pleasant moments, say for each whether a smile started within about two and a half seconds after it.
-6. Only then sum up, using the fixed words below.
+6. Only then sum up, using the fixed words below:
+   - "smiling": count only the smiles in which "smile" reaches 0.25, per minute of tracked time. 3 or more per minute is "often", 1 or more is "sometimes", fewer is "rarely", no such smile is "none".
+   - "gaze": "often_down" when "look_down" is 0.3 or more in at least three of every ten tracked rows, otherwise "mostly_up".
+   - "tracking": "good" when at least nine of every ten rows are tracked, "partly" when at least six are, otherwise "poor".
+   - "expression": "lively" when several channels keep changing through the recording, "still" when almost nothing changes apart from blinks, otherwise "moderate".
+   - Use "unclear" when fewer than five seconds are tracked or the channel is missing.
 
 Be exact about time. Give times in seconds with one decimal. When you are not sure a stretch is there, leave it out. A missing item costs nothing; an invented one will be found and removed, because software checks every item you return against the same numbers.
 

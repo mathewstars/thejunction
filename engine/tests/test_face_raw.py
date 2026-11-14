@@ -259,7 +259,9 @@ def test_frames_reach_a_model_only_in_the_level2_frame_reading_with_consent(read
     # Level 2: frames only in the frame reading, only with consent.
     with_frames = _bodies_with_frames(l2)
     if allow:
-        assert len(with_frames) == 1
+        # The service fails here, so the same checked stream is sent once more.
+        assert len(with_frames) == 2
+        assert with_frames[0]["contents"] == with_frames[1]["contents"]
         body = with_frames[0]
         assert body["systemInstruction"]["parts"][0]["text"].startswith(FRAMES_PROMPT_START)
         payload = json.loads(body["contents"][0]["parts"][0]["text"])

@@ -370,16 +370,20 @@ def _reading_out(a: dict) -> dict:
     return out
 
 
-_AGREEMENT_KEYS = ("smiles_reported", "smiles_confirmed", "smiles_corrected", "smiles_dropped",
-                   "smiles_missed", "smiles_code", "segments_reported", "segments_confirmed",
-                   "blinks_model", "blinks_code", "moments_reported", "moments_agree",
-                   "overall_replaced")
+_AGREEMENT_KEYS = ("smiles_reported", "smiles_confirmed", "smiles_corrected", "smiles_matched",
+                   "smiles_faint", "smiles_brief", "smiles_dropped", "smiles_not_in_numbers",
+                   "smiles_poor_match", "smiles_missed", "smiles_code",
+                   "smile_precision", "smile_recall", "smile_start_error_s",
+                   "segments_reported", "segments_confirmed", "blinks_model", "blinks_code",
+                   "moments_reported", "moments_agree", "overall_same")
 
 
 def frames_reading_out(a: dict) -> dict:
     """The frame reading for the clinician: what the model reported, as code
-    confirmed, corrected or dropped it. Counts, times and fixed words only;
-    never the frames. The same keys in every state (null or empty until ready)."""
+    confirmed, corrected or dropped it; the faint smiles the model found under
+    code's fixed onset (the rise is in the numbers); the smiles of code's that
+    the model did not report. Counts, times and fixed words only; never the
+    frames. The same keys in every state (null or empty until ready)."""
     fr = a.get("frames_reading") or {"status": "not_applicable"}
     ready = fr.get("status") == "ready"
     rd = fr.get("reading") or {}
@@ -395,7 +399,15 @@ def frames_reading_out(a: dict) -> dict:
         "overall_checks": rd.get("overall_checks") if ready else None,
         "blinks": rd.get("blinks") if ready else None,
         "smiles": [{k: x.get(k) for k in ("start_s", "end_s", "reaches_eyes", "side", "status",
-                                          "corrected")} for x in rd.get("smiles", [])],
+                                          "corrected", "overlap", "code_start_s", "code_end_s",
+                                          "start_error_s", "end_error_s")}
+                   for x in rd.get("smiles", [])],
+        "faint_smiles": [{k: x.get(k) for k in ("start_s", "end_s", "status", "peak", "rise",
+                                                "rest")}
+                         for x in rd.get("faint_smiles", [])],
+        "missed_smiles": [{k: x.get(k) for k in ("start_s", "end_s")}
+                          for x in rd.get("missed_smiles", [])],
+        "resting_smile": rd.get("resting_smile") if ready else None,
         "segments": [{k: x.get(k) for k in ("start_s", "end_s", "what", "code_share")}
                      for x in rd.get("segments", [])],
         "moments": [{k: x.get(k) for k in ("at_s", "smiled", "model", "status")}
@@ -467,7 +479,15 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                       "finished": sum(1 for a in done if a["ended_by"] == "finished")}
         return out
 
-    return {**by_type, "counts": {"last_7_days": counts(7), "last_28_days": counts(28)}}
+    # The two readers over every session the model has read: sums, the two
+    # shares for smiles, and how many sessions they cover.
+    from .frame_reading import aggregate
+    read = [a["frames_reading"]["agreement"] for t in ("focus", "breathing")
+            for a in view.of_type(t)
+            if (a.get("frames_reading") or {}).get("status") == "ready"
+            and a["frames_reading"].get("agreement")]
+    return {**by_type, "counts": {"last_7_days": counts(7), "last_28_days": counts(28)},
+            "frames_agreement": aggregate(read)}
 
 
 def clinician_round(repo: PatientRepo, round_id: str, mind=None) -> dict | None:

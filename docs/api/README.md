@@ -238,30 +238,41 @@ The engine serves a plain web page for clinicians at `/` (files in `engine/clini
 
 ### The frame reading (clinician only)
 
-For a focus or breathing session sent with `face_raw`, the level-2 model (Gemini, or the local stand-in) reads a reduced stream of the frames and code checks every item it reports against its own detection on the full-rate frames. It runs in the background after the activity is stored, only when level 2 is on (`FRAMES_READER=auto`, the default) and the patient allowed outside processing. What the model receives and must return: [`docs/face-raw.md`](../face-raw.md#what-a-model-sees). The face summary is computed by code either way and does not change. Nothing of it reaches the patient, attention, suggestions or lessons.
+For a focus or breathing session sent with `face_raw`, the level-2 model (Gemini, or the local stand-in) reads a reduced stream of the frames and code checks every item it reports against its own detection on the full-rate frames. Two methods read the same numbers: code with a fixed rule, the model against the person's own resting level. A smile the model reports under code's fixed onset is tested by code against the session's resting level and kept apart as a faint smile when the rise is in the numbers. It runs in the background after the activity is stored, only when level 2 is on (`FRAMES_READER=auto`, the default) and the patient allowed outside processing. What the model receives and must return: [`docs/face-raw.md`](../face-raw.md#what-a-model-sees). The face summary is computed by code either way and does not change. Nothing of it reaches the patient, attention, suggestions or lessons.
 
 Each focus or breathing session in `GET /v1/clinic/patients/{id}` has `frames_reading`, always with these keys:
 
 ```json
 {"status": "ready", "reason": null, "read_by": "level2", "model": "gemini-...", "checked_by": "code",
  "at": "2026-11-14T09:13:00+00:00",
- "agreement": {"smiles_reported": 3, "smiles_confirmed": 2, "smiles_corrected": 1, "smiles_dropped": 0,
-               "smiles_missed": 0, "smiles_code": 3, "segments_reported": 1, "segments_confirmed": 1,
+ "agreement": {"smiles_reported": 5, "smiles_confirmed": 2, "smiles_corrected": 1, "smiles_matched": 3,
+               "smiles_faint": 1, "smiles_dropped": 1, "smiles_missed": 0, "smiles_code": 3,
+               "smile_precision": 0.75, "smile_recall": 1.0, "smile_start_error_s": 0.1,
+               "segments_reported": 1, "segments_confirmed": 1,
                "blinks_model": 11, "blinks_code": 11, "moments_reported": 2, "moments_agree": 2,
-               "overall_replaced": 0},
+               "overall_same": 4},
  "overall": {"expression": "still", "smiling": "often", "gaze": "mostly_up", "tracking": "good",
              "confidence": "medium"},
- "overall_checks": {"expression": {"model": "still", "code": "still", "status": "confirmed"}, "...": {}},
+ "overall_checks": {"expression": {"model": "still", "code": "still", "status": "same"}, "...": {}},
  "blinks": {"model": 11, "code": 11, "status": "confirmed"},
  "smiles": [{"start_s": 8.0, "end_s": 9.2, "reaches_eyes": true, "side": "both",
-             "status": "confirmed", "corrected": []}],
+             "status": "confirmed", "corrected": [], "overlap": 0.86, "code_start_s": 8.1,
+             "code_end_s": 9.2, "start_error_s": -0.1, "end_error_s": 0.0}],
+ "faint_smiles": [{"start_s": 21.4, "end_s": 23.0, "status": "faint", "peak": 0.22, "rise": 0.17}],
+ "missed_smiles": [],
+ "resting_smile": 0.05,
  "segments": [{"start_s": 15.0, "end_s": 19.0, "what": "looking_down", "code_share": 1.0}],
  "moments": [{"at_s": 7.0, "smiled": true, "model": true, "status": "confirmed"}],
- "dropped": [{"item": "smile", "start_s": 40.0, "end_s": 41.0, "reason": "not_found_by_code"}]}
+ "dropped": [{"item": "smile", "start_s": 40.0, "end_s": 41.0, "reason": "no_rise_in_numbers"}]}
 ```
 
 - `status`: `pending`, `ready`, `failed` (with `reason`: `no_reply`, `not_json_object`, `schema:...`, `time_outside_recording`, `end_not_after_start`, `input_refused`), `off` (level 2 off), `not_allowed` (no consent; nothing was sent) or `not_applicable` (no raw frames). Until `ready`, `agreement`, `overall`, `overall_checks` and `blinks` are null and the lists empty.
-- `smiles` and `segments` hold only the items code confirmed. A smile is `corrected` when code's `reaches_eyes` or `side` differed (the shown values are code's; `corrected` names the fields). `overall` shows code's word where the model's disagreed (`overall_checks` has both). `blinks` keeps the model's count with code's beside it. `moments.smiled` is code's answer, `model` the model's.
+- `smiles` holds the reported smiles that code found too: the same smile when the two spans overlap by at least 0.3 of their union, each of code's smiles once. `start_s` and `end_s` are the model's, `code_start_s` and `code_end_s` code's, and the two errors their difference. A smile is `corrected` when code's `reaches_eyes` or `side` differed (the shown values are code's; `corrected` names the fields).
+- `faint_smiles` holds the reported smiles that touch no smile of code's but whose rise code confirmed: over the span the smile signal lies above the session's resting level (`resting_smile`, its median) by at least 0.05 on average and 0.10 at its peak (`peak`, and `rise` above rest). They never change the face summary or its smile count. `missed_smiles` are code's smiles the model did not report.
+- `dropped` reasons for a smile: `no_rise_in_numbers`, `poor_overlap` (it touches a smile of code's but is a sliver of it or far wider), `same_smile_twice`. For a segment: `code_share_too_low`, `too_short` (under 2 seconds; 0.5 for `eyes_closed` and `not_tracked`), `channel_missing`, `not_tracked`, `outside_recording`.
+- `agreement`: `smile_precision` is the share of the model's smiles at code's level (reported minus faint) that code also found; `smile_recall` the share of code's smiles the model also reported; `smile_start_error_s` the mean absolute difference in where a matched smile starts. Either share is null when there is nothing to divide by.
+- `segments` holds only the items code confirmed. `overall` shows code's word; `overall_checks` has the model's beside it with `same` or `different`. The overall words are two summaries side by side, not part of the item agreement: code computes `expression` from every blend shape and the model sees ten channels.
+- `activities.frames_agreement` in the same answer sums the agreement over every session of the patient the model has read: `sessions`, the smile counts, `smile_precision`, `smile_recall`, `smile_start_error_s`, `blink_sessions_agree`; null when the model has read none. `blinks` keeps the model's count with code's beside it. `moments.smiled` is code's answer, `model` the model's.
 - `dropped` reasons: `not_found_by_code`, `same_smile_twice` (smiles); `code_share_too_low`, `channel_missing`, `not_tracked`, `outside_recording` (segments); `not_a_sent_moment`, `not_tracked` (moments).
 - Never the frames. The exact exchange with the model (prompt, stream and reply) is kept with the other model exchanges for the clinician; the trace and the audit hold counts and codes only.
 

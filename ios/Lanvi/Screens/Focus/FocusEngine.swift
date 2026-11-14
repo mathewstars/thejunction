@@ -92,6 +92,7 @@ final class FocusEngine {
                 if d.kind == .spark {
                     // A missed spark just fades into the snow. Nothing is lost; the sky slows a little.
                     misses += 1
+                    GameMoments.emit(.sparkMissed)
                     ease = min(1.35, ease + 0.08)
                 } else {
                     snowPassed += 1

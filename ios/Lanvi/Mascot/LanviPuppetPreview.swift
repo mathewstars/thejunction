@@ -28,7 +28,29 @@ struct LanviPuppetPreview: View {
         ("Sleepy", .sleepy), ("Listening", .listening),
     ]
 
+    private let plain = UserDefaults.standard.bool(forKey: "plain")
+
     var body: some View {
+        if plain { plainBody } else { skyBody }
+    }
+
+    /// `-plain YES`: the fox alone on flat pure green, nothing else moving, for
+    /// measuring the motion frame by frame (track the dark pupils on green).
+    private var plainBody: some View {
+        ZStack {
+            Color(red: 0, green: 1, blue: 0).ignoresSafeArea()
+            LanviView(pose: .curious, size: 300, bounceTrigger: bounce)
+                .lanviReaction(mood, trigger: trigger)
+        }
+        .task {
+            guard demo else { return }
+            let wait = UserDefaults.standard.double(forKey: "puppetDemoDelay")
+            try? await Task.sleep(for: .seconds(wait > 0 ? wait : 7))
+            play(.happy)
+        }
+    }
+
+    private var skyBody: some View {
         GeometryReader { geo in
             let w = geo.size.width, h = geo.size.height
             let hill = h * 0.64

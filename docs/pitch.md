@@ -24,7 +24,7 @@ The jury are researchers. So: every claim can be checked, the demo is the real a
 
 **How it works (0:35 to 1:20)**
 
-> Sense. The phone already records steps and walking speed. If the person allows the camera, two short activities also give a few numbers about how the face moves. No photo or video leaves the phone. Everything is compared with that person's own normal, never with an average.
+> Sense. The phone already records steps and walking speed. If the person allows the camera, two short activities also send numbers about how the face moves. Numbers only: no photo or video ever leaves the phone. Everything is compared with that person's own normal, never with an average.
 >
 > Respond. Lanvi offers one small thing: forty-five seconds of a focus game, one minute of breathing together, or an evening check-in with three good things. [show one live] There is no score and no streak. A bad day never costs anything.
 >
@@ -36,7 +36,7 @@ The jury are researchers. So: every claim can be checked, the demo is the real a
 
 **The mind and the models (1:20 to 1:40)**
 
-> What Lanvi offers comes from a short list we wrote ourselves, and plain code picks from it. A small model on the clinic's hardware puts it into words. Gemini reads the face numbers from the camera and says what changed, and our code checks every statement before it counts. We tried to make the system learn something harmful. Here is the log of what it refused.
+> What Lanvi offers comes from a short list we wrote ourselves, and plain code picks from it. A small model on the clinic's hardware puts it into words. Gemini reads the numbers of how the face moved in a session and describes the movement, and our code checks every item it reports. We tried to make the system learn something harmful. Here is the log of what it refused.
 
 **What we know and do not know (1:40 to 1:52)**
 
@@ -44,77 +44,163 @@ The jury are researchers. So: every claim can be checked, the demo is the real a
 
 **Close (1:52 to 2:00)**
 
-> You did the hard part. Lanvi helps it last.
+> "You did the hard part. Lanvi helps it last." That is the first line a patient sees in the app.
 
 ## The story cut: making the jury feel it first
 
-Rescue videos work because of four beats: someone is left alone, somebody notices, small patient care, and you see them come back. Our project already has all four. We only have to tell it in that order, about one person, before any architecture. Feeling first, proof second: researchers trust the proof more once they care about who it is for.
+Rescue videos work because of four beats: someone is left alone, somebody notices, small patient care, and you see them come back. We tell it in that order, about one person, before any architecture. Feeling first, proof second: researchers trust the proof more once they care about who it is for.
 
 Rules for this version:
 
-- One person, named, from the first sentence. Anna is an example and we say so once, plainly. No invented quotes from real patients.
+- One person, named, and declared as made up in the first seven words. Fiction declared early does not kill the feeling; fiction revealed late does. In the video the caption "Example patient, example data" is on screen from the first frame.
 - Show, do not explain. Every beat is something on a screen.
-- Three seconds of silence after the alert arrives. Do not talk over it.
-- Then turn to the evidence, so nobody can call it a sob story.
+- The buzz is the turn. The return is the peak. "I kept the light on for you." appears once, at the end, and nobody reads it aloud.
+- Silence in four places: after the door, on the dark phone, after the buzz, and on the last line (the longest).
+- The proof is short, three ideas, and comes before the return, so the last thing the jury holds is her, not a chart.
 
-### Two minutes
+### Two minutes (the video runs 1:50)
 
-**1. Left alone (0:00 to 0:20).** Speaker only, no screen.
+**1. The door (0:00 to 0:12).** Speaker only, or the door shot. Two seconds of the door's sound before the first word.
 
-> Six weeks, every day, Anna went to the clinic. Somebody looked at her every day. On the last day they said: you did great. Then the door closed, and there was nobody.
-> Anna is an example. The door is real: after TMS, relapse is common, and at home no one is watching.
+> This is Anna. We made her up.
+> For six weeks, every weekday, she went to the clinic, and every day somebody looked at her. On the last day they said: you did great. Then the door closed. [one second]
 
-**2. Somebody stays (0:20 to 0:40).** Phone: Lanvi on the home screen.
+**2. Somebody stays (0:12 to 0:28).** Phone: Lanvi, the breathing minute.
 
 > We could not give her a psychiatrist at home. We gave her a small fox who stays.
-> He asks for one small thing a day. A game, a minute of breathing, three good things.
-> [open the app after a few days away] And when she disappears for a while, he never says "you missed three days". He says: [let them read it] "I kept the light on for you."
+> He asks for one small thing a day. A game. A minute of breathing. Three good things about today.
 
-**3. The slide nobody sees (0:40 to 1:00).** Laptop: Anna's Overview.
+**3. The slide (0:28 to 0:50).** Phone: the evening check-in with three, then two, then one; then a dark phone held for two seconds. Laptop: Anna's Overview for three seconds, as confirmation.
 
-> Then November comes. [point at the drop] She walks less. In the game her face moves less and she reacts more slowly. Nobody would see this. Her phone does, because it knows what is normal for her.
+> Every evening in October, Anna told the fox three good things about her day.
+> In November, two.
+> Then one.
+> Then, most evenings, nothing. [dark phone, two seconds]
+> Nobody would have seen that. Her next appointment was weeks away.
+> But her phone had noticed she was walking half as far, and at the clinic her name moved to the top of the list.
 
-**4. The night (1:00 to 1:20).** Phone, then the second phone.
+**4. The night (0:50 to 1:08).** Phone, then the second phone.
 
-> And one night, just before one o'clock, she writes this. [type it slowly] "i cannot do this anymore, i need help."
-> [the help screen opens; then the second phone buzzes; hold it up; say nothing for three seconds]
-> That was her clinician's phone. Not tomorrow. Not at the next appointment in six weeks. Now.
+> One evening she did open it. [pause]
+> I am going to type what a bad night can look like.
+> [type in silence; the help screen opens; the second phone buzzes; hold it up; say nothing for three seconds]
+> That is the clinic's phone. She sees the help numbers at once. The clinic knows today, not at her next appointment.
 
-**5. Why you can trust it (1:20 to 1:45).** Laptop: Anna's Research, then Elina's.
+**5. The proof (1:08 to 1:30).** Laptop: Elina's Research, then one face session recorded by one of us.
 
-> Here are twelve weeks of Anna. [point] When her PHQ-9 was higher, she smiled less often, reacted more slowly and walked less. Same weeks, same shape.
-> And here is Elina, who stayed well. [switch] Same tool, and it says: too little change to tell. It does not find patterns that are not there.
-> A model reads the numbers and code checks everything it says. This is example data. The real study is what we want to run with you.
+> This is example data. Here is Elina, who stayed well: same tool, and it refused to conclude.
+> This session is one of ours. Gemini never saw the face, only how it moved, and code checked every line. [point] This one it got wrong.
+> Whether any of this follows mood after TMS is the study we want to run with you.
 
-**6. Close (1:45 to 2:00).** Phone: Lanvi.
+**6. The return (1:30 to 1:45).** Phone only.
 
-> You did the hard part: you got her well. We built the one who keeps the light on after the door closes.
+> [open the app after days away; "I kept the light on for you." is on the screen; say nothing for four seconds]
+
+**7. Close (1:45 to 1:50).** Phone still in the hand, still showing the fox's line. Say only the first half; the screen says the rest. In the video, a dark card carries both sentences: "She did the hard part. We kept the light on."
+
+> She did the hard part.
+
+### Three minutes on stage
+
+The extra minute goes to the fox and the slide, not to more exhibits. The proof is capped at 35 seconds.
+
+**1. The door (0:00 to 0:20).**
+
+> This is Anna. We made her up.
+> For six weeks, every weekday, she went to the clinic. Every day somebody looked at her, asked how she slept, noticed if she was quiet. On the last day they said: you did great. Then the door closed. [two seconds]
+
+**2. Somebody stays (0:20 to 0:50).** Phone: Lanvi, then one activity live.
+
+> We could not give her a psychiatrist at home. We gave her a small fox who stays.
+> He asks for one small thing a day. A game of forty-five seconds. A minute of breathing together. [show it] Three good things about today.
+> There is no score and no streak. A bad day never costs her anything.
+
+**3. The slide (0:50 to 1:25).** Phone: check-ins. Laptop: Overview for three seconds.
+
+> Every evening in October, Anna told the fox three good things about her day.
+> In November, two.
+> Then one.
+> Then, most evenings, nothing. [dark phone, two seconds]
+> He offered her a short walk. Three times. She did not take it.
+> Nobody would have seen that. Her next appointment was weeks away.
+> But her phone had noticed she was walking half as far, and at the clinic her name moved to the top of the list.
+
+**4. The night (1:25 to 1:50).**
+
+> One evening she did open it. [pause]
+> I am going to type what a bad night can look like.
+> [type in silence; the help screen opens; the second phone buzzes; three seconds]
+> That is the clinic's phone. She sees the help numbers at once. The clinic knows today, not at her next appointment.
+
+**5. The proof (1:50 to 2:25).** Laptop: Elina, one face session of ours, the refusal log.
+
+> This is example data. Here is Elina, who stayed well: same tool, and it refused to conclude.
+> This session is one of ours. Gemini never saw the face, only how it moved, and code checked every line. [point] This one it got wrong, and code threw it out. [point] And this small smile our own rule missed. Gemini caught it.
+> We also tried to make the system learn something harmful. This is the log of what it refused.
+> Whether any of this follows mood after TMS is the study we want to run with you.
+
+**6. The return (2:25 to 2:45).** Phone only.
+
+> [open the app after days away; "I kept the light on for you."; say nothing for four seconds]
+
+**7. Close (2:45 to 2:50).**
+
+> She did the hard part.
 
 ### Sixty seconds at the table
 
-> Six weeks of daily clinic visits, then the door closes and there is nobody. [phone] This fox stays. One small thing a day, and when you vanish for a week he says "I kept the light on for you". [laptop] Meanwhile the phone notices what nobody sees: she walks less, smiles less, reacts more slowly. [type the note; second phone buzzes; wait] Her clinician knows tonight, not in six weeks. [Research] And this is why you can believe it: twelve weeks, the measures follow her PHQ-9, and for a patient who stayed well it refuses to conclude. Example data. The study is what we want to do with you.
+> This is Anna. We made her up. Six weeks of clinic visits, then the door closes and nobody is looking. [phone] This fox stays: one small thing a day. In October she told him three good things every evening. In November two, then one, then, most evenings, nothing. [type the note; second phone buzzes; wait] That is the clinic's phone. They know today, not at her next appointment. [laptop] Example data. For a patient who stayed well, it refuses to conclude. The study is what we want to do with you. [hand them the phone showing "I kept the light on for you."]
 
 ### What makes it land
 
-- **The door.** Open and close with the same image.
-- **"I kept the light on for you."** Let the jury read it on the phone themselves. Do not read it aloud first.
-- **The buzz.** The second phone must be on the table, screen up, sound on vibrate. This is the moment people remember.
-- **Elina.** For researchers the honest "we cannot tell" is the emotional peak of the second half. Do not skip it to save time.
+- **The single image:** a phone in a hand in the dark, with "I kept the light on for you." The door only opens the piece.
+- **Three, two, one, dark.** The slide is told through her evenings, not through the chart. The chart is on screen for three seconds.
+- **The buzz.** The second phone must be on the table, screen up, on vibrate.
+- **The model's mistake.** Showing an item Gemini reported and code dropped is what makes "we check it" believable.
+- **Held silences.** The text gets to a lump in the throat. Whether eyes get wet depends on holding the four silences and on the buzz working live.
+
+### Delivery (the text reaches a lump in the throat; this is the rest)
+
+Speaker:
+
+- Tell the story at about two-thirds of normal pace and the proof at normal pace. The change of speed tells the room the register changed.
+- "We made her up." Flat, no smile, eyes on the jury. Then a full breath.
+- "Two." "Then one." Each gets its own breath and a falling tone. Look at the phone, not at the jury.
+- Dark phone: turn the screen to the room and count two seconds silently.
+- Type the note at real typing speed, eyes on the phone. Do not read it aloud. Keep it short, with no method and no detail, and check beforehand that it opens the help screen.
+- When the second phone buzzes, whoever holds it lifts it without speaking. Count three.
+- The return: phone at chest height, screen out, count four. It will feel like ten. Lower the voice for "She did the hard part", then stop. No "thank you" for two seconds.
+- Rehearse with a stopwatch at least three times. Silences are the first thing nerves delete.
+
+Video:
+
+- No music. Room tone only. Two designed sounds: the door at 0:00 and the buzz, recorded for real on a wooden table.
+- Voice recorded close and quiet, in a small room.
+- Check-in screens: three static shots of the real app, same framing, hard cuts. The dark phone is the same framing with the screen off, two seconds, sound near silence.
+- The buzz: one continuous shot of the second phone, no cut for three seconds after it lights.
+- The return: a real hand, a dim real room, the screen as the only light, focus on the text. Four seconds, no voice, no movement. Then the dark card for three seconds.
+- Caption "Example patient, example data", small, bottom left, first frame to last. "Generated footage" on the door shot.
+- No transition animations and no zooms.
 
 ### What not to do
 
 - No sad music, no stock photos of people holding their heads. It reads as manipulation to this jury.
-- Do not say Lanvi "saved" anyone. He stays; the clinician helps.
+- Do not say Lanvi "saved" anyone. He stays; the clinic helps.
 - Do not show a sad or neglected fox. In the app a bad day never costs anything, and the pitch must not suggest otherwise.
-- Do not let the story run past 1:20. Without the last 40 seconds it is only a story.
+- Do not present the typed note as Anna's words. The speaker types it and says so.
+- Do not name an hour of the night or say "now". The alert reaches the clinic's group the same day; the app is not a crisis service.
+- Do not say the example data is a reason to believe. It shows what the clinic would see.
+- No generated shot of Anna "walking again". We have not shown a recovery. End on the real phone.
 
 ## What must be true before we say it
 
 - One activity runs live on the phone. Without it the middle of the pitch falls.
+- Anna's example data really shows three good things in October, then two, then one, then most evenings no check-in, a walk offered three times and not taken, and her steps at about half of her normal. Check the clinician page before saying the numbers.
+- The app shows `welcome_back.1` in the demo. The set has three lines, so the demo must force this one.
+- The alert really arrives on a phone during the demo, and the help screen on the demo server shows 112 and an example clinic contact, not a placeholder.
+- Gemini runs on the demo server (key and model set, the patient allowed outside processing), and one session recorded by one of us shows an item that code dropped and a faint smile that Gemini found below the fixed rule. Never call that session Anna's. If not, drop the Gemini sentence.
 - The refusal log exists on the clinician page and shows real refusals.
 - The bracket in "what we know" is filled only with something we measured ourselves.
-- The alert really arrives on a phone during the demo.
-- Face measurements and the Gemini reading are in the pitch only if they really run. If they do not, drop those sentences.
 - The demo data is example data, and we say so out loud.
 
 ## Words to keep and words to avoid
@@ -124,7 +210,7 @@ Rules for this version:
 | notices a change | detects depression |
 | compared with their own normal | below average |
 | needs review today | emergency |
-| a few numbers about how the face moves | reads emotions, knows you are sad |
+| numbers about how the face moves, never a picture | reads emotions, knows you are sad |
 | offers one small thing | treats, therapy |
 
 ## Questions we expect
@@ -133,11 +219,12 @@ Rules for this version:
 |---|---|
 | How do you know these signals reflect mood? | We do not yet. Slower movement and slower reactions are recognised signs of low mood, which is why we chose them. |
 | What about false alarms? | It prompts a look, never a diagnosis, and only on a clear change from the person's own normal. |
-| What if someone is in crisis? | The app is not a crisis service. The help screen is one tap away and opens by itself when a note suggests it. The wording comes from clinicians. |
+| What if someone is in crisis? | The app is not a crisis service. The help screen is one tap away and opens by itself when a note suggests it. The wording is a draft and needs a clinician's review; that is one thing we ask you for. |
 | How is it different from Soihtu's game? | Their game is the treatment. Lanvi is what the app offers after the phone noticed a change, and it adapts to the person. |
-| Why a camera on someone recovering from depression? | It is opt-in, nothing is saved or sent except a few numbers, and everything works without it. |
-| Where does the data go? | It stays on the clinic's server. One optional step can send an anonymous trace to an outside model, only with consent. A second optional switch (chat mode, off by default) sends a note that does not ask for help to Gemini so it can write Lanvi's reply, also only with consent. |
+| Why a camera on someone recovering from depression? | It is opt-in and everything works without it. Numbers only, never a picture; the movement numbers are kept on the clinic's server. |
+| Where does the data go? | It stays on the clinic's server. With the patient's consent, a stream of numbers with no name, no date and no text goes to Gemini. A second optional switch (chat mode, off by default) sends a note that does not ask for help to Gemini so it can write Lanvi's reply, also only with consent. |
 | What stops the AI from saying something harmful? | It doesn't write freely to a patient. Lanvi's lines come from a fixed set, and code checks what the models return. |
+| Her name was at the top of the list. What did the clinic do? | The clinic gets one "needs review" message when a dip keeps going. What happens next is the clinic's decision, and that workflow is something we want to design with you. |
 | How would a clinic start using it? | The clinic gives the patient a pairing code; entering it is the consent to share. The next step is a pilot with one clinic. |
 
 ## Sixty-second version for the table

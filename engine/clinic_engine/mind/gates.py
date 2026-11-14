@@ -452,19 +452,26 @@ class InputGate:
         if any(c not in fr.CHANNELS for c in ch):
             refuse("channel_not_allowed")
         if len(set(ch)) != len(ch) or ch != [c for c in fr.CHANNELS if c in ch] or \
-                ch[-1] != "tracked" or "smile" not in ch:
+                ch[0] != "t" or ch[-1] != "tracked" or "smile" not in ch:
             refuse("channel_order")
         frames = payload["frames"]
         if not isinstance(frames, list) or not frames or len(frames) > cap:
             refuse("frames_count")
         angle = [c in fr.ANGLE_CHANNELS for c in ch]
+        last_t = -1.0
         for row in frames:
             if not isinstance(row, list) or len(row) != len(ch):
                 refuse("row_shape")
             for v, is_angle, name in zip(row, angle, ch):
                 if not num(v):
                     refuse("value_not_a_number")
-                if name == "tracked":
+                if name == "t":
+                    # Seconds from the first frame, rising: never a clock time.
+                    if not (last_t < v <= 1000 and rounded(v, 2)) or \
+                            (last_t < 0 and v != 0):
+                        refuse("time_not_allowed")
+                    last_t = v
+                elif name == "tracked":
                     if v not in (0, 1) or isinstance(v, float):
                         refuse("tracked_not_0_or_1")
                 elif is_angle:
