@@ -138,6 +138,15 @@ def test_chat_model_overrides_gemini_model():
     assert chat_requests(rec)[0][2].endswith("/models/chat-model:generateContent")
 
 
+def test_chat_thinking_is_sent_only_when_set():
+    env, rec = chat_env()
+    note(env, "walked by the sea today")
+    assert "thinkingConfig" not in chat_requests(rec)[0][1]["generationConfig"]
+    env, rec = chat_env(chat_thinking="low")
+    note(env, "walked by the sea today")
+    assert chat_requests(rec)[0][1]["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "low"}
+
+
 def test_bad_empty_or_failing_answers_fall_back_to_the_fixed_line():
     bad = [
         None,  # API error (503)

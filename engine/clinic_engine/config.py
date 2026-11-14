@@ -98,6 +98,9 @@ class Settings:
     chat_mode: str = "fixed"
     chat_model: str = ""
     chat_timeout_s: float = 4.0
+    # How much the chat model thinks before it answers (for example "low"). Empty:
+    # the request says nothing and the model uses its own default.
+    chat_thinking: str = ""
 
     # Help (crisis) block, always shown by GET /v1/today. Wording: data/help_block.json
     emergency_number: str = "112"
@@ -164,6 +167,7 @@ class Settings:
             chat_mode=_env("CHAT_MODE", "fixed").lower(),
             chat_model=_env("CHAT_MODEL"),
             chat_timeout_s=_env_float("CHAT_TIMEOUT_S", 4.0),
+            chat_thinking=_env("CHAT_THINKING", "").lower(),
             emergency_number=_env("EMERGENCY_NUMBER", "112"),
             clinic_contact_label=_env("CLINIC_CONTACT_LABEL"),
             clinic_contact_phone=_env("CLINIC_CONTACT_PHONE"),

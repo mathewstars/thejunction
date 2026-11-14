@@ -219,7 +219,7 @@ What is never sent: names, the clinic's label for the person, any id, dates, the
 
 The reply is `{"template_id": "gemini", "text": ...}` in the same response shape, so the app needs no change. It is stored with the note. The full exchange (what was sent and what came back) is kept with the patient's other model exchanges; the person's words in it are hidden from the clinician unless `share_notes` allows them. The audit and the trace keep codes only.
 
-To switch it on, put in the server's `.env`: `CHAT_MODE=gemini`, `GEMINI_API_KEY`, and a model id in `CHAT_MODEL` (or `GEMINI_MODEL`). It does not need `OUTREACH_MODE`.
+To switch it on, put in the server's `.env`: `CHAT_MODE=gemini`, `GEMINI_API_KEY`, and a model id in `CHAT_MODEL` (or `GEMINI_MODEL`). `CHAT_THINKING` (for example `low`) asks the chat model to think less so it answers sooner; empty, the default, sends no such setting. It does not need `OUTREACH_MODE`.
 
 ## The clinician page
 
