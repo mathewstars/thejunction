@@ -61,6 +61,8 @@ EXTRA_NOTES = {
 
 # Code's own per-row caveats, by measure.
 _TASK_CONFOUND = {"face.look_down_share", "face.head_pitch_deg", "face.head_movement"}
+# Caveats tied to particular measures (see code_caveats); the others are general.
+_KEYED_CAVEATS = ("task_confound", "medication", "glasses_or_light", "fatigue_or_illness")
 _MEDICATION = {"face.facial_activity", "face.blink_rate_per_min", "face.blink_duration_ms",
                "focus.median_reaction_ms", "focus.reaction_spread_ms"}
 _GLASSES = {"face.eye_smile_share", "face.blink_rate_per_min", "face.blink_duration_ms",
@@ -748,8 +750,18 @@ def merge(reply: dict, code_rows: list[dict], code_ov: dict, ref_kind: str,
                 if STRENGTHS.index(m["strength"]) > STRENGTHS.index(cr["strength"])
                 else "strength_set_by_code")
             r.update(strength=cr["strength"], strength_source="code_corrected")
-        req, _ = code_caveats(r, ref_kind, th)
-        cav = [{"code": c, "by": "model"} for c in dict.fromkeys(m["caveats"])]
+        req, sug = code_caveats(r, ref_kind, th)
+        # A caveat that belongs to particular measures (how the phone is held,
+        # medication, glasses or light, tiredness) is kept from the model only on
+        # the measures code lists it for. Put on every row it says nothing, and
+        # on reaction time "how the phone is held" makes no sense.
+        mine = set(req) | set(sug)
+        said = list(dict.fromkeys(m["caveats"]))
+        for c in said:
+            if c in _KEYED_CAVEATS and c not in mine:
+                fix("row", r["key"], "caveat", c, None, "caveat_not_for_this_measure")
+        cav = [{"code": c, "by": "model"} for c in said
+               if not (c in _KEYED_CAVEATS and c not in mine)]
         have = {c["code"] for c in cav}
         cav += [{"code": c, "by": "code"} for c in req if c not in have]
         r["caveats"] = cav
