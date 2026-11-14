@@ -802,3 +802,22 @@ def test_reading_the_exchanges_is_audited():
     assert r.status_code == 200 and r.json()["exchanges"]
     ev = [e for e in env.audit() if e["action"] == "exchanges_read"]
     assert ev and ev[-1]["detail"] == {"task": "frames_reading", "limit": 50}
+
+
+def test_the_generated_face_frames_example():
+    from clinic_engine import seed_frames
+    env, rec = frames_env()
+    c = env.demo["clinic_id"]
+    pid = seed_frames.create(env.store, c, "Europe/Helsinki", NOW)
+    assert seed_frames.create(env.store, c, "Europe/Helsinki", NOW) == pid  # again, in place
+    d = env.client.get(f"/v1/clinic/patients/{pid}", headers=env.C()).json()
+    assert d["label"] == "Example F-001" and d["example"] is True
+    ss = d["activities"]["focus"]["sessions"]
+    assert len(ss) == 6 and all(s["face_source"] == "raw" and s["example"] for s in ss)
+    # The fixed rule's count falls to nothing in the last sessions: the planted smiles there are faint.
+    rates = [s["face"]["smile_rate_per_min"] for s in ss]
+    assert rates[0] > 2 and rates[-1] == 0 and rates[-2] == 0
+    assert [s["frames_reading"]["status"] for s in ss] == ["pending"] * 6
+    raw = env.client.get(f"/v1/clinic/patients/{pid}/activities/example-frames-005/face-raw",
+                         headers=env.C()).json()
+    assert len(raw["samples"]) == 45 * 30 and raw["moments_ms"]
