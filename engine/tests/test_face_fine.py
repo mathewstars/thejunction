@@ -251,7 +251,7 @@ def test_the_example_person_has_generated_fine_movement_and_code_marks_it(env):
     assert set(got["twitches"][0]) == {"region", "start_s", "end_s", "peak_mm"}
 
 
-def test_a_partly_tracked_or_noisy_session_is_shown_but_does_not_count_toward_the_own_usual(env):
+def test_a_partly_tracked_or_noisy_session_counts_toward_the_own_usual_with_its_label_shown(env):
     part = make_fine(seed=11)
     part["tracked"] = [i % 4 != 0 for i in range(len(part["samples"]))]   # three quarters tracked
     loud = make_fine(seed=12)
@@ -264,6 +264,6 @@ def test_a_partly_tracked_or_noisy_session_is_shown_but_does_not_count_toward_th
     r = env.client.get(f"/v1/clinic/patients/{env.demo['patient_id']}", headers=env.C())
     mine = [s["fine"] for s in r.json()["activities"]["focus"]["sessions"] if s["id"].startswith("act-fine-cnt-")]
     assert [f["quality"] for f in mine] == ["good", "partly", "noisy", "good"]
-    assert [f["counts"] for f in mine] == [True, False, False, True]
+    assert [f["counts"] for f in mine] == [True, True, True, True]
     assert all(f["values"] for f in mine)                      # each one is still shown
-    assert mine[3]["earlier"] - mine[0]["earlier"] == 1        # only the first good one came before
+    assert mine[3]["earlier"] - mine[0]["earlier"] == 3        # all three before it count

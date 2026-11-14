@@ -531,10 +531,10 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                                  "usual": FF.usual(fine_before), "earlier": len(fine_before),
                                  "needed": FF.OWN_MIN_SESSIONS, "per_region": fs.get("regions"),
                                  "asymmetry": fs.get("asymmetry"),
-                                 # Only a well tracked, quiet session counts toward the own
-                                 # usual: on the first real games the partly tracked ones
-                                 # gave several times the reach of the fully tracked ones.
-                                 "counts": bool(fh) and fs.get("quality") == "good"}
+                                 # Every session with numbers counts toward the own usual,
+                                 # whatever its quality label (the team's decision, 14 Nov:
+                                 # the label is shown beside it, it does not filter).
+                                 "counts": bool(fh)}
                     if s["fine"]["counts"]:
                         fine_before.append(fh)
                 if t == "focus":

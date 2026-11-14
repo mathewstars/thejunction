@@ -1324,11 +1324,11 @@
       el("button", { type: "button", class: "btn btn-small", "aria-pressed": sx.id === cur.id ? "true" : "false", on: { click: () => { S.ffId = sx.id; render(); } } }, dayShort(sx.date) + " " + String(sx.started_at).slice(11, 16)))) : null;
     const head = [cur.example ? el("p", { class: "readout muted" }, "Generated example session: no person was recorded. The numbers come from a generator with brief movements and slow expressions planted in them.") : null];
     if (!v) return panel("Fine facial movement (research)", null, pick, head, empty("Too little of this session was tracked to say anything (" + num(f.frames) + " frames)."));
-    const own = (k, d, unit) => u[k] === null || u[k] === undefined ? "own usual: after " + f.needed + " earlier well tracked sessions (" + f.earlier + " so far)"
-      : "own usual " + num(u[k], d) + unit + " (middle of " + f.earlier + " earlier well tracked sessions)";
+    const own = (k, d, unit) => u[k] === null || u[k] === undefined ? "own usual: after " + f.needed + " earlier sessions (" + f.earlier + " so far)"
+      : "own usual " + num(u[k], d) + unit + " (middle of " + f.earlier + " earlier sessions)";
     const why = f.quality === "noisy" ? "the phone’s own noise was " + num(f.noise_mm, 2) + " mm, above 1 mm"
       : f.quality === "partly" ? "the face was tracked in " + Math.round((f.tracked_share || 0) * 100) + "% of the frames, under 90%" : null;
-    if (f.counts === false && why) head.push(el("p", { class: "readout muted" }, "This session does not count toward the own usual: " + why + ". Its numbers are shown as sent and are likely too high or too low."));
+    if (why) head.push(el("p", { class: "readout muted" }, "Read this session with care: " + why + ". It still counts toward the own usual."));
     const side = v.mouth_asymmetry === null || v.mouth_asymmetry === undefined ? "–" : Math.abs(v.mouth_asymmetry) < 0.15 ? "both sides alike" : v.mouth_asymmetry > 0 ? "left side more" : "right side more";
     const tiles = el("div", { class: "facts" },
       factTile(num(v.reach_mm, 2) + " mm", "how far the regions move from rest · " + own("reach_mm", 2, " mm")),
