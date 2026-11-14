@@ -226,6 +226,8 @@ details.more > summary { cursor: pointer; color: var(--muted); font-weight: 600;
 .rho .pt.opposite { fill: var(--ember); }
 table.assoc td { vertical-align: top; }
 ul.plain { margin: 0; padding-left: 18px; }
+ul.plain li { overflow-wrap: anywhere; }   /* a long word or key must not widen the page on a phone */
+details.more, details.more > * { min-width: 0; max-width: 100%; }
 .subnav { flex: 1; min-width: 0; display: flex; }
 .subnav .tabs { border-bottom: 0; margin-bottom: 0; }
 .subnav .tabs button { padding: 6px 12px; margin-bottom: 0; }
