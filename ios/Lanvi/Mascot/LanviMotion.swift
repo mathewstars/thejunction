@@ -78,6 +78,10 @@ struct LanviMotion {
     var prevTouchAt: Double = -100
     var petting = false                  // a finger resting on him (long press)
     var pettingSince: Double = -100      // when petting started or stopped
+    var pettingFrom: Double = -100       // when the latest petting started
+    var pettingEndedByDrag = false       // it stopped because the finger went on to drag
+    /// The latest petting lasted long enough for the happy squint.
+    var pettedLong: Bool { pettingSince - pettingFrom > 0.3 }
     var talking = false                  // `.lanviTalking`
     var talkingSince: Double = -100      // when talking started or stopped
     var talkStart: Double = -100         // when the current (or last) talk began
@@ -432,10 +436,17 @@ struct LanviMotion {
         b = max(b, petting ? Motion.smooth(pettingSince, pettingSince + 0.2, x) : window(pettingSince - 1.2, 1.2, x))
         b = max(b, window(hopAt, 1.3, x))
         if let k = follow, x >= followAt - 0.05, x < followAt + Self.followLength(k) + 1 { b = 1 }
-        if let last = lookSteps.last {
-            let before = lookSteps.count > 1 ? lookSteps[lookSteps.count - 2].target : nil
-            let l0 = before == nil ? 0.0 : 1, l1 = last.target == nil ? 0.0 : 1
-            b = max(b, l0 + (l1 - l0) * Motion.smooth(last.at, last.at + 0.3, x))
+        // Looking at something (a finger, a point the screen holds) is busy, easing in
+        // over 0.3 s from when the look left "ahead" (and out when it came back). Read as
+        // it was at `x`, so a finger that comes later never cuts off a moment that had
+        // already started: it fades out.
+        if let i = lookSteps.lastIndex(where: { $0.at <= x }) ?? (lookSteps.isEmpty ? nil : 0) {
+            let on = lookSteps[i].target != nil
+            var j = i
+            while j > 0, (lookSteps[j - 1].target != nil) == on { j -= 1 }
+            let since = j > 0 ? lookSteps[j].at : -100
+            let e = Motion.smooth(since, since + 0.3, x)
+            b = max(b, on ? e : 1 - e)
         }
         let busyMood: (LanviMood) -> Double = { [.listening, .thinking].contains($0) ? 1 : 0 }
         let w = Motion.smooth(heldSince, heldSince + 0.4, x)
@@ -465,7 +476,8 @@ struct LanviMotion {
         let sleepy = (start >= heldSince ? held : heldFrom) == .sleepy
         let kind = momentKind(k, evening: evening || sleepy)
         guard x >= start, x < start + kind.duration, start > appearAt + 3 else { return nil }
-        guard busy(start) < 0.01 else { return nil }   // never start on top of something else
+        // never start on top of something else, or while he looks at something (a finger)
+        guard busy(start) < 0.01, lookTarget(start) == nil else { return nil }
         let w = 1 - busy(x)
         guard w > 0.001 else { return nil }
         return (kind, x - start, Motion.rnd(k, seed &+ 43) < 0.5 ? -1 : 1, w)
@@ -806,8 +818,10 @@ struct LanviMotion {
 
     // MARK: Blink
 
-    /// Blinks: every 3 to 6 s (times fixed per slot), soft through the half-closed eyes.
-    /// Mostly quick (150 ms), sometimes slow, sometimes double. Never on an eye-set swap.
+    /// Blinks: every 3 to 6 s (times fixed per slot): the lid slides down and up. Mostly
+    /// quick (150 ms), sometimes slow, sometimes double; only quick ones while he looks at
+    /// something (a finger). Never starting on an eye-set swap. Decided only from the
+    /// moments up to its start, so a touch that comes later never cuts one off.
     private func blink(_ x: Double, _ p: inout Pose, _ face: inout Face) {
         let sleepy = held == .sleepy
         var bt: Double
@@ -819,18 +833,19 @@ struct LanviMotion {
             let slot = 4.4
             let off = s * 0.37
             let k = Int(floor((x + off) / slot))
-            start = Double(k) * slot + 1.6 * Motion.rnd(k, seed &+ 31) - off
+            start = Double(k) * slot + 1.4 * Motion.rnd(k, seed &+ 31) - off
             let r = Motion.rnd(k, seed &+ 32)
             kind = sleepy ? 1 : (r < 0.16 ? 2 : (r < 0.3 ? 1 : 0))
+            if lookTarget(start) != nil { kind = 0 }
             bt = x - start
         }
         let len = [0.15, 0.42, 0.38][kind]
         guard bt >= 0, bt < len else { return }
         guard [.open, .wide, .left, .right, .up, .half].contains(face.eyes) else { return }
         if freezeBlink == nil {
-            // the same eyes just before, at the start and just after (no swap nearby)
+            // the same eyes just before it and at its start (no swap)
             let e = face.eyes
-            for y in [start - 0.25, start + len + 0.2] where sample(y, face: false).face.eyes != e { return }
+            for y in [start - 0.25, start] where sample(y, face: false).face.eyes != e { return }
         }
         let shut: Bool
         switch kind {

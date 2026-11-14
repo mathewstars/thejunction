@@ -140,15 +140,22 @@ extension LanviMotion {
             let slow = petting ? 0.5 - 0.5 * cos(2 * .pi * max(lt, 0) / 2.6) : 0
             p.chest += (0.012 + 0.012 * slow) * w; p.bodySY += 0.005 * slow * w
             p.mouthScale += 0.1 * w
-            // happy eyes while petted (and in the frames just before the finger lifted)
-            if (petting && lt > 0.1) || (!petting && lt < 0) { face.eyes = .happy }
+            // happy eyes while petted (once the lean has settled, so a finger that rests a
+            // moment before dragging gets the lean, not a squint), and in the frames just
+            // before the finger lifted
+            if (petting && lt > 0.3) || (!petting && lt < 0 && pettedLong) { face.eyes = .happy }
         }
-        // after: open slowly, then one soft slow blink
-        if !petting, pettingSince > 0 {
+        // after: the lids open from the squint (shut, half, open); when the finger lifted
+        // (not when it went on to drag), one soft slow blink a moment later
+        if !petting, pettingSince > 0, pettedLong {
             let lt = x - pettingSince
-            if Motion.inside(lt, 0, 0.18) || Motion.inside(lt, 0.55, 0.72) || Motion.inside(lt, 1.0, 1.18) {
-                face.eyes = .half
-            } else if Motion.inside(lt, 0.72, 1.0) { face.eyes = .closed }
+            if Motion.inside(lt, 0, 0.06) { face.eyes = .closed }
+            else if Motion.inside(lt, 0.06, 0.16) { face.eyes = .half }
+            else if !pettingEndedByDrag {
+                if Motion.inside(lt, 0.55, 0.72) || Motion.inside(lt, 1.0, 1.18) {
+                    face.eyes = .half
+                } else if Motion.inside(lt, 0.72, 1.0) { face.eyes = .closed }
+            }
         }
     }
 

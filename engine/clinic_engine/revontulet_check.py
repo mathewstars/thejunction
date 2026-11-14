@@ -87,7 +87,7 @@ def run(runs: int = 3000, seed: int = 7, spread: float = 1.0) -> dict:
     late = range(n - 3, n)   # the last three games, at the bottom of the slide
     recent = games = start = start_games = either = 0
     recent_runs = start_runs = 0
-    pooled = pooled_looks = pooled_people = pooled_caught = 0
+    pooled = pooled_looks = pooled_people = pooled_caught = yellow_runs = 0
     per = {name: 0 for name in LABELLED}
     mov = fix = late_games = 0
     for _ in range(runs):
@@ -115,6 +115,8 @@ def run(runs: int = 3000, seed: int = 7, spread: float = 1.0) -> dict:
         recent_runs += _run_of_three(r_flags)
         start_runs += _run_of_three(s_flags)
         g = _series(rng, slide, spread)
+        # a run like the example: does its chart show any yellow tracing point at all?
+        yellow_runs += any(_off(_moving_z(g, k, "trace_speed_cm_s")) for k in range(NEED, n))
         for k in late:   # single games: the last three; three together: the looks ending in them
             late_games += 1
             zm, zf = _moving_z(g, k, "trace_speed_cm_s"), _start_z(g, k, "trace_speed_cm_s")
@@ -131,7 +133,8 @@ def run(runs: int = 3000, seed: int = 7, spread: float = 1.0) -> dict:
             "unchanged_people_pooled_ever": round(pooled_people / runs, 3),
             "slide_last_three_tracing_slower_recent": round(mov / late_games, 3),
             "slide_last_three_tracing_slower_start": round(fix / late_games, 3),
-            "slide_last_three_together_slower": round(pooled_caught / late_games, 3)}
+            "slide_last_three_together_slower": round(pooled_caught / late_games, 3),
+            "slide_runs_with_a_yellow_tracing_point": round(yellow_runs / runs, 3)}
 
 
 def main() -> None:

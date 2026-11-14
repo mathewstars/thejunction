@@ -42,6 +42,7 @@
   const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   function parseDay(s) { const p = String(s).slice(0, 10).split("-"); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
   function dayShort(s) { if (!s) return "–"; const d = parseDay(s); return d.getUTCDate() + " " + MONTHS[d.getUTCMonth()]; }
+  function clock(iso) { const d = new Date(iso); return isNaN(d) ? "" : String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
   function dayLong(s) { const d = parseDay(s); return DAYS[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS[d.getUTCMonth()]; }
   function daysBetween(a, b) { return Math.round((parseDay(b) - parseDay(a)) / 86400000); }
   function ago(day, today) {
@@ -926,9 +927,10 @@
     const g = games.slice().reverse().map((x) => {
       const rv = x.revontulet, rounds = rv.rounds || [], own = x.revontulet_own || {};
       const sp = rounds.map((r) => r.trace_mean_speed_pt_s).filter((v) => typeof v === "number");
-      const day = String(x.date).slice(0, 10), k = seen[day] = (seen[day] || 0) + 1;   // a second game on a day sits a little later
+      const day = String(x.date).slice(0, 10), k = seen[day] = (seen[day] || 0) + 1;
+      const at = Date.parse(x.started_at);   // the real start time; without one, a second game on a day sits a little later
       if (rv.pt_per_cm) { if (dens !== null && Math.abs(rv.pt_per_cm - dens) > 0.5) phone += 1; dens = rv.pt_per_cm; }
-      return { t: Date.parse(day + "T00:00:00Z") + (k - 1) * 4 * 36e5, date: x.date, phone: phone,
+      return { t: isNaN(at) ? Date.parse(day + "T00:00:00Z") + (k - 1) * 4 * 36e5 : at, date: x.date, at: x.started_at, phone: phone,
         hard: rounds.length >= 3 ? rounds.filter((r) => r.effort === "hard").length : null,  // a game cut short has too few choices
         z: own.z || {}, u: own.usual || {},
         speed: sp.length && rv.pt_per_cm ? sp.reduce((s, v) => s + v, 0) / sp.length / rv.pt_per_cm : null };
@@ -938,8 +940,13 @@
     const narrow = window.innerWidth < 640;
     const W = narrow ? 430 : 1000, PL = narrow ? 44 : 64, PR = 12, AT = 26, AH = 62, BT = AT + AH + 50, BH = narrow ? 96 : 116;
     const H = (lower ? BT + BH : AT + AH) + 26;
-    const t0 = g[0].t, span = Math.max(1, g[g.length - 1].t - t0);
-    const x = (p) => PL + ((p.t - t0) / span) * (W - PL - PR);
+    // Games sit in the order played, evenly spaced: by the clock, seven games in one evening would pile up
+    // at one end of a chart that also holds games from other weeks.
+    g.sort((a, b) => a.t - b.t).forEach((p, i) => { p.i = i; });
+    // The same rule as the engine: no range and no yellow for a game whose earlier games fall on too few days.
+    const needDays = own0.needed_days || 5;
+    g.forEach((p, i) => { const s = {}; g.slice(Math.max(0, i - 20), i).forEach((q) => { s[String(q.date).slice(0, 10)] = 1; }); if (Object.keys(s).length < needDays) { p.u = {}; p.z = {}; } });
+    const x = (p) => PL + (p.i / (g.length - 1)) * (W - PL - PR);
     const ya = (v) => AT + (1 - v / 3) * AH;
     const lo = lower ? Math.floor(Math.min.apply(null, sv) - 0.3) : 0, hi = lower ? Math.ceil(Math.max.apply(null, sv) + 0.3) : 1;
     const yb = (v) => BT + (1 - (Math.max(lo, Math.min(hi, v)) - lo) / ((hi - lo) || 1)) * BH;
@@ -950,6 +957,7 @@
     const lastPhone = g[g.length - 1].phone, since = g.find((p) => p.phone === lastPhone), moved = lastPhone > 0;
     const dashed = (y, text) => {   // the start belongs to the newest phone, so the line begins at its first game
       s.appendChild(svg("line", { x1: moved ? x(since) : PL, y1: y, x2: W - PR, y2: y, class: "rv-start" }));
+      s.setAttribute("data-start", "1");
       if (text) s.appendChild(svg("text", { x: W - PR - 4, y: y - 5, "text-anchor": "end" }, text));
     };
     // above: harder crack chosen (left empty when no game has all three rounds)
@@ -969,6 +977,7 @@
       const have = g.filter((p) => p.u.trace_speed_cm_s && p.speed !== null);
       if (have.length >= 2) {
         const edge = (p, sign) => yb(p.u.trace_speed_cm_s.median + sign * cut * p.u.trace_speed_cm_s.scale);
+        s.setAttribute("data-band", "1");
         s.appendChild(svg("polygon", { class: "normal", points: have.map((p) => x(p).toFixed(1) + "," + edge(p, 1).toFixed(1))
           .concat(have.slice().reverse().map((p) => x(p).toFixed(1) + "," + edge(p, -1).toFixed(1))).join(" ") }));
         s.appendChild(svg("text", { x: x(have[0]) + 4, y: Math.max(BT + 10, edge(have[0], 1) - 6) }, narrow ? "recent range" : "range of the games before each one"));
@@ -992,15 +1001,16 @@
       g.forEach((p) => { if (p.speed !== null) s.appendChild(svg("circle", { class: off(p.z.trace_speed_cm_s) ? "pt pt-high" : "pt", cx: x(p), cy: yb(p.speed), r: narrow ? 3 : 4 },
         svg("title", null, dayShort(p.date) + ": " + num(p.speed, 1) + " cm/s"))); });
     }
+    const oneDay = String(g[0].date).slice(0, 10) === String(g[g.length - 1].date).slice(0, 10) && clock(g[0].at) !== "";
     const ticks = narrow ? [0, g.length - 1] : [0, Math.round((g.length - 1) / 3), Math.round(2 * (g.length - 1) / 3), g.length - 1];
     ticks.filter((v, i, a) => a.indexOf(v) === i).forEach((i, k, a) => s.appendChild(svg("text", { x: x(g[i]), y: H - 6,
-      "text-anchor": k === 0 ? "start" : k === a.length - 1 ? "end" : "middle" }, dayShort(g[i].date))));
+      "text-anchor": k === 0 ? "start" : k === a.length - 1 ? "end" : "middle" }, oneDay ? (k === 0 ? dayShort(g[i].date) + " " : "") + clock(g[i].at) : dayShort(g[i].date))));
     return s;
   }
   // Revontulet's own measures (docs/revontulet-measures.md): stored and shown, not used to judge a day.
   // Two movement speeds are compared per game with the games before it; the choice of the harder crack
   // has three values a game, so it is only ever judged over several games.
-  function revontuletPanel(sessions) {
+  function revontuletPanel(sessions, person) {
     const got = sessions.filter((x) => x.revontulet);
     if (!got.length) return null;
     const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
@@ -1011,27 +1021,35 @@
     // Speeds are shown in cm/s only; without the phone's points per centimetre there is no honest unit.
     const speed = (v, rv) => (v === null || !rv.pt_per_cm ? null : num(v / rv.pt_per_cm, 1) + " cm/s");
     const facts = (x) => {
-      const rv = x.revontulet, rounds = rv.rounds || [], strokes = rv.strokes || [];
-      const choose = median(vals(rounds, "choice_ms"));
-      const traced = rounds.filter((r) => typeof r.trace_mean_speed_pt_s === "number" || typeof r.trace_ms === "number");
+      const rv = x.revontulet, rounds = rv.rounds || [];
+      // As the engine reads a game (mind/activities.py): a round the first-time coach showed is left out of the time
+      // to choose and the tracing, and a touch on the fox under 0.3 s is not a stroke.
+      const free = rounds.filter((r) => !(r.trace_start_ms == null && r.trace_ms != null));
+      const strokes = (rv.strokes || []).filter((s) => (s.ms || 0) >= 300);
+      const choose = median(vals(free, "choice_ms"));
+      const traced = free.filter((r) => typeof r.trace_mean_speed_pt_s === "number" || typeof r.trace_ms === "number");
       const wall = rv.fox_finished === true ? "by the game, time ran out"
         : rv.broke_through_s != null ? (rv.fox_finished === false ? "by the person, " : "") + "after " + num(rv.broke_through_s) + " s"
-        : rv.fox_finished === false || x.completed === false ? "not broken" : null;
+        : rv.fox_finished === false || x.completed === false ? "not broken" : null;   // no burst time and not finished by the game
       return { rounds: rounds.length, hard: rounds.filter((r) => r.effort === "hard").length,
         choose: choose === null ? null : num(choose / 1000, 1) + " s",
-        trace: speed(mean(vals(rounds, "trace_mean_speed_pt_s")), rv), traced: traced.length, lifts: sum(traced, "trace_lifts"),
-        noSize: !rv.pt_per_cm && vals(rounds, "trace_mean_speed_pt_s").length > 0, strokeNoSize: !rv.pt_per_cm && vals(strokes, "mean_speed_pt_s").length > 0,
+        trace: speed(mean(vals(free, "trace_mean_speed_pt_s")), rv), traced: traced.length, lifts: sum(traced, "trace_lifts"),
+        noSize: !rv.pt_per_cm && vals(free, "trace_mean_speed_pt_s").length > 0, strokeNoSize: !rv.pt_per_cm && vals(strokes, "mean_speed_pt_s").length > 0,
         shown: sum(rounds, "embers_shown"), hit: sum(rounds, "embers_hit"),
         strokes: strokes.length, stroke: speed(mean(vals(strokes, "mean_speed_pt_s")), rv), wall: wall };
     };
     const own0 = got[0].revontulet_own || {}, cut = own0.unusual_z || 2.5, needed = own0.needed || 8;
-    const zOf = (x, k) => { const o = x.revontulet_own; return o && o.z && typeof o.z[k] === "number" ? Math.round(o.z[k] * 10) / 10 : null; };
+    // A comparison counts only when the games it rests on fall on enough different days (the engine applies the same
+    // rule to new games; games stored before that rule are held to it here).
+    const needDays0 = own0.needed_days || 5, order = got.slice().reverse();
+    const spreadBefore = (x, from, to) => { const i = order.indexOf(x), s = {}; order.slice(from === null ? Math.max(0, i - 20) : from, to === null ? i : Math.min(to, i)).forEach((y) => { s[String(y.date).slice(0, 10)] = 1; }); return Object.keys(s).length >= needDays0; };
+    const zOf = (x, k) => { const o = x.revontulet_own; return o && o.z && typeof o.z[k] === "number" && spreadBefore(x, null, null) ? Math.round(o.z[k] * 10) / 10 : null; };
     // Only the two speeds are compared game by game. [word when higher, word when lower].
     const WORDS = { trace_speed_cm_s: ["faster", "slower"], stroke_speed_cm_s: ["faster", "slower"] };
     const far = (z) => (Math.abs(z) > 3 ? "more than 3" : signed(z));
     const against = (x, k) => { const z = zOf(x, k); return z === null ? null : Math.abs(z) >= cut ? WORDS[k][z > 0 ? 0 : 1] + " than recent" : "within recent range"; };
     // The fixed reference beside the moving one: far from the person's start, said in words only.
-    const fromStart = (x, k) => { const o = x.revontulet_own, z = o && o.start_z && typeof o.start_z[k] === "number" ? Math.round(o.start_z[k] * 10) / 10 : null;
+    const fromStart = (x, k) => { const o = x.revontulet_own, z = o && o.start_z && typeof o.start_z[k] === "number" && spreadBefore(x, 2, 12) ? Math.round(o.start_z[k] * 10) / 10 : null;
       return z !== null && Math.abs(z) >= cut ? WORDS[k][z > 0 ? 0 : 1] + " than start" : null; };
     const subOf = (x, k) => {
       const a = against(x, k), b = fromStart(x, k), z = zOf(x, k);
@@ -1042,8 +1060,9 @@
     };
     const dash = (v, why) => (v === null || v === undefined ? el("span", { class: "muted", title: why || null }, why ? "not known" : "–") : v);
     const lines = [];
+    if (person && person.test_play) lines.push(el("p", { class: "readout muted" }, el("b", null, "Test games from a team member’s phone. "), "Not a patient."));
     if (got[0].example) lines.push(el("p", { class: "readout muted" }, el("b", null, "Generated example. "),
-      "No person played these games. The fall in harder choices and tracing speed from week five was written into the generator, together with a rising questionnaire score. It is not a sign that such a link exists. The speeds and how much they vary are set to match six real games a team member played in one evening. The fall is invented and large, and the example has no odd games and no learning, which real play would. This run of the generator was picked to show the usual case: in about 9 of 10 runs the line below reads slower, as here; in the rest it reads not clearly different, and the first run we tried was one of those. Some runs also show a yellow point or two in the chart that mean nothing; this one shows none."));
+      "No person played these games. The fall in harder choices and tracing speed from week five was written into the generator, together with a rising questionnaire score. It is not a sign that such a link exists. The speeds and how much they vary are set to match the first nine real games, which a team member played in one evening. The fall is invented and large, and the example has no odd games and no learning, which real play would. This run of the generator was picked to show the usual case: in about 9 of 10 runs the line below reads slower, as here; in the rest it reads not clearly different, and the first run we tried was one of those. About 7 in 10 runs also show at least one yellow point in the chart; this one shows none."));
     // The finding, if there is one: the last three games against the person's start (or, with fewer games, against all before).
     const pool = (list) => {
       const rs = [].concat.apply([], list.map((x) => ((x.revontulet.rounds || []).length >= 3 ? x.revontulet.rounds : [])));
@@ -1058,8 +1077,16 @@
     const mineChrono = mine.slice().reverse();
     const hasStart = Object.keys(own0.start || {}).length > 0 && mine.length > 12, late = Math.min(3, mine.length - 12);
     const ref = hasStart ? { n: late, list: mineChrono.slice(2, 12), lead: (late === 1 ? "Last game" : "Last " + late + " games") + " against this person’s start" + (mine.length < got.length ? " on this phone" : "") + " (games 3 to 12): ", word: "start" }
-      : mine.length >= 6 ? { n: 3, list: mine.slice(3), lead: "Last 3 games against the " + (mine.length - 3) + " before" + (mine.length < got.length ? " on this phone" : "") + ": ", word: "before" } : null;
-    if (ref) {
+      : mine.length >= 6 ? { n: 3, list: mine.slice(3), lead: "Last 3 games against the " + (mine.length - 3) + " before" + (mine.length < got.length ? " on this phone" : "") + (mine.slice(3).some((x) => (x.revontulet.rounds || []).length < 3) ? " (" + mine.slice(3).filter((x) => (x.revontulet.rounds || []).length >= 3).length + " of them complete)" : "") + ": ", word: "before" } : null;
+    // Games bunched into one sitting are not a range to compare with: the games compared with must fall on enough days.
+    const daysOf = (list) => { const s = {}; list.forEach((x) => { s[String(x.date).slice(0, 10)] = 1; }); return Object.keys(s).length; };
+    const needDays = own0.needed_days || 5, spread = ref ? daysOf(ref.list) >= needDays : false;
+    if (!spread) {
+      const nd = daysOf(mine);
+      lines.push(el("p", { class: "readout" }, el("b", null, plural(mine.length, "game", "games") + (nd === 1 ? ", all on one day. " : " on " + nd + " days. ")),
+        "That is too few and too close together to compare. Comparisons start when there are games on at least " + needDays + " different days."));
+    }
+    if (ref && spread) {
       const now = pool(mine.slice(0, ref.n)), was = pool(ref.list), parts = [];
       if (ref.n >= 3 && now.rounds && was.rounds) parts.push("harder crack in " + now.hard + " of " + plural(now.rounds, "round", "rounds") + " (" + ref.word + ": " + was.hard + " of " + was.rounds + ")");
       if (now.speed !== null && was.speed !== null) parts.push("tracing at " + num(now.speed, 1) + "\u00a0cm/s (" + ref.word + ": " + num(was.speed, 1) + "\u00a0cm/s)");
@@ -1084,20 +1111,26 @@
     const SAY = { trace_speed_cm_s: "traced ", stroke_speed_cm_s: "stroked the fox " };
     const unusual = zNow.filter((p) => Math.abs(p[1]) >= cut).map((p) => SAY[p[0]] + WORDS[p[0]][p[1] > 0 ? 0 : 1]);
     const earlier = own0.earlier_games || 0;
-    lines.push(el("p", { class: "readout" }, el("b", null, "Last game, " + dayShort(got[0].date) + ", against the games just before it: "),
+    if (spread || zNow.length) lines.push(el("p", { class: "readout" }, el("b", null, "Last game, " + dayShort(got[0].date) + ", against the games just before it: "),
       zNow.length ? (unusual.length ? "the person " + unusual.join(" and ") + " than in those games." : zNow.map((p) => NAME[p[0]]).join(" and ") + (zNow.length > 1 ? " were" : " was") + " within the recent range.")
           + (["trace_speed_cm_s", "stroke_speed_cm_s"].some((k) => fromStart(got[0], k)) ? " Against the start: " + ["trace_speed_cm_s", "stroke_speed_cm_s"].filter((k) => fromStart(got[0], k)).map((k) => (k === "trace_speed_cm_s" ? "tracing " : "stroking ") + fromStart(got[0], k).replace(" than start", "")).join(", ") + "." : "")
         : earlier < needed ? "not enough earlier games yet (" + earlier + " of the " + needed + " needed)."
         : hasSpeed ? "too few earlier games with a speed to compare." : "this game has no speed to compare."));
-    lines.push(el("p", { class: "muted small" }, "In this 90-second game the person picks one of two cracks in an ice wall three times (the harder one gives a bigger reward), traces a half circle with a finger, taps the embers that flash after picking the harder crack, and at the end strokes a sleeping fox. If time runs out, the game breaks the wall for them."));
+    lines.push(el("p", { class: "muted small" }, "In this game of up to 90 seconds the person picks one of two cracks in an ice wall three times (the harder one gives a bigger reward), traces a half circle with a finger, taps the embers that flash after picking the harder crack, and at the end strokes a sleeping fox. If time runs out, the game breaks the wall for them."));
     // A different screen density than in the last game that sent one means another phone: speeds before and after do not compare.
     const newPhone = {};
     let known = null;
     chrono.forEach((x) => { const b = x.revontulet.pt_per_cm; if (!b) return; if (known !== null && Math.abs(known - b) > 0.5) newPhone[x.id] = true; known = b; });
+    const perDay = {};
+    got.forEach((x) => { const d = String(x.date).slice(0, 10); perDay[d] = (perDay[d] || 0) + 1; });
+    const whenOf = (x) => dayShort(x.date) + (perDay[String(x.date).slice(0, 10)] > 1 && clock(x.started_at) ? " " + clock(x.started_at) : "");
+    // A game whose wall was broken was played to the end, also when the person left during the strokes.
+    const cutShort = (x) => x.completed === false && x.revontulet.broke_through_s == null && x.revontulet.fox_finished !== true;
     const row = (x) => {
       const f = facts(x);
       return el("tr", null,
-        el("td", { class: "num nowrap" }, dayShort(x.date), x.completed === false ? el("span", { class: "sub" }, "not finished") : null,
+        el("td", { class: "num nowrap" }, whenOf(x), cutShort(x) ? el("span", { class: "sub" }, "not finished")
+          : x.ended_by === "user_stopped" && x.revontulet.broke_through_s != null ? el("span", { class: "sub" }, "left during the strokes") : null,
           newPhone[x.id] ? el("span", { class: "sub" }, "new phone") : null),
         el("td", null, dash(f.wall)),
         el("td", { class: "r num" }, f.rounds ? f.hard + " of " + f.rounds : dash(null)),
@@ -1107,21 +1140,25 @@
         el("td", { class: "r num" }, f.shown ? f.hit + " of " + f.shown : f.rounds && !f.hard ? el("span", { class: "muted" }, "easy cracks only") : dash(null)),
         el("td", { class: "r num" }, f.strokes ? plural(f.strokes, "stroke", "strokes") + (f.stroke ? ", " + f.stroke : f.strokeNoSize ? ", speed not known" : "") : dash(null), subOf(x, "stroke_speed_cm_s")));
     };
+    const emb = got.reduce((s, x) => { (x.revontulet.rounds || []).forEach((r) => { s[0] += r.embers_shown || 0; s[1] += r.embers_hit || 0; }); return s; }, [0, 0]);
+    if (!got[0].example && emb[0] >= 8 && emb[1] / emb[0] < 0.25) lines.push(el("p", { class: "muted small" }, "Almost no ember taps were recorded in these games (" + emb[1] + " of " + emb[0] + "). Early builds of the app lost them, so read nothing into it."));
     const rc = revontuletChart(got);
     const fold = (title, ...paras) => el("details", { class: "more" }, el("summary", null, title), paras.map((p) => el("p", { class: "muted small" }, p)));
     return panel("Revontulet: choices and finger movement", got.length, lines, rc,
-      rc ? el("p", { class: "muted small" }, "One point is one game. Shaded: the range of this person’s games before each one (up to 20). Dashed: the middle of their start, games 3 to 12" + (mine.length < got.length ? " on the newest phone" : "") + ". Yellow means different from the recent games, faster or slower. It does not mean worse.") : null,
+      rc ? el("p", { class: "muted small" }, "One point is one game, in the order played."
+        + (rc.getAttribute("data-band") ? " Shaded: the range of this person’s games before each one (up to 20). Yellow means different from the recent games, faster or slower. It does not mean worse." : "")
+        + (rc.getAttribute("data-start") ? " Dashed: the middle of their start, games 3 to 12" + (mine.length < got.length ? " on the newest phone" : "") + "." : "")) : null,
       table(["Date", "Wall broken", { t: "Harder crack", r: 1 }, { t: "Time to choose", r: 1 }, { t: "Tracing speed", r: 1 },
         { t: "Finger lifts", r: 1 }, { t: "Embers tapped", r: 1 }, { t: "Fox strokes", r: 1 }], got.map(row), null, { id: "revontulet" }),
       el("p", { class: "muted small" }, "A record, not a result. A change here is a reason to ask the person, not a sign of relapse. Getting used to the game changes these numbers too. They do not change how the day is judged and have not been tested as a measure of mood."),
       fold("How to read these numbers",
-        "Tracing and stroke speed are compared, game by game, with this person’s own Revontulet games just before (at least " + needed + ", at most 20) and with their start. A game " + cut + " or more of the usual spread away from the middle of those games, faster or slower, gets a label. The line above the chart also judges the last three games together against the start, which is steadier than one game.",
-        "How often these rules are wrong was measured on generated games. Their speeds and game-to-game variation are set to match the first real games we have, where tracing speed varied by about 13% from game to game (six games) and stroke speed by about 29% (five games). Those games were played in ten minutes by a team member. How much a patient varies from day to day over weeks may be more or less, and nobody has measured it.",
+        "Tracing and stroke speed are compared, game by game, with this person’s own Revontulet games just before (at least " + needed + " of them, played on at least " + (own0.needed_days || 5) + " different days; at most 20) and with their start. A game " + cut + " or more of the usual spread away from the middle of those games, faster or slower, gets a label. The line above the chart also judges the last three games together against the start, which is steadier than one game.",
+        "How often these rules are wrong was measured on generated games. Their speeds and game-to-game variation are set to match the first nine real games we have, where tracing speed varied by about 13 to 15% from game to game and stroke speed by about 30% (some of the nine gave no speed). Those games were played in ten minutes by a team member. How much a patient varies from day to day over weeks may be more or less, and nobody has measured it.",
         "When nothing changes, about 11 games in 100 still get a label against each reference and 15 in 100 against one or the other, and 4 to 6 unchanged people in 100 get three in a row within 24 games. The line about the last three games together says “slower” or “faster” in about 3 looks in 100, and about 1 unchanged person in 6 sees it at least once in ten looks. Real play also has odd games and slow drifts from day to day, which the generated games do not; both add labels. One yellow point means little.",
         "The line about three games together works by counting: it says slower only when each of the last three games is slower than all of the start games but at most one. It needs no tuned number.",
         "What each rule sees of the slide written into the example, where the speeds fall by over a third, counted at its end (single games: its last three; three together: the looks ending in those games): one game against the recent games is labelled about 1 time in 12, because the recent games slide along; one game against the start about 7 times in 10; the last three together about 9 times in 10. If play varied half as much again, these would be 1 in 20, 4 in 10 and 6 in 10; at twice the variation, 1 in 25, 2 in 10 and 4 in 10. A smaller change would be caught less often, and we have not measured how often. The numbers " + needed + " and " + cut + " were picked on generated games, not on people.",
         "No yellow does not mean all is well. After a slow change the lower values count as recent, which is why the start (games 3 to 12; the first two are practice) is shown as a second reference that does not move. The start is only where this person began. It is not a healthy level: for someone who started just after treatment, the start may be their worst weeks. People keep getting faster for many games as they learn the game, so faster than start is expected. A run of labels against the start can also come from an odd start alone.",
-        "The harder crack is chosen three times a game, so one game says nothing; it is only compared over several games, in the line above the chart. With 9 choices, two or three more or fewer can be chance. Time to choose is the middle value of the rounds, and speeds are averages over the rounds that were traced. A stroke speed is compared only when there were at least two strokes.",
+        "The harder crack is chosen three times a game, so one game says nothing; it is only compared over several games, in the line above the chart. With 9 choices, two or three more or fewer can be chance. Time to choose is the middle value of the rounds, and speeds are averages over the rounds that were traced. Rounds the first-time coach showed, and touches on the fox shorter than 0.3 seconds, are left out. The example people tap most embers; in the first real games almost none were recorded. A stroke speed is compared only when there were at least two strokes.",
         "Slower tracing can also mean more careful tracing: the game does not yet measure how closely the line was followed. The game asks for slow strokes, so slower stroking may only mean the person did as asked.",
         "Things other than mood that change these numbers: getting used to the game (many people stop picking the harder crack once the bigger reward is no longer new), the 90-second limit (the easy crack can simply be the faster way to finish), time of day, tiredness, medicines that slow or calm, which hand and finger, holding the phone or laying it down, cold hands, a new screen cover, and doing something else while playing. Speeds are only comparable for one person on one phone.",
         "A row marked “new phone” is the first game on a screen drawn at a different density; from that game on, both references start again and count only games on that phone. A new phone with the same density is not noticed."),
@@ -1293,7 +1330,7 @@
         el("td", { class: "r num" }, x.values && x.values.error_rate != null ? Math.round(x.values.error_rate * 100) + " %" : "–"),
         faceCell(x.face), readCell(x.reading))), null, { filter: 1 })));
     if (sub === "focus" || sub === "breathing") { const fp = framesPanel(recent(A[sub]), A.frames_agreement); if (fp) wrap.appendChild(fp); }
-    if (sub === "focus") { const rp = revontuletPanel(recent(A.focus)); if (rp) wrap.appendChild(rp); }
+    if (sub === "focus") { const rp = revontuletPanel(recent(A.focus), d); if (rp) wrap.appendChild(rp); }
     if (sub === "breathing") wrap.appendChild(panel("Breathing", A.breathing.sessions.length, table(["Date", "Finished", { t: "Time", r: 1 }, "Face", "Model reading"],
       recent(A.breathing).map((x) => el("tr", null, el("td", { class: "num" }, dayShort(x.date)), el("td", null, yes(x.completed)),
         el("td", { class: "r num" }, x.values && x.values.time_played_s != null ? num(x.values.time_played_s) + " s" : "–"), faceCell(x.face), readCell(x.reading))), null, { filter: 1 })));
@@ -1558,7 +1595,8 @@
     wrap.appendChild(el("div", { class: "grid2" },
       el("section", { class: "panel" }, el("h2", null, "Answer one: “they move together”"),
         have ? mini(weeks, "Anna: the score rises and falls, and smiling less follows it.") : null,
-        P("Anna’s score went up, came down and went up again. In the same weeks she smiled less, reacted more slowly and walked less."),
+        P("Anna is a generated example: the link was written into her data. Her score went up, came down and went up again. In the same weeks she " +
+          ((() => { const did = S.bpAssoc ? pickMeasures(S.bpAssoc).filter((r) => r.agreement === "consistent").slice(0, 3).map((r) => WORSE[r.key] || r.label.toLowerCase()) : []; return did.length ? joinAnd(did) : "smiled less and walked less"; })()) + "."),
         anna ? el("p", { class: "bp-text" }, el("a", { href: "#/p/" + encodeURIComponent(anna) + "/research" }, "Open Anna’s research page")) : null),
       el("section", { class: "panel" }, el("h2", null, "Answer two: “we cannot tell”"),
         nweeks.length ? mini(nweeks, "Elina: the score stays low and flat, so there is nothing to follow.") : null,
@@ -2016,7 +2054,7 @@
     "face.eye_smile_share": "had fewer smiles that reached the eyes", "face.smile_response_share": "smiled less at pleasant moments", "face.smile_response_latency_s": "was slower to smile",
     "face.facial_activity": "showed less facial movement", "face.brow_down_share": "drew the brows down more", "face.inner_brow_up_share": "raised the inner brows more",
     "face.blink_duration_ms": "blinked more slowly", "face.look_down_share": "looked down more", "face.head_pitch_deg": "held the head lower", "face.head_movement": "moved the head less",
-    "focus.median_reaction_ms": "reacted more slowly", "focus.reaction_spread_ms": "reacted less evenly", "focus.error_rate": "made more errors", "activity.completed_share": "finished fewer activities",
+    "focus.median_reaction_ms": "tapped the embers more slowly", "focus.reaction_spread_ms": "reacted less evenly", "focus.error_rate": "missed more embers", "activity.completed_share": "finished fewer activities",
     "checkin.good_things": "named fewer good things", "checkin.plan_done_share": "carried out fewer plans", "daily.steps": "walked less", "daily.walking_speed_m_s": "walked more slowly", "daily.hrv_ms": "had lower heart-rate variability" };
   function joinAnd(list) { return list.length > 1 ? list.slice(0, -1).join(", ") + " and " + list[list.length - 1] : list[0] || ""; }
   function pickMeasures(a) {
@@ -2025,7 +2063,11 @@
     // Per kind, the measure research supports best among those that came out as expected (not the
     // largest number: with a dozen ratings the top few are a coin toss). "Every measure" pins them first.
     const SUP = { stronger: 0, moderate: 1, weaker: 2, mixed: 3 };
-    const cons = usable.filter((r) => r.agreement === "consistent").sort((x, y) => (SUP[x.support] - SUP[y.support]) || (y.rho - x.rho));
+    // A measure the task itself moves (looking down at the phone, head angle) does not stand for the person when another will do.
+    const taskBound = (r) => ((r.caveats || []).some((c) => c.code === "task_confound") ? 1 : 0);
+    // Only rows that count as a line in the engine: as expected AND at least weak. A row whose range
+    // only just clears zero ("negligible") does not carry a headline or a chart.
+    const cons = usable.filter((r) => r.agreement === "consistent" && r.strength && r.strength !== "negligible").sort((x, y) => (taskBound(x) - taskBound(y)) || (SUP[x.support] - SUP[y.support]) || (y.rho - x.rho));
     const pick = [];
     const add = (r) => { if (r && pick.indexOf(r) < 0 && pick.length < 4) pick.push(r); };
     ["face", "activity", "daily"].forEach((g) => add(cons.find((r) => r.group === g)));
@@ -2070,7 +2112,8 @@
     const ya = (v) => AT + (1 - (v - aLo) / ((aHi - aLo) || 1)) * AH;
     const yb = (z) => BT + (1 - (Math.max(zMin, Math.min(zMax, z)) - zMin) / (zMax - zMin)) * BH;
     const sv = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "tg", role: "img",
-      "aria-label": "Above, the " + (ref.label || ref.key) + " over " + N + " days. Below, on the same time axis, " + pick.map((r) => r.label).join(", ") + " and their average, drawn so that up means worse." });
+      "aria-label": (a._example ? "Generated example. The link was built in. " : "") + "Above, the " + (ref.label || ref.key) + " over " + N + " days. Below, on the same time axis, " + pick.map((r) => r.label).join(", ") + " and their average, drawn so that up means worse." });
+    if (a._example) sv.appendChild(svg("text", { x: W - PR, y: 14, class: "tg-ax", "text-anchor": "end" }, "Generated example. The link was built in."));
     // columns where the rating is at or over the cut-off (or, without a cut-off, in its worse half)
     const mid = (Math.min.apply(null, rv) + Math.max.apply(null, rv)) / 2;
     const high = (v) => (isPhq ? v >= CUT : (ref.worse_is === "lower" ? v <= mid : v >= mid) && Math.max.apply(null, rv) > Math.min.apply(null, rv));
@@ -2137,14 +2180,16 @@
         rising ? el("li", null, el("span", { class: "key k-now" }), "the latest rise") : null),
       host,
       el("p", { class: "muted small" }, "In the lower panel up means worse: " + joinAnd(said.map((t) => "“" + t + "”")) + " all point up. Each grey line is a 7-day average of one measure; a break is a week without it, and the average then rests on the measures that remain." +
-        (anyGood ? "" : " None of these came out as expected, so the average is drawn grey too.")));
+        (anyGood ? "" : " None of these came out as expected, so the average is drawn grey too.")),
+      el("p", { class: "muted small" }, (anyGood ? "These " + (pick.length === 1 ? "line was" : pick.length + " lines were") + " chosen because they followed the score. The measures that did not are in the list below. " : "") +
+        "This page cannot tell which moved first. With one rating a week that question is not tested, and the 7-day average looks a few days ahead and behind."));
   }
   // One row per measure, grouped by kind: the estimate and its range on one scale.
   function forestChart(a) {
     const des = a.design || {};
     const tested = (a.rows || []).filter((r) => r.status === "tested");
     if (!tested.length) return null;
-    const GROUPS = [["face", "Face"], ["activity", "Activities"], ["daily", "Daily data"]];
+    const GROUPS = [["face", "Face"], ["activity", "Game and evening check-in"], ["daily", "Daily data"]];
     const charted = pickMeasures(a).filter((r) => r.agreement === "consistent");
     const layout = [];
     GROUPS.forEach(([g, name]) => {
@@ -2154,17 +2199,20 @@
       layout.push({ head: name, n: rs.length, cons: rs.filter((r) => r.agreement === "consistent").length, g, more: rs.length - shown.length, canFold: rs.length > 5 });
       shown.forEach((r) => layout.push({ r }));
     });
-    const X0 = -0.5;  // the same scale on every patient's page, so two pages can be compared
-    const W = 1000, LX = 330, RX = 800, RHt = 26, HH = 34, TOP = 30;
+    const X0 = -1;  // the whole scale, the same on every patient's page, so no range is cut and two pages can be compared
+    const hasChange = des.unit === "rating" && tested.some((r) => r.change_rho !== null && r.change_rho !== undefined);
+    const W = 1000, LX = 330, RX = hasChange ? 700 : 800, RHt = 26, HH = 34, TOP = a._example ? 62 : 30;
     const H = TOP + layout.reduce((t, it) => t + (it.r ? RHt : HH), 0) + 8;
     const x = (v) => LX + ((Math.max(X0, Math.min(1, v)) - X0) / (1 - X0)) * (RX - LX);
-    const sv = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "fp", role: "img", "aria-label": "Each measure’s correlation with the reference and its range, grouped by kind and sorted from strongest." });
-    const ticks = [-0.5, 0, 0.5, 1];
+    const sv = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "fp", role: "img", "aria-label": (a._example ? "Generated example. The link was built in. " : "") + "Each measure’s correlation with the reference and its range, grouped by kind and sorted from strongest." });
+    if (a._example) sv.appendChild(svg("text", { x: 4, y: 12, class: "tg-ax" }, "Generated example. The link was built in."));
+    const ticks = [-1, -0.5, 0, 0.5, 1];
     ticks.forEach((g) => {
       sv.appendChild(svg("line", { x1: x(g), y1: TOP - 4, x2: x(g), y2: H - 4, class: g === 0 ? "fp-zero" : "fp-grid" }));
       sv.appendChild(svg("text", { x: x(g), y: TOP - 10, class: "tg-ax", "text-anchor": "middle" }, g === 0 ? "0" : f2(g).replace(".00", "").replace(".50", ".5")));
     });
-    sv.appendChild(svg("text", { x: RX, y: 10, class: "tg-ax", "text-anchor": "end" }, "moves as expected when worse →"));
+    sv.appendChild(svg("text", { x: RX, y: a._example ? 30 : 10, class: "tg-ax", "text-anchor": "end" }, "moves as expected when worse →"));
+    if (hasChange) sv.appendChild(svg("text", { x: W - 4, y: TOP - 10, class: "tg-ax", "text-anchor": "end" }, "week to week"));
     const host = el("div", { class: "viz" }, sv);
     const tip = vizTip(host);
     let cy = TOP;
@@ -2189,7 +2237,8 @@
       g.appendChild(svg("line", { x1: x(r.ci_low), y1: my, x2: x(r.ci_high), y2: my, class: ok ? "fp-ci" : "fp-ci dim" }));
       g.appendChild(svg("circle", { cx: x(r.rho), cy: my, r: 5.5, class: "fp-pt " + (ok ? "k-cons" : r.agreement === "opposite" ? "k-opp" : "k-inc") }));
       g.appendChild(svg("text", { x: RX + 18, y: my + 4, class: ok ? "fp-v" : "fp-v dim" }, f2(r.rho)));
-      g.appendChild(svg("text", { x: W - 4, y: my + 4, class: "tg-ax", "text-anchor": "end" }, f2(r.ci_low) + " to " + f2(r.ci_high) + " · n " + r.n));
+      g.appendChild(svg("text", { x: hasChange ? W - 86 : W - 4, y: my + 4, class: "tg-ax", "text-anchor": "end" }, f2(r.ci_low) + " to " + f2(r.ci_high) + " · n " + r.n));
+      if (hasChange) g.appendChild(svg("text", { x: W - 4, y: my + 4, class: ok ? "fp-v" : "fp-v dim", "text-anchor": "end" }, f2(r.change_rho)));
       g.addEventListener("mousemove", (ev) => {
         const box = sv.getBoundingClientRect();
         tip.show(ev.clientX - box.left, ev.clientY - box.top + 14, [
@@ -2198,6 +2247,7 @@
           el("div", { class: "tip-r" }, el("span", null, "expected when worse"), el("b", null, r.expected)),
           el("div", { class: "tip-r" }, el("span", null, "correlation and range"), el("b", null, f2(r.rho) + " [" + f2(r.ci_low) + ", " + f2(r.ci_high) + "]")),
           el("div", { class: "tip-r" }, el("span", null, (des.unit === "rating" ? "ratings" : "days") + " · p corrected"), el("b", null, r.n + " · " + (r.p_adj < 0.001 ? "< 0.001" : Number(r.p_adj).toFixed(2)))),
+          r.change_rho !== null && r.change_rho !== undefined ? el("div", { class: "tip-r" }, el("span", null, "week-to-week change"), el("b", null, f2(r.change_rho))) : null,
           el("div", { class: "tip-r" }, el("span", null, "judgement"), el("b", null, ok ? "as expected" : words(r.agreement).toLowerCase())),
           (r.caveats || []).length ? el("div", { class: "tip-p" }, "Caveats: " + r.caveats.map((c) => words(c.code).toLowerCase()).join(", ")) : null].filter(Boolean));
       });
@@ -2233,6 +2283,7 @@
     wrap.appendChild(el("div", { class: "bar" },
       el("span", { class: "muted small" }, a.disclaimer || ""), el("div", { class: "push" }, run)));
     if (a.status !== "ready") { wrap.appendChild(empty("Not computed yet. Select “Recalculate”.")); return wrap; }
+    a._example = !!d.example;   // the charts mark themselves, so a screenshot of one still says what it is
     const o = a.overall || {}, ref = a.reference || {}, des = a.design || {}, src = o.sources || {};
     const cor = a.corrections || [], notes = a.data_notes || [];
     const refName = ref.label || ref.key;
@@ -2248,36 +2299,43 @@
     const good = o.pattern === "consistent_with_worse_state" || o.pattern === "partly_consistent";
     const flat = lo !== null && ref.key === "phq9" && hi - lo < 5;
     const headline = flat ? who + "’s " + refShort + " stayed between " + lo + " and " + hi + ". That is too little change to tell whether anything moves with it."
-      : good && did.length && lo !== null ? "When " + who + "’s " + refShort + " was higher (it moved between " + lo + " and " + hi + "), " + who + " " + joinAnd(did) + "."
+      : good && did.length && lo !== null ? (d.example ? "In this generated example, in the weeks when " : "In the weeks when ") + who + "’s " + refShort + " was higher (it moved between " + lo + " and " + hi + "), " + who + " " + joinAnd(did) + "."
       : o.pattern === "opposite_to_expectation" ? who + "’s measures moved against what was expected."
       : o.pattern === "no_clear_relation" ? who + "’s measures did not clearly move with the " + refShort + "."
       : "Not enough data yet to say whether " + who + "’s measures move with the " + refShort + ".";
+    const nObs = des.observations || des.days, testedN = des.rows_tested || 0;
+    const kindsWord = kindsN === 3 ? "all three kinds" : kindsN === 2 ? "two of the three kinds" : kindsN === 1 ? "one of the three kinds" : "no kind";
+    const capped = des.unit === "rating" && des.low_below_ratings && nObs < des.low_below_ratings;
+    const NUM = ["No", "One", "Two", "Three"], lines = o.independent_lines || 0;
     wrap.appendChild(el("section", { class: "panel hero" },
-      el("p", { class: "hero-k" }, "What the data shows"),
+      el("p", { class: "hero-k" }, d.example ? "What this generated example shows" : "What the data shows"),
       el("p", { class: "hero-t" }, headline),
+      d.example ? el("p", { class: "muted" }, who + " is not a real person. A program wrote " + who + "’s days, games and ratings, and it made the measures follow the score. This page shows what the tool would say if such a link existed. It does not show that one exists.") : null,
+      good && !flat && lines >= 2 ? el("p", { class: "muted" }, NUM[Math.min(3, lines)] + " kinds of measure point the same way. They are not " + NUM[Math.min(3, lines)].toLowerCase() + " separate proofs: all of them drift slowly over the same weeks.") : null,
       el("div", { class: "hero-facts" },
-        good && !flat ? el("span", { class: "chip" }, kindsN + (kindsN === 1 ? " kind" : " kinds") + " of measure agree: " + ["face", "activity", "daily"].filter((g) => consRows.some((r) => r.group === g)).map((g) => ({ face: "face", activity: "activities", daily: "daily movement" })[g]).join(", ")) : null,
-        el("span", { class: "chip" }, (des.observations || des.days) + " " + unitWord + " over " + des.days + " days"),
-        el("span", { class: "chip" }, words(o.confidence).toLowerCase() + " confidence" + (o.confidence !== "high" ? ": " + (des.observations || des.days) + " " + unitWord + ", one person" : "")),
-        d.example ? el("span", { class: "chip tag" }, "example data, not a finding") : null)));
+        el("span", { class: "chip" }, (R_PATTERN[o.pattern] || words(o.pattern)) + (good ? ": " + consRows.length + " of " + testedN + " measures, in " + kindsWord : "")),
+        el("span", { class: "chip" }, words(o.confidence) + " confidence" + (capped ? ": " + nObs + " ratings from one person cannot give more" : o.confidence !== "high" ? ": " + nObs + " " + unitWord + ", one person" : "")),
+        el("span", { class: "chip" }, nObs + " " + unitWord + " over " + des.days + " days"),
+        d.example ? el("span", { class: "chip tag" }, "generated example: the link was built in") : null)));
     const together = togetherChart(a);
-    if (together) wrap.appendChild(el("section", { class: "panel" }, el("h2", null, (good && !flat ? "Moving together over " : refShort + " and the closest measures over ") + Math.round(des.days / 7) + " weeks"),
+    if (together) wrap.appendChild(el("section", { class: "panel" }, el("h2", null, (good && !flat ? refShort + " and the measures that followed it over " : refShort + " and the closest measures over ") + Math.round(des.days / 7) + " weeks"),
       together));
     else if (!a.series) wrap.appendChild(empty("Select “Recalculate” to draw the charts."));
     const fp = forestChart(a);
     if (fp) wrap.appendChild(el("section", { class: "panel" }, el("h2", null, "Every measure", el("span", { class: "count" }, des.rows_tested)),
-      el("p", { class: "muted small" }, "How closely each measure followed the " + refName + " across " + (des.observations || "") + " " + unitWord + ". Further right: it moved the way research leads us to expect when symptoms are worse. The bar is the range the true value plausibly lies in; a bar that reaches zero settles nothing. ◆ marks the measures in the chart above; they come first in their group, the rest follow by size."),
+      el("p", { class: "muted small" }, "How closely each measure followed the " + refName + " across " + (des.observations || "") + " " + unitWord + ". Further right: it moved the way research leads us to expect when symptoms are worse. The bar is a rough range. Weeks next to each other are alike, so the real range is wider and the p-values are too small. A bar that reaches zero settles nothing." + (des.unit === "rating" ? " The last number, week to week, asks a harder question: when the score changed from one rating to the next, did the measure change with it? A measure that only drifts over the same weeks is far right on the bar and near zero there." : "") + " ◆ marks the measures in the chart above; they come first in their group, the rest follow by size."),
       fp,
       el("ul", { class: "legend" }, el("li", null, el("span", { class: "dotk k-cons" }), "as expected: range clear of zero and corrected p ≤ 0.10"), el("li", null, el("span", { class: "dotk k-inc" }), "inconclusive"),
         (a.rows || []).some((r) => r.agreement === "opposite") ? el("li", null, el("span", { class: "dotk k-opp" }), "opposite") : null)));
     const tablesBox = el("div", { class: "stack" });
     const strongest = new Set(o.strongest || []);
-    const GROUP = { face: "Face", activity: "Activities", daily: "Daily data" };
+    const GROUP = { face: "Face", activity: "Game and evening check-in", daily: "Daily data" };
+    const byRating = des.unit === "rating";
     ["face", "activity", "daily"].forEach((g) => {
       const rows = (a.rows || []).filter((r) => r.group === g);
       if (!rows.length) return;
       tablesBox.appendChild(panel(GROUP[g], rows.length, table(
-        ["Measure", "Expected when worse", { t: des.unit === "rating" ? "Ratings" : "Days", r: 1 }, "Opposite ← rho → as expected", { t: "p adj.", r: 1 }, "Judgement", "Caveats"],
+        ["Measure", "Expected when worse", { t: byRating ? "Ratings" : "Days", r: 1 }, "Opposite ← rho → as expected", byRating ? { t: "Week to week", r: 1 } : null, { t: "p adj.", r: 1 }, "Judgement", "Caveats"].filter(Boolean),
         rows.map((r) => {
           const tested = r.status === "tested";
           return el("tr", { class: strongest.has(r.key) ? "changed" : "" },
@@ -2285,11 +2343,12 @@
             el("td", null, r.expected, el("span", { class: "sub" }, r.support + " support")),
             el("td", { class: "r num" }, r.n),
             el("td", null, tested ? el("div", { class: "rhocell" }, rhoBar(r), el("span", { class: "num small" }, f2(r.rho) + " [" + f2(r.ci_low) + ", " + f2(r.ci_high) + "]")) : el("span", { class: "muted" }, R_STATUS[r.status] || words(r.status))),
+            byRating ? el("td", { class: "r num" }, tested ? f2(r.change_rho) : "–") : null,
             el("td", { class: "r num" }, tested && r.p_adj !== null ? (r.p_adj < 0.001 ? "< 0.001" : Number(r.p_adj).toFixed(3)) : "–"),
             el("td", null, tested ? [el("span", { class: "chip " + (r.agreement === "consistent" ? "good" : r.agreement === "opposite" ? "bad" : "") }, r.agreement === "consistent" ? "as expected" : words(r.agreement).toLowerCase()),
               r.agreement_source === "code_corrected" ? el("span", { class: "sub" }, "set by code") : null] : "–"),
             caveatCell(r));
-        }), "assoc", { id: "assoc-" + g, filter: 5 })));
+        }), "assoc", { id: "assoc-" + g, filter: byRating ? 6 : 5 })));
     });
     wrap.appendChild(fold("r-tables", "The same numbers as tables", des.rows_tested, tablesBox));
     wrap.appendChild(fold("r-samples", "Sessions collected from the phone", null, samplesPanel(d)));
@@ -2300,7 +2359,12 @@
         el("li", null, "Each measure gets a rank correlation with the " + refName + ", a 95 % range from resampling, and a p-value corrected for the number of measures tested. All of that is done by code."),
         el("li", null, a.appraised_by === "model" ? "The " + modelName((a.inputs || {}).model) + " read only that table of statistics and judged it. A model may propose; code holds every label to what the range supports. Here code lowered " + cor.filter((c) => c.field === "strength").length + " strength labels and changed " + cor.filter((c) => c.field !== "strength").length + " other judgements." : "No model took part; the judgement is code’s own."),
         el("li", null, "“As expected” needs a range clear of zero and a corrected p-value of at most 0.10. That is a lenient bar, chosen for a first look at feasibility, not for a claim."),
-        el("li", null, "Ratings a week apart are not independent of each other, so even these ranges are probably too narrow."),
+        el("li", null, "Ratings a week apart are not independent of each other: weeks next to each other are alike, so the real ranges are wider than drawn and the p-values are too small."),
+        des.unit === "rating" ? el("li", null, "The score asks about two weeks, so ratings a week apart partly describe the same days.") : null,
+        des.unit === "rating" ? el("li", null, "Week to week is the rank correlation of the changes from one rating to the next, measure against score. Where it is much lower than the bar, the measure and the score mostly share a slow drift.") : null,
+        el("li", null, "Confidence is set by code. " + (des.low_below_ratings ? "Fewer than " + des.low_below_ratings + " ratings always gives low, whatever the measures do. " : "") + "The pattern is called “moves as expected” only when, in every kind of measure that agrees, at least half of the measures with an expected direction came out as expected. Otherwise it is “partly as expected”."),
+        el("li", null, "The evening check-in is the person’s own answers, like the score itself, so those two share a method."),
+        el("li", null, "Reaction time comes from at most six taps a game. In the first real games most games had none."),
         el("li", null, "Most plausible other explanation named: " + (o.main_alternative_text || words(o.main_alternative))),
         notes.map((n) => el("li", null, n.text)),
         a.hypotheses_reviewed_by_clinician ? null : el("li", null, "The list of expected directions has not yet been reviewed by a clinician.")),

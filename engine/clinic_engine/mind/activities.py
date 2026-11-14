@@ -243,7 +243,10 @@ def process_activity(a: dict, previous: list[dict], th: Thresholds = T) -> dict:
         # points, so a new phone (a different points-per-centimetre) changes the
         # speeds, and both references start again there.
         per_cm = rvf.get("pt_per_cm")
-        every = [p["revontulet_features"] for p in previous if p.get("revontulet_features")
+        # Each earlier game with the day it was played: games bunched into one
+        # sitting are not a usual range, so a reference also needs enough days.
+        every = [(p["revontulet_features"], str(p.get("started_at", ""))[:10]) for p in previous
+                 if p.get("revontulet_features")
                  and (per_cm is None or p["revontulet_features"].get("pt_per_cm") is None
                       or abs(p["revontulet_features"]["pt_per_cm"] - per_cm) <= 0.5)]
         earlier = every[-th.activity_baseline_max:]
@@ -254,13 +257,16 @@ def process_activity(a: dict, previous: list[dict], th: Thresholds = T) -> dict:
         rv_usual, rv_z, rv_start, rv_start_z = {}, {}, {}, {}
         for name in REVONTULET_FEATURES:
             for games, usual, zs in ((earlier, rv_usual, rv_z), (start, rv_start, rv_start_z)):
-                vals = [e[name] for e in games if e.get(name) is not None]
-                b = _stats(vals, name, th) if len(vals) >= th.revontulet_baseline_min else None
+                vals = [e[name] for e, _ in games if e.get(name) is not None]
+                days = {d for e, d in games if e.get(name) is not None}
+                b = (_stats(vals, name, th) if len(vals) >= th.revontulet_baseline_min
+                     and len(days) >= th.revontulet_min_days else None)
                 zs[name] = _z(rvf.get(name), b)
                 if b:
                     usual[name] = {"median": round(b["median"], 3), "scale": round(b["scale"], 3),
                                    "n": b["n"]}
         out.update(revontulet_features=rvf, revontulet_z=rv_z, revontulet_usual=rv_usual,
                    revontulet_start=rv_start, revontulet_start_z=rv_start_z,
-                   revontulet_baseline_sessions=len(earlier))
+                   revontulet_baseline_sessions=len(earlier),
+                   revontulet_baseline_days=len({d for _, d in earlier}))
     return out
