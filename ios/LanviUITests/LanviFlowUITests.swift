@@ -233,7 +233,10 @@ final class LanviFlowUITests: XCTestCase {
         pause(3.0)
         tap(app.buttons, "I did it", "real.didit")
         pause(3.5)
-        tap(app.buttons, "Do something more", "done.more")
+        // Done for today keeps the whole row: More, Play again, the chat.
+        XCTAssertTrue(app.buttons["home.primary"].waitForExistence(timeout: 3), "Play again is on Home when done")
+        XCTAssertTrue(app.buttons["Talk to Lanvi"].exists, "the chat button is on Home when done")
+        tap(app.buttons, "More with Lanvi", "done.more")
         pause(1.6)
         tap(app.buttons, "Sit with me a minute", "more.breathe")
         pause(1.8)
