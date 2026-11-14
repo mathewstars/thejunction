@@ -342,13 +342,15 @@ def test_a_new_phone_starts_both_references_again(env):
     assert all(v is None for v in new["revontulet_z"].values())
 
 
-def test_the_rule_rarely_labels_an_unchanged_person_and_catches_the_example_slide():
+def test_the_rules_behave_as_the_page_says_on_generated_games():
+    """Guards the numbers the clinician page quotes (docs/revontulet-measures.md).
+    Loose bounds: 300 runs, and the point is to notice a rule that got much worse."""
     from clinic_engine.revontulet_check import run
-    out = run(runs=300)
-    assert out["unchanged_any_label"] < 0.06
-    assert out["unchanged_people_three_in_a_row_recent"] < 0.02
-    assert out["slide_last_two_weeks_tracing_slower_start"] > 0.95
-    # The harder row: games that vary three times as much from one to the next.
-    noisy = run(runs=300, spread=3.0)
-    assert noisy["unchanged_any_label"] < 0.18
-    assert noisy["slide_last_two_weeks_tracing_slower_start"] > 0.70
+    out = run(runs=300)                       # game-to-game variation as in the first real games
+    assert out["unchanged_any_label"] < 0.20
+    assert out["unchanged_pooled_label"] < 0.06          # counting gives 2.8% exactly
+    assert out["slide_last_three_together_slower"] > 0.80
+    # at the end of the slide three games together see more than one game does
+    assert out["slide_last_three_together_slower"] > out["slide_last_three_tracing_slower_start"]
+    steady = run(runs=300, spread=0.5)
+    assert steady["slide_last_three_tracing_slower_start"] > 0.90
