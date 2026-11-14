@@ -180,9 +180,11 @@ struct HomeStoryScreen: View {
             bounce += 1
             try? await Task.sleep(for: .milliseconds(350))
             withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { arrived = true }
-            if let autoAnswer {
+            // The -demo walk-through answers by itself.
+            let auto = autoAnswer ?? (ProcessInfo.processInfo.arguments.contains("-demo") ? story.answers.first?.id : nil)
+            if let auto {
                 try? await Task.sleep(for: .seconds(4.5))
-                answer(autoAnswer)
+                answer(auto)
             }
         }
     }

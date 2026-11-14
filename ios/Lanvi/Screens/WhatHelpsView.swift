@@ -31,7 +31,7 @@ struct WhatHelpsView: View {
     var body: some View {
         GeometryReader { geo in
             let compact = geo.size.height < 700
-            let hill = geo.size.height * (compact ? 0.50 : 0.56)
+            let hill = geo.size.height * (compact ? 0.54 : 0.60)
             let fox: CGFloat = compact ? 150 : 190
             ZStack(alignment: .top) {
                 SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: hill)
