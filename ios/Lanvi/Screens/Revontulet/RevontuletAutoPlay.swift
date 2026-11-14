@@ -69,7 +69,9 @@ struct RevontuletAutoPlay {
             for i in f.emberU.indices where hitsEmber(i, round: e.round) && !emberTapped.contains(i) && f.emberShownAt[i] != nil {
                 let seen = emberSeen[i] ?? now
                 emberSeen[i] = seen
-                let wait = e.slowSince != nil && coachPause > 0 ? 1.2 : (0.22 + 0.12 * Double(i)) * pace
+                // A person: lifts off the sling, finds the ember, taps (about half a second
+                // or more after the flash).
+                let wait = e.slowSince != nil && coachPause > 0 ? 1.2 : (0.45 + 0.12 * Double(i) + 0.15 * rng.next()) * pace
                 if now - seen >= wait {
                     emberTapped.insert(i)
                     let p = f.emberPoint(i)

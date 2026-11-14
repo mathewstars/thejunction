@@ -18,11 +18,11 @@ struct RevontuletEngine: Equatable {
 
     static let rounds = 3
     static let easyFlight = 0.7
-    static let hardFlight = 1.25
+    static let hardFlight = 1.8
     static let foxFlight = 1.0
     /// Where the two embers sit along a hard path, and when the spark reaches each.
     static let emberU = [0.36, 0.7]
-    static let emberT = [0.45, 0.88]
+    static let emberT = [0.85, 1.45]
     static let impactHold = 0.95        // the next lines light while the debris still falls
     static let breakDelay = 0.55        // the breaking impact's cracks race before the burst
     static let celebrateDelay = 0.8     // the burst, then the fox's celebration
@@ -167,15 +167,15 @@ struct RevontuletEngine: Equatable {
         case .interrupt:
             guard beat != .done, startUptime != nil else { return ev }
             if stroking { ev += endStroke(at: now) }
-            let asleep = beat == .sleep && completed
+            // Once the wall has burst the game is finished, however the person leaves; before
+            // that, leaving the app is an interruption.
+            let finished = burstAt != nil
             beat = .done
             beatStart = now
-            if !asleep {
-                endAt = now
-                completed = false
-                interrupted = true
-            }
-            ev.append(.ended(completed: asleep))
+            if !(completed && endAt != nil) { endAt = now }
+            completed = finished
+            interrupted = !finished
+            ev.append(.ended(completed: finished))
         case .finish:
             // Continue, once the fox is asleep.
             guard beat == .sleep, completed else { return ev }
@@ -186,15 +186,14 @@ struct RevontuletEngine: Equatable {
             resumeFlight(at: now)
             guard beat != .done else { return ev }
             if stroking { ev += endStroke(at: now) }
-            // Closing on the goodnight, once asleep, is a finished game.
-            let asleep = beat == .sleep && completed
+            // Once the wall has burst the game is finished, however the person leaves
+            // (celebration, warmth, goodnight); closing before that is stopped by the person.
+            let finished = burstAt != nil
             beat = .done
             beatStart = now
-            if !asleep {
-                endAt = now
-                completed = false
-            }
-            ev.append(.ended(completed: asleep))
+            if !(completed && endAt != nil) { endAt = now }
+            completed = finished
+            ev.append(.ended(completed: finished))
         case let .down(p, r):
             noteRadius(r)
             // One finger plays. A second finger landing while one is down is ignored (unless
@@ -420,6 +419,7 @@ struct RevontuletEngine: Equatable {
             f.emberU = Self.emberU
             f.emberT = Self.emberT
             f.emberShownAt = [nil, nil]
+            f.emberShownReal = [nil, nil]
             f.emberHitAt = [nil, nil]
             f.emberMissed = [false, false]
         }
@@ -462,11 +462,13 @@ struct RevontuletEngine: Equatable {
             guard t >= f.emberT[i] - RevontuletFlight.emberLead - RevontuletFlight.emberEarly,
                   t <= f.emberT[i] + RevontuletFlight.emberGrace else { continue }
             let d = hypot(p.x - f.emberPoint(i).x, p.y - f.emberPoint(i).y)
-            if d < max(64, layout.size.width * 0.2), d < (best?.d ?? .infinity) { best = (i, d) }
+            if d < max(76, layout.size.width * 0.22), d < (best?.d ?? .infinity) { best = (i, d) }
         }
         guard let hit = best else { return [] }
         let shown = f.launch + f.emberT[hit.i] - RevontuletFlight.emberLead
-        let ms = Self.ms(fc - shown)
+        // On the real clock, from the flash the person saw to the finger (a tap a moment
+        // before the flash counts, as 0).
+        let ms = Self.ms(now - (f.emberShownReal[hit.i] ?? now))
         f.emberHitAt[hit.i] = now
         if f.emberShownAt[hit.i] == nil {
             f.emberShownAt[hit.i] = shown
@@ -548,6 +550,7 @@ struct RevontuletEngine: Equatable {
                 let shown = f.launch + f.emberT[i] - RevontuletFlight.emberLead
                 if f.emberShownAt[i] == nil, fc >= shown {
                     f.emberShownAt[i] = shown
+                    f.emberShownReal[i] = now
                     records[round].embersShown += 1
                     ev.append(.emberShown(index: i))
                 }

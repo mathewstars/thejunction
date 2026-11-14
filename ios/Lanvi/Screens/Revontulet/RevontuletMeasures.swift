@@ -121,13 +121,15 @@ final class RevontuletSendGate: @unchecked Sendable {
         a.revontulet == nil || accepted ? a : a.withoutRevontulet
     }
 
-    /// After a failed send: the plain record to send once more, or nil when the failure had
-    /// nothing to do with the measures.
+    /// After a refused send: the record without the measures, or nil when it had none. Only a
+    /// refusal of its content is remembered for the run; "too large" is about face frames.
     func retry(after error: Error, sent: API.ActivityIn) -> API.ActivityIn? {
-        guard sent.revontulet != nil, case APIError.rejected = error else { return nil }
-        lock.lock()
-        refusedThisRun = true
-        lock.unlock()
+        guard sent.revontulet != nil, case APIError.rejected(let code) = error else { return nil }
+        if code != "body_too_large" {
+            lock.lock()
+            refusedThisRun = true
+            lock.unlock()
+        }
         return sent.withoutRevontulet
     }
 

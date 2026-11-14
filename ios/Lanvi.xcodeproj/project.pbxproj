@@ -43,6 +43,7 @@
 		63F055804A5075D00F92CCF8 /* FaceSense.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0FB8AE15346D15FAA5BA3AF /* FaceSense.swift */; };
 		65C54BD206B6EA73A157288C /* RevontuletMeasures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FA6F39FA7B8EDFDD18AB261 /* RevontuletMeasures.swift */; };
 		65D2DC99CA91B8EF96FAEC64 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC334EE89ADCF793E4BC0D9B /* SharedModels.swift */; };
+		681091D31275649D0FBDAD90 /* RevontuletRecordTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A700C88249DAC5E5D1DFC936 /* RevontuletRecordTests.swift */; };
 		6ED5E6C6908681928159A9E4 /* RevontuletArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AF5D037379E7DAC80011C4A /* RevontuletArt.swift */; };
 		70C6A7B3EB4DC1265714772A /* CheckinModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C049B0C402500302F08D494 /* CheckinModels.swift */; };
 		7E44533D8B224A540E1246AA /* WhatHelpsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55866B9F718B556BABB20541 /* WhatHelpsView.swift */; };
@@ -207,6 +208,7 @@
 		9BE5BB327EC6AAE2BE8CF146 /* HealthDays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthDays.swift; sourceTree = "<group>"; };
 		9D1CB7C86C24141AF8D7F012 /* HealthTypeCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthTypeCatalog.swift; sourceTree = "<group>"; };
 		A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameMeter.swift; sourceTree = "<group>"; };
+		A700C88249DAC5E5D1DFC936 /* RevontuletRecordTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevontuletRecordTests.swift; sourceTree = "<group>"; };
 		B0FB8AE15346D15FAA5BA3AF /* FaceSense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceSense.swift; sourceTree = "<group>"; };
 		B2CF64DD8486227CA2F2DC5B /* LanviMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviMotion.swift; sourceTree = "<group>"; };
 		B4817EE878DEB9396B0E72CB /* Nunito-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraBold.ttf"; sourceTree = "<group>"; };
@@ -276,6 +278,7 @@
 				F7415116ED3C0D377127D698 /* HealthTests.swift */,
 				14332D1FBE2937C010FE068A /* LanviEyesTests.swift */,
 				753C4D1AA1DF18A98D5B915B /* RevontuletMeasuresTests.swift */,
+				A700C88249DAC5E5D1DFC936 /* RevontuletRecordTests.swift */,
 			);
 			path = LanviTests;
 			sourceTree = "<group>";
@@ -757,6 +760,7 @@
 				3F11B1A55A50095524067A63 /* HealthTests.swift in Sources */,
 				9CC3E3C1AA7E2D00D7F3C812 /* LanviEyesTests.swift in Sources */,
 				B7F3D3AC39FC358C2FB2D5F9 /* RevontuletMeasuresTests.swift in Sources */,
+				681091D31275649D0FBDAD90 /* RevontuletRecordTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

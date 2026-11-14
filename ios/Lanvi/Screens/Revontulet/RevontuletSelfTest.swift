@@ -117,6 +117,8 @@ enum RevontuletSelfTest {
         if length > RevontuletEngine.cap + 0.05 { return "ran \(length) s, over the cap" }
         if length < 0 { return "ended before it started" }
         if !closed && !r.completed { return "ended without finishing and nobody closed it" }
+        // Fault 1 (records): once the wall has burst the game is finished, however it ends.
+        if r.burstUptime != nil && !r.completed { return "the wall burst but the game is not finished" }
         if r.completed && r.burstUptime == nil { return "finished without the wall breaking" }
         if r.completed && r.strokes.count > RevontuletEngine.strokesWanted { return "too many strokes" }
         let a = ActivityRouter.record(r)
@@ -139,6 +141,7 @@ enum RevontuletSelfTest {
             if (round.pullPt ?? 0) > 2000 || round.traceLifts > 100 { return "pull or lifts out of range" }
         }
         if let b = m.brokeThroughS, b > a.durationS + 1 { return "broke_through_s after the end" }
+        // Fault 2 (records): every ember hit is a reaction time, none dropped.
         if rts.count != r.embersHit { return "reaction_ms is not exactly the ember taps" }
         return nil
     }
