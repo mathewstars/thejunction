@@ -90,9 +90,14 @@ private struct PanelChrome<Content: View>: View {
     }
 }
 
-/// A presented screen's own fox shows only once the screen has fully risen over
-/// Home, and is hidden the moment the screen starts to close: Home's fox and the
-/// screen's fox are never on screen together, not even for a frame.
+/// A presented screen's own fox shows once the screen has risen over Home, and is
+/// hidden the moment the screen starts to close: Home's fox and the screen's fox
+/// are never on screen together.
+///
+/// The wait is an animation delay run by the system (no task to cancel, no
+/// completion to miss): the fox starts fading in 0.32 s after the screen appears,
+/// when the rise (LanviTiming.overlay) is about 97% done, and is fully there by
+/// 0.5 s, every time.
 private struct ShowsAfterRise: ViewModifier {
     var closing: Bool
     @State private var risen = false
@@ -100,11 +105,10 @@ private struct ShowsAfterRise: ViewModifier {
     func body(content: Content) -> some View {
         content
             .opacity(risen && !closing ? 1 : 0)
-            .animation(closing ? nil : .easeOut(duration: 0.22), value: risen)
-            .task {
-                // The rise is LanviTiming.overlay (response 0.4): by then Home is covered.
-                try? await Task.sleep(for: .milliseconds(430))
-                risen = true
+            // Hiding for the close is never animated (no half-faded fox).
+            .animation(nil, value: closing)
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.18).delay(0.32)) { risen = true }
             }
     }
 }
