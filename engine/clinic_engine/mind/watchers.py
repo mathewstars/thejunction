@@ -22,11 +22,12 @@ from .thresholds import METRICS, PLAUSIBLE, T, Thresholds
 LEVELS = ("watch", "attention", "urgent")
 KINDS = ("deviation", "novelty", "silence", "oddity", "ignored", "asked_for_help", "low_notes",
          "weak_rounds", "round_mismatch", "fading", "stopped_early", "not_played",
-         "slower_reactions", "face_flat", "checkins_stopped", "plans_not_done")
+         "slower_reactions", "face_flat", "checkins_stopped", "plans_not_done",
+         "model_noticed")
 # Kinds that sit at "watch" alone and rise to "attention" only while a
 # movement drop is held (thresholds.py, rules for activity signals).
 WEIGHT_ONLY = ("ignored", "low_notes", "weak_rounds", "not_played", "slower_reactions",
-               "face_flat", "checkins_stopped", "plans_not_done")
+               "face_flat", "checkins_stopped", "plans_not_done", "model_noticed")
 # Kinds the responder answers with a suggestion.
 RESPONDABLE = ("deviation", "novelty", "low_notes")
 
@@ -51,6 +52,45 @@ class View:
     activities: list[dict] = field(default_factory=list)  # processed activities, oldest first
     tz: object = None  # the patient's time zone
     th: Thresholds = T
+    days_reading: dict | None = None  # the stored day reading (level 2 read, code checked)
+
+    def model_noticed(self) -> dict:
+        """What the level-2 model found that the fixed rules did not flag and
+        that code confirmed in the numbers; {} when there is nothing.
+
+        - daily numbers: a stretch only the model named, lower, confirmed by
+          code's check (day_reading.check_stretch), still going on at the end
+          of the window, in a reading not older than model_notice_max_age_days;
+        - face: in the last two sessions the model read, the fixed rule counted
+          no smile while the model found faint ones that code confirmed, and an
+          earlier session had clear smiles (smiles have become faint).
+
+        Only items that passed code's check count. A model's word alone never
+        reaches this."""
+        th, out = self.th, {}
+        dr = self.days_reading or {}
+        if dr.get("status") == "ready" and dr.get("at") and dr.get("stream"):
+            age = self.now - datetime.fromisoformat(dr["at"])
+            last_d = dr["stream"]["days"] - 1
+            hits = [s for s in (dr.get("reading") or {}).get("stretches", [])
+                    if s.get("status") == "model_only" and s.get("direction") == "lower"
+                    and s.get("channel") in ("steps", "walk_speed", "sleep_h", "hrv")
+                    and s.get("end_d", -1) >= last_d - th.model_notice_recent_days]
+            if hits and age <= timedelta(days=th.model_notice_max_age_days):
+                best = max(hits, key=lambda s: s.get("days", 0))
+                out.update(daily_channel=best["channel"], daily_shape=best["shape"],
+                           daily_days=best.get("days"))
+        read = [a["frames_reading"]["agreement"] for a in self.activities
+                if (a.get("frames_reading") or {}).get("status") == "ready"
+                and (a["frames_reading"].get("agreement") or {}).get("smiles_code") is not None]
+        read = read[-th.model_notice_face_window:]
+        if len(read) >= 3:
+            recent, earlier = read[-2:], read[:-2]
+            if all(g["smiles_code"] == 0 and (g.get("smiles_faint") or 0) >= 1 for g in recent) \
+                    and any(g["smiles_code"] >= 2 for g in earlier):
+                out.update(faint_sessions=len(recent),
+                           faint_smiles=sum(g.get("smiles_faint") or 0 for g in recent))
+        return out
 
     def of_type(self, typ: str) -> list[dict]:
         return [a for a in self.activities if a["type"] == typ]
@@ -410,6 +450,16 @@ def watch_face_flat(view: View) -> list[Op]:
                    "face_usual_again")
 
 
+def watch_model_noticed(view: View) -> list[Op]:
+    """A flag for the clinic from what the level-2 model found and code
+    confirmed. It sits at "watch" alone and, like the other activity signals,
+    rises to "attention" only while a movement drop is held. It never brings a
+    suggestion to the patient and never an alert by itself."""
+    found = view.model_noticed()
+    return _simple(view, "model_noticed", bool(found), view.today.isoformat() if found else None,
+                   "model_found_confirmed_by_code", found, "model_no_longer_reports_it")
+
+
 def watch_checkins_stopped(view: View) -> list[Op]:
     th = view.th
     days = sorted({_local_day(view, a["started_at"]) for a in view.of_type("checkin")})
@@ -439,7 +489,7 @@ def watch_plans_not_done(view: View) -> list[Op]:
 WATCHERS = [watch_silence, watch_oddity, watch_deviation, watch_novelty, watch_ignored,
             watch_help, watch_low_notes, watch_weak_rounds, watch_round_mismatch, watch_fading,
             watch_stopped_early, watch_not_played, watch_slower_reactions, watch_face_flat,
-            watch_checkins_stopped, watch_plans_not_done]
+            watch_checkins_stopped, watch_plans_not_done, watch_model_noticed]
 
 
 def run_watchers(view: View) -> list[Op]:

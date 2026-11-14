@@ -21,8 +21,10 @@ The parts that are pure code:
   and keeps it apart as a faint smile when the rise is in the numbers.
 - aggregate(): the agreement over many sessions, with their number.
 
-Clinician-only. Nothing here reaches the patient, opens or closes attention,
-changes what is offered or feeds the learning review.
+Clinician-only. Nothing here reaches the patient, changes what is offered or
+feeds the learning review. One thing follows from it: when the model finds
+something the fixed rules did not flag and code confirms it, the mind opens a
+low-level flag for the clinic (watchers.watch_model_noticed).
 """
 
 from __future__ import annotations
