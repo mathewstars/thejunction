@@ -126,6 +126,28 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
 
    `focus` (Sparks and snow): `correct_taps`, `wrong_taps` (tapped a snowflake), `misses` (whole numbers), `reaction_ms` (list of whole milliseconds, at most 200; the server computes the statistics), optional `face_raw` (or, from older clients, `face`).
 
+   `revontulet` (optional, only on `focus`, only from the Revontulet game): what that game measures beyond taps and reaction times. Leave it out (or send null) and the record means exactly what it did before; a record without it hashes as before. Numbers only, no touch paths or positions; every object refuses unknown fields (422 `invalid_request`). What each measure is and the study idea behind it: [`docs/revontulet-measures.md`](../revontulet-measures.md).
+
+   ```json
+   "revontulet": {
+     "rounds": [{"effort": "hard", "choice_ms": 940, "trace_ms": 1220, "trace_length_pt": 279.3,
+                 "trace_mean_speed_pt_s": 228.9, "trace_peak_speed_pt_s": 455.0, "trace_lifts": 0,
+                 "pull_pt": 108.2, "pull_hold_ms": 540, "embers_shown": 2, "embers_hit": 2, "bonus": true}],
+     "strokes": [{"ms": 1450, "length_pt": 410.0, "mean_speed_pt_s": 282.8}],
+     "broke_through_s": 52.4, "fox_finished": false, "pt_per_cm": 64.2, "touch_radius_mean_pt": 21.3, "touch_radius_var": 4.7}
+   ```
+
+   | Field | Limits |
+   |---|---|
+   | `rounds` | 0 to 3. `effort` `easy` or `hard` and `choice_ms` (0 to 120000) required. Optional: `trace_ms` (0 to 120000), `trace_length_pt` (0 to 20000, default 0), `trace_mean_speed_pt_s` (0 to 20000), `trace_peak_speed_pt_s` (0 to 50000), `trace_lifts` (0 to 100, default 0), `pull_pt` (0 to 2000), `pull_hold_ms` (0 to 120000), `embers_shown` and `embers_hit` (0 to 5, default 0, hit at most shown), `bonus` (default false) |
+   | `strokes` | 0 to 10, each `ms` (0 to 60000), `length_pt` (0 to 20000), `mean_speed_pt_s` (0 to 20000) |
+   | `broke_through_s` | 0 to 600 or null. More than `duration_s` + 1: 422 `implausible_activity` (`broke_through_after_end`) |
+   | `fox_finished` | true when time ran out and the fox's own spark broke the wall; false or null otherwise |
+   | `pt_per_cm` | 10 to 400 or null |
+   | `touch_radius_mean_pt`, `touch_radius_var` | 0 to 200 and 0 to 10000, or null |
+
+   Stored with the activity and returned on the clinician's focus sessions. Not yet used for the day, suggestions, XP or the own normal.
+
    `breathing` (Breathe with Lanvi): `time_played_s`, optional `breaths_completed`, optional `face_raw` (or `face`).
 
    `checkin` (evening, once a day): `good_things` (0 to 3 items), `plan` (one item or null), `plan_done` (`yes | no | not_asked`, about yesterday's plan). An item is either `{"catalog_id": "walked"}` (ids from `GET /v1/checkin/options`) or `{"text": "a few words"}` (at most 120 characters), never both.
@@ -231,7 +253,7 @@ The engine serves a plain web page for clinicians at `/` (files in `engine/clini
 | `POST /v1/clinic/login` | Session token, kept in memory and `sessionStorage` only |
 | `GET /v1/clinic/me` | Product name, clinic name, and whether the demo panel may be shown (`demo.enabled`) |
 | `GET /v1/clinic/patients` | One line per patient, those needing a look first. Also `spark` (28 daily movement z-scores, null for missing days), `since` (oldest held item), `level` (highest held level) and `reason_short` (at most 6 words, from a fixed set) |
-| `GET /v1/clinic/patients/{id}` | Detail; `progress.band` gives the own-normal band for the charts. `activities` has per type (`focus`, `breathing`, `checkin`) the sessions with date, completed, headline `values` and their `z` against own normal (or null), the face summary with tracking quality, the checked session reading, and `counts` (offered, played when offered, played, finished) for the last 7 and 28 days. Each focus or breathing session has `face_source` (`raw`: computed by the server from frames, `summary`: sent by the phone, or null) and, for raw sessions, `raw` `{rate_hz, frames, tracked_share, channels}` (counts only, never the frames), and `frames_reading` (below). `lanvi` has `xp` and `stage` (small facts, not clinical signals) |
+| `GET /v1/clinic/patients/{id}` | Detail; `progress.band` gives the own-normal band for the charts. `activities` has per type (`focus`, `breathing`, `checkin`) the sessions with date, completed, headline `values` and their `z` against own normal (or null), the face summary with tracking quality, the checked session reading, and `counts` (offered, played when offered, played, finished) for the last 7 and 28 days. Each focus or breathing session has `face_source` (`raw`: computed by the server from frames, `summary`: sent by the phone, or null) and, for raw sessions, `raw` `{rate_hz, frames, tracked_share, channels}` (counts only, never the frames), and `frames_reading` (below). Each focus session also has `revontulet`: the Revontulet measures as sent, or null for other focus games. `lanvi` has `xp` and `stage` (small facts, not clinical signals) |
 | `GET /v1/clinic/patients/{id}/trace` | The decision trace; every chain has a `headline` (at most 6 words) and an `outcome` (`attention_opened`, `attention_raised`, `attention_closed`, `suggested`, `message_sent`, `refused`, `nothing`) |
 | `GET /v1/clinic/patients/{id}/rounds/{round_id}` | Round detail; `usual_round` (or null) gives a usual round of the same mode for the second trail |
 | `GET /v1/clinic/patients/{id}/activities/{activity_id}/face-raw` | Research download: the stored raw frames of one session as the phone sent them, plus `frames`, `channel_count`, `tracked_frames`. 404 when the session has no frames. Each download is audited (activity id only, no values) |
