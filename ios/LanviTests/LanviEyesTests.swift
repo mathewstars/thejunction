@@ -304,6 +304,7 @@ final class LanviEyesTests: XCTestCase {
             var s = steps
             if t >= backAt { s.append(LookStep(at: backAt, target: nil)) }
             m.lookSteps = s
+            m.touchTimeline = tapper.timeline
             m.touch = tapper.touch; m.touchAt = tapper.touchAt; m.touchSide = tapper.touchSide
             m.prevTouch = tapper.prevTouch; m.prevTouchAt = tapper.prevTouchAt
             m.hops = false

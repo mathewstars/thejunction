@@ -169,6 +169,7 @@ struct LanviPuppet: View {
         m.lookSteps = lookSteps
         m.follow = follow
         m.followAt = followAt
+        m.touchTimeline = tapper.timeline
         m.touch = tapper.touch
         m.touchAt = tapper.touchAt
         m.touchSide = tapper.touchSide
@@ -213,6 +214,7 @@ struct LanviPuppet: View {
             m.heldFrom = m.held
             m.touch = nil
             m.prevTouch = nil
+            m.touchTimeline = []
             m.petting = false
             m.pettingSince = -100
             m.pettingFrom = -100

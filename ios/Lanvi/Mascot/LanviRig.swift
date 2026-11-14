@@ -322,8 +322,8 @@ struct RigFrame {
 
 /// How the eyes are drawn in one frame. One eye set at a time, never two: the eye under
 /// its lid (open, a blink, half-closed, shut), or the happy arcs, or the wide eyes. A shut
-/// eye is the painted lashes on the face (the open eye and its lid fade out at the very
-/// end of shutting, so it never shows a blank pale disc in a ring).
+/// eye is the painted lashes on the face (once the lid covers the eye it gives way to
+/// them at once, so a shut eye never shows a blank pale disc in a ring).
 struct EyeDraw: Equatable {
     enum Kind: Equatable { case lidded, happy, wide }
     var kind: Kind = .lidded
@@ -331,8 +331,9 @@ struct EyeDraw: Equatable {
     var down = 0.0
     /// The wide eyes' pop as they open (extra size, settling to 0).
     var pop = 0.0
-    /// The open eye and its lid.
-    var eyeOpacity: Double { kind == .lidded ? 1 - Motion.smooth(0.85, 1, down) : 0 }
+    /// The open eye and its lid. Once the lid covers the eye, it gives way at once to the
+    /// shut eye's painted lashes (a fade would show a see-through ring for a frame or two).
+    var eyeOpacity: Double { kind == .lidded && down < 0.92 ? 1 : 0 }
     /// The shut eye's painted lashes.
     var lashOpacity: Double { kind == .lidded ? Motion.smooth(0.75, 0.9, down) : 0 }
     /// The normal open eyes, lids fully open, every layer at full opacity.

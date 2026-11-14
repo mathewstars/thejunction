@@ -71,6 +71,7 @@ struct LanviMotion {
     var lookSteps: [LookStep] = [LookStep(at: -100, target: nil)]
     var follow: Int? = nil               // preview: a scripted finger path (`followPoint`)
     var followAt: Double = -100
+    var touchTimeline: [LanviTapper.Entry] = []  // taps from a finger (`LanviTapper`), oldest first
     var touch: LanviTouchAct? = nil      // the touch reaction playing
     var touchAt: Double = -100
     var touchSide: Double = 1            // -1 the viewer's left, +1 right
@@ -542,7 +543,9 @@ struct LanviMotion {
     func busy(_ x: Double) -> Double {
         var b = 0.0
         if let r = reaction { b = max(b, window(reactionAt, r.reactionLength, x)) }
-        if let a = touch { b = max(b, window(touchAt, a.duration, x)) }
+        if !touchTimeline.isEmpty {
+            if let now = touchAt(x), let a = now.act { b = max(b, window(now.at, a.duration, x)) }
+        } else if let a = touch { b = max(b, window(touchAt, a.duration, x)) }
         b = max(b, petting ? Motion.smooth(pettingSince, pettingSince + 0.2, x) : window(pettingSince - 1.2, 1.2, x))
         b = max(b, window(hopAt, 1.3, x))
         if let k = follow, x >= followAt - 0.05, x < followAt + Self.followLength(k) + 1 { b = 1 }
@@ -979,8 +982,15 @@ struct LanviMotion {
     /// 0.3 s after it ends). Only what had started by `x` counts, so a touch that comes
     /// later never cuts off a blink already under way.
     func reactionOwnsEyes(_ x: Double) -> Bool {
-        if let a = touch, x >= touchAt, x < touchAt + a.duration + 0.3 { return true }
-        if prevTouch != nil, x >= prevTouchAt, x < touchAt + 0.3 { return true }
+        if !touchTimeline.isEmpty {
+            if let now = touchAt(x) {
+                if let a = now.act, x < now.at + a.duration + 0.3 { return true }
+                if now.prev != nil, x < now.at + 0.3 { return true }
+            }
+        } else {
+            if let a = touch, x >= touchAt, x < touchAt + a.duration + 0.3 { return true }
+            if prevTouch != nil, x >= prevTouchAt, x < touchAt + 0.3 { return true }
+        }
         if let r = reaction, x >= reactionAt, x < reactionAt + r.reactionLength + 0.3 { return true }
         if let r = prevReaction, x >= prevReactionAt, x < reactionAt + 0.3, r.reactionLength > 0 { return true }
         if petting ? x >= pettingSince : (x >= pettingSince - 0.05 && x < pettingSince + 1.5) { return true }
