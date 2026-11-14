@@ -33,7 +33,9 @@ What it does, in plain words:
    bib comes off the body so it can swell with each breath; the tail and ears are split
    into overlapping bands along their length (each fading in over the one before) so
    they can bend. Where a marking
-   came off, the head is filled with the fur around it.
+   came off (only the marking itself, not the rim of fur it carries), the head is filled
+   by growing the fur at the hole's edge inwards; each moving layer's rim is wider than
+   its largest slide, so a head turn only ever moves fur over the head's own fur.
 
 Only Pillow is needed. Re-run it whenever better art arrives.
 """
