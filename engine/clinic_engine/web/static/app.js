@@ -1640,7 +1640,6 @@
   const WORSE = { "face.smile_time_share": "smiled less", "face.smile_rate_per_min": "smiled less often", "face.smile_intensity": "smiled more faintly",
     "face.eye_smile_share": "had fewer smiles that reached the eyes", "face.smile_response_share": "smiled less at pleasant moments", "face.smile_response_latency_s": "was slower to smile",
     "face.facial_activity": "showed less facial movement", "face.brow_down_share": "drew the brows down more", "face.inner_brow_up_share": "raised the inner brows more",
-    "face.lip_down_share": "held the mouth corners down more", "face.lip_press_share": "pressed the lips together more",
     "face.blink_duration_ms": "blinked more slowly", "face.look_down_share": "looked down more", "face.head_pitch_deg": "held the head lower", "face.head_movement": "moved the head less",
     "focus.median_reaction_ms": "reacted more slowly", "focus.reaction_spread_ms": "reacted less evenly", "focus.error_rate": "made more errors", "activity.completed_share": "finished fewer activities",
     "checkin.good_things": "named fewer good things", "checkin.plan_done_share": "carried out fewer plans", "daily.steps": "walked less", "daily.walking_speed_m_s": "walked more slowly", "daily.hrv_ms": "had lower heart-rate variability" };

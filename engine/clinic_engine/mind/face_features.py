@@ -57,8 +57,7 @@ SUMMARY_FIELDS = ("smile_rate_per_min", "smile_intensity", "facial_activity",
                   "blink_rate_per_min", "look_down_share", "head_tilt_deg", "smile_time_share",
                   "eye_smile_share", "smile_response_share", "smile_response_latency_s",
                   "brow_down_share", "inner_brow_up_share", "blink_duration_ms",
-                  "head_pitch_deg", "head_movement", "smile_asymmetry",
-                  "lip_down_share", "lip_press_share")
+                  "head_pitch_deg", "head_movement", "smile_asymmetry")
 
 
 # ---- checking the request ---------------------------------------------------------------
@@ -282,15 +281,6 @@ def summarize(raw: dict, th: Thresholds = T) -> dict:
     out["brow_down_share"] = _r(_share(_pair(cols, "browDownLeft", "browDownRight"), idx,
                                        th.brow_down_min))
     out["inner_brow_up_share"] = _r(_share(cols.get("browInnerUp"), idx, th.inner_brow_up_min))
-
-    # The mouth held down or pressed shut. Observer-rated "lips down" and "tight
-    # lips" track treatment response in the literature (docs/research-notes-
-    # gamified-dtx.md); here the share of tracked frames at or above a threshold,
-    # like the brows. Lip corners down = mouthFrown; lips pressed = mouthPress.
-    out["lip_down_share"] = _r(_share(_pair(cols, "mouthFrownLeft", "mouthFrownRight"), idx,
-                                      th.lip_down_min))
-    out["lip_press_share"] = _r(_share(_pair(cols, "mouthPressLeft", "mouthPressRight"), idx,
-                                       th.lip_press_min))
 
     # How much the face moved: blocks of about face_motion_block_s.
     k = max(1, int(round(rate * th.face_motion_block_s)))

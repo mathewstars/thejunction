@@ -27,9 +27,9 @@ def _span(start_s, dur_s, rate):
 
 def make_raw(seconds=60.0, rate=30, channels=None, smiles=(), blinks=(), lively=False,
              head_lively=False, jitter=0.008, head_jitter=0.3, untracked=(), look_down=(),
-             lip_down=(), lip_press=(), moments_ms=None, marker=False, seed=7):
+             moments_ms=None, marker=False, seed=7):
     """smiles: (start_s, dur_s, left, right[, cheek]); blinks: (start_s, dur_s);
-    untracked / look_down / lip_down / lip_press: (start_s, dur_s) spans."""
+    untracked / look_down: (start_s, dur_s) spans."""
     channels = list(channels or ALL_CHANNELS)
     rng = random.Random(seed)
     n = int(round(seconds * rate))
@@ -74,13 +74,6 @@ def make_raw(seconds=60.0, rate=30, channels=None, smiles=(), blinks=(), lively=
             for c in ("eyeLookDownLeft", "eyeLookDownRight"):
                 if c in cols and i < n:
                     cols[c][i] = 0.5
-    for spans, pair in ((lip_down, ("mouthFrownLeft", "mouthFrownRight")),
-                        (lip_press, ("mouthPressLeft", "mouthPressRight"))):
-        for start, dur in spans:
-            for i in _span(start, dur, rate):
-                for c in pair:
-                    if c in cols and i < n:
-                        cols[c][i] = 0.5
     if marker and "noseSneerLeft" in cols:
         cols["noseSneerLeft"] = [MARKER] * n
     tracked = [1] * n
