@@ -297,7 +297,7 @@ def _face(rng: random.Random, flat: float = 1.0, rx: random.Random | None = None
 
 
 # Which draw of the generated fine movement the examples use. At the real spread a
-# drop to a third shows in about 7 of 10 such stories (14 of the first 20 draws); this is one where the
+# drop to a third shows in about 7 of 10 such stories (25 of the 32 draws tried); this is one where the
 # example dip shows and the unchanged example stays quiet (as EXAMPLE_SEED for the game).
 FINE_SEED = 2
 
@@ -374,8 +374,11 @@ def _fine(activity_id: str, flat: float = 1.0) -> dict:
     """The fields a generated face session carries for its fine movement: the
     summary and the counts, computed from the generated stream as the server
     computes them from a real one."""
-    _FINE_FLAT[activity_id] = flat
-    return copy.deepcopy(_fine_summary(activity_id, flat, FINE_SEED))
+    # The example people share session ids ("example-act-003"), so the person is part
+    # of the name the stream is drawn from: no two people get the same face.
+    name = f"{_FINE_WHO}{activity_id}"
+    _FINE_FLAT[activity_id] = (name, flat)
+    return copy.deepcopy(_fine_summary(name, flat, FINE_SEED))
 
 
 @lru_cache(maxsize=4096)
@@ -385,14 +388,15 @@ def _fine_summary(activity_id: str, flat: float, draw: int) -> dict:
     return {"face_fine": face_fine.summarize(stream), "face_fine_info": face_fine.describe(stream)}
 
 
-_FINE_FLAT: dict[str, float] = {}   # the `flat` each session's stream was drawn with
+_FINE_FLAT: dict[str, tuple[str, float]] = {}   # per session id: the name and `flat` its stream was drawn with
+_FINE_WHO = ""                                    # set by the writer: whose sessions are being drawn
 
 
 def put_fine_stream(store, base: str, rec: dict) -> None:
     """Keep the generated stream beside the session, as for a real one.
     `base` is the patient's folder."""
     if rec.get("face_fine"):
-        stream = fine_stream(rec["id"], _FINE_FLAT.get(rec["id"], 1.0))
+        stream = fine_stream(*_FINE_FLAT.get(rec["id"], (rec["id"], 1.0)))
         store.put(base + f"facefine/{rec['id']}.json",
                   {"activity_id": rec["id"], "type": rec["type"], "started_at": rec["started_at"],
                    "received_at": rec["started_at"], **stream, "frames": len(stream["samples"])})
@@ -479,6 +483,8 @@ def write_activities(store: Store, clinic_id: str, patient_id: str, today, tz: Z
     rng = random.Random(seed + 31)
     rx = random.Random(seed + 37)  # the newer face fields only
     rv = random.Random(seed + 43)  # Revontulet's measures only
+    global _FINE_WHO
+    _FINE_WHO = f"{seed}:"         # each example person has their own seed
     base = f"clinics/{clinic_id}/patients/{patient_id}/activities/"
     for key in store.list(base):
         if (store.get(key) or {}).get("example"):

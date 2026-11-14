@@ -383,3 +383,12 @@ def test_a_person_with_the_fine_stream_is_judged_by_its_reach_and_one_low_sessio
     a = next(a for a in reversed(env.repo().activities()) if a.get("face_fine"))
     stream = env.repo().get(f"facefine/{a['id']}.json")
     assert face_fine.summarize(stream)["regions"] == a["face_fine"]["regions"]
+
+
+def test_two_example_people_do_not_share_a_generated_face():
+    from clinic_engine import seed
+    seed._FINE_WHO = "100:"
+    a = seed._fine("example-act-003")["face_fine"]["regions"]["jaw"]["reach_mm"]
+    seed._FINE_WHO = "101:"
+    b = seed._fine("example-act-003")["face_fine"]["regions"]["jaw"]["reach_mm"]
+    assert a != b
