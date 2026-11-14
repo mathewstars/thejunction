@@ -92,5 +92,7 @@ def build_chat_request(settings: Settings, pack: Pack) -> tuple[str, dict, dict]
                              # a thinking model counts its thinking here too
                              "maxOutputTokens": 1024},
     }
+    if settings.chat_thinking:  # CHAT_THINKING, e.g. "low": a quicker answer
+        body["generationConfig"]["thinkingConfig"] = {"thinkingLevel": settings.chat_thinking}
     headers = {"x-goog-api-key": settings.gemini_api_key}
     return url, headers, body

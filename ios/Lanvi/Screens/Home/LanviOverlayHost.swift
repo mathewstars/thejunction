@@ -24,7 +24,6 @@ struct LanviOverlayHost: View {
             let away = geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom + 40
             stack(away: away)
         }
-        .ignoresSafeArea(.keyboard)
     }
 
     private func stack(away: CGFloat) -> some View {

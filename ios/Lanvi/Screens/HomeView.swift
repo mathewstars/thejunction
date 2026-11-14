@@ -83,10 +83,28 @@ struct HomeView: View {
     /// A screen to open once the sheet on top has gone.
 
     var body: some View {
+        // Home itself never moves for a keyboard; what is presented over it
+        // (the chat) sits beside it and does make room for the keyboard.
+        ZStack {
+            home
+                .ignoresSafeArea(.keyboard)
+            // ONE way to present anything over Home: it rises from the bottom on one
+            // spring, over one scrim, and goes back down the same way. Home underneath
+            // never changes, scales, blurs or snapshots while it moves.
+            LanviOverlayHost(
+                screen: cover.map { c in AnyView(coverContent(c)) },
+                screenID: cover?.id,
+                panel: sheet.map { s in AnyView(sheetContent(s)) },
+                panelID: sheet?.id,
+                onClosePanel: { sheet = nil })
+        }
+    }
+
+    private var home: some View {
         #if DEBUG
         let _ = FrameMeter.count("Home")
         #endif
-        GeometryReader { geo in
+        return GeometryReader { geo in
             let w = geo.size.width
             let L = Layout(size: geo.size, insets: geo.safeAreaInsets, away: away)
 
@@ -174,19 +192,6 @@ struct HomeView: View {
             .onChange(of: geo.size) { _, s in size = s; insets = geo.safeAreaInsets }
         }
         .sensoryFeedback(.success, trigger: haptic)
-        // The chat's keyboard must never reach Home underneath it.
-        .ignoresSafeArea(.keyboard)
-        // ONE way to present anything over Home: it rises from the bottom on one
-        // spring, over one scrim, and goes back down the same way. Home underneath
-        // never changes, scales, blurs or snapshots while it moves.
-        .overlay {
-            LanviOverlayHost(
-                screen: cover.map { c in AnyView(coverContent(c)) },
-                screenID: cover?.id,
-                panel: sheet.map { s in AnyView(sheetContent(s)) },
-                panelID: sheet?.id,
-                onClosePanel: { sheet = nil })
-        }
         .onChange(of: store.celebration) { _, c in
             if let c { celebrate(c) }
         }

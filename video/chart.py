@@ -53,6 +53,10 @@ def frame(t, title):   # t in 0..1: how much of the 84 days is drawn
                 if len(run) > 1: g.line([(a, b) for a, b, _ in run], fill=INK, width=3 * S, joint="curve")
                 run = []
             run.append((x(p[0]), yl(i, p[1]), p[0]))
+        nx = [p for p in zz if p[0] > upto]
+        if run and nx and nx[0][0] - run[-1][2] <= 7:            # the tip moves smoothly towards the next day
+            lastp = [p for p in zz if p[0] <= upto][-1]; f = (upto - lastp[0]) / (nx[0][0] - lastp[0])
+            run.append((x(upto), yl(i, lastp[1] + (nx[0][1] - lastp[1]) * f), upto))
         if len(run) > 1: g.line([(a, b) for a, b, _ in run], fill=INK, width=3 * S, joint="curve")
     g.text((PL, H - 62 * S), "Invented patient, example data. Lower lines: her own spread; down means less.", font=small, fill=MUTED)
     return im.resize((1280, 720), Image.LANCZOS)
@@ -68,6 +72,10 @@ def single(i, t, head):          # one measure on its own, for the split screens
             if len(run) > 1: g.line([(a, b) for a, b, _ in run], fill=GLOW, width=4 * S, joint="curve")
             run = []
         run.append((x0 + p[0] / (N - 1) * (x1 - x0), ym - max(-1.9, min(1.9, p[1])) * amp / 1.9, p[0]))
+    nx = [p for p in zz if p[0] > upto]
+    if run and nx and nx[0][0] - run[-1][2] <= 7:
+        lastp = [p for p in zz if p[0] <= upto][-1]; f = (upto - lastp[0]) / (nx[0][0] - lastp[0]); zv = lastp[1] + (nx[0][1] - lastp[1]) * f
+        run.append((x0 + upto / (N - 1) * (x1 - x0), ym - max(-1.9, min(1.9, zv)) * amp / 1.9, upto))
     if len(run) > 1: g.line([(a, b) for a, b, _ in run], fill=GLOW, width=4 * S, joint="curve")
     if run: g.ellipse((run[-1][0] - 7 * S, run[-1][1] - 7 * S, run[-1][0] + 7 * S, run[-1][1] + 7 * S), fill=GLOW)
     g.text((40 * S, 560 * S), "Example data, invented patient", font=small, fill=MUTED)
@@ -82,6 +90,6 @@ out, secs, title, t0, t1 = sys.argv[1], float(sys.argv[2]), sys.argv[3], float(s
 os.makedirs(out, exist_ok=True)
 n = int(secs * 24)
 for k in range(n):
-    e = k / max(1, n - 1); e = e * e * (3 - 2 * e)
+    e = k / max(1, n - 1); e = 0.5 * e + 0.5 * (e * e * (3 - 2 * e))
     frame(t0 + (t1 - t0) * e, title).save(f"{out}/{k:04d}.png")
 print(out, n, "frames")

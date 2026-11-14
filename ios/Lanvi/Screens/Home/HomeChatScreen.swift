@@ -24,6 +24,11 @@ struct HomeChatScreen: View {
     var body: some View {
         ZStack(alignment: .top) {
             PaintedWorld(scene: store.worldScene)
+            // A soft, even veil of deeper blue over the scene, the same on dawn, day
+            // and night, so white bubbles always read against it.
+            Color(hex: 0x1E3A9A).opacity(0.30)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
 
             VStack(spacing: 0) {
                 header
@@ -76,6 +81,10 @@ struct HomeChatScreen: View {
         .padding(.horizontal, 20)
         .padding(.top, 6)
         .padding(.bottom, 8)
+        // The scene around Lanvi at the top: a tap there puts the keyboard away too
+        // (X and Help are buttons and keep their own taps).
+        .contentShape(Rectangle())
+        .onTapGesture { focused = false }
     }
 
     // MARK: The thread
@@ -103,7 +112,13 @@ struct HomeChatScreen: View {
                 .padding(.top, 8)
             }
             .scrollIndicators(.hidden)
+            // Drag the list down to put the keyboard away, following the finger.
             .scrollDismissesKeyboard(.interactively)
+            .scrollBounceBehavior(.always)
+            // A tap on the list (not on a bubble's button) puts the keyboard away.
+            // Buttons inside win over this parent tap, so they still work.
+            .contentShape(Rectangle())
+            .onTapGesture { focused = false }
             .onChange(of: store.chat.messages.count) { _, _ in settleDown(proxy) }
             .onChange(of: store.chatWaiting) { _, _ in settleDown(proxy) }
             .onChange(of: focused) { _, _ in settleDown(proxy, first: 0.35) }
@@ -239,16 +254,36 @@ struct HomeChatScreen: View {
                     .transition(.opacity)
             }
             HStack(alignment: .bottom, spacing: 10) {
-                TextField("Write to Lanvi", text: $draft, axis: .vertical)
+                TextField("", text: $draft,
+                          prompt: Text("Write to Lanvi").foregroundStyle(Theme.inkSecondary),
+                          axis: .vertical)
+                    .accessibilityLabel("Write to Lanvi")
                     .font(Theme.rounded(17, .semibold))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1...4)
                     .focused($focused)
+                    .submitLabel(.send)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
+                    // Like Lanvi's speech bubble: white, a 2-point blue-grey outline,
+                    // a slightly thicker darker bottom edge.
                     .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.white))
-                    .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.line).offset(y: 3))
+                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(LanviBubbleBackground.outline, lineWidth: 2))
+                    .background(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(LanviBubbleBackground.edge).offset(y: 3))
                     .onChange(of: draft) { _, v in
+                        // Return sends (a multi-line field turns it into a newline);
+                        // Return on an empty field puts the keyboard away.
+                        if v.contains("\n") {
+                            draft = v.replacingOccurrences(of: "\n", with: "")
+                            if draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                focused = false
+                            } else {
+                                send()
+                            }
+                            return
+                        }
                         if v.count > limit { draft = String(v.prefix(limit)) }
                     }
                 Button(action: send) {
@@ -259,21 +294,31 @@ struct HomeChatScreen: View {
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.chatWaiting)
                 .opacity(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
                 .accessibilityLabel("Send")
+                .accessibilityIdentifier("chat.send")
             }
         }
         .padding(.horizontal, 16)
         .padding(.top, 10)
         .padding(.bottom, 8)
-        .background(
-            LinearGradient(colors: [Color.white.opacity(0), Color.white.opacity(0.75)],
-                           startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-        )
+        // A solid snow-white strip under the field that runs to the very bottom,
+        // behind the keyboard too: nothing of the scene shows through there.
+        .background(alignment: .top) {
+            VStack(spacing: 0) {
+                LinearGradient(colors: [Color(hex: 0xF4F8FF).opacity(0), Color(hex: 0xF4F8FF)],
+                               startPoint: .top, endPoint: .bottom)
+                    .frame(height: 24)
+                Color(hex: 0xF4F8FF)
+            }
+            .padding(.top, -24)
+            .ignoresSafeArea(edges: .bottom)
+        }
         .animation(LanviTiming.swap, value: left <= 40)
     }
 
+    /// Sends, and keeps the keyboard up for the next message. Empty does nothing.
     private func send() {
-        let text = draft
+        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !store.chatWaiting else { return }
         draft = ""
         Task { await store.sendChat(text) }
     }
@@ -314,7 +359,8 @@ struct HomeChatScreen: View {
         case "long":
             focused = true
             draft = String(repeating: "Quiet day today, nothing much happened. ", count: 7)
-        case "talk", "help":
+        case "talk", "help", "kbtalk":
+            if args[i + 1] == "kbtalk" { focused = true; try? await Task.sleep(for: .milliseconds(900)) }
             let lines = args[i + 1] == "help"
                 ? ["I need help"]
                 : ["Slept badly last night", "The coffee outside was nice though", "Thanks Lanvi"]

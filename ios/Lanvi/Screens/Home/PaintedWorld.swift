@@ -114,7 +114,10 @@ private struct WorldLife: View {
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 60)) { context in
-            let t = context.date.timeIntervalSinceReferenceDate
+            // One shared, continuous clock for every scene: it advances at most
+            // 1/30 s per frame, so a layer that was paused (under an overlay, in the
+            // background) or just created never fast-forwards to catch up.
+            let t = WorldClock.shared.now(context.date)
             Canvas { ctx, size in
                 if scene == .night { glints(&ctx, t: t); shimmer(&ctx, t: t) }
                 if snow { flakes(&ctx, size: size, t: t) }
@@ -182,4 +185,27 @@ private struct WorldLife: View {
     }
 
     private func frac(_ v: Double) -> Double { v - floor(v) }
+}
+
+/// The world's own time: continuous and shared by every painted scene. Each
+/// reading advances it by the real time since the last one, but never by more
+/// than 1/30 s, and never backwards. Snow, glints and shimmer are pure
+/// functions of it.
+final class WorldClock {
+    static let shared = WorldClock()
+    private var world: Double = 0
+    private var lastReal: Double?
+
+    func now(_ date: Date) -> Double {
+        let real = date.timeIntervalSinceReferenceDate
+        if let lastReal {
+            let dt = real - lastReal
+            if dt > 0 { world += min(dt, 1.0 / 30) }
+            // Several scenes read the same frame: only real time moving forward counts.
+            if dt > 0 { self.lastReal = real }
+        } else {
+            lastReal = real
+        }
+        return world
+    }
 }
