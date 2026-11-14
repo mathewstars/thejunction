@@ -38,6 +38,10 @@ To build it yourself you need a Mac with Xcode and an iPhone. The face numbers n
 
 What an install sends (games, face numbers and, if you allow it, Apple Health days) lands on that shared profile, which the open demo shows to anyone. Do not install it on a phone whose data you want to keep private, and do not allow Apple Health there. More about the app: [`ios/README.md`](ios/README.md).
 
+## What we tested on real data
+
+We fixed our hypotheses before any data, then ran them on five public datasets of real people, with our own code unchanged and every rule decided before looking at a result. On 1,684 real videos of people with and without depression, the three face hypotheses we rated strongest all hold (less time smiling, fewer smiles, less facial movement). In 1,390 people with a Fitbit, less movement goes with a slightly higher PHQ-9 within the same person. And our movement rule flags a third of healthy volunteers within three months, which is why it never raises more than "attention" by itself. What held, what went against us and how each study was done: [`docs/research-studies.md`](docs/research-studies.md).
+
 ## Three things to look at
 
 ### The mind
