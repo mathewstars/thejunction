@@ -4,7 +4,7 @@ import SwiftUI
 /// every idle moment, reaction and held mood. Launch with `-screen puppet`.
 ///
 /// - `-plain YES`: the fox alone on flat pure green (for measuring: track the pupils).
-/// - `-puppetDemo idle|reactions|moments|touch`: plays a fixed script with a caption and no
+/// - `-puppetDemo idle|reactions|moments|touch|follow`: plays a fixed script with a caption and no
 ///   buttons, for recordings. `reactions` plays each reaction once, `moments` each idle
 ///   moment once, `idle` nothing (the idle picks its own moments). `-puppetDemo YES`
 ///   is the old script: idle, then happy, then surprised.
@@ -28,6 +28,8 @@ struct LanviPuppetPreview: View {
     @State private var touchSide: Double = 1
     @State private var touchHold: Double?
     @State private var touchTrigger = 0
+    @State private var followPath = 0
+    @State private var followTrigger = 0
 
     private let freeze: LanviDebugFreeze? = {
         guard let raw = UserDefaults.standard.string(forKey: "puppetFreeze") else { return nil }
@@ -80,6 +82,7 @@ struct LanviPuppetPreview: View {
             .lanviTalking(talking)
             .lanviLookAt(look)
             .lanviTouch(touchZone, side: touchSide, hold: touchHold, trigger: touchTrigger)
+            .environment(\.lanviFollowRequest, followTrigger == 0 ? nil : LanviFollowRequest(path: followPath, token: followTrigger))
             .environment(\.lanviDebugFreeze, freeze)
             .environment(\.lanviDebugBounds, bounds)
     }
@@ -141,6 +144,7 @@ struct LanviPuppetPreview: View {
                      + [("Talking", talking, { talking.toggle(); caption = talking ? "Talking" : "" }),
                         ("Look", look != nil, { nextLook() }),
                         ("Hop", false, { bounce += 1; caption = "Hop" }),
+                        ("Follow", false, { followIt(followTrigger % 2) }),
                         ("Bounds", bounds, { bounds.toggle() })])
             }
             .padding(.horizontal, 16)
@@ -174,6 +178,13 @@ struct LanviPuppetPreview: View {
         moment = m
         momentTrigger += 1
         caption = label
+    }
+
+    /// A scripted finger for the eyes to follow: 0 a slow circle (6 s), 1 a figure of eight (8 s).
+    private func followIt(_ path: Int) {
+        followPath = path
+        followTrigger += 1
+        caption = path == 0 ? "Follow: a slow circle" : "Follow: a figure of eight"
     }
 
     /// Touch a place (the side alternates, so ears, cheeks and paws take turns).
@@ -252,6 +263,13 @@ struct LanviPuppetPreview: View {
             caption = ""
         case "idle":
             caption = "Idle"
+        case "follow":
+            await at(1.0)
+            followIt(0)
+            await at(8.0)
+            followIt(1)
+            await at(17.0)
+            caption = ""
         case "touch":
             // Nine different touch reactions in about 20 s.
             let script: [(Double, LanviTouchZone, String, Double?)] = [

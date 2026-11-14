@@ -348,12 +348,14 @@ final class AppStore {
         days.roll(to: Date())
         await flushOutbox()
         await flushFeedback()
+        await flushPreferences()
         await refresh()
     }
 
     private func load() async {
         await flushOutbox()
         await flushFeedback()
+        await flushPreferences()
         await refresh()
         if checkinOptions == nil { checkinOptions = try? await backend.checkinOptions() }
     }
@@ -514,6 +516,20 @@ final class AppStore {
     @discardableResult
     func setPreferences(_ helps: [String]) async -> String? {
         try? await backend.setPreferences(helps).line.text
+    }
+
+    /// First run: remember what helps and send it in the background, never blocking
+    /// the person. If it does not get through, it is sent again on the next open.
+    func sendPreferences(_ helps: [String]) {
+        UserDefaults.standard.set(helps, forKey: "lanvi.pendingHelps")
+        Task { await flushPreferences() }
+    }
+
+    private func flushPreferences() async {
+        guard let helps = UserDefaults.standard.stringArray(forKey: "lanvi.pendingHelps") else { return }
+        if (try? await backend.setPreferences(helps)) != nil {
+            UserDefaults.standard.removeObject(forKey: "lanvi.pendingHelps")
+        }
     }
 
     // MARK: Demo helpers

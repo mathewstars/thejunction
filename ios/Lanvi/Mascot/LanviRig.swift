@@ -163,8 +163,22 @@ extension Rig {
     static let maxPitch = 0.11
 
     /// The most a look shifts each eye on its white patch (head pixels), on top of the
-    /// patch's own move: the eye always stays inside its patch, with a margin.
-    static let eyeTravel = CGSize(width: 7, height: 6)
+    /// patch's own move. The pupils carry the look now, so the eyes themselves stay put.
+    static let eyeTravel = CGSize(width: 0, height: 0)
+
+    /// How far each pupil (iris and glints) moves inside its eye at a full look, in the
+    /// eye picture's pixels; the glints move a quarter as far.
+    static let pupilTravel = CGSize(width: 24, height: 15)
+
+    /// Where the pupil sits inside the eye for a pose, from rest (eye picture pixels).
+    /// `eyeX`, `eyeY` are where the eyes look (about -7...7 head pixels; `eyeCross` pulls
+    /// the two pupils toward each other, for a near target or a boop). Soft-limited, so
+    /// the iris never leaves the white.
+    static func pupil(left: Bool, pose q: Pose) -> CGPoint {
+        let gx = tanh((q.eyeX + (left ? q.eyeCross : -q.eyeCross)) / 7)
+        let gy = tanh(q.eyeY / 6)
+        return CGPoint(x: gx * pupilTravel.width, y: gy * pupilTravel.height)
+    }
 
     /// Where a face point (head pixels from the head's centre) moves when the head faces
     /// `dirX`, `dirY` (head pixels), and how much the face squeezes there.
@@ -182,8 +196,8 @@ extension Rig {
         let s = faceShift(patchHome, dirX: q.dirX, dirY: q.dirY)
         let home = left ? eyeL : eyeR
         let w = Double(eyeTravel.width), h = Double(eyeTravel.height)
-        let gx = CGFloat(w * tanh((q.eyeX + (left ? q.eyeCross : -q.eyeCross)) / w))
-        let gy = CGFloat(h * tanh(q.eyeY / h))
+        let gx = w > 0 ? CGFloat(w * tanh((q.eyeX + (left ? q.eyeCross : -q.eyeCross)) / w)) : 0
+        let gy = h > 0 ? CGFloat(h * tanh(q.eyeY / h)) : 0
         return (CGPoint(x: home.x + gx + s.dx, y: home.y + dropY + gy + s.dy),
                 CGPoint(x: patchHome.x + s.dx, y: patchHome.y + s.dy))
     }
