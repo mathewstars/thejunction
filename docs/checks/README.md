@@ -139,3 +139,23 @@ Beside LifeSnaps this gives a second, lower false-alarm figure (about 4% of peop
 The score leans most on how little the face and the head move, then on blinking and the brows; the smile measures add little once movement is in. Published models on this dataset that read the raw frame sequences reach roughly 0.72 to 0.77 accuracy; ours, from a dozen summary numbers, gets 0.70 at the same cut.
 
 This score is not in the server and should not be: it was fitted on OpenFace numbers from video logs, the server computes its measures from ARKit during a game, and a weight fitted on one does not carry over to the other. It also learns whatever else separates the two groups of videos (topic, filming, platform). What it gives us is an order of magnitude for how much is in these measures on real faces, and which of them to look at first when our own recordings exist.
+
+### LMVD through our fine-movement code
+
+`lmvd_fine.py`, output `lmvd-fine-2026-11-15.json`. LMVD has no face mesh, but it has OpenFace's 68 face landmarks in every frame. The script lays each frame's landmarks over the video's own median face (using the eye corners and the bridge of the nose, which takes out where the head is and how far away), takes for nine regions how far the landmark sits from its own median place, turns pixels into millimetres by the distance between the outer eye corners, and hands that stream, unchanged, to `clinic_engine.mind.face_fine.summarize` (rules version 4): the same code that sums up the stream from the Face ID sensor. 1676 videos gave a summary (1066 good, 607 partly tracked); the noise the code measured from the streams has a median of 0.30 mm.
+
+What we expected was written into the script before it ran: with depression, less reach, lower top speed and fewer brief movements.
+
+| Measure | Expected in depression | Median, depression | Median, others | Chance the depression video is higher | Result |
+|---|---|---|---|---|---|
+| Reach (how far a region goes from rest), mm | lower | 4.247 | 6.605 | 0.29 (0.26 to 0.32) | as expected |
+| Top speed, mm a second | lower | 36.56 | 45.07 | 0.35 (0.32 to 0.37) | as expected |
+| Brief movements a minute, all regions | lower | 281.6 | 241.3 | 0.62 (0.59 to 0.64) | opposite |
+| Brief movements of the mouth corners a minute | lower | 37.89 | 33.68 | 0.58 (0.55 to 0.61) | opposite |
+| Left-right difference of the mouth | none | 0.071 | 0.069 | 0.50 (0.47 to 0.53) | no direction fixed |
+
+- **Reach and speed hold, and strongly.** A region of the face travels about 4 mm from rest in the depression group against 6.6 mm in the other, and moves more slowly. Reach is the clearest single difference of anything we measured on this dataset.
+- **Brief movements went the other way.** We expected fewer; there are more. The likely reason is in the rule, not in the faces: it counts a movement only if it is short, and in a face that moves less a syllable of speech is short and stands out, while in a livelier face the same moment is part of a longer expression and is not counted. So "brief movements per minute" does not mean what we hoped on people who are talking. It has to be tested on the game, where nobody speaks.
+- **Does the fine signal add to the action units?** A score from the five fine measures alone ranks unseen videos at 0.71; the ten action-unit measures alone at 0.74; both together at 0.74. So on this data the fine signal carries most of the same information and adds almost nothing on top, which is the outcome the research proposal named as possible ("the mesh may add nothing").
+
+Limits beyond those above: these are flat picture landmarks from compressed video, not a depth sensor; a head turned sideways leaks into the numbers; only the first 12,000 frames of a video are used; and the people are talking.
