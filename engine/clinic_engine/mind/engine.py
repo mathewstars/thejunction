@@ -958,9 +958,9 @@ class Mind:
             result["reason"] = "input_refused"
         ag = result.get("agreement") or {}
         counts = {k: ag.get(k) for k in ("smiles_reported", "smiles_confirmed",
-                                         "smiles_corrected", "smiles_missed",
+                                         "smiles_corrected", "smiles_faint", "smiles_missed",
                                          "segments_reported", "segments_confirmed",
-                                         "blinks_model", "blinks_code", "overall_replaced")}
+                                         "blinks_model", "blinks_code", "overall_same")}
         try:
             # Counts and codes only: never a frame value.
             self.trace(repo, "level2", "accepted" if result["status"] == "ready" else

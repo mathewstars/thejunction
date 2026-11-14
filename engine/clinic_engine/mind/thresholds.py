@@ -136,9 +136,22 @@ class Thresholds:
     # touches attention, suggestions or lessons.
     frames_rate_hz: float = 5.0  # rows per second sent (blocks of frames averaged)
     frames_max_frames: int = 400  # longer recordings get a lower rate to fit
-    # A reported smile is confirmed when this share of its length overlaps a
-    # smile code found itself.
-    frames_smile_overlap: float = 0.5
+    # A reported smile is the same smile as one code found when the two spans
+    # overlap by at least this share of their union (the model reads 5 rows per
+    # second, so its edges are up to 0.2 s off; a sliver inside a smile and a
+    # span several times wider than it both fall below).
+    frames_smile_iou: float = 0.3
+    # A faint smile: a reported smile that touches no smile of code's (the
+    # signal stayed under smile_onset) is kept apart when, over its span, the
+    # smile signal lies above the session's resting level (its median) by this
+    # much on average and this much at its peak. Estimated, not calibrated;
+    # ARKit jitter on a resting mouth is about 0.02.
+    frames_faint_mean_rise: float = 0.05
+    frames_faint_peak_rise: float = 0.10
+    # A reported segment must last this long (the prompt asks for two seconds);
+    # eyes_closed and not_tracked may be shorter.
+    frames_segment_min_s: float = 2.0
+    frames_segment_min_short_s: float = 0.5
     # Code's "side" of a smile: mean(mouthSmileLeft - mouthSmileRight) inside it
     # at least this (left) or at most minus this (right); else "both".
     frames_side_diff: float = 0.15

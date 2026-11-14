@@ -19,7 +19,7 @@ Lanvi is a little Arctic fox whose tail glows. In Finland the northern lights ar
 - No streaks. No "you missed 3 days". After a gap Lanvi says "I kept the light on for you."
 - The person never sees a mood or a score, and Lanvi never says anything like "you look sad". Measurements go to the server and the clinician page only.
 - A Help button is one tap away on every screen (from `docs/app-design.md`, unchanged).
-- The front camera is opt-in. No photo or video is ever saved or sent. Only a few numbers per activity leave the phone.
+- The front camera is opt-in. No photo or video is ever saved or sent. Numbers only leave the phone: how far each part of the face moved, about thirty times a second during the activity (`docs/face-raw.md`).
 
 ## Lanvi, the character (works like the bird in Finch)
 

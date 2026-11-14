@@ -92,6 +92,36 @@ class Outreach:
             if self.recorder is not None:
                 self.recorder(pack, out, (time.monotonic() - t0) * 1000, self.level2_model, 2)
 
+    async def _frames_call(self, url: str, headers: dict, body: dict,
+                           timeout: float) -> str | None:
+        """The frame reading's call, at most three attempts with the same
+        checked body: a 400 is tried once more without the response schema (a
+        model that does not take one), a busy or failing service (429, 5xx, a
+        timeout) or an empty reply once more after a short wait."""
+        import asyncio
+        waited = False
+        for _ in range(3):
+            try:
+                text = gemini.parse_response(await self._post("gemini", url, body, headers,
+                                                              timeout) or {})
+                if text is not None or waited:
+                    return text
+            except httpx.HTTPStatusError as exc:
+                code = exc.response.status_code
+                config = body["generationConfig"]
+                if code == 400 and "responseSchema" in config:
+                    body = {**body, "generationConfig": {k: v for k, v in config.items()
+                                                         if k != "responseSchema"}}
+                    continue
+                if waited or not (code == 429 or code >= 500):
+                    raise
+            except httpx.TransportError:
+                if waited:
+                    raise
+            waited = True
+            await asyncio.sleep(self.settings.gemini_frames_retry_wait_s)
+        return None
+
     async def _level2(self, pack: Pack) -> str | None:
         # The frame reading sends a long stream and the model thinks before it
         # answers: it gets its own output limit and timeout; other tasks keep theirs.
@@ -114,10 +144,16 @@ class Outreach:
                 return await LocalModel(self.settings, transport=self.transport).complete(
                     Pack(1, pack.task, pack.messages, pack.payload, pack.ref_map),
                     json_mode=True, max_tokens=max_tokens or 1500)
+            schema = None
+            if frames:
+                from .mind.frame_reading import RESPONSE_SCHEMA as schema
             url, headers, body = gemini.build_request(self.settings, pack,
-                                                      max_output_tokens=max_tokens or 4000)
-            data = await self._post("gemini", url, body, headers, timeout)
-            return gemini.parse_response(data or {})
+                                                      max_output_tokens=max_tokens or 4000,
+                                                      response_schema=schema)
+            if not frames:
+                data = await self._post("gemini", url, body, headers, timeout)
+                return gemini.parse_response(data or {})
+            return await self._frames_call(url, headers, body, timeout)
         except GateError:
             raise
         except Exception as exc:  # noqa: BLE001
