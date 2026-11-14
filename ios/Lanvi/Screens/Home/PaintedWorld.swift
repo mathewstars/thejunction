@@ -237,7 +237,7 @@ private struct WorldLife: View {
         g.blendMode = .plusLighter
         let strength = restingStrength + 0.9 * flare
         let span = WorldFrame.imageSize.width * frame.scale
-        let green = (r: 0.49, g: 0.96, b: 0.77), violet = (r: 0.71, g: 0.55, b: 1.0)
+        let green = (r: 0.20, g: 0.92, b: 0.62), violet = (r: 0.58, g: 0.38, b: 1.0)
         for ribbon in 0..<2 {
             let r = Double(ribbon)
             let baseY = 0.13 + 0.10 * r
@@ -253,9 +253,9 @@ private struct WorldLife: View {
                 let c = Color(red: green.r + (violet.r - green.r) * mix,
                               green: green.g + (violet.g - green.g) * mix,
                               blue: green.b + (violet.b - green.b) * mix)
-                let a = min(0.22 * strength * breathe + 0.32 * flare, 0.62)
+                let a = min(0.34 * strength * breathe + 0.26 * flare, 0.58)
                 let p = frame.point(CGFloat(fx), CGFloat(fy))
-                let w = span * 0.16, h = span * (0.05 + 0.02 * breathe)
+                let w = span * 0.15, h = span * (0.032 + 0.014 * breathe)
                 var layer = g
                 layer.translateBy(x: p.x, y: p.y)
                 layer.rotate(by: .radians(atan(slope)))
@@ -302,9 +302,8 @@ private struct WorldLife: View {
     /// Dawn and day: three soft shafts of sunlight, slowly drifting and breathing,
     /// fading out before they reach the snow where Lanvi sits.
     private func shafts(_ ctx: inout GraphicsContext, size: CGSize, t: TimeInterval) {
-        var g = ctx
-        g.blendMode = .plusLighter
-        let warm = scene == .dawn ? Color(hex: 0xFFE2C4) : Color.white
+        let g = ctx   // drawn as plain light on the pale sky (adding light there barely shows)
+        let warm = scene == .dawn ? Color(hex: 0xFFE9D6) : Color.white
         let reach = size.height * 0.58
         for i in 0..<3 {
             let d = Double(i)
@@ -318,7 +317,7 @@ private struct WorldLife: View {
             for s in 0..<6 {
                 let y = reach * CGFloat(s) / 6
                 let fade = 1 - Double(s) / 6
-                let a = 0.13 * breathe * fade
+                let a = 0.20 * breathe * fade
                 let rect = CGRect(x: -width / 2, y: y, width: width, height: reach / 6 + 1)
                 layer.fill(Path(rect), with: .linearGradient(
                     Gradient(colors: [warm.opacity(0), warm.opacity(a), warm.opacity(0)]),
