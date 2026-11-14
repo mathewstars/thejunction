@@ -279,6 +279,24 @@ struct RigFrame {
     var eyes: [(EyeShape, Double)] = [(.open, 1)]
     var mouths: [(MouthShape, Double)] = [(.smile, 1)]
     var face = Face()
+
+    /// The eye under its lid: how much of the face it is (1 unless fading to happy or
+    /// wide eyes) and how far the lid is down (0 open, 0.5 half, 1 shut), blended over
+    /// the same frames as the pictures. A blink moves the lid; the eye never fades.
+    var lid: (weight: Double, down: Double) {
+        let l = eyes.filter { $0.0.isLidded }
+        let w = l.reduce(0) { $0 + $1.1 }
+        let d = w > 0.001 ? l.reduce(0) { $0 + $1.1 * $1.0.lidDown } / w : 0
+        return (w, d)
+    }
+}
+
+extension EyeShape {
+    /// Open, half-closed and shut are one eye under a lid (looking left, right or up is
+    /// the open eye with its pupils moved).
+    var isLidded: Bool { [.open, .half, .closed, .left, .right, .up].contains(self) }
+    /// How far the lid is down for this shape.
+    var lidDown: Double { self == .half ? 0.5 : self == .closed ? 1 : 0 }
 }
 
 // MARK: - Small motion helpers
