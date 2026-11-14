@@ -86,6 +86,9 @@ struct HomeView: View {
     @State private var look: UnitPoint?
 
     var body: some View {
+        #if DEBUG
+        let _ = FrameMeter.count("Home")
+        #endif
         GeometryReader { geo in
             let w = geo.size.width
             let L = Layout(size: geo.size, insets: geo.safeAreaInsets, away: away)
@@ -213,6 +216,9 @@ struct HomeView: View {
             if phase == .active, old == .background { welcomeBack() }
         }
         .onAppear {
+            #if DEBUG
+            FrameMeter.shared.start()
+            #endif
             if store.wandering?.state == .back { runIn() } else { settle() }
             withAnimation(.spring(response: 0.7, dampingFraction: 0.82).delay(0.25)) { arrived = true }
         }

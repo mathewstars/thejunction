@@ -29,6 +29,7 @@
 		85913E78D8BD74C9E1F25A7E /* CheckinView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E77620D747F3E1491FF87DCE /* CheckinView.swift */; };
 		922984AB73EB11C13340245F /* HomeParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607DA0BDB68AC9211EAADA43 /* HomeParts.swift */; };
 		942A29C36871C91B6C4230BA /* BreathePieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29013F2F7831D454F4237DF1 /* BreathePieces.swift */; };
+		96313F278A5FBE5EEE2B2790 /* FrameMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */; };
 		966709A0031A479E6D292413 /* HomeMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */; };
 		A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */; };
 		A99C233C3D469D27695CFD77 /* Nunito-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 264F14E3AC63B96BC18A9088 /* Nunito-Bold.ttf */; };
@@ -89,6 +90,7 @@
 		974C2744C4CA94D5857C75A3 /* FocusArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusArt.swift; sourceTree = "<group>"; };
 		98E9EB5764D665F8A8B7399B /* BreatheView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheView.swift; sourceTree = "<group>"; };
 		9A53ADD818B703E6EC089EFE /* SkyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyScene.swift; sourceTree = "<group>"; };
+		A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameMeter.swift; sourceTree = "<group>"; };
 		B2CF64DD8486227CA2F2DC5B /* LanviMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviMotion.swift; sourceTree = "<group>"; };
 		B4817EE878DEB9396B0E72CB /* Nunito-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraBold.ttf"; sourceTree = "<group>"; };
 		BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviView.swift; sourceTree = "<group>"; };
@@ -229,6 +231,7 @@
 			isa = PBXGroup;
 			children = (
 				883989149D83098DC4D7155A /* AppStore.swift */,
+				A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */,
 			);
 			path = State;
 			sourceTree = "<group>";
@@ -362,6 +365,7 @@
 				09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */,
 				5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */,
 				45C0A7261327E95CF788718C /* FocusResult.swift in Sources */,
+				96313F278A5FBE5EEE2B2790 /* FrameMeter.swift in Sources */,
 				B366EDE9B773EEA90854B56A /* HomeChatScreen.swift in Sources */,
 				DD756509C515F4C1509219AD /* HomeMindScreen.swift in Sources */,
 				966709A0031A479E6D292413 /* HomeMoments.swift in Sources */,
