@@ -91,7 +91,7 @@ def make_session(seed: int, hard: str | None = None, wanted: list[str] | None = 
     rng.shuffle(drawn)
     wanted = list(wanted) if wanted is not None else drawn
     # The hard part takes the last ten seconds; the smiles keep to the time before it.
-    span = SECONDS - (12 if hard in ("talking", "step") else 0)
+    span = SECONDS - (12 if hard in ("talking", "step", "yawn", "chewing", "drift") else 0)
     slot = (span - 4) / max(1, len(wanted))
     for k, kind in enumerate(wanted):
         dur = rng.uniform(1.0, 2.4)
@@ -135,6 +135,37 @@ def make_session(seed: int, hard: str | None = None, wanted: list[str] | None = 
         # The phone moved: every mouth value sits higher from here to the end.
         up = rng.uniform(0.10, 0.14)
         for i in range((SECONDS - 11) * RATE, n):
+            cols["mouthSmileLeft"][i] += up
+            cols["mouthSmileRight"][i] += up
+    # Three more things that are not smiles. The instruction the model gets does
+    # NOT name these (it names talking and a shifted resting level only), so a
+    # set made of them asks whether the model copes with what it was not told.
+    if hard == "yawn":
+        # Two yawns of three seconds: the jaw opens wide, the mouth stretches,
+        # and the corners are pulled a little with it.
+        for t0 in (SECONDS - 11, SECONDS - 6):
+            for i in range(t0 * RATE, min(n, (t0 + 3) * RATE)):
+                env = math.sin(math.pi * (i / RATE - t0) / 3)
+                cols["jawOpen"][i] += 0.6 * env
+                for c in ("mouthStretchLeft", "mouthStretchRight"):
+                    cols[c][i] += 0.3 * env
+                for c in ("mouthSmileLeft", "mouthSmileRight"):
+                    cols[c][i] += 0.10 * env
+    if hard == "chewing":
+        # Ten seconds of chewing: the jaw moves about one and a half times a
+        # second and one mouth corner at a time is pulled with each bite.
+        t0 = SECONDS - 11
+        for i in range(t0 * RATE, (t0 + 10) * RATE):
+            t = (i - t0 * RATE) / RATE
+            cols["jawOpen"][i] += 0.10 + 0.08 * math.sin(2 * math.pi * 1.5 * t)
+            bite = int(t * 1.5)
+            pull = 0.11 * max(0.0, math.sin(2 * math.pi * 1.5 * t))
+            cols["mouthSmileLeft" if bite % 2 else "mouthSmileRight"][i] += pull
+    if hard == "drift":
+        # The light fades: the tracker's mouth values creep up over eleven seconds.
+        a0 = (SECONDS - 11) * RATE
+        for i in range(a0, n):
+            up = 0.12 * (i - a0) / (n - a0)
             cols["mouthSmileLeft"][i] += up
             cols["mouthSmileRight"][i] += up
     for s in range(3, SECONDS, rng.randint(3, 6)):
@@ -202,7 +233,11 @@ def _line(name: str, t: dict) -> str:
             f"{share(t['faint_found'], t['faint_planted'])} | {t['false']} of {t['reported']} |")
 
 
-async def run(with_model: bool, sessions: int, hard: bool = True) -> dict:
+async def run(with_model: bool, sessions: int, hard: bool = True, hard_seed: int = 2000,
+              hard_count: int | None = None, hard_kinds: tuple[str, ...] | None = None,
+              repeat: int = 1) -> dict:
+    """hard_seed and hard_count make a hard set on other seeds than the usual
+    ten (a set nobody looked at while the instruction and the check were written)."""
     outreach = None
     if with_model:
         from .config import Settings
@@ -212,7 +247,10 @@ async def run(with_model: bool, sessions: int, hard: bool = True) -> dict:
             raise SystemExit("level 2 is not configured (OUTREACH_MODE, GEMINI_API_KEY, GEMINI_MODEL)")
     plan = [("clean", 1000 + k, None) for k in range(sessions)]
     if hard:
-        plan += [("hard", 2000 + k, kind) for k, kind in enumerate(HARD)]
+        pool = hard_kinds or HARD
+        kinds = pool if hard_count is None and hard_kinds is None else \
+            [pool[k % len(pool)] for k in range(hard_count or len(pool))]
+        plan += [("hard", hard_seed + k, kind) for k, kind in enumerate(kinds)]
     out: dict = {"seconds_each": SECONDS, "sets": {}}
     if outreach is not None:
         out["model"] = outreach.level2_model
@@ -221,7 +259,7 @@ async def run(with_model: bool, sessions: int, hard: bool = True) -> dict:
         st = out["sets"].setdefault(name, {
             "sessions": 0, "code_vs_truth": {}, "rest_rule_vs_truth": {}, "model_vs_truth": {},
             "model_after_check_vs_truth": {}, "agreements": [], "sessions_read": 0,
-            "sessions_failed": 0, "seconds": []})
+            "sessions_failed": 0, "seconds": [], "same_in_every_read": 0, "read_times": repeat})
         st["sessions"] += 1
         raw, truth = make_session(seed, kind)
         view = fr.code_view(raw)
@@ -229,29 +267,40 @@ async def run(with_model: bool, sessions: int, hard: bool = True) -> dict:
         _add(st["rest_rule_vs_truth"], score(rest_relative(raw), truth))
         if outreach is None:
             continue
-        t0 = time.monotonic()
-        try:
-            pack = INPUT_GATE.frames_pack({"type": "focus"}, raw)
-            text = await outreach.gemini_complete(pack)
-            res = OUTPUT_GATE.frames_reading(text, pack, raw)
-        except GateError:
-            res = None
-        st["seconds"].append(round(time.monotonic() - t0, 1))
-        if res is None or not res.ok:
-            st["sessions_failed"] += 1
-            why = res.refusals[0].reason if res is not None and res.refusals else "refused"
-            print(f"{name} {seed} {kind or ''}: no usable reply ({why}; "
-                  f"{outreach.last_frames_meta})", file=sys.stderr)
-            continue
-        st["sessions_read"] += 1
-        # What the model said, before the check.
-        said = json.loads(fr_text(text))["smiles"]
-        _add(st["model_vs_truth"], score([(s["start_s"], s["end_s"]) for s in said], truth))
-        rd = res.value["reading"]
-        _add(st["model_after_check_vs_truth"],
-             score([(s["start_s"], s["end_s"]) for s in rd["smiles"] + rd["faint_smiles"]], truth))
-        st["agreements"].append(res.value["agreement"])
-        print(f"{name} {seed} {kind or ''}: read in {st['seconds'][-1]} s", file=sys.stderr)
+        reads: list[list[tuple[float, float]]] = []
+        for r in range(repeat):
+            t0 = time.monotonic()
+            try:
+                pack = INPUT_GATE.frames_pack({"type": "focus"}, raw)
+                text = await outreach.gemini_complete(pack)
+                res = OUTPUT_GATE.frames_reading(text, pack, raw)
+            except GateError:
+                res = None
+            st["seconds"].append(round(time.monotonic() - t0, 1))
+            if res is None or not res.ok:
+                st["sessions_failed"] += 1
+                why = res.refusals[0].reason if res is not None and res.refusals else "refused"
+                print(f"{name} {seed} {kind or ''}: no usable reply ({why}; "
+                      f"{outreach.last_frames_meta})", file=sys.stderr)
+                continue
+            st["sessions_read"] += 1
+            # What the model said, before the check.
+            said = [(x["start_s"], x["end_s"]) for x in json.loads(fr_text(text))["smiles"]]
+            reads.append(said)
+            _add(st["model_vs_truth"], score(said, truth))
+            rd = res.value["reading"]
+            _add(st["model_after_check_vs_truth"],
+                 score([(x["start_s"], x["end_s"]) for x in rd["smiles"] + rd["faint_smiles"]],
+                       truth))
+            st["agreements"].append(res.value["agreement"])
+            print(f"{name} {seed} {kind or ''}: read in {st['seconds'][-1]} s", file=sys.stderr)
+        # The same smiles in every read: the same number, each overlapping its
+        # counterpart in the first read by half of their union.
+        if len(reads) == repeat and all(
+                len(r) == len(reads[0]) and all(
+                    any(_iou(a0, a1, b0, b1) >= 0.5 for b0, b1 in reads[0]) for a0, a1 in r)
+                for r in reads[1:]):
+            st["same_in_every_read"] += 1
     for st in out["sets"].values():
         st["model_vs_code"] = fr.aggregate(st.pop("agreements"))
         secs = st.pop("seconds")
@@ -281,9 +330,17 @@ def main() -> None:
     ap.add_argument("--model", action="store_true", help="also send every session to level 2")
     ap.add_argument("--sessions", type=int, default=SESSIONS, help="sessions in the clean set")
     ap.add_argument("--no-hard", action="store_true", help="leave the hard set out")
+    ap.add_argument("--hard-seed", type=int, default=2000, help="first seed of the hard set")
+    ap.add_argument("--hard-count", type=int, default=None, help="sessions in the hard set")
+    ap.add_argument("--hard-kinds", default=None,
+                    help="comma list of what the hard set holds: talking, step, high_rest "
+                         "(the usual three), yawn, chewing, drift (not named in the instruction)")
+    ap.add_argument("--repeat", type=int, default=1, help="read every session this many times")
     ap.add_argument("--out", help="write the result as JSON to this file")
     args = ap.parse_args()
-    out = asyncio.run(run(args.model, args.sessions, not args.no_hard))
+    kinds = tuple(k.strip() for k in args.hard_kinds.split(",")) if args.hard_kinds else None
+    out = asyncio.run(run(args.model, args.sessions, not args.no_hard, args.hard_seed,
+                          args.hard_count, kinds, args.repeat))
     if args.out:
         with open(args.out, "w", encoding="utf-8") as f:
             json.dump(out, f, indent=1)
@@ -292,6 +349,9 @@ def main() -> None:
               + (f", {st['sessions_read']} read by the model, {st['sessions_failed']} failed, "
                  f"median {st['median_seconds']} s a call" if args.model else ""))
         print(table(st, out.get("model")))
+        if args.model and args.repeat > 1:
+            print(f"each session read {args.repeat} times (the model's rows count every read); "
+                  f"the same smiles in every read: {st['same_in_every_read']} of {st['sessions']} sessions")
         if st.get("model_vs_code"):
             print("model against code:", json.dumps(st["model_vs_code"]))
 

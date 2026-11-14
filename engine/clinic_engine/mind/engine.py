@@ -551,7 +551,9 @@ class Mind:
             a["id"] = new_id("les")
 
         # Level 2 (optional) may object to lessons code accepted. It cannot add.
-        if self.outreach is not None and self.outreach.gemini_on and accepted:
+        # The evidence rows leave the private network: the patient's consent decides.
+        if self.outreach is not None and self.outreach.gemini_on and accepted and \
+                (repo.patient() or {}).get("allow_outside_processing"):
             try:
                 pack2 = INPUT_GATE.second_opinion_pack(accepted, rows, today)
                 raw2 = await self.outreach.gemini_complete(pack2)

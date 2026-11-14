@@ -57,12 +57,19 @@ actor LanviClient: LanviBackend {
 
     var isPaired: Bool { token != nil }
 
+    /// Forget this phone's token (Help, "Disconnect this phone").
+    func forget() {
+        token = nil
+        TokenKeychain.delete(for: base)
+    }
+
     // MARK: Calls
 
-    /// POST /v1/devices/pair. Uses the configured code; the code works once.
+    /// POST /v1/devices/pair, with the code the person typed or, for testers, the
+    /// one in the private config. A code works once.
     @discardableResult
-    func pair() async throws -> API.PairOut {
-        guard let code = pairingCode else { throw APIError.badPairingCode }
+    func pair(code typed: String? = nil) async throws -> API.PairOut {
+        guard let code = typed ?? pairingCode else { throw APIError.badPairingCode }
         let label = await Self.deviceLabel()
         let body = API.PairIn(pairingCode: code, deviceLabel: label)
         let out: API.PairOut = try await raw("POST", "/v1/devices/pair", body: body, auth: false)
@@ -122,7 +129,11 @@ actor LanviClient: LanviBackend {
     /// A device call: pairs first when there is no token, and once more when
     /// the server no longer knows the token.
     private func call<B: Encodable, R: Decodable>(_ method: String, _ path: String, body: B?) async throws -> R {
-        if token == nil { try await pair() }
+        if token == nil {
+            // Not paired yet: the person has to type their clinic's code first.
+            guard pairingCode != nil else { throw APIError.unauthorized }
+            try await pair()
+        }
         do {
             return try await raw(method, path, body: body, auth: true)
         } catch APIError.unauthorized {
