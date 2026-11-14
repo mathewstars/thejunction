@@ -542,21 +542,21 @@ struct RevontuletPainter {
     private func sparkState() -> (p: CGPoint, size: Double, heat: Double)? {
         switch e.beat {
         case .intro:
-            return (L.anchor, 0.8 + 0.06 * sin(now * 2.2), 0.75)
+            return (L.anchor, 1.15 + 0.08 * sin(now * 2.2), 0.85)
         case .choice:
             let grow = e.round == 0 ? 1 : min(1, since / 0.3)
-            return (L.anchor, 0.8 * grow, 0.75)
+            return (L.anchor, 1.15 * grow, 0.85)
         case .trace:
-            return (L.anchor, 0.8 + 0.5 * e.progress, 0.75 + 0.25 * e.progress)
+            return (L.anchor, 1.15 + 0.6 * e.progress, 0.85 + 0.15 * e.progress)
         case .sling:
             let level = Double(hypot(e.pull.dx, e.pull.dy) / L.maxPull)
-            let pop = since < 0.25 ? 0.3 * (1 - since / 0.25) : 0
-            return (e.sparkPoint(now), 1.3 + pop + 0.15 * level, 1)
+            let pop = since < 0.25 ? 0.35 * (1 - since / 0.25) : 0
+            return (e.sparkPoint(now), 1.75 + pop + 0.2 * level, 1)
         case .flight:
             guard let f = e.flight else { return nil }
             let fnow = e.flightClock(now)
             let lit = f.emberHitAt.enumerated().filter { $0.element != nil && fnow - f.launch >= f.emberT[$0.offset] }.count
-            return (f.point(at: fnow), f.foxOwn ? 1.4 : 1.3 + 0.2 * Double(lit), 1)
+            return (f.point(at: fnow), f.foxOwn ? 1.8 : 1.75 + 0.25 * Double(lit), 1)
         default:
             return nil
         }
@@ -677,7 +677,7 @@ struct RevontuletPainter {
                 g.fill(Path(ellipseIn: CGRect(x: q.x - 1.5, y: q.y - 1.5, width: 3, height: 3)), with: .color(RevontuletColor.gold.opacity(o)))
             }
             if e.progress < 1 {
-                spark(&g, at: arc.point(e.progress, reversed: e.reversed), size: 0.42, heat: 1)
+                spark(&g, at: arc.point(e.progress, reversed: e.reversed), size: 0.6, heat: 1)
             }
         }
     }
@@ -942,37 +942,34 @@ struct RevontuletPainter {
         let a = c.alpha(now)
         guard a > 0.001 else { return }
         let t = now - c.since
-        var spots: [(CGPoint, CGFloat)] = []
+        // Pools that only lift the veil (never brighten): centre, horizontal and vertical radius.
+        var spots: [(CGPoint, CGFloat, CGFloat)] = []
         switch c.kind {
-        case .start: spots = [(L.anchor, 74)]
+        case .start: spots = [(L.anchor, 66, 66)]
         case .choice:
             let f = L.faults(round: e.round)
-            spots = [(f.easy[f.easy.count / 2], 70), (f.hard[f.hard.count / 2], 100)]
-        case .trace: spots = [(L.anchor, L.arcRadius + 58)]
-        case .sling: spots = [(CGPoint(x: L.anchor.x, y: L.anchor.y + L.maxPull * 0.4), L.maxPull * 0.62 + 50)]
+            spots = [(f.easy[f.easy.count / 2], 74, 46), (f.hard[f.hard.count / 2], 110, 70)]
+        case .trace: spots = [(L.anchor, L.arcRadius + 48, L.arcRadius + 40)]
+        case .sling: spots = [(CGPoint(x: L.anchor.x, y: L.anchor.y + L.maxPull * 0.42), 62, L.maxPull * 0.42 + 46)]
         case .embers:
-            if let f = e.flight, f.emberU.indices.contains(c.ember) { spots = [(f.emberPoint(c.ember), 64)] }
+            if let f = e.flight, f.emberU.indices.contains(c.ember) { spots = [(f.emberPoint(c.ember), 60, 60)] }
         case .stroke:
             let sq = L.foxSquare(.warm)
-            spots = [(CGPoint(x: sq.midX, y: sq.midY - sq.height * 0.05), sq.width * 0.52)]
+            spots = [(CGPoint(x: sq.midX, y: sq.midY - sq.height * 0.05), sq.width * 0.5, sq.height * 0.5)]
         }
-        // The veil: soft dark navy, about half strength, with feathered holes.
+        // The veil: soft dark navy, about half strength, lifted softly inside each pool.
         ctx.drawLayer { layer in
             layer.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(red: 0.03, green: 0.05, blue: 0.16).opacity(c.kind.veil * a)))
             layer.blendMode = .destinationOut
-            for (p, r) in spots {
-                layer.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
-                    Gradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(0.9), location: 0.55), .init(color: .clear, location: 1)]),
-                    center: p, startRadius: 0, endRadius: r))
+            for (p, rx, ry) in spots {
+                var hole = layer
+                hole.translateBy(x: p.x, y: p.y)
+                hole.scaleBy(x: 1, y: ry / rx)
+                hole.fill(Path(ellipseIn: CGRect(x: -rx, y: -rx, width: rx * 2, height: rx * 2)), with: .radialGradient(
+                    Gradient(stops: [.init(color: .black.opacity(0.92), location: 0), .init(color: .black.opacity(0.7), location: 0.45),
+                                     .init(color: .black.opacity(0.25), location: 0.78), .init(color: .clear, location: 1)]),
+                    center: .zero, startRadius: 0, endRadius: rx))
             }
-        }
-        // A warm rim of light around each pool, so the eye goes there (never on the fox).
-        var rim = ctx
-        rim.blendMode = .plusLighter
-        for (p, r) in spots where c.kind != .stroke {
-            rim.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
-                Gradient(stops: [.init(color: .clear, location: 0.6), .init(color: RevontuletColor.gold.opacity(0.1 * a), location: 0.82), .init(color: .clear, location: 1)]),
-                center: p, startRadius: 0, endRadius: r))
         }
         ghost(&ctx, c, t: reduceMotion ? 0 : t, alpha: a)
     }
@@ -1046,27 +1043,34 @@ struct RevontuletPainter {
         }
     }
 
-    /// A soft fingertip of light: a glowing pad, a little tilted, and a ripple when it presses.
+    /// A soft fingertip of light: a bright pad, a little tilted, with a soft shadow so it reads
+    /// on snow and a glow so it reads on dark ice, and a ripple when it presses.
     private func fingertip(_ ctx: inout GraphicsContext, at p: CGPoint, alpha: Double, press: Double?) {
         guard alpha > 0.01 else { return }
-        var g = ctx
-        g.blendMode = .plusLighter
-        softEllipse(&g, p, rx: 34, ry: 34, [Color.white.opacity(0.16 * alpha), Color.white.opacity(0.05 * alpha)])
+        var glow = ctx
+        glow.blendMode = .plusLighter
+        softEllipse(&glow, p, rx: 40, ry: 40, [RevontuletColor.gold.opacity(0.22 * alpha), Color.white.opacity(0.06 * alpha)])
         if let k = press {
-            let r = CGFloat(14 + 30 * k)
-            g.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
-                Gradient(stops: [.init(color: .clear, location: 0.55), .init(color: RevontuletColor.gold.opacity(0.5 * (1 - k) * alpha), location: 0.8),
+            let r = CGFloat(16 + 34 * k)
+            glow.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
+                Gradient(stops: [.init(color: .clear, location: 0.55), .init(color: RevontuletColor.gold.opacity(0.7 * (1 - k) * alpha), location: 0.8),
                                  .init(color: .clear, location: 1)]), center: p, startRadius: 0, endRadius: r))
         }
+        let squash: CGFloat = press != nil ? 0.9 : 1
+        let rect = CGRect(x: -12.5, y: -16.5 * squash, width: 25, height: 33 * squash)
+        var shadow = ctx
+        shadow.translateBy(x: p.x + 2.5, y: p.y + 4)
+        shadow.rotate(by: .degrees(-18))
+        shadow.fill(Path(ellipseIn: rect.insetBy(dx: -2, dy: -2)), with: .radialGradient(
+            Gradient(colors: [Color(red: 0.05, green: 0.08, blue: 0.25).opacity(0.3 * alpha), .clear]), center: .zero, startRadius: 0, endRadius: 20))
         var pad = ctx
         pad.translateBy(x: p.x, y: p.y)
         pad.rotate(by: .degrees(-18))
-        let squash: CGFloat = press != nil ? 0.9 : 1
-        let rect = CGRect(x: -10.5, y: -14 * squash, width: 21, height: 28 * squash)
         pad.fill(Path(ellipseIn: rect), with: .radialGradient(
-            Gradient(colors: [Color.white.opacity(0.62 * alpha), Color.white.opacity(0.3 * alpha), Color.white.opacity(0.08 * alpha)]),
-            center: CGPoint(x: -2, y: -4), startRadius: 0, endRadius: 16))
-        pad.stroke(Path(ellipseIn: rect), with: .color(Color.white.opacity(0.4 * alpha)), lineWidth: 1)
+            Gradient(colors: [Color.white.opacity(0.95 * alpha), Color(red: 0.95, green: 0.96, blue: 1).opacity(0.85 * alpha),
+                              RevontuletColor.warmWhite.opacity(0.7 * alpha)]),
+            center: CGPoint(x: -3, y: -5), startRadius: 0, endRadius: 19))
+        pad.stroke(Path(ellipseIn: rect), with: .color(RevontuletColor.gold.opacity(0.75 * alpha)), lineWidth: 1.4)
     }
 
     private func press(_ ctx: inout GraphicsContext, at p: CGPoint, k: Double, alpha: Double) {

@@ -49,6 +49,7 @@ struct RevontuletView: View {
     private final class Box {
         var auto: RevontuletAutoPlay?
         var frame = 0
+        var furFrom: CGPoint?
     }
 
     private static let freezeBeat: RevontuletBeat? = {
@@ -463,11 +464,18 @@ struct RevontuletView: View {
                 emit(.iceImpact(round: r + 1))
                 foxReact(.surprised)
                 if !breaking, !quiet {
-                    let pleased: LanviMood = e.impacts.last?.hard == true ? .proud : .happy
+                    // Easy: a small warm smile, quickly. Hard: wide-eyed, then proud, then a
+                    // second happy beat when both embers were lit.
+                    let hit = e.impacts.last
+                    let hard = hit?.hard == true
                     Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(0.95))
+                        try? await Task.sleep(for: .seconds(hard ? 0.75 : 0.5))
                         guard let b = engine?.beat, b == .impact || b == .choice else { return }
-                        foxReact(pleased)
+                        foxReact(hard ? .proud : .happy)
+                        guard hard, (hit?.embersHit ?? 0) >= 2 else { return }
+                        try? await Task.sleep(for: .seconds(1.1))
+                        guard let b2 = engine?.beat, b2 == .impact || b2 == .choice || b2 == .trace else { return }
+                        foxReact(.happy)
                     }
                 }
             case .shattered:
@@ -498,8 +506,22 @@ struct RevontuletView: View {
                 petTick += 1
                 if n >= 2 { foxReact(n == 2 ? .proud : .happy) }
             case let .strokeMoved(speed):
-                if !quiet { feel.purr(speed: speed) }
+                if !quiet {
+                    feel.purr(speed: speed)
+                    // A faint tick of fur every few points the finger travels.
+                    if let f = e.finger {
+                        if let last = box.furFrom {
+                            if hypot(f.x - last.x, f.y - last.y) >= RevontuletTune.furStep {
+                                feel.furTick()
+                                box.furFrom = f
+                            }
+                        } else {
+                            box.furFrom = f
+                        }
+                    }
+                }
             case let .strokeEnded(n, counted):
+                box.furFrom = nil
                 if !quiet { feel.purrEnded() }
                 if counted {
                     RevontuletCoachMemory.learned(.stroke)
