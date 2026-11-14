@@ -169,7 +169,8 @@ def test_own_normal_needs_eight_earlier_revontulet_games(env):
     eighth = env.repo().get("activities/rv-own-000007.json")
     assert eighth["revontulet_features"] == {"hard_share": round(2 / 3, 3), "choice_ms": 940.0,
                                              "trace_speed_cm_s": round((174.8 + 228.9 + 228.9) / 3 / 64.2, 3),
-                                             "stroke_speed_cm_s": round((282.8 + 229.9 + 211.6) / 3 / 64.2, 3)}
+                                             "stroke_speed_cm_s": round((282.8 + 229.9 + 211.6) / 3 / 64.2, 3),
+                                             "pt_per_cm": 64.2}
     assert eighth["revontulet_baseline_sessions"] == 7
     assert all(v is None for v in eighth["revontulet_z"].values()) and eighth["revontulet_usual"] == {}
     # The ninth game has eight earlier ones: an all-easy, slow game is far under own normal.
@@ -224,3 +225,29 @@ def test_a_game_cut_short_has_no_share_of_harder_choices(env):
     assert post(env, game("rv-short-00001", measures=m)).status_code == 200
     f = env.repo().get("activities/rv-short-00001.json")["revontulet_features"]
     assert f["hard_share"] is None and f["choice_ms"] == 940.0
+
+
+def test_a_new_phone_starts_both_references_again(env):
+    for k in range(13):
+        assert post(env, game(f"rv-phone-{k:05d}", started_at=_days_ago(30 - k))).status_code == 200
+    old = env.repo().get("activities/rv-phone-00012.json")
+    assert old["revontulet_baseline_sessions"] == 12 and old["revontulet_start"]
+    other = copy.deepcopy(MEASURES)
+    other["pt_per_cm"] = 58.0                       # another phone
+    assert post(env, game("rv-phone-00013", measures=other, started_at=_days_ago(2))).status_code == 200
+    new = env.repo().get("activities/rv-phone-00013.json")
+    assert new["revontulet_baseline_sessions"] == 0
+    assert new["revontulet_usual"] == {} and new["revontulet_start"] == {}
+    assert all(v is None for v in new["revontulet_z"].values())
+
+
+def test_the_rule_rarely_labels_an_unchanged_person_and_catches_the_example_slide():
+    from clinic_engine.revontulet_check import run
+    out = run(runs=300)
+    assert out["unchanged_any_label"] < 0.06
+    assert out["unchanged_people_three_in_a_row_recent"] < 0.02
+    assert out["slide_last_two_weeks_tracing_slower_start"] > 0.95
+    # The harder row: games that vary three times as much from one to the next.
+    noisy = run(runs=300, spread=3.0)
+    assert noisy["unchanged_any_label"] < 0.18
+    assert noisy["slide_last_two_weeks_tracing_slower_start"] > 0.70

@@ -920,13 +920,15 @@
   // and a dashed line at the middle of the person's start, games 3 to 12 (the fixed reference).
   // One point is one game. Drawn from 4 games on.
   function revontuletChart(games) {
-    const own0 = games[0].revontulet_own || {}, cut = own0.unusual_z || 2, start = own0.start || {};
+    const own0 = games[0].revontulet_own || {}, cut = own0.unusual_z || 2.5, start = own0.start || {};
     const seen = {};
+    let dens = null, phone = 0;   // a new screen density is a new phone: the references start again there
     const g = games.slice().reverse().map((x) => {
       const rv = x.revontulet, rounds = rv.rounds || [], own = x.revontulet_own || {};
       const sp = rounds.map((r) => r.trace_mean_speed_pt_s).filter((v) => typeof v === "number");
       const day = String(x.date).slice(0, 10), k = seen[day] = (seen[day] || 0) + 1;   // a second game on a day sits a little later
-      return { t: Date.parse(day + "T00:00:00Z") + (k - 1) * 4 * 36e5, date: x.date,
+      if (rv.pt_per_cm) { if (dens !== null && Math.abs(rv.pt_per_cm - dens) > 0.5) phone += 1; dens = rv.pt_per_cm; }
+      return { t: Date.parse(day + "T00:00:00Z") + (k - 1) * 4 * 36e5, date: x.date, phone: phone,
         hard: rounds.length >= 3 ? rounds.filter((r) => r.effort === "hard").length : null,  // a game cut short has too few choices
         z: own.z || {}, u: own.usual || {},
         speed: sp.length && rv.pt_per_cm ? sp.reduce((s, v) => s + v, 0) / sp.length / rv.pt_per_cm : null };
@@ -945,8 +947,9 @@
     const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "chart rv", role: "img",
       "aria-label": "Above, in how many of a game's three rounds the harder crack was chosen, for " + g.length + " games." + (lower ? " Below, the speed of tracing the half circle in centimetres per second. The shaded area is the range of the games before each one, the dashed line is the middle of this person's start, and games outside the shaded range are yellow." : "") });
     const title = (y, text) => s.appendChild(svg("text", { x: 0, y: y, class: "rv-t" }, text));
-    const dashed = (y, text) => {
-      s.appendChild(svg("line", { x1: PL, y1: y, x2: W - PR, y2: y, class: "rv-start" }));
+    const lastPhone = g[g.length - 1].phone, since = g.find((p) => p.phone === lastPhone), moved = lastPhone > 0;
+    const dashed = (y, text) => {   // the start belongs to the newest phone, so the line begins at its first game
+      s.appendChild(svg("line", { x1: moved ? x(since) : PL, y1: y, x2: W - PR, y2: y, class: "rv-start" }));
       if (text) s.appendChild(svg("text", { x: W - PR - 4, y: y - 5, "text-anchor": "end" }, text));
     };
     // above: harder crack chosen (left empty when no game has all three rounds)
@@ -956,7 +959,7 @@
       s.appendChild(svg("line", { x1: PL, y1: ya(v), x2: W - PR, y2: ya(v), class: "axis" }));
       if (v === 0 || v === 3) s.appendChild(svg("text", { x: PL - 12, y: ya(v) + 4, "text-anchor": "end" }, narrow ? String(v) : v + " of 3"));
     });
-    if (ga.length && start.hard_share) dashed(ya(start.hard_share.median * 3), narrow ? "start" : "start, games 3 to 12");
+    if (ga.length && start.hard_share) dashed(ya(start.hard_share.median * 3), narrow ? "start" : moved ? "start on this phone, games 3 to 12" : "start, games 3 to 12");
     s.appendChild(svg("polyline", { class: "line rv-thin", points: ga.map((p) => x(p).toFixed(1) + "," + ya(p.hard).toFixed(1)).join(" ") }));
     ga.forEach((p) => s.appendChild(svg("circle", { class: "pt", cx: x(p), cy: ya(p.hard), r: narrow ? 3 : 4 },
       svg("title", null, dayShort(p.date) + ": harder crack in " + p.hard + " of 3"))));
@@ -979,7 +982,11 @@
       });
       if (start.trace_speed_cm_s) dashed(yb(start.trace_speed_cm_s.median), null);
       const runs = []; let cur = [];
-      g.forEach((p) => { if (p.speed === null) { if (cur.length) runs.push(cur); cur = []; } else cur.push(p); });
+      g.forEach((p) => { if (p.speed === null || (cur.length && cur[cur.length - 1].phone !== p.phone)) { if (cur.length) runs.push(cur); cur = []; } if (p.speed !== null) cur.push(p); });
+      g.forEach((p, i) => { if (i && g[i - 1].phone !== p.phone) {   // speeds before and after a new phone do not compare
+        s.appendChild(svg("line", { x1: x(p) - 6, y1: BT, x2: x(p) - 6, y2: BT + BH, class: "rv-start" }));
+        s.appendChild(svg("text", { x: x(p) - 2, y: BT + BH - 6 }, "new phone"));
+      } });
       if (cur.length) runs.push(cur);
       runs.forEach((r) => s.appendChild(svg("polyline", { class: "line", points: r.map((p) => x(p).toFixed(1) + "," + yb(p.speed).toFixed(1)).join(" ") })));
       g.forEach((p) => { if (p.speed !== null) s.appendChild(svg("circle", { class: off(p.z.trace_speed_cm_s) ? "pt pt-high" : "pt", cx: x(p), cy: yb(p.speed), r: narrow ? 3 : 4 },
@@ -1017,7 +1024,7 @@
         shown: sum(rounds, "embers_shown"), hit: sum(rounds, "embers_hit"),
         strokes: strokes.length, stroke: speed(mean(vals(strokes, "mean_speed_pt_s")), rv), wall: wall };
     };
-    const own0 = got[0].revontulet_own || {}, cut = own0.unusual_z || 2, needed = own0.needed || 8;
+    const own0 = got[0].revontulet_own || {}, cut = own0.unusual_z || 2.5, needed = own0.needed || 8;
     const zOf = (x, k) => { const o = x.revontulet_own; return o && o.z && typeof o.z[k] === "number" ? Math.round(o.z[k] * 10) / 10 : null; };
     // Only the two speeds are compared game by game. [word when higher, word when lower].
     const WORDS = { trace_speed_cm_s: ["faster", "slower"], stroke_speed_cm_s: ["faster", "slower"] };
@@ -1043,14 +1050,17 @@
       const sp = list.map((x) => { const rv = x.revontulet, v = vals(rv.rounds || [], "trace_mean_speed_pt_s"); return v.length && rv.pt_per_cm ? mean(v) / rv.pt_per_cm : null; }).filter((v) => v !== null);
       return { rounds: rs.length, hard: rs.filter((r) => r.effort === "hard").length, speed: mean(sp) };
     };
-    const chrono = got.slice().reverse();
+    // As in the engine, the references count only games on the newest game's phone.
+    const d0 = got[0].revontulet.pt_per_cm, onPhone = (x) => !d0 || !x.revontulet.pt_per_cm || Math.abs(x.revontulet.pt_per_cm - d0) <= 0.5;
+    const mine = got.filter(onPhone), chrono = got.slice().reverse();
     // One rule for the headline: the start as soon as the engine has one (from the 13th game), else all games before.
     // With one or two games after the start the choices are too few (3 or 6), so only the tracing speed is said.
-    const hasStart = Object.keys(own0.start || {}).length > 0 && got.length > 12, late = Math.min(3, got.length - 12);
-    const ref = hasStart ? { n: late, list: chrono.slice(2, 12), lead: "Last " + plural(late, "game", "games") + " against this person’s start (games 3 to 12): ", word: "start" }
-      : got.length >= 6 ? { n: 3, list: got.slice(3), lead: "Last 3 games against the " + (got.length - 3) + " before: ", word: "before" } : null;
+    const mineChrono = mine.slice().reverse();
+    const hasStart = Object.keys(own0.start || {}).length > 0 && mine.length > 12, late = Math.min(3, mine.length - 12);
+    const ref = hasStart ? { n: late, list: mineChrono.slice(2, 12), lead: (late === 1 ? "Last game" : "Last " + late + " games") + " against this person’s start" + (mine.length < got.length ? " on this phone" : "") + " (games 3 to 12): ", word: "start" }
+      : mine.length >= 6 ? { n: 3, list: mine.slice(3), lead: "Last 3 games against the " + (mine.length - 3) + " before" + (mine.length < got.length ? " on this phone" : "") + ": ", word: "before" } : null;
     if (ref) {
-      const now = pool(got.slice(0, ref.n)), was = pool(ref.list), parts = [];
+      const now = pool(mine.slice(0, ref.n)), was = pool(ref.list), parts = [];
       if (ref.n >= 3 && now.rounds && was.rounds) parts.push("harder crack in " + now.hard + " of " + plural(now.rounds, "round", "rounds") + " (" + ref.word + ": " + was.hard + " of " + was.rounds + ")");
       if (now.speed !== null && was.speed !== null) parts.push("tracing at " + num(now.speed, 1) + "\u00a0cm/s (" + ref.word + ": " + num(was.speed, 1) + "\u00a0cm/s)");
       if (parts.length) lines.push(el("p", { class: "readout" }, el("b", null, ref.lead), parts.join(", ") + "."));
@@ -1068,9 +1078,10 @@
         : earlier < needed ? "not enough earlier games yet (" + earlier + " of the " + needed + " needed)."
         : hasSpeed ? "too few earlier games with a speed to compare." : "this game has no speed to compare."));
     lines.push(el("p", { class: "muted small" }, "In this 90-second game the person picks one of two cracks in an ice wall three times (the harder one gives a bigger reward), traces a half circle with a finger, taps the embers that flash after picking the harder crack, and at the end strokes a sleeping fox. If time runs out, the game breaks the wall for them."));
-    // A different screen size than in the game before means another phone: speeds before and after do not compare.
+    // A different screen density than in the last game that sent one means another phone: speeds before and after do not compare.
     const newPhone = {};
-    chrono.forEach((x, i) => { const a = i && chrono[i - 1].revontulet.pt_per_cm, b = x.revontulet.pt_per_cm; if (a && b && Math.abs(a - b) > 0.5) newPhone[x.id] = true; });
+    let known = null;
+    chrono.forEach((x) => { const b = x.revontulet.pt_per_cm; if (!b) return; if (known !== null && Math.abs(known - b) > 0.5) newPhone[x.id] = true; known = b; });
     const row = (x) => {
       const f = facts(x);
       return el("tr", null,
@@ -1087,19 +1098,21 @@
     const rc = revontuletChart(got);
     const fold = (title, ...paras) => el("details", { class: "more" }, el("summary", null, title), paras.map((p) => el("p", { class: "muted small" }, p)));
     return panel("Revontulet: choices and finger movement", got.length, lines, rc,
-      rc ? el("p", { class: "muted small" }, "One point is one game. Shaded: the range of this person’s games before each one (up to 20). Dashed: the middle of their start, games 3 to 12. Yellow means different from the recent games, faster or slower. It does not mean worse.") : null,
+      rc ? el("p", { class: "muted small" }, "One point is one game. Shaded: the range of this person’s games before each one (up to 20). Dashed: the middle of their start, games 3 to 12" + (mine.length < got.length ? " on the newest phone" : "") + ". Yellow means different from the recent games, faster or slower. It does not mean worse.") : null,
       table(["Date", "Wall broken", { t: "Harder crack", r: 1 }, { t: "Time to choose", r: 1 }, { t: "Tracing speed", r: 1 },
         { t: "Finger lifts", r: 1 }, { t: "Embers tapped", r: 1 }, { t: "Fox strokes", r: 1 }], got.map(row), null, { id: "revontulet" }),
       el("p", { class: "muted small" }, "A record, not a result. A change here is a reason to ask the person, not a sign of relapse. Getting used to the game changes these numbers too. They do not change how the day is judged and have not been tested as a measure of mood."),
       fold("How to read these numbers",
-        "Tracing and stroke speed are compared, game by game, with this person’s own Revontulet games just before (at least " + needed + ", at most 20). A game " + cut + " or more of their usual spread away from the middle of those games, faster or slower, gets a label. The " + needed + " games and the cut of " + cut + " were picked on generated games, not on people. On generated games where nothing changes, about 2 in 100 still got a label against the recent games and about 2 in 100 against the start, and almost no unchanged person got three in a row. Real play varies more, so expect more. One yellow point means little. Look for several games in a row.",
+        "Tracing and stroke speed are compared, game by game, with this person’s own Revontulet games just before (at least " + needed + ", at most 20). A game " + cut + " or more of their usual spread away from the middle of those games, faster or slower, gets a label. The " + needed + " games and the cut of " + cut + " were picked on generated games, not on people. On generated games where nothing changes, the share that still got a label depended on how much play varies from game to game: almost none at the example’s spread. When games vary twice as much, about 7 in 100 against each reference and 10 in 100 against one or the other. At three times, about 9 in 100 against each and 13 in 100 against one or the other. Three labelled games in a row came to about 1 in 100 unchanged people in 24 games at twice the spread and 3 or 4 in 100 at three times. Nobody has measured how much real play varies. Real play also has odd games and slow drifts from day to day, which the generated games do not. Both add labels, and drifts add runs of them. One yellow point means little. Look for several games in a row.",
+        "The slide written into the example shows what each reference is for. Against the start, nearly every game of its last two weeks got a label, and still 8 in 10 when games vary three times as much. Against the recent games it was 7 in 10 at the example’s spread and under 2 in 10 at three times, because the recent games slide along. The example’s slide is large: tracing falls by more than a third. A smaller change would be caught less often, and we have not measured how often.",
         "No yellow does not mean all is well. After a slow change the lower values count as recent, which is why the start (games 3 to 12; the first two are practice) is shown as a second reference that does not move. The start is only where this person began. It is not a healthy level: for someone who started just after treatment, the start may be their worst weeks. People keep getting faster for many games as they learn the game, so faster than start is expected. A run of labels against the start can also come from an odd start alone.",
         "The harder crack is chosen three times a game, so one game says nothing; it is only compared over several games, in the line above the chart. With 9 choices, two or three more or fewer can be chance. Time to choose is the middle value of the rounds, and speeds are averages over the rounds that were traced. A stroke speed is compared only when there were at least two strokes.",
         "Slower tracing can also mean more careful tracing: the game does not yet measure how closely the line was followed. The game asks for slow strokes, so slower stroking may only mean the person did as asked.",
-        "Things other than mood that change these numbers: getting used to the game (many people stop picking the harder crack once the bigger reward is no longer new), the 90-second limit (the easy crack can simply be the faster way to finish), time of day, tiredness, medicines that slow or calm, which hand and finger, holding the phone or laying it down, cold hands, a new screen cover, and doing something else while playing. Speeds are only comparable for one person on one phone: a new phone changes them, and after one the start no longer fits. A row marked “new phone” is the first game on a screen drawn at a different density. A new phone with the same density is not noticed."),
+        "Things other than mood that change these numbers: getting used to the game (many people stop picking the harder crack once the bigger reward is no longer new), the 90-second limit (the easy crack can simply be the faster way to finish), time of day, tiredness, medicines that slow or calm, which hand and finger, holding the phone or laying it down, cold hands, a new screen cover, and doing something else while playing. Speeds are only comparable for one person on one phone.",
+        "A row marked “new phone” is the first game on a screen drawn at a different density; from that game on, both references start again and count only games on that phone. A new phone with the same density is not noticed."),
       fold("Where these measures come from",
         "The choice of the harder crack follows a laboratory task with about fifty choices. In 2009, among 61 students, those who reported less pleasure chose the harder option a little less often, on some questionnaires and not on others (Treadway and others, PLoS ONE). In 2012 a small study found fewer hard choices in 20 people with depression than in 15 others (Treadway and others, Journal of Abnormal Psychology). Most of those patients were taking medicine for depression, and among the patients a higher depression score did not go with fewer hard choices. Later studies do not all agree.",
-        "Slowed movement that other people can see is one of the listed signs of depression. Whether finger speed on a phone shows it is not known. The tracing idea came from a 2025 tablet handwriting study of young people (Džepina and others, Applied Sciences) that we could not open to check, so we claim nothing from it.",
+        "Slowed movement that other people can see is one of the listed signs of depression. Whether finger speed on a phone shows it is not known. The tracing idea came from a 2025 study in which 20 young people with depression and 20 without wrote the letter l over and over; from three measures of the writing movement a program sorted 33 of the 40 correctly (Džepina and others, Applied Sciences; we read its summary, not the full paper). That was handwriting, not tracing a half circle with a finger, and its summary does not say the result was tried on a second group.",
         "Stroke speed follows a 2025 study of 78 people playing phone games, where slower swipes went with higher depression scores in one of the games (Chitale and others, JMIR Mental Health). That study tried hundreds of measures without correcting for it and calls itself exploratory.",
         "These studies compared different people at one moment. None followed one person over weeks, which is what this panel does. Revontulet has three choices and a few seconds of tracing with a finger, and nobody has tested it."));
   }
