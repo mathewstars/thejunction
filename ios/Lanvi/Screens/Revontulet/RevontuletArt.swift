@@ -359,6 +359,34 @@ final class RevontuletArt {
         }
     }
 
+    /// When the larger shards of the burst land in the snow, in seconds after the burst,
+    /// worked out from the same motion the painter draws (for the burst's haptic ticks).
+    func shardLandings(limit: Int = 12) -> [Double] {
+        guard !push.isEmpty else { return [] }
+        let floor = Double(layout.wall.maxY + layout.size.height * 0.08)
+        func tau(_ age: Double) -> Double {
+            if age < 0.45 { return 0.3 * age }
+            if age < 0.95 { let d = age - 0.45; return 0.135 + 0.3 * d + 0.7 * d * d }
+            return 0.46 + (age - 0.95)
+        }
+        var times: [(Double, CGFloat)] = []
+        for (i, s) in shards.enumerated() where fallAt[s.facet] == nil && s.size > 26 {
+            let v = push[i]
+            var age = 0.0
+            while age < 2.4 {
+                let t = tau(age)
+                let y = Double(s.center.y) + Double(v.dy) * t + 0.5 * 1100 * t * t
+                if y >= floor { times.append((age, s.size)); break }
+                age += 0.02
+            }
+        }
+        // The biggest pieces first, then in time, never two ticks closer than 60 ms.
+        let chosen = times.sorted { $0.1 > $1.1 }.prefix(limit * 2).map(\.0).sorted()
+        var out: [Double] = []
+        for t in chosen where (out.last.map { t - $0 >= 0.06 } ?? true) { out.append(t) }
+        return Array(out.prefix(limit))
+    }
+
     /// Snow directly under a stroking finger comes off at once: a band follows the hand.
     func brush(near p: CGPoint, at now: Double) {
         let sq = layout.foxSquare(.warm)
