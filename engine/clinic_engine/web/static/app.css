@@ -381,6 +381,8 @@ ul.plain.big li, .d.big { font-size: 14.5px; line-height: 1.45; }
 .rb-pt { fill: var(--amber); stroke: var(--panel); stroke-width: 2; }
 .thumbs { margin: 4px 0 10px; }
 .rb-pt { fill: var(--ink); stroke: var(--bg); stroke-width: 2.5; }
+.bp-h3 { font-size: 15px; margin: 0 0 8px; }
+ul.plain.big + p { margin-top: 10px; }
 .bp-sub { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 0; }
 .bp.mini { max-width: none; }
 
