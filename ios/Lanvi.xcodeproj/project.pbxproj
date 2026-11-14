@@ -62,7 +62,6 @@
 		BC1B1DE3FDB56F877CB09FE4 /* LanviTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 043F24BD4810CC96B85B74B4 /* LanviTiming.swift */; };
 		BED78E7017B94186F183E51E /* LocalStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85FD261A32144F8643C6EE7E /* LocalStatistics.swift */; };
 		C8EBD236C0121CE58A89C106 /* DemoBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575A49BAC44D679FBA763541 /* DemoBackend.swift */; };
-		C987BE8A3FD45A82FEE5AEA4 /* PairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FC960D3BC722A75C660CCC /* PairView.swift */; };
 		CF120166C3B2436312B64F79 /* Harness.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		D8C2589303E6EFD2CBBF8440 /* FocusArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 974C2744C4CA94D5857C75A3 /* FocusArt.swift */; };
 		DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8451A836E61C66138838EE /* PaintedWorld.swift */; };
@@ -181,7 +180,6 @@
 		9A53ADD818B703E6EC089EFE /* SkyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyScene.swift; sourceTree = "<group>"; };
 		9BE5BB327EC6AAE2BE8CF146 /* HealthDays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthDays.swift; sourceTree = "<group>"; };
 		9D1CB7C86C24141AF8D7F012 /* HealthTypeCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthTypeCatalog.swift; sourceTree = "<group>"; };
-		A2FC960D3BC722A75C660CCC /* PairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairView.swift; sourceTree = "<group>"; };
 		A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameMeter.swift; sourceTree = "<group>"; };
 		B0FB8AE15346D15FAA5BA3AF /* FaceSense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceSense.swift; sourceTree = "<group>"; };
 		B2CF64DD8486227CA2F2DC5B /* LanviMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviMotion.swift; sourceTree = "<group>"; };
@@ -447,7 +445,6 @@
 			children = (
 				8F685787902006429E41D5A7 /* ActivityRouter.swift */,
 				E4534A11EF57C9E6ACC5030B /* HomeView.swift */,
-				A2FC960D3BC722A75C660CCC /* PairView.swift */,
 				856CB611495D91BE8B81E2D4 /* WelcomeView.swift */,
 				55866B9F718B556BABB20541 /* WhatHelpsView.swift */,
 				0D7E93C8CF5FB597A3B43917 /* Breathe */,
@@ -671,7 +668,6 @@
 				3483B1C13131906BB13DF27E /* LanviTouch.swift in Sources */,
 				F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */,
 				DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */,
-				C987BE8A3FD45A82FEE5AEA4 /* PairView.swift in Sources */,
 				1DCC6987446B4B58F5E32D82 /* SenseRoot.swift in Sources */,
 				DBE064B344FE5E0C63C77FB2 /* SenseViews.swift in Sources */,
 				378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */,

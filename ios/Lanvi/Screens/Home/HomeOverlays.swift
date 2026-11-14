@@ -11,7 +11,6 @@ struct HomeHelpScreen: View {
     @Environment(AppStore.self) private var store
 
     @State private var bounce = 0
-    @State private var confirmDisconnect = false
 
     var body: some View {
         GeometryReader { geo in
@@ -62,27 +61,6 @@ struct HomeHelpScreen: View {
                             }
                         }
                         FaceSenseSwitch()
-
-                        if store.isConnected {
-                            // For testers: forget this phone so it can pair again with a new code.
-                            Button("Disconnect this phone") { confirmDisconnect = true }
-                                .font(Theme.rounded(15, .bold))
-                                .foregroundStyle(Theme.inkSecondary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, 12)
-                                .confirmationDialog("Disconnect this phone from your clinic?",
-                                                    isPresented: $confirmDisconnect, titleVisibility: .visible) {
-                                    Button("Disconnect", role: .destructive) {
-                                        Task {
-                                            await store.disconnect()
-                                            onClose()
-                                        }
-                                    }
-                                    Button("Keep connected", role: .cancel) {}
-                                } message: {
-                                    Text("You'll need a new code from your clinic to connect again.")
-                                }
-                        }
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, hill + 22)

@@ -56,11 +56,6 @@ actor LanviClient: LanviBackend {
 
     var isPaired: Bool { token != nil }
 
-    /// Forget this phone's token (Help, "Disconnect this phone").
-    func forget() {
-        token = nil
-        TokenKeychain.delete(for: base)
-    }
 
     // MARK: Calls
 
