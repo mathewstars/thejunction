@@ -277,7 +277,9 @@ struct HomeChatScreen: View {
 
     /// `-chatDemo <name>`: type a draft (`typing`), or play a short conversation (`talk`).
     private func runDemo() async {
-        if let demoMessage {
+        // The -demo walk-through sends one message by itself, then closes.
+        let walkthrough = ProcessInfo.processInfo.arguments.contains("-demo")
+        if let demoMessage = demoMessage ?? (walkthrough ? "The coffee outside was nice today" : nil) {
             try? await Task.sleep(for: .milliseconds(900))
             for ch in demoMessage {
                 draft.append(ch)
@@ -317,18 +319,17 @@ struct HomeChatScreen: View {
     }
 }
 
-/// A rounded bubble with a small tail at the bottom corner.
+/// A soft rounded bubble; the corner nearest the speaker is tucked in a little
+/// instead of a tail.
 private struct ChatBubbleShape: Shape {
     var mine: Bool
     func path(in rect: CGRect) -> Path {
-        var p = Path(roundedRect: rect, cornerRadius: 20, style: .continuous)
-        let x = mine ? rect.maxX - 14 : rect.minX + 14
-        let dir: CGFloat = mine ? 1 : -1
-        p.move(to: CGPoint(x: x - 8 * dir, y: rect.maxY - 1))
-        p.addQuadCurve(to: CGPoint(x: x + 14 * dir, y: rect.maxY + 6), control: CGPoint(x: x + 4 * dir, y: rect.maxY + 2))
-        p.addQuadCurve(to: CGPoint(x: x + 4 * dir, y: rect.maxY - 10), control: CGPoint(x: x + 8 * dir, y: rect.maxY - 2))
-        p.closeSubpath()
-        return p
+        UnevenRoundedRectangle(topLeadingRadius: 20,
+                               bottomLeadingRadius: mine ? 20 : 6,
+                               bottomTrailingRadius: mine ? 6 : 20,
+                               topTrailingRadius: 20,
+                               style: .continuous)
+            .path(in: rect)
     }
 }
 

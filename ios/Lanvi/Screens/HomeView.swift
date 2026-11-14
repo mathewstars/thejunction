@@ -12,7 +12,9 @@ struct HomeView: View {
     @Namespace private var zoom
 
     private enum Cover: Identifiable {
-        case activity(ActivityKind), help, story, mind, chat
+        /// The story travels with the screen, so answering it (which clears it on
+        /// the server) never pulls the screen out from under the person.
+        case activity(ActivityKind), help, story(API.StoryOut), mind, chat
         var id: String {
             switch self {
             case .activity(let k): return "activity-\(k.rawValue)"
@@ -72,7 +74,6 @@ struct HomeView: View {
     @State private var entrance: CGFloat = 0
     @State private var haptic = 0
     @State private var storyAutoAnswer: String?
-    @State private var chatDemoMessage: String?
     @State private var arrived = false
 
     var body: some View {
@@ -305,7 +306,7 @@ struct HomeView: View {
         case .story:
             HStack(spacing: 12) {
                 moreButton
-                Button("Hear my story") { open(.story) }
+                Button("Hear my story") { openStory() }
                     .buttonStyle(HomePrimaryStyle())
                 chatButton
             }
@@ -355,20 +356,17 @@ struct HomeView: View {
                 cover = nil
                 helpBlock = nil
             }
-        case .story:
-            if let story = store.wandering?.story {
-                HomeStoryScreen(story: story, autoAnswer: storyAutoAnswer,
-                                onAnswer: { await store.answerStory($0) }) { cover = nil }
-            } else {
-                Color.clear.onAppear { cover = nil }
+        case .story(let story):
+            HomeStoryScreen(story: story, autoAnswer: storyAutoAnswer,
+                            onAnswer: { await store.answerStory($0) }) {
+                if case .story = cover { cover = nil }
             }
         case .mind:
             HomeMindScreen { cover = nil }
         case .chat:
             HomeChatScreen(onClose: { cover = nil },
                            onHelp: { cover = .help },
-                           onActivity: { cover = .activity($0) },
-                           demoMessage: chatDemoMessage)
+                           onActivity: { cover = .activity($0) })
         }
     }
 
@@ -420,6 +418,10 @@ struct HomeView: View {
         if demo { print("lanvi-demo: open \(c.id), cover now \(cover?.id ?? "none")") }
         #endif
         cover = c
+    }
+
+    private func openStory() {
+        if let s = store.wandering?.story { open(.story(s)) }
     }
 
     private func openAfterSheet(_ c: Cover) {
@@ -536,7 +538,7 @@ struct HomeView: View {
             try? await Task.sleep(for: .milliseconds(600))
             switch what {
             case "help": open(.help)
-            case "story": open(.story)
+            case "story": openStory()
             case "mind": open(.mind)
             case "chat": open(.chat)
             case "more": sheet = .more
@@ -566,11 +568,10 @@ struct HomeView: View {
         await store.demoComeBack()
         try? await Task.sleep(for: .seconds(3))
         storyAutoAnswer = "a"
-        open(.story)
+        openStory()
         while cover != nil { try? await Task.sleep(for: .milliseconds(200)) }
         try? await Task.sleep(for: .seconds(2))
         // A short word with Lanvi.
-        chatDemoMessage = "The coffee outside was nice today"
         open(.chat)
         while cover != nil { try? await Task.sleep(for: .milliseconds(200)) }
         try? await Task.sleep(for: .seconds(2))
