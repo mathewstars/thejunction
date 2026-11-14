@@ -1,13 +1,17 @@
 """The ONLY module that sends anything to a host outside the private network.
 
-Two kinds of outbound data exist:
+Three kinds of outbound data exist:
 - level-2 review packs to Gemini (OUTREACH_MODE=gemini, default off)
+- Lanvi's chat reply (CHAT_MODE=gemini, default fixed): the note the person
+  just wrote and today's earlier non-crisis turns, checked by
+  InputGate.check_chat_outbound right before sending
 - "needs review" messages to a clinic Telegram chat (NOTIFY_MODE=telegram, default off)
 
 Rules enforced here, in code:
 - a host allowlist per purpose, https only
 - the level-2 pack is checked again by InputGate.check_outbound right before
-  sending (the anonymizer itself is InputGate in mind/gates.py)
+  sending (the anonymizer itself is InputGate in mind/gates.py); the frame
+  reading, the only pack with face frames, by InputGate.check_frames_pack
 - a notification text is built by notify.build_message from an allowlist of
   four fields and checked again here
 - timeouts everywhere, and no exception ever leaves this module
@@ -15,7 +19,9 @@ Rules enforced here, in code:
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 import re
 from urllib.parse import urlsplit
 
@@ -82,7 +88,6 @@ class Outreach:
     async def gemini_complete(self, pack: Pack) -> str | None:
         if not self.gemini_on or pack.level != 2:
             return None
-        import time
         out, t0 = None, time.monotonic()
         try:
             out = await self._level2(pack)
@@ -92,11 +97,18 @@ class Outreach:
                 self.recorder(pack, out, (time.monotonic() - t0) * 1000, self.level2_model, 2)
 
     async def _level2(self, pack: Pack) -> str | None:
+        # The frame reading sends a long stream and the model thinks before it
+        # answers: it gets its own output limit and timeout; other tasks keep theirs.
+        frames = pack.task == "frames_reading"
+        max_tokens = self.settings.gemini_frames_max_tokens if frames else None
+        timeout = self.settings.gemini_frames_timeout_s if frames else self.settings.gemini_timeout_s
         try:
             if pack.task == "reading":
                 INPUT_GATE.check_reading_outbound(pack.payload)
             elif pack.task == "session_reading":
                 INPUT_GATE.check_session_outbound(pack.payload)
+            elif pack.task == "frames_reading":
+                INPUT_GATE.check_frames_pack(pack)  # the only pack that carries frames
             else:
                 INPUT_GATE.check_outbound(pack.payload)
             if self.standin:
@@ -105,15 +117,43 @@ class Outreach:
                 from .llm.local import LocalModel
                 return await LocalModel(self.settings, transport=self.transport).complete(
                     Pack(1, pack.task, pack.messages, pack.payload, pack.ref_map),
-                    json_mode=True, max_tokens=1500)
-            url, headers, body = gemini.build_request(self.settings, pack)
-            data = await self._post("gemini", url, body, headers, self.settings.gemini_timeout_s)
+                    json_mode=True, max_tokens=max_tokens or 1500)
+            url, headers, body = gemini.build_request(self.settings, pack,
+                                                      max_output_tokens=max_tokens or 4000)
+            data = await self._post("gemini", url, body, headers, timeout)
             return gemini.parse_response(data or {})
         except GateError:
             raise
         except Exception as exc:  # noqa: BLE001
             log.warning("level 2 unavailable: %s", type(exc).__name__)
             return None
+
+    # ---- Lanvi's chat reply (CHAT_MODE=gemini) ----------------------------------
+
+    @property
+    def chat_on(self) -> bool:
+        s = self.settings
+        return s.chat_mode == "gemini" and bool(s.gemini_api_key and gemini.chat_model(s))
+
+    async def chat_complete(self, pack: Pack, forbidden: list[str]) -> str | None:
+        """The model's raw reply, or None (off, refused, error, timeout). Never raises."""
+        if not self.chat_on or pack.task != "chat" or pack.level != 2:
+            return None
+        out, t0 = None, time.monotonic()
+        try:
+            INPUT_GATE.check_chat_outbound(pack, forbidden)
+            url, headers, body = gemini.build_chat_request(self.settings, pack)
+            limit = self.settings.chat_timeout_s
+            data = await asyncio.wait_for(self._post("gemini", url, body, headers, limit), limit)
+            out = gemini.parse_response(data or {})
+            return out
+        except Exception as exc:  # noqa: BLE001 - any failure means the fixed line
+            log.warning("chat reply unavailable: %s", type(exc).__name__)
+            return None
+        finally:
+            if self.recorder is not None:
+                self.recorder(pack, out, (time.monotonic() - t0) * 1000,
+                              gemini.chat_model(self.settings), 2)
 
     # ---- notifications ---------------------------------------------------------
 

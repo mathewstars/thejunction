@@ -1,7 +1,8 @@
 """Raw face frames through the API: the phone sends what ARKit gives, the
 server computes the summary, keeps the frames outside the packs, and the
-frames never reach a model, the audit, the trace, the logs or the clinician's
-patient views."""
+frames never reach the audit, the trace, the logs or the clinician's patient
+views. They reach a model only as the reduced stream of the level-2 frame
+reading, with consent (test_frames_reading.py has the rest)."""
 
 import json
 import logging
@@ -217,39 +218,80 @@ def test_frames_never_in_audit_trace_or_logs(caplog):
     assert MARK not in json.dumps(stored)
 
 
+FRAMES_PROMPT_START = "ROLE\n\nYou read a short recording of how one person"
+
+
+def _bodies_with_frames(l2):
+    """Level-2 request bodies whose user message carries a frame stream."""
+    out = []
+    for _h, body, _u in l2.requests:
+        user = json.dumps(body.get("contents") or "")
+        if '\\"frames\\"' in user or '"frames"' in user:
+            out.append(body)
+    return out
+
+
 @pytest.mark.parametrize("reader", ["local", "auto"])
-def test_no_model_pack_can_contain_raw_frames(reader):
+@pytest.mark.parametrize("allow", [True, False])
+def test_frames_reach_a_model_only_in_the_level2_frame_reading_with_consent(reader, allow):
+    """The exact rule (it replaced "no pack may contain frames"): raw frames go
+    to a model ONLY as the reduced stream of the frame reading, ONLY to level 2,
+    ONLY with the patient's consent to outside processing. Every other pack, at
+    either level, carries none; level 1 never gets any."""
+    from clinic_engine.mind import frame_reading as fr
     from conftest import FakeLocal, Level2Recorder
     l2 = Level2Recorder(reply=None)
     env = Env(local=FakeLocal(), level2=l2, session_reader=reader)
     repo = env.repo()
     p = repo.patient()
-    p["allow_outside_processing"] = True
+    p["allow_outside_processing"] = allow
     repo.put("patient.json", p)
-    assert post(env, focus_raw("act-raw-000015")).json()["reading"] == "pending"
+    post(env, focus_raw("act-raw-000015"))
     env.run(env.mind.idle())
     env.run(env.mind.run_appraisal(env.repo(), "on_demand"))
     rec = env.repo().get("activities/act-raw-000015.json")
-    # Every pack the models were offered, at both levels; the session reading
-    # of the raw session is among them.
+    # Level 1: every pack it was offered; none holds frames.
     tasks = [pk.task for pk in env.local.packs]
-    assert "association" in tasks
-    assert "session_reading" in tasks if reader == "local" else l2.requests
-    sent = json.dumps([pk.messages for pk in env.local.packs]) + json.dumps(
-        [b for _h, b, _u in l2.requests])
-    assert MARK not in sent and '"samples"' not in sent and "face_raw" not in sent
+    assert "association" in tasks and "frames_reading" not in tasks
+    local_sent = json.dumps([pk.messages for pk in env.local.packs])
+    assert MARK not in local_sent and '"samples"' not in local_sent
+    assert '"frames"' not in local_sent and '\\"frames\\"' not in local_sent
+    # Level 2: frames only in the frame reading, only with consent.
+    with_frames = _bodies_with_frames(l2)
+    if allow:
+        assert len(with_frames) == 1
+        body = with_frames[0]
+        assert body["systemInstruction"]["parts"][0]["text"].startswith(FRAMES_PROMPT_START)
+        payload = json.loads(body["contents"][0]["parts"][0]["text"])
+        assert list(payload) == list(fr.PAYLOAD_KEYS)
+        assert set(payload["channels"]) <= set(fr.CHANNELS)
+        assert len(payload["frames"]) <= env.mind.th.frames_max_frames
+        INPUT_GATE.check_frames_outbound(payload)
+    else:
+        assert with_frames == []
+        assert rec["frames_reading"] == {"status": "not_allowed"}
+    for _h, body, _u in l2.requests:
+        blob = json.dumps(body)
+        assert MARK not in blob and '"samples"' not in blob and "face_raw" not in blob
+        if body not in with_frames:
+            assert not body["systemInstruction"]["parts"][0]["text"].startswith(
+                FRAMES_PROMPT_START)
     # The session pack is built from the summary only, even from a record that
     # still carried the frames.
     raw = env.store.get(raw_key(env, "act-raw-000015"))
     pack = INPUT_GATE.session_pack({**rec, "face_raw": raw, "samples": raw["samples"]}, [])
     assert MARK not in json.dumps(pack.messages) and "samples" not in json.dumps(pack.payload)
-    # And the outbound check refuses frames outright.
-    for bad in ({"session": {"samples": [[0.5]]}}, {"session": {"face_raw": {}}}):
-        try:
+    # The other outbound checks refuse frames outright.
+    for bad in ({"session": {"samples": [[0.5]]}}, {"session": {"face_raw": {}}},
+                {"session": {"frames": [[0.5]]}}):
+        with pytest.raises(GateError):
             INPUT_GATE.check_session_outbound(bad)
-            raise AssertionError("not refused")
-        except GateError:
-            pass
+    for bad in ({"frames": [[0.5]]}, {"evidence": [{"samples": [[0.5]]}]}):
+        with pytest.raises(GateError):
+            INPUT_GATE.check_outbound(bad)
+    # The frame pack itself is level 2 only.
+    fpack = INPUT_GATE.frames_pack(rec, raw)
+    assert fpack.level == 2 and fpack.task == "frames_reading" and not fpack.images
 
 
 def test_recompute_from_the_stored_frames(env):

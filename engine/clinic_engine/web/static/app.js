@@ -913,9 +913,14 @@
     const firstSaid = ev.findIndex((e) => e.kind !== "alert");
     if (firstSaid > 0) ev.splice(0, firstSaid);
     const localDay = (iso) => { const t = new Date(iso); return new Date(t.getTime() - t.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+    const chatOn = d.chat_mode === "gemini";
     wrap.appendChild(el("p", { class: "muted small" }, d.share_notes
-      ? "The patient agreed to share the words they write. Lanvi answers only with lines from a fixed set; a model labels the words and does not write to the patient."
-      : "This patient has not shared the words they write, so only the labels are shown. Lanvi answers only with lines from a fixed set."));
+      ? (chatOn
+        ? "The patient agreed to share the words they write. Chat mode is on: Lanvi's reply to a note may be written by Gemini (an outside model) and checked by code; each such reply is marked. A note that asks for help always gets the fixed line."
+        : "The patient agreed to share the words they write. Lanvi answers only with lines from a fixed set; a model labels the words and does not write to the patient.")
+      : (chatOn
+        ? "This patient has not shared the words they write, so only the labels are shown. Chat mode is on: Lanvi's replies written by Gemini are marked."
+        : "This patient has not shared the words they write, so only the labels are shown. Lanvi answers only with lines from a fixed set.")));
     if (!ev.length) { wrap.appendChild(empty("Nothing written or offered yet.")); return wrap; }
     const chat = el("div", { class: "chat" });
     const who = d.display_name || d.label;
@@ -933,7 +938,7 @@
             el("span", { class: "chip" }, "about: " + words(c.topic).toLowerCase()),
             c.asks_for_help ? el("span", { class: "chip l-urgent" }, "asks for help") : null)));
         if (e.n.reply) chat.appendChild(el("div", { class: "msg from-lanvi" },
-          el("div", { class: "who" }, "Lanvi · fixed line"), el("div", { class: "text" }, e.n.reply)));
+          el("div", { class: "who" }, e.n.reply_by === "model" ? "Lanvi · written by Gemini, checked by code" : "Lanvi · fixed line"), el("div", { class: "text" }, e.n.reply)));
         if (c.crisis) chat.appendChild(el("div", { class: "chat-event urgent" }, "Help screen opened on the phone"));
       } else if (e.kind === "offer") {
         chat.appendChild(el("div", { class: "msg from-lanvi" },

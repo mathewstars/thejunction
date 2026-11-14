@@ -130,6 +130,49 @@ class Thresholds:
     # (about 18 deg/s) about 0.6. Estimated, not yet calibrated.
     head_movement_full_deg_s: float = 30.0
 
+    # The frame reading (mind/frame_reading.py, data/frames_prompt.txt): the
+    # level-2 model reads a reduced stream of the raw frames; code checks every
+    # item on the full-rate frames. Clinician-only: none of these values
+    # touches attention, suggestions or lessons.
+    frames_rate_hz: float = 5.0  # rows per second sent (blocks of frames averaged)
+    frames_max_frames: int = 400  # longer recordings get a lower rate to fit
+    # A reported smile is confirmed when this share of its length overlaps a
+    # smile code found itself.
+    frames_smile_overlap: float = 0.5
+    # Code's "side" of a smile: mean(mouthSmileLeft - mouthSmileRight) inside it
+    # at least this (left) or at most minus this (right); else "both".
+    frames_side_diff: float = 0.15
+    # Blinks agree when the counts differ by at most max(n, share x code's count).
+    frames_blink_tolerance_n: int = 2
+    frames_blink_tolerance_share: float = 0.2
+    # Segments: a frame counts for "head_down" at this headPitch or more, for
+    # "still_face" when its 0.1 s block moves less than this per second (mean
+    # over the blend shapes, blinks left out), for "eyes_closed" at blink_onset;
+    # the other kinds use look_down_min, brow_down_min and inner_brow_up_min.
+    frames_head_down_deg: float = 15.0
+    frames_still_speed: float = 0.1
+    # A reported segment is confirmed when code's share of its span (tracked
+    # frames; all frames for not_tracked) is at least this.
+    frames_share_looking_down: float = 0.6
+    frames_share_brows_down: float = 0.6
+    frames_share_inner_brows_raised: float = 0.6
+    frames_share_head_down: float = 0.6
+    frames_share_still_face: float = 0.7
+    frames_share_eyes_closed: float = 0.7
+    frames_share_not_tracked: float = 0.8
+    # The overall words, from code's face summary:
+    # expression: facial_activity >= lively_min "lively", >= still_below "moderate", else "still"
+    frames_lively_min: float = 0.45
+    frames_still_below: float = 0.2
+    # smiling: no smile "none"; smile_rate_per_min >= often_min "often",
+    # >= sometimes_min "sometimes", else "rarely"
+    frames_smiling_often_min: float = 3.0
+    frames_smiling_sometimes_min: float = 1.0
+    # gaze: look_down_share >= this "often_down", else "mostly_up"
+    frames_gaze_down_share: float = 0.3
+    # tracking: tracking_quality >= good "good", >= face_min_quality "partly", else "poor"
+    frames_tracking_good: float = 0.9
+
     # Responder.
     suggestion_cooldown_hours: float = 6.0
     suggestion_ttl_hours: float = 20.0

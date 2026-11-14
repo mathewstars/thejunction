@@ -2,9 +2,11 @@
 
 All request models forbid unknown fields. Free text exists in exactly two
 places, and both get the same treatment (classified into enums only, never
-followed, never logged, never sent outside the server): NoteIn.text and the
-typed items of a check-in (CheckinItem.text). Everything else is numbers,
-dates, ids and enums.
+followed, never logged): NoteIn.text and the typed items of a check-in
+(CheckinItem.text). Neither is sent outside the server, with one switchable
+exception: with CHAT_MODE=gemini (default fixed) a note that did not open the
+help screen goes to Gemini so it can write Lanvi's reply. Everything else is
+numbers, dates, ids and enums.
 """
 
 from __future__ import annotations
@@ -478,11 +480,14 @@ class NoteIn(Strict):
     id: ClientId
     text: Annotated[str, StringConstraints(min_length=1, max_length=280)] = Field(
         description="The ONLY free-text field in the API. Untrusted data: classified, never "
-                    "followed, never sent outside the server.")
+                    "followed. Never sent outside the server, except with CHAT_MODE=gemini "
+                    "(default fixed), where a note that did not open the help screen goes "
+                    "to Gemini so it can write Lanvi's reply.")
 
 
 class NoteReplyOut(BaseModel):
-    template_id: str
+    template_id: str = Field(description="A fixed line's id, or `gemini` when Gemini wrote "
+                                         "the reply (CHAT_MODE=gemini).")
     text: str
 
 
@@ -673,11 +678,17 @@ class AnalyzeIn(Strict):
     patient_id: ServerId
     round_id: Optional[ClientId] = Field(None, description="An AR round (earlier design).")
     activity_id: Optional[ClientId] = Field(None, description="A focus or breathing activity.")
+    what: Literal["session", "frames"] = Field(
+        "session", description="With activity_id: `session` runs the session reading, `frames` "
+                               "the frame reading (level 2 reads the raw face frames, code checks "
+                               "every item; the activity must have been sent with face_raw).")
 
     @model_validator(mode="after")
     def _one(self):
         if (self.round_id is None) == (self.activity_id is None):
             raise ValueError("give either round_id or activity_id")
+        if self.what == "frames" and self.activity_id is None:
+            raise ValueError("what=frames needs activity_id")
         return self
 
 
