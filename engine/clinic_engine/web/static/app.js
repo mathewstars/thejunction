@@ -725,7 +725,7 @@
       const two = t.verdict2 ? "Gemini " + ({ agree: "agreed", raise: "raised it", lower: "lowered it" }[t.verdict2]) + " (" + (RS[t.reason2] || words(t.reason2).toLowerCase()) + ")" : "Gemini was not asked or did not answer";
       return el("span", { class: "sub tri" }, "Level set by the two models: " + one + "; " + two + ". The fixed rules alone would say " + LV[t.rules_level] + ".");
     };
-    const triageNote = tri.mode === "models" ? el("p", { class: "muted small tri-note" }, "The watchers decide what is on this list. The two models decide how much each item matters; when neither answers, the fixed rules' level stands. A request for help is always “needs review today” by rule.") : null;
+    const triageNote = tri.mode === "models" ? el("p", { class: "muted small tri-note" }, "The watchers decide what is on this list. The two models decide how much each item matters; when neither answers, the fixed rules' level stands. A request for help is given to both models as part of the picture, without the person's words; its own level is fixed by rule and no model can change it.") : null;
     const att = panel("Needs attention", items.length || "", items.length ? el("div", { class: "rows" },
       helpItem ? el("div", { class: "row" },
         el("div", { class: "top" }, levelChip(helpItem.level), el("span", { class: "t" }, kind(helpItem.kind))),
@@ -1505,9 +1505,9 @@
         "does not add that lesson in this run. This is the one place where Gemini's answer is acted on without code testing it against numbers, and all it can do is hold a lesson back. It cannot add or change one.",
         [go2(anna, "mind", "Anna Korhonen → Learned"), ", “How it learns”, and the Blueprint section of the same name."]),
       job("5", "Weighs each flag for the clinic, as the second of two readers", "not measured yet",
-        "the open flags of one person (kind, days held, the rules' level, the flag's own numbers), the last 14 days of movement against own normal, and what the local model answered. No name, date or text. A request for help is never sent: it is urgent by rule.",
+        "the open flags of one person (kind, days held, the rules' level, the flag's own numbers), the last 14 days of movement against own normal, and what the local model answered. No name, date or text. A request for help is part of that picture, without the person's words; its own level is urgent by rule.",
         "for every flag: agree, raise or lower, with one of nine fixed reasons.",
-        "applies it: the flag's level moves by one step from the local model's level. This is a decision by the models, not checked against numbers. What code keeps is the list of flags, the rule for a request for help, and the fixed rules' own level, which is shown beside it and stands whenever no model answers.",
+        "applies it: the flag's level moves by one step from the local model's level. This is a decision by the models, not checked against numbers. What code keeps is the list of flags, the level of a request for help (always urgent, whatever a model answers), and the fixed rules' own level, which is shown beside it and stands whenever no model answers.",
         [go2(anna, "overview", "Anna Korhonen → Overview"), ", the list “Needs attention”: under each flag, what each model said and what the rules alone would say."])),
       el("p", { class: "small" }, "Still switched on in the server, from an earlier design: a reading of a movement round, which sends the path of the phone in metres and two small drawings of that path seen from above (no photo). The app no longer sends rounds.")));
 
