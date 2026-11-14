@@ -35,14 +35,15 @@ enum Rig {
         }
     }
 
-    // Back to front: tail, ears, body, front legs, head, eyes, mouth.
+    // Back to front: tail, ears, body, front legs, head, eyes, mouth. The front legs
+    // never swing: the paws stay planted and move only with the whole fox.
     // The tail's flat tab (its base) tucks behind the body on the right.
     static let tail = Part(name: "tail", center: CGPoint(x: 570, y: 1500), scale: 1.25, pivot: UnitPoint(x: 0.88, y: 0.66))
     static let earL = Part(name: "ear-left", center: CGPoint(x: 782, y: 492), scale: 1.3, pivot: UnitPoint(x: 0.36, y: 0.8))
     static let earR = Part(name: "ear-right", center: CGPoint(x: 1419, y: 492), scale: 1.3, pivot: UnitPoint(x: 0.64, y: 0.8))
     static let body = Part(name: "body", center: CGPoint(x: 1084, y: 1466), scale: 1.31, pivot: UnitPoint(x: 0.5, y: 1.0))
-    static let legL = Part(name: "leg-left", center: CGPoint(x: 772, y: 1640), scale: 1.06, pivot: UnitPoint(x: 0.5, y: 0.06))
-    static let legR = Part(name: "leg-right", center: CGPoint(x: 1196, y: 1640), scale: 1.06, pivot: UnitPoint(x: 0.5, y: 0.06))
+    static let legL = Part(name: "leg-left", center: CGPoint(x: 772, y: 1640), scale: 1.06, pivot: .center)
+    static let legR = Part(name: "leg-right", center: CGPoint(x: 1196, y: 1640), scale: 1.06, pivot: .center)
     /// The head turns low in its neck stub, under the chin, so tilting never opens a gap.
     static let head = Part(name: "head", center: CGPoint(x: 1086, y: 832), scale: 1.5, pivot: UnitPoint(x: 0.5, y: 0.85))
 
@@ -54,6 +55,10 @@ enum Rig {
 
     /// The tail's second joint (0...1 of the tail): the tip turns around it a beat late.
     static let tailMid = UnitPoint(x: 0.55, y: 0.55)
+
+    /// The fox's visual centre (head and body, not the tail), in master pixels. The
+    /// view centres on this; the tail overhangs to the left.
+    static let centerX: CGFloat = 1085
 
     /// Where the head turns, in canvas units.
     static var neck: CGPoint { head.pivotPoint }
@@ -149,6 +154,8 @@ struct RigFrame {
     /// The whole fox squashes and stretches from the feet (gently), so no part distorts.
     var rootSX: CGFloat = 1
     var rootSY: CGFloat = 1
+    /// The whole fox leans this many degrees around its feet (the happy wiggle).
+    var rootTilt: Double = 0
     var bodySX: CGFloat = 1
     var bodySY: CGFloat = 1
     var headDX: CGFloat = 0
@@ -161,13 +168,6 @@ struct RigFrame {
     var earRStretch: CGFloat = 1
     var tail: Double = 0
     var tailTip: Double = 0
-    /// Front legs: positive = the paw swings up and out, turned at the shoulder (leg top).
-    var pawL: Double = 0
-    var pawR: Double = 0
-    var pawLX: CGFloat = 0   // negative = outward
-    var pawRX: CGFloat = 0   // positive = outward
-    var pawLY: CGFloat = 0
-    var pawRY: CGFloat = 0
     var eyes: EyeShape = .open
     var eyeOpen: CGFloat = 1
     var eyeDX: CGFloat = 0
@@ -224,7 +224,8 @@ enum Motion {
         return Double(x % 100_000) / 100_000
     }
 
-    /// The jump: crouch 90 ms, up 180 ms, fall 150 ms, land squash 120 ms, wobble 0.4 s.
+    /// The jump: crouch 90 ms, up 180 ms, fall 150 ms, land squash 120 ms, then two small
+    /// settling bounces.
     /// Returns (lift, squash) where squash < 1 is squashed, > 1 stretched.
     static func hop(_ t: Double, height: Double) -> (lift: Double, squash: Double) {
         guard t >= 0, t < 1.2 else { return (0, 1) }
@@ -232,8 +233,11 @@ enum Motion {
         if t < 0.27 { let p = easeOut((t - 0.09) / 0.18); return (height * p, 0.92 + 0.15 * p) }
         if t < 0.42 { let p = easeIn((t - 0.27) / 0.15); return (height * (1 - p), 1.07 - 0.04 * p) }
         if t < 0.54 { let p = (t - 0.42) / 0.12; return (0, 1 - 0.09 * sin(p * .pi / 2)) }
-        // two small settling wobbles
-        let p = t - 0.54
-        return (0, 1 - 0.09 * cos(p / 0.2 * .pi) * exp(-p * 5.5))
+        // two small settling bounces, each landing with a softer squash
+        if t < 0.72 { let p = (t - 0.54) / 0.18; return (height * 0.09 * 4 * p * (1 - p), 0.91 + 0.09 * sin(p * .pi / 2)) }
+        if t < 0.78 { let p = (t - 0.72) / 0.06; return (0, 1 - 0.04 * sin(p * .pi)) }
+        if t < 0.9 { let p = (t - 0.78) / 0.12; return (height * 0.03 * 4 * p * (1 - p), 1) }
+        let p = t - 0.9
+        return (0, 1 - 0.02 * sin(p / 0.12 * .pi) * exp(-p * 8))
     }
 }

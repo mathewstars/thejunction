@@ -13,13 +13,16 @@ import SwiftUI
 // - Moods (`LanviMood`): calm, happy, curious, surprised, sleepy, listening.
 //   `.lanviMood` holds one (sleepy for the evening, listening while the person types).
 //   `.lanviReaction` plays one once on top of the idle, which never stops:
-//     happy     eyes to happy arcs, big smile, both paws up, fast tail wag, a hop
+//     happy     a joyful hop (head leads, nods on landing, ears flop), happy eyes,
+//               big smile, fast shrinking tail wag, a little wiggle; paws stay planted
 //     curious   head tilt, eyes look up toward a point
 //     surprised ears perk, wide eyes, small "o"
 //     sleepy    a yawn
 //     listening ears up, a small nod
 // - `.lanviLookAt` takes a point in the fox's own square (0,0 top-left, 1,1 bottom-
 //   right; it can be outside, e.g. y: -0.4 is above his head). nil = straight ahead.
+// - Layout: the square is centred on the fox's head and body; the tail hangs out
+//   past the left edge, so centre the view and the fox looks centred.
 // - Tapping the fox: eyes jump to the finger, head tilts toward it, happy squint, ear
 //   flick, a small hop. Works next to the screen's own `.onTapGesture`.
 // - Poses: curious, cheer, love and surprised are the puppet (cheer = happy face and
@@ -78,7 +81,7 @@ struct LanviView: View {
     /// Where the puppet's tail tip is at rest, from the centre of the fox's square.
     static func puppetTailTip(foxSize s: CGFloat) -> CGPoint {
         let k = s / Rig.canvas.height
-        let x0 = (s - Rig.canvas.width * k) / 2
+        let x0 = s / 2 - (Rig.centerX - Rig.frame.minX) * k
         let tip = Rig.tailTip
         return CGPoint(x: x0 + tip.x * k - s / 2, y: tip.y * k - s / 2)
     }

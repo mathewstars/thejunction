@@ -33,9 +33,13 @@ struct LanviPuppet: View {
     /// Between the hind feet, where the fox stands (0...1 of the canvas).
     private static let feet = UnitPoint(x: (Rig.body.center.x - Rig.frame.minX) / Rig.canvas.width, y: 0.995)
 
+    /// The canvas starts here in the view, so the head and body sit on the view's
+    /// centre line and the tail overhangs to the left.
     private var canvasOrigin: CGPoint {
-        CGPoint(x: (size - Rig.canvas.width * k) / 2, y: size - Rig.canvas.height * k)
+        CGPoint(x: size / 2 - (Rig.centerX - Rig.frame.minX) * k, y: size - Rig.canvas.height * k)
     }
+    /// How far the centred canvas is moved from a plain centred one.
+    private var centring: CGFloat { canvasOrigin.x - (size - Rig.canvas.width * k) / 2 }
 
     var body: some View {
         TimelineView(.animation) { context in
@@ -45,7 +49,8 @@ struct LanviPuppet: View {
                 rig(f)
                     .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k)
                     .scaleEffect(x: f.rootSX, y: f.rootSY, anchor: Self.feet)
-                    .offset(x: f.rootX * mu, y: f.rootY * mu)
+                    .rotationEffect(.degrees(f.rootTilt), anchor: Self.feet)
+                    .offset(x: centring + f.rootX * mu, y: f.rootY * mu)
             }
             .frame(width: size, height: size, alignment: .bottom)
         }
@@ -133,7 +138,7 @@ struct LanviPuppet: View {
         return Ellipse()
             .fill(Theme.ink.opacity(0.13 * (1 - 0.5 * lift)))
             .frame(width: size * 0.56 * (1 - 0.25 * lift) * f.bodySX, height: size * 0.06)
-            .offset(x: size * 0.08, y: size * 0.02)
+            .offset(y: size * 0.02)
     }
 
     private func rig(_ f: RigFrame) -> some View {
@@ -144,8 +149,8 @@ struct LanviPuppet: View {
                 part(Rig.earR, rotate: f.earR, sy: f.earRStretch)
             }
             part(Rig.body, sx: f.bodySX, sy: f.bodySY)
-            leg(Rig.legL, rotate: f.pawL, dx: f.pawLX, dy: f.pawLY, bodySY: f.bodySY)
-            leg(Rig.legR, rotate: -f.pawR, dx: f.pawRX, dy: f.pawRY, bodySY: f.bodySY)
+            leg(Rig.legL)
+            leg(Rig.legR)
             headTurn(f) {
                 head()
                 eyes(f)
@@ -168,14 +173,14 @@ struct LanviPuppet: View {
             .position(x: p.local.x * k, y: p.local.y * k)
     }
 
-    /// A front leg: its top fades into the chest fur so it grows out of the body.
-    private func leg(_ p: Rig.Part, rotate: Double, dx: CGFloat, dy: CGFloat, bodySY: CGFloat) -> some View {
+    /// A front leg: its top fades into the chest fur so it grows out of the body. The
+    /// paws stay planted: legs only move with the whole fox.
+    private func leg(_ p: Rig.Part) -> some View {
         image(p)
             .mask(LinearGradient(stops: [.init(color: .clear, location: 0),
                                          .init(color: .black, location: Rig.legFade)],
                                  startPoint: .top, endPoint: .bottom))
-            .rotationEffect(.degrees(rotate), anchor: p.pivot)
-            .position(x: p.local.x * k + dx * mu, y: p.local.y * k + dy * mu + (bodySY - 1) * 30 * mu)
+            .position(x: p.local.x * k, y: p.local.y * k)
     }
 
     /// The tail turns at its hidden base; the tip turns again around the tail's middle
