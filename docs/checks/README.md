@@ -85,3 +85,43 @@ The relation is a little stronger where it should be: in people in the clinical 
 | In weeks with a flag, the weekly PANAS against the person's own other weeks (12 flagged weeks, 11 people)? | Positive affect -1.9 points (-6.2 to 1.9), negative affect +1.7 (-2.1 to 4.8): the expected directions, and the intervals include zero. |
 
 What this says about our rule, and it is not flattering: in healthy people a low-step day is mostly a rest day. They are less alert and more rested, not sadder, and about one in three gets a movement flag within three months without anything being wrong. That is why the rule alone opens a flag at "attention" and not at "needs review today", and why the pilot has to measure how often a flag in a patient means something. This dataset cannot answer that: nobody in it is ill.
+
+## Our face hypotheses on real faces (LMVD)
+
+`lmvd_check.py` (in this folder; it needs pandas), output `lmvd-check-2026-11-15.json`. LMVD (He et al. 2024, https://github.com/helang818/LMVD, figshare 25698351, Apache 2.0) holds OpenFace features, frame by frame, of 1,823 video logs from about 1,475 people on four platforms: half by people who say they have depression, half by others. No video and no audio: action units, gaze and head pose. The data (16 GB) is not in this repository. Each video was reduced to the same kind of numbers our server computes from ARKit, by fixed rules written before looking at the result; 1684 videos had enough tracked frames (872 depression, 812 others, about 165 hours).
+
+The question: do the face measures we fixed a direction for on 13 November differ between the two groups in that direction? The last number is the chance that a video from the depression group has the higher value; 0.50 means no difference.
+
+| Measure | Expected in depression | Median, depression | Median, others | Chance the depression video is higher | Result |
+|---|---|---|---|---|---|
+| Time spent smiling | lower | 0.0631 | 0.1551 | 0.35 (0.32 to 0.37) | as expected |
+| Smiles per minute | lower | 3.6114 | 7.7205 | 0.35 (0.33 to 0.38) | as expected |
+| Smile intensity | lower | 1.065 | 1.1034 | 0.48 (0.45 to 0.51) | no clear difference |
+| Smiles that reach the eyes | lower | 0.2799 | 0.3644 | 0.44 (0.42 to 0.47) | as expected |
+| Overall facial movement | lower | 1.4605 | 1.7957 | 0.34 (0.31 to 0.36) | as expected |
+| Brows drawn down | higher | 0.1971 | 0.2546 | 0.48 (0.45 to 0.51) | no clear difference |
+| Inner brows raised | higher | 0.2713 | 0.3174 | 0.38 (0.36 to 0.41) | opposite |
+| Blink rate | mixed | 23.0292 | 21.4605 | 0.50 (0.47 to 0.54) | no direction fixed |
+| Blink length | higher | 258.1818 | 255.6479 | 0.54 (0.51 to 0.57) | as expected |
+| Time looking down | higher | 0.3934 | 0.5768 | 0.43 (0.41 to 0.46) | opposite |
+| Head angle | higher | 4.2572 | 8.2687 | 0.38 (0.35 to 0.40) | opposite |
+| Head movement | lower | 38.2696 | 52.3019 | 0.31 (0.29 to 0.33) | as expected |
+
+**6 of 11 as expected, 3 opposite, 2 with no clear difference.** The three we rated as best supported all hold, and clearly: people in the depression group smile for less of the time (6% of frames against 16%), smile less often (3.6 a minute against 7.7) and move the face less. Head movement is lower too, and fewer of their smiles reach the eyes.
+
+What went against us: inner brows raised, time looking down and head angle came out opposite. The last two depend on where the camera stands, and a vlog camera is not a phone held in the hand, so we read little into them; inner brows raised is simply not supported here. Smile intensity and brows drawn down show nothing.
+
+What this does and does not show. It is the first evidence on real faces that the measures Lanvi computes carry the signal we chose them for. It is a comparison between people, not the change within one person that the product looks for. The two groups also differ in what they talk about, how they film and which platform they use, and a person talking about their depression smiles less for that reason alone. The videos are not one per person. OpenFace on a vlog is not ARKit during a game.
+
+## The movement rule as it runs, on a second set of daily data (MobileWell400+)
+
+`python -m clinic_engine.mobilewell_check <folder>`, output `mobilewell-check-2026-11-15.json`. MobileWell400+ (https://zenodo.org/records/11060596, CC BY 4.0): 409 adults in Spain, 30 days, the phone's own activity recognition, a mood report several times a day (valence, energetic arousal, tense arousal, 0 to 100) and the PHQ-9 at the end. Volunteers, not patients. A day's movement is the minutes the phone labelled walking, on foot, running or cycling, turned into steps at 100 a minute. With 30 days, only about the last ten of each person can be scored.
+
+| Question | Result |
+|---|---|
+| How often is a day clearly low? | 140 of 2892 scored days, 4.8%. |
+| How many people get a movement flag in about ten scored days? | 12 of 330. |
+| On a clearly low day against the person's own other days (68 people)? | Valence -1.9 points (95% interval -4.1 to 0.3), energetic arousal -2.3 (-5.0 to 0.5), tense arousal +2.4 (-0.0 to 5.0): each in the expected direction, none clear of zero. |
+| Between people: PHQ-9 at the end against how much the person moved (198 people, 51 at 10 or more)? | Rank correlation -0.04, no relation (permutation p 0.60). |
+
+Beside LifeSnaps this gives a second, lower false-alarm figure (about 4% of people in ten days against a third in three months; the two are not the same length), and the same picture for mood: low-movement days lean the expected way and do not stand out.

@@ -1,0 +1,155 @@
+{
+ "dataset": "LMVD (He et al. 2024), figshare 25698351; not in this repository",
+ "videos_used": 1684,
+ "depression": 872,
+ "others": 812,
+ "measures": {
+  "smile_time_share": {
+   "expected_in_depression": "lower",
+   "median_depression": 0.0631,
+   "median_others": 0.1551,
+   "chance_depression_video_is_higher": 0.347,
+   "interval_95": [
+    0.32,
+    0.373
+   ],
+   "seen": "lower",
+   "as_expected": true
+  },
+  "smile_rate_per_min": {
+   "expected_in_depression": "lower",
+   "median_depression": 3.6114,
+   "median_others": 7.7205,
+   "chance_depression_video_is_higher": 0.355,
+   "interval_95": [
+    0.33,
+    0.382
+   ],
+   "seen": "lower",
+   "as_expected": true
+  },
+  "smile_intensity": {
+   "expected_in_depression": "lower",
+   "median_depression": 1.065,
+   "median_others": 1.1034,
+   "chance_depression_video_is_higher": 0.479,
+   "interval_95": [
+    0.452,
+    0.507
+   ],
+   "seen": "no clear difference",
+   "as_expected": false
+  },
+  "eye_smile_share": {
+   "expected_in_depression": "lower",
+   "median_depression": 0.2799,
+   "median_others": 0.3644,
+   "chance_depression_video_is_higher": 0.441,
+   "interval_95": [
+    0.417,
+    0.469
+   ],
+   "seen": "lower",
+   "as_expected": true
+  },
+  "facial_activity": {
+   "expected_in_depression": "lower",
+   "median_depression": 1.4605,
+   "median_others": 1.7957,
+   "chance_depression_video_is_higher": 0.335,
+   "interval_95": [
+    0.309,
+    0.361
+   ],
+   "seen": "lower",
+   "as_expected": true
+  },
+  "brow_down_share": {
+   "expected_in_depression": "higher",
+   "median_depression": 0.1971,
+   "median_others": 0.2546,
+   "chance_depression_video_is_higher": 0.477,
+   "interval_95": [
+    0.448,
+    0.508
+   ],
+   "seen": "no clear difference",
+   "as_expected": false
+  },
+  "inner_brow_up_share": {
+   "expected_in_depression": "higher",
+   "median_depression": 0.2713,
+   "median_others": 0.3174,
+   "chance_depression_video_is_higher": 0.381,
+   "interval_95": [
+    0.356,
+    0.409
+   ],
+   "seen": "lower",
+   "as_expected": false
+  },
+  "blink_rate_per_min": {
+   "expected_in_depression": "mixed",
+   "median_depression": 23.0292,
+   "median_others": 21.4605,
+   "chance_depression_video_is_higher": 0.503,
+   "interval_95": [
+    0.474,
+    0.535
+   ],
+   "seen": "no clear difference",
+   "as_expected": null
+  },
+  "blink_duration_ms": {
+   "expected_in_depression": "higher",
+   "median_depression": 258.1818,
+   "median_others": 255.6479,
+   "chance_depression_video_is_higher": 0.539,
+   "interval_95": [
+    0.512,
+    0.567
+   ],
+   "seen": "higher",
+   "as_expected": true
+  },
+  "look_down_share": {
+   "expected_in_depression": "higher",
+   "median_depression": 0.3934,
+   "median_others": 0.5768,
+   "chance_depression_video_is_higher": 0.434,
+   "interval_95": [
+    0.409,
+    0.463
+   ],
+   "seen": "lower",
+   "as_expected": false
+  },
+  "head_pitch_deg": {
+   "expected_in_depression": "higher",
+   "median_depression": 4.2572,
+   "median_others": 8.2687,
+   "chance_depression_video_is_higher": 0.376,
+   "interval_95": [
+    0.349,
+    0.404
+   ],
+   "seen": "lower",
+   "as_expected": false
+  },
+  "head_movement": {
+   "expected_in_depression": "lower",
+   "median_depression": 38.2696,
+   "median_others": 52.3019,
+   "chance_depression_video_is_higher": 0.307,
+   "interval_95": [
+    0.287,
+    0.332
+   ],
+   "seen": "lower",
+   "as_expected": true
+  }
+ },
+ "as_expected": 6,
+ "opposite": 3,
+ "no_clear_difference": 2
+}

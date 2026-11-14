@@ -1,0 +1,47 @@
+{
+ "dataset": "MobileWell400+ (Zenodo 11060596); not in this repository",
+ "rule": "the server's thresholds, unchanged; a day's movement = minutes the phone labelled walking, on foot, running or cycling",
+ "people_scored": 330,
+ "scored_days": 2892,
+ "clearly_low_days": 140,
+ "clearly_low_share": 0.048,
+ "people_flagged": 12,
+ "on_clearly_low_days_vs_own_other_days": {
+  "valence": {
+   "people": 68,
+   "mean_difference": -1.87,
+   "interval_95": [
+    -4.07,
+    0.35
+   ],
+   "people_lower": 36
+  },
+  "energetic_arousal": {
+   "people": 68,
+   "mean_difference": -2.29,
+   "interval_95": [
+    -5.05,
+    0.45
+   ],
+   "people_lower": 39
+  },
+  "tense_arousal": {
+   "people": 68,
+   "mean_difference": 2.43,
+   "interval_95": [
+    -0.0,
+    5.03
+   ],
+   "people_lower": 35
+  }
+ },
+ "between_people": {
+  "people_with_phq9": 198,
+  "phq9_at_10_or_more": 51,
+  "movement_against_phq9_rank_correlation": -0.039,
+  "permutation_p": 0.5956,
+  "mean_phq9_flagged": 6.8,
+  "people_flagged_with_phq9": 5,
+  "mean_phq9_not_flagged": 7.08
+ }
+}
