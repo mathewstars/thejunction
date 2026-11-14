@@ -86,6 +86,8 @@ struct HomeView: View {
     @State private var look: UnitPoint?
     /// The mouth Lanvi shows while saying a new line (nil = the puppet decides).
     @State private var mouth: MouthShape?
+    /// What the chat grows out of: the bubble or the round chat button.
+    @State private var chatFrom = "speech"
 
     var body: some View {
         #if DEBUG
@@ -160,9 +162,15 @@ struct HomeView: View {
                 // One action, pinned above the home bar.
                 // The zoom source is the whole action area, which is always there:
                 // closing a screen must never zoom back into a button that is gone.
-                actions
-                    .animation(.spring(response: 0.55, dampingFraction: 0.8), value: store.todayThing)
-                    .frame(width: w - 48)
+                // When today's thing changes, the row swaps by fading at a fixed size,
+                // so no button ever animates its width.
+                ZStack {
+                    actions
+                        .id(actionsKey)
+                        .transition(.opacity)
+                }
+                .frame(width: w - 48, height: 60)
+                .animation(LanviTiming.swap, value: actionsKey)
                     .homeZoomSource("today", in: zoom)
                     .position(x: w / 2, y: L.buttonY)
                     .opacity(arrived && !showGrowth ? 1 : 0)
@@ -179,9 +187,16 @@ struct HomeView: View {
             .onChange(of: geo.size) { _, s in size = s; insets = geo.safeAreaInsets }
         }
         .sensoryFeedback(.success, trigger: haptic)
+        // The chat's keyboard must never reach Home underneath it.
+        .ignoresSafeArea(.keyboard)
         .fullScreenCover(item: $cover) { c in
-            coverContent(c)
-                .homeZoomTarget(zoomSource(for: c), in: zoom)
+            // Screens grow out of what was tapped; Help and notes slide up plainly
+            // (a tiny icon ballooning into a whole screen looks broken).
+            if let source = zoomSource(for: c) {
+                coverContent(c).homeZoomTarget(source, in: zoom)
+            } else {
+                coverContent(c)
+            }
         }
         .sheet(item: $sheet) { s in
             switch s {
@@ -228,7 +243,7 @@ struct HomeView: View {
             FrameMeter.shared.start()
             #endif
             if store.wandering?.state == .back { runIn() } else { settle() }
-            withAnimation(.spring(response: 0.7, dampingFraction: 0.82).delay(0.25)) { arrived = true }
+            withAnimation(LanviTiming.screen.delay(0.2)) { arrived = true }
         }
         .task { await runDemo() }
     }
@@ -243,8 +258,10 @@ struct HomeView: View {
         let target = away
             ? CGPoint(x: L.foxCenter.x - L.fox * 0.1, y: L.foxCenter.y - L.fox * 0.55)
             : CGPoint(x: L.foxCenter.x + L.fox * 0.10, y: L.foxTop + L.fox * 0.04)
-        return HomeSpeech(text: bubbleText, target: target, width: L.size.width, mouth: $mouth) { open(.chat) }
-            .homeZoomSource("speech", in: zoom)
+        return HomeSpeech(text: bubbleText, target: target, width: L.size.width, mouth: $mouth, zoom: zoom) {
+            chatFrom = "speech"
+            open(.chat)
+        }
             .accessibilityIdentifier("home.speech")
             .offset(y: -lift)
             .opacity(arrived ? 1 : 0)
@@ -333,8 +350,12 @@ struct HomeView: View {
     }
 
     private var chatButton: some View {
-        Button { open(.chat) } label: { Image(systemName: "bubble.left.fill") }
+        Button {
+            chatFrom = "chatbutton"
+            open(.chat)
+        } label: { Image(systemName: "bubble.left.fill") }
             .buttonStyle(HomeQuietRoundStyle())
+            .homeZoomSource("chatbutton", in: zoom)
             .accessibilityLabel("Talk to Lanvi")
     }
 
@@ -396,14 +417,24 @@ struct HomeView: View {
     }
     private var isDoneToday: Bool { if case .done = store.todayThing { return true } else { return false } }
 
-    private func zoomSource(for c: Cover) -> String {
+    private func zoomSource(for c: Cover) -> String? {
         switch c {
         case .activity(let k):
             if case .game(let g) = store.todayThing, g == k { return "today" }
-            return "speech"
+            return nil                     // opened from the more sheet: slides up
         case .story: return "today"
-        case .help: return "help"
-        case .mind, .chat: return "speech"
+        case .chat: return chatFrom        // the bubble or the chat button, whichever was tapped
+        case .help, .mind: return nil
+        }
+    }
+
+    /// Which view the current row of actions is, so it swaps as a whole.
+    private var actionsKey: String {
+        switch store.todayThing {
+        case .game(let k): return "game-\(k.rawValue)"
+        case .story: return "story"
+        case .realWorld(let s): return "real-\(s.id)"
+        case .done: return "done"
         }
     }
 

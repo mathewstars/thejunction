@@ -66,16 +66,16 @@ struct RootView: View {
                 CheckinView.preview(s)
             default:
                 switch step {
+                // Every first-run step arrives the same calm way: it rises a little and fades in.
                 case .welcome:
                     WelcomeView(demo: demo) { go(demo ? .home : .helps) }
-                        .transition(.opacity)
+                        .transition(LanviTiming.arrive)
                 case .helps:
                     WhatHelpsView(demo: demo) { go(.home) }
-                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
-                                                removal: .move(edge: .leading).combined(with: .opacity)))
+                        .transition(LanviTiming.arrive)
                 case .home:
                     HomeView(demo: demo)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                        .transition(LanviTiming.arrive)
                 }
             }
         }
@@ -95,6 +95,6 @@ struct RootView: View {
 
     private func go(_ next: Step) {
         if next == .home { UserDefaults.standard.set(true, forKey: "lanvi.welcomed") }
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) { step = next }
+        withAnimation(LanviTiming.screen) { step = next }
     }
 }

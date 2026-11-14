@@ -25,7 +25,8 @@ final class LanviFlowUITests: XCTestCase {
     @discardableResult
     private func tap(_ q: XCUIElementQuery, _ label: String, _ name: String, wait: Double = 4) -> Bool {
         // Labels can be shown in capitals by the button style: match without case.
-        let e = q.matching(NSPredicate(format: "label ==[c] %@ OR identifier == %@", label, label)).firstMatch
+        let e = q.matching(NSPredicate(format: "label ==[c] %@ OR identifier == %@ OR label BEGINSWITH[c] %@",
+                                       label, label, label + ",")).firstMatch
         guard e.waitForExistence(timeout: wait) else {
             event("missing:\(name)")
             return false
@@ -33,6 +34,12 @@ final class LanviFlowUITests: XCTestCase {
         event(name)
         e.tap()
         return true
+    }
+
+    /// Close a sheet the way a person does: tap the dimmed scene above it.
+    private func closeSheet(_ name: String) {
+        event(name)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap()
     }
 
     private func launch(_ extra: [String]) {
@@ -63,8 +70,6 @@ final class LanviFlowUITests: XCTestCase {
         pause(0.9)
         tap(app.buttons, "Moving", "helps.moving")
         pause(0.9)
-        tap(app.buttons, "Moving", "helps.moving.off")
-        pause(0.9)
         tap(app.buttons, "That's it", "helps.continue")
         pause(3.2)
 
@@ -73,10 +78,9 @@ final class LanviFlowUITests: XCTestCase {
         pause(2.0)
 
         // Home
-        tap(app.otherElements, "home.fox", "home.fox", wait: 6)
-        pause(1.6)
-        app.swipeDown(velocity: .slow)
-        event("growth.dismiss.swipe")
+        tap(app.descendants(matching: .any), "home.fox", "home.fox", wait: 6)
+        pause(1.8)
+        closeSheet("growth.close")
         pause(1.5)
 
         tap(app.buttons, "home.speech", "home.bubble")
@@ -101,14 +105,12 @@ final class LanviFlowUITests: XCTestCase {
 
         tap(app.buttons, "More with Lanvi", "home.more")
         pause(1.6)
-        app.swipeDown(velocity: .slow)
-        event("more.dismiss.swipe")
+        closeSheet("more.close")
         pause(1.5)
 
         tap(app.buttons, "home.day", "home.day")
         pause(1.6)
-        app.swipeDown(velocity: .slow)
-        event("day.dismiss.swipe")
+        closeSheet("day.close")
         pause(1.5)
 
         tap(app.buttons, "Help", "home.help")
