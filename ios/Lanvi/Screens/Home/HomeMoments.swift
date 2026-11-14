@@ -26,7 +26,8 @@ struct HomeGrowUpMoment: View {
                 // Rays of northern light turning slowly behind the fox.
                 TimelineView(.animation) { context in
                     let t = context.date.timeIntervalSince(start)
-                    Canvas { ctx, size in
+                    // Drawn off the main thread: twelve blurred rays, redrawn every frame.
+                    Canvas(rendersAsynchronously: true) { ctx, size in
                         let c = CGPoint(x: size.width / 2, y: size.height * 0.42)
                         var rays = ctx
                         rays.blendMode = .plusLighter

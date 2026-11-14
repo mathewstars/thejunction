@@ -40,7 +40,8 @@ struct BreathBloom: View, Animatable {
         TimelineView(.animation) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             // 16-bit colour, so the dim outer edge of each glow fades without 8-bit steps.
-            Canvas(colorMode: .extendedLinear) { gc, size in
+            // Drawn off the main thread: big soft gradients, redrawn every frame.
+            Canvas(colorMode: .extendedLinear, rendersAsynchronously: true) { gc, size in
                 draw(in: &gc, size: size, t: t)
             }
         }

@@ -1,0 +1,144 @@
+{
+ "dataset": "LifeSnaps (Yfantidou et al. 2022), Zenodo 7229547; not in this repository",
+ "rule": "the server's thresholds, unchanged",
+ "people_scored": 67,
+ "scored_days": 3254,
+ "clearly_low_days": 304,
+ "clearly_low_share": 0.093,
+ "people_ever_flagged": 23,
+ "days_with_flag_held": 91,
+ "on_clearly_low_days_vs_own_other_days": {
+  "SAD": {
+   "people": 23,
+   "mean_difference": 0.004,
+   "interval_95": [
+    -0.034,
+    0.048
+   ],
+   "people_with_positive_difference": 4
+  },
+  "TENSE/ANXIOUS": {
+   "people": 23,
+   "mean_difference": -0.006,
+   "interval_95": [
+    -0.098,
+    0.09
+   ],
+   "people_with_positive_difference": 10
+  },
+  "TIRED": {
+   "people": 23,
+   "mean_difference": 0.055,
+   "interval_95": [
+    -0.033,
+    0.143
+   ],
+   "people_with_positive_difference": 13
+  },
+  "HAPPY": {
+   "people": 23,
+   "mean_difference": -0.067,
+   "interval_95": [
+    -0.151,
+    0.012
+   ],
+   "people_with_positive_difference": 5
+  },
+  "RESTED/RELAXED": {
+   "people": 23,
+   "mean_difference": 0.085,
+   "interval_95": [
+    0.006,
+    0.17
+   ],
+   "people_with_positive_difference": 12
+  },
+  "ALERT": {
+   "people": 23,
+   "mean_difference": -0.058,
+   "interval_95": [
+    -0.091,
+    -0.029
+   ],
+   "people_with_positive_difference": 1
+  }
+ },
+ "while_flag_held_vs_own_other_days": {
+  "SAD": {
+   "people": 7,
+   "mean_difference": -0.041,
+   "interval_95": [
+    -0.124,
+    0.035
+   ],
+   "people_with_positive_difference": 1
+  },
+  "TENSE/ANXIOUS": {
+   "people": 7,
+   "mean_difference": -0.134,
+   "interval_95": [
+    -0.256,
+    0.022
+   ],
+   "people_with_positive_difference": 1
+  },
+  "TIRED": {
+   "people": 7,
+   "mean_difference": 0.053,
+   "interval_95": [
+    -0.135,
+    0.236
+   ],
+   "people_with_positive_difference": 4
+  },
+  "HAPPY": {
+   "people": 7,
+   "mean_difference": -0.043,
+   "interval_95": [
+    -0.186,
+    0.084
+   ],
+   "people_with_positive_difference": 1
+  },
+  "RESTED/RELAXED": {
+   "people": 7,
+   "mean_difference": 0.107,
+   "interval_95": [
+    -0.049,
+    0.243
+   ],
+   "people_with_positive_difference": 4
+  },
+  "ALERT": {
+   "people": 7,
+   "mean_difference": -0.101,
+   "interval_95": [
+    -0.186,
+    -0.028
+   ],
+   "people_with_positive_difference": 0
+  }
+ },
+ "weekly_panas_in_flagged_weeks_vs_own_other_weeks": {
+  "weeks": 185,
+  "flagged_weeks": 12,
+  "positive_affect": {
+   "people": 11,
+   "mean_difference": -1.912,
+   "interval_95": [
+    -6.221,
+    1.915
+   ],
+   "people_with_positive_difference": 5
+  },
+  "negative_affect": {
+   "people": 11,
+   "mean_difference": 1.73,
+   "interval_95": [
+    -2.058,
+    4.792
+   ],
+   "people_with_positive_difference": 8
+  }
+ }
+}

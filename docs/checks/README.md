@@ -56,3 +56,31 @@ What this says: on real people the direction we fixed in advance holds within a 
 - As a flag, the highest fifth of that score went with a PHQ-9 0.49 points above the person's own average on the second half (0.22 to 0.79), against 0.39 for the steps-only rule above.
 
 So we did not find a better detector in this data: nothing beats plain steps compared with the person's own average, and the relation stays small (about 0.08). That is at three-month resolution with Fitbit summaries; daily data, the game and the face are not in this dataset.
+
+### A second search in PSYCHE-D
+
+`psyched_explore2.py`, `psyched-explore2-2026-11-15.json`. Choices made on the first half of the four-window people; checked on 1715 people with two or three windows that no earlier step had looked at.
+
+| Idea | On the people not looked at before |
+|---|---|
+| Steps against own average, everyone | -0.06 (95% interval -0.10 to -0.02) |
+| Only people who were ever at 10 or more on the PHQ-9 | -0.08 (-0.13 to -0.02), 838 people |
+| Only people whose score moved by 5 points or more | -0.09 (-0.16 to -0.04), 597 people |
+| Both | -0.10 (-0.17 to -0.04), 479 people |
+| Change from one window to the next: steps against PHQ-9 | -0.05 (-0.10 to -0.01) |
+| A learned combination of all 111 passive step and sleep measures (gradient boosting) | 0.04, weaker than steps alone on the same people (0.06) |
+
+The relation is a little stronger where it should be: in people in the clinical range whose score really moved, about -0.10 against -0.06 for everyone, and the same pattern shows in all three sets of people. The intervals overlap, so this is a direction, not a finding. Nothing here turns it into a strong signal, and a model fed everything does worse than plain steps.
+
+## The movement rule as it runs, on real daily data (LifeSnaps)
+
+`python -m clinic_engine.lifesnaps_check <folder>`, output `lifesnaps-check-2026-11-15.json`. LifeSnaps (Yfantidou et al., Scientific Data 2022, https://zenodo.org/records/7229547, open) followed 71 volunteers for about four months with a Fitbit, a short daily mood report and the PANAS every week. They are not patients and there is no depression scale. The data is not in this repository. Each person's daily steps went through the server's own code and thresholds, unchanged.
+
+| Question | Result |
+|---|---|
+| How often is a real day "clearly low" (1.5 of the person's own spreads under their own normal)? | 304 of 3254 scored days, 9.3%. A bell curve would give about 7%. |
+| How many healthy volunteers get a movement flag (3 of the last 5 days clearly low) at some point in about three scored months? | 23 of 67. The flag was held on 91 days in all. |
+| What did people report on their clearly low days, against their own other days (23 people with enough of both)? | Less often alert (-0.058, 95% interval -0.091 to -0.029) and more often rested (+0.085, 0.006 to 0.170); less often happy but not clearly (-0.067, -0.151 to 0.012); sad no different (+0.004, -0.034 to 0.048). |
+| In weeks with a flag, the weekly PANAS against the person's own other weeks (12 flagged weeks, 11 people)? | Positive affect -1.9 points (-6.2 to 1.9), negative affect +1.7 (-2.1 to 4.8): the expected directions, and the intervals include zero. |
+
+What this says about our rule, and it is not flattering: in healthy people a low-step day is mostly a rest day. They are less alert and more rested, not sadder, and about one in three gets a movement flag within three months without anything being wrong. That is why the rule alone opens a flag at "attention" and not at "needs review today", and why the pilot has to measure how often a flag in a patient means something. This dataset cannot answer that: nobody in it is ill.

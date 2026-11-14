@@ -48,6 +48,8 @@ struct HomeView: View {
     @State private var sheet: Sheet?
     @State private var pose: LanviPose = .curious
     @State private var pop: HomeCelebration?
+    /// When the reward last played: the sky flares with it.
+    @State private var skyFlare: Date?
     @State private var celebrating = false
     @State private var showGrowth = false
     @State private var helpBlock: API.CrisisBlock?
@@ -86,6 +88,25 @@ struct HomeView: View {
                 panelID: sheet?.id,
                 onClosePanel: { sheet = nil })
         }
+        // While a full screen (chat, Help, an activity) covers Home completely, Home's
+        // world holds still instead of drawing hidden snow every frame. It moves again
+        // the moment that screen starts to go back down, while Home is still covered.
+        .onChange(of: cover?.id) { _, id in
+            // Any change (also one screen swapping for another) shows Home for a moment.
+            hidden = false
+            guard let id else { return }
+            Task {
+                try? await Task.sleep(for: .milliseconds(700))
+                if cover?.id == id { hidden = true }
+            }
+        }
+    }
+
+    /// The painted world behind Home (its own property: Home's body is at the edge of
+    /// what the compiler can type-check in one expression).
+    private var world: PaintedWorld {
+        let glow: Double = store.today?.lanvi.glow ?? 0
+        return PaintedWorld(scene: store.worldScene, still: hidden, glow: glow, flareAt: skyFlare)
     }
 
     private var home: some View {
@@ -97,7 +118,7 @@ struct HomeView: View {
             let L = Layout(size: geo.size, insets: geo.safeAreaInsets, away: away)
 
             ZStack(alignment: .top) {
-                PaintedWorld(scene: store.worldScene, still: hidden)
+                world
 
                 // Lanvi, settled in the snow of the clearing (the shared fox layout).
                 GroundedFox(stage: L.stage, scene: store.worldScene) {
@@ -208,18 +229,6 @@ struct HomeView: View {
         .onChange(of: bubbleText) { _, _ in glanceAtBubble() }
         .onChange(of: scenePhase) { old, phase in
             if phase == .active, old == .background { welcomeBack() }
-        }
-        // While a full screen (chat, Help, an activity) covers Home completely, Home's
-        // world holds still instead of drawing hidden snow every frame. It moves again
-        // the moment that screen starts to go back down, while Home is still covered.
-        .onChange(of: cover?.id) { _, id in
-            // Any change (also one screen swapping for another) shows Home for a moment.
-            hidden = false
-            guard let id else { return }
-            Task {
-                try? await Task.sleep(for: .milliseconds(700))
-                if cover?.id == id { hidden = true }
-            }
         }
         #if DEBUG
         // PerfProbe: name each change a tap asks for, so it can be timed, and the light.
@@ -495,6 +504,8 @@ struct HomeView: View {
         celebrating = true
         if c.xpGained > 0 {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { showGrowth = true }
+            // What they did lights up Lanvi's sky.
+            skyFlare = Date()
         }
         Task {
             try? await Task.sleep(for: .milliseconds(c.xpGained > 0 ? 350 : 150))
