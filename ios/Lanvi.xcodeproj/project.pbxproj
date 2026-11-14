@@ -58,6 +58,7 @@
 		B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B8C888729DE19EB41449A4 /* HomeOverlays.swift */; };
 		B50D10905664FAEB774A40AE /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 883989149D83098DC4D7155A /* AppStore.swift */; };
 		B6A861C26917D5B2F511CE9C /* BreatheResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B1F65C7973CFFB5D41825 /* BreatheResult.swift */; };
+		BC1B1DE3FDB56F877CB09FE4 /* LanviTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 043F24BD4810CC96B85B74B4 /* LanviTiming.swift */; };
 		BED78E7017B94186F183E51E /* LocalStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85FD261A32144F8643C6EE7E /* LocalStatistics.swift */; };
 		C8EBD236C0121CE58A89C106 /* DemoBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575A49BAC44D679FBA763541 /* DemoBackend.swift */; };
 		CF120166C3B2436312B64F79 /* Harness.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -127,6 +128,7 @@
 
 /* Begin PBXFileReference section */
 		033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Black.ttf"; sourceTree = "<group>"; };
+		043F24BD4810CC96B85B74B4 /* LanviTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviTiming.swift; sourceTree = "<group>"; };
 		0E369E41135184A2334A61A6 /* FocusResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusResult.swift; sourceTree = "<group>"; };
 		11CA1C956F7514A490E2C77E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		15B8C888729DE19EB41449A4 /* HomeOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOverlays.swift; sourceTree = "<group>"; };
@@ -429,6 +431,7 @@
 				607DA0BDB68AC9211EAADA43 /* HomeParts.swift */,
 				166A2EF8FECA301AACE53B2A /* HomeSheets.swift */,
 				C8082B9E5762CA3450E914CE /* HomeSpeech.swift */,
+				043F24BD4810CC96B85B74B4 /* LanviTiming.swift */,
 				CD8451A836E61C66138838EE /* PaintedWorld.swift */,
 			);
 			path = Home;
@@ -658,6 +661,7 @@
 				4B8E994B97B8B69A57E5C727 /* LanviPuppet.swift in Sources */,
 				F143A28682E5808FBAD2EB81 /* LanviPuppetPreview.swift in Sources */,
 				AF042D25043E7247AD53A177 /* LanviRig.swift in Sources */,
+				BC1B1DE3FDB56F877CB09FE4 /* LanviTiming.swift in Sources */,
 				F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */,
 				DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */,
 				1DCC6987446B4B58F5E32D82 /* SenseRoot.swift in Sources */,
