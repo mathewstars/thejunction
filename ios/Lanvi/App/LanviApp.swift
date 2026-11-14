@@ -32,11 +32,11 @@ struct LanviApp: App {
 ///   moment, growing up, done for today, a wandering and its story, a word with
 ///   Lanvi. Always uses the offline demo data.
 /// - `-screen <name>`: open one screen straight away: `home`, `whathelps`,
-///   `focus`, `breathe`, `checkin`, `checkin-plan`, `puppet`.
+///   `focus`, `breathe`, `checkin`, `checkin-plan`, `puppet`, `pair`.
 /// - `-offline`: use the offline demo data even when a server is configured.
 /// - Screenshot moments on Home: see `DemoBackend` and `HomeView.runDemo`.
 struct RootView: View {
-    private enum Step { case welcome, helps, home }
+    private enum Step { case welcome, pair, helps, home }
 
     @Environment(AppStore.self) private var store
     @Environment(\.scenePhase) private var scenePhase
@@ -46,6 +46,8 @@ struct RootView: View {
         if args.contains("-demo") { return .welcome }
         return UserDefaults.standard.bool(forKey: "lanvi.welcomed") ? .home : .welcome
     }()
+    /// Through the first run before (so after pairing, straight back to Home).
+    private let welcomedBefore = UserDefaults.standard.bool(forKey: "lanvi.welcomed")
     /// `-screen <name>` (UserDefaults reads launch arguments of this form).
     private let screen = UserDefaults.standard.string(forKey: "screen")
 
@@ -56,6 +58,8 @@ struct RootView: View {
                 HomeView(demo: demo)
             case "whathelps":
                 WhatHelpsView(demo: demo) {}
+            case "pair":
+                PairView {}
             case "focus":
                 FocusGameView { print("focus: done \(String(describing: $0))") }
             case "breathe":
@@ -68,7 +72,10 @@ struct RootView: View {
                 switch step {
                 // Every first-run step arrives the same calm way: it rises a little and fades in.
                 case .welcome:
-                    WelcomeView(demo: demo) { go(demo ? .home : .helps) }
+                    WelcomeView(demo: demo) { go(demo ? .home : (store.needsPairing ? .pair : .helps)) }
+                        .transition(LanviTiming.arrive)
+                case .pair:
+                    PairView { go(welcomedBefore ? .home : .helps) }
                         .transition(LanviTiming.arrive)
                 case .helps:
                     WhatHelpsView(demo: demo) { go(.home) }
@@ -87,6 +94,14 @@ struct RootView: View {
             guard demo else { return }
             try? await Task.sleep(for: .seconds(4.2))
             go(.home)
+        }
+        .onAppear {
+            // Already through the welcome before, but this phone is not paired (a new
+            // build, or the phone was disconnected): the code comes first.
+            if step == .home, store.needsPairing { step = .pair }
+        }
+        .onChange(of: store.needsPairing) { _, needs in
+            if needs, step == .home { go(.pair) }
         }
         .onChange(of: scenePhase) { old, phase in
             if phase == .active, old == .background { Task { await store.resume() } }

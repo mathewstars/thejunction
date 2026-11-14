@@ -114,8 +114,6 @@ struct HomeView: View {
                 }
                 .frame(width: L.fox * 2, height: L.fox * 2)
                 .position(x: L.foxCenter.x + entrance, y: L.foxCenter.y)
-                // Only moves when Lanvi sets off wandering or comes home; never every frame.
-                .animation(.spring(response: 0.7, dampingFraction: 0.8), value: away)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Lanvi")
                 .accessibilityHint("Shows how Lanvi is growing")
@@ -398,7 +396,10 @@ struct HomeView: View {
 
     // MARK: State for the scene
 
-    private var away: Bool { store.wandering?.state == .away && !celebrating }
+    /// Lanvi stays on Home at full size in the middle, also while "wandering":
+    /// a tiny distant fox looked broken (the captain, Saturday). The line still says
+    /// it is off wandering, and today's one thing stays available.
+    private var away: Bool { false }
 
     /// The mood Lanvi holds at rest: sleepy late at night, otherwise the pose decides.
     private var restingMood: LanviMood? {
@@ -485,7 +486,6 @@ struct HomeView: View {
     private func settle() {
         let next: LanviPose
         switch store.wandering?.state {
-        case .away: next = .run
         case .back: next = .surprised
         default:
             if isDoneToday { next = .love }
