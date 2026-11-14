@@ -106,6 +106,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 20px max(16px, env(safe-area-
 .panel h2 .count { color: var(--muted); font-weight: 600; margin-left: 6px; }
 .grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 .stack { display: grid; gap: 14px; min-width: 0; }
+.stack { grid-template-columns: minmax(0, 1fr); }   /* one column that never grows past its box: a wide table or list inside scrolls or wraps instead */
 @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 
 /* tables */
