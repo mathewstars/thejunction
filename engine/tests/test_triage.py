@@ -65,7 +65,8 @@ def test_the_two_model_levels_set_the_level_up_and_down():
     doc = env.repo().get("mind/triage.json")
     assert doc["status"] == "ready" and doc["models"]["level2"] == "test-model"
     d = doc["levels"][dev["id"]]
-    assert d == {"level": "urgent", "rules_level": "attention", "level1": "attention",
+    assert d == {"level": "urgent", "rules_level": "attention", "fixed_by_rule": False,
+                 "level1": "attention",
                  "reason1": "several_signals_agree", "verdict2": "raise",
                  "reason2": "deep_and_held"}
     # The clinician sees who set it and what the rules alone would say.
@@ -76,7 +77,7 @@ def test_the_two_model_levels_set_the_level_up_and_down():
     assert [e for e in env.audit() if e["action"] == "attention_triage"]
 
 
-def test_the_pack_is_numbers_and_codes_and_help_is_never_sent():
+def test_the_pack_is_numbers_and_codes_and_a_request_for_help_stays_urgent():
     rec = Level2Recorder(second_reader())
     local = FakeLocal(triage=first_reader())
     env = env_with(local, rec)
@@ -87,19 +88,30 @@ def test_the_pack_is_numbers_and_codes_and_help_is_never_sent():
     for ident in (d["patient_id"], d["clinic_id"], "att_", "Patient"):
         assert ident not in text
     assert not ISO_DATE.search(text)
-    assert "asked_for_help" not in text
     body = triage_bodies(rec)[-1]
     sent = json.loads(body["contents"][0]["parts"][0]["text"])
     assert set(sent) == {"items", "movement", "notes_low", "sessions_7d", "checkins_7d", "reasons",
                          "first_reader"}
     assert not ISO_DATE.search(json.dumps(sent)) and d["patient_id"] not in json.dumps(body)
-    # A request for help: urgent by rule, whatever the models say, and not in the pack.
-    r = env.client.post("/v1/notes", headers=env.H, json={"id": "note-triage-0001", "text": "i cannot do this anymore, i need help"})
-    assert r.status_code == 200, r.text
+    # A request for help: both readers get it as part of the picture, without
+    # the person's words, and neither can move it from urgent.
+    words = "i cannot do this anymore, i need help"
+    low = FakeLocal(triage=first_reader(default="watch"))
+    rec2 = Level2Recorder(second_reader(default="lower"))
+    env = env_with(low, rec2)
+    r = env.client.post("/v1/notes", headers=env.H, json={"id": "note-triage-0001", "text": words})
+    assert r.status_code == 200 and r.json()["crisis"] is True
     env.run(env.mind.idle())
-    items = open_items(env)
-    assert items["asked_for_help"]["level"] == "urgent"
-    assert all("asked_for_help" not in json.dumps(p.payload) for p in local.packs if p.task == "triage")
+    item = open_items(env)["asked_for_help"]
+    assert item["level"] == "urgent"
+    last = [p for p in low.packs if p.task == "triage"][-1]
+    assert any(it["kind"] == "asked_for_help" and it["rules_level"] == "urgent"
+               for it in last.payload["items"])
+    assert words not in json.dumps(last.payload) and "need help" not in json.dumps(last.payload)
+    sent2 = triage_bodies(rec2)[-1]["contents"][0]["parts"][0]["text"]
+    assert "asked_for_help" in sent2 and "need help" not in sent2 and "cannot do this" not in sent2
+    doc = env.repo().get("mind/triage.json")["levels"][item["id"]]
+    assert doc["level"] == "urgent" and doc["fixed_by_rule"] is True and doc["level1"] == "watch"
 
 
 def test_no_model_answer_leaves_the_rules_level_and_one_reader_is_enough():
