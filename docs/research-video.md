@@ -38,7 +38,7 @@ Rule for the whole video: **generated footage tells the story, real screen recor
 
 **4. Two answers (0:40 to 0:58)**
 
-> This is Anna, an example. When her score was higher, she smiled less, reacted more slowly and walked less. [switch] And this is Elina, who stayed well. Her score hardly moved, and the tool says: we cannot tell. Here it refuses to conclude.
+> This is Anna, an example. When her score was higher, she smiled less, reacted more slowly and walked less. The tool is careful even here: partly consistent, low confidence, because thirteen scores are few. [switch] And this is Elina, who stayed well. Her score hardly moved, and the tool says: we cannot tell. Here it refuses to conclude.
 
 **5. The open question (0:58 to 1:12)**
 
@@ -121,7 +121,7 @@ Model names are as given on Higgsfield's page on 14 Nov 2026; use whatever the s
 | R1 | Part 2 | The phone with Lanvi on the home screen, then five seconds of the focus game. |
 | R2 | Part 3 | lanvi.app, Blueprint, "The research": the three boxes, then the panel "What moving together looks like". Scroll slowly; pause on the two lines. |
 | R3 | Part 3 | The same page: the yardstick bar from 0 to 27. Two seconds. |
-| R4 | Part 4 | Anna's Research page: the headline, then the chart. Move the cursor along the shaded weeks. |
+| R4 | Part 4 | Anna's Research page: the headline (it reads "partly consistent" with low confidence; say so), then the chart. Move the cursor along the shaded weeks. |
 | R5 | Part 4 | Elina's Research page: the headline "too little change to tell", then her flat line under the cut-off. |
 | R6 | Part 5 | Blueprint, the panel "Do the phone's numbers change first?". |
 
