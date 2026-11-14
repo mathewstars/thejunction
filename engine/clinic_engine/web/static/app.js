@@ -713,13 +713,27 @@
       on: { click: async () => { try { await api("POST", "/v1/clinic/attention/" + encodeURIComponent(i.id) + "/ack"); await refresh(); } catch (e) { flash(e.message); } } } }, "Acknowledge");
     const helpItem = items.find((i) => i.kind === "asked_for_help");
     const others = items.filter((i) => i !== helpItem);
+    // With TRIAGE_MODE=models: who set each level, and what the rules alone would say.
+    const tri = d.triage || {}, triLevels = tri.levels || {};
+    const LV = { watch: "watch", attention: "attention", urgent: "needs review today" };
+    const RS = { several_signals_agree: "several signals agree", single_weak_signal: "one weak signal", deep_and_held: "deep and held", held_long: "held for long",
+      getting_better: "getting better", too_little_data: "too little data", model_finding_confirmed: "a model's finding, confirmed", no_contact: "no contact", as_the_rules: "as the rules say" };
+    const triageLine = (i) => {
+      const t = triLevels[i.id];
+      if (tri.mode !== "models" || !t) return null;
+      const one = t.level1 ? "the local model set " + LV[t.level1] + " (" + (RS[t.reason1] || words(t.reason1).toLowerCase()) + ")" : "the local model did not answer";
+      const two = t.verdict2 ? "Gemini " + ({ agree: "agreed", raise: "raised it", lower: "lowered it" }[t.verdict2]) + " (" + (RS[t.reason2] || words(t.reason2).toLowerCase()) + ")" : "Gemini was not asked or did not answer";
+      return el("span", { class: "sub tri" }, "Level set by the two models: " + one + "; " + two + ". The fixed rules alone would say " + LV[t.rules_level] + ".");
+    };
+    const triageNote = tri.mode === "models" ? el("p", { class: "muted small tri-note" }, "The watchers decide what is on this list. The two models decide how much each item matters; when neither answers, the fixed rules' level stands. A request for help is always “needs review today” by rule.") : null;
     const att = panel("Needs attention", items.length || "", items.length ? el("div", { class: "rows" },
       helpItem ? el("div", { class: "row" },
         el("div", { class: "top" }, levelChip(helpItem.level), el("span", { class: "t" }, kind(helpItem.kind))),
         ackButton(helpItem), helpQuote(d)) : null,
       others.length ? el("ul", { class: "attlist" }, others.map((i) => el("li", null,
         el("span", { class: "dotk l-" + i.level }), el("span", { class: "what" }, plain(i).charAt(0).toUpperCase() + plain(i).slice(1)),
-        el("span", { class: "muted since" }, i.since ? "since " + dayShort(i.since) : ""), ackLink(i)))) : null) : empty("Nothing held."));
+        el("span", { class: "muted since" }, i.since ? "since " + dayShort(i.since) : ""), ackLink(i), triageLine(i)))) : null,
+      triageNote) : empty("Nothing held."));
 
     const sug = (d.suggestions || []).slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
     const offer = panel("Last offer", null, sug ? el("div", { class: "row" },

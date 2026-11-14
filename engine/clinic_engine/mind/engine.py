@@ -20,6 +20,7 @@ Callers hold the patient's asyncio lock while publishing.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
@@ -39,7 +40,7 @@ from .repo import PatientRepo
 from .respond import blocked_reason, needs_response, pick_action, rank_actions
 from .thresholds import T, Thresholds
 from .trace import Tracer, trigger_detail, watcher_facts
-from .watchers import LEVELS, RESPONDABLE, WATCHERS, Op, View, escalate
+from .watchers import LEVELS, RESPONDABLE, WATCHERS, Op, View, escalate, level_max
 
 log = logging.getLogger("clinic_engine.mind")
 
@@ -122,6 +123,7 @@ class Mind:
         self.th = th
         self.bus = Bus()
         self.bus.subscribe("*", self._on_event)
+        self._in_triage = False  # set while a triage applies its own result
         # The decision trace: describes each step, never decides (see trace.py).
         self.tracer = Tracer(store, clock)
         if notifications is not None:
@@ -273,11 +275,42 @@ class Mind:
                    {"fired": fired, "quiet": quiet, "facts": facts})
         view = self.build_view(repo, now)
         why: dict[str, str] = {}
-        levels = escalate(view.items, view, why)
+        triage_on = self.triage_on
+        if triage_on:
+            # The rules keep their own level beside the one the models set, so
+            # that what the rules say never depends on what the models said.
+            levels = escalate([{**it, "level": it.get("rules_level", it["level"])}
+                               for it in view.items], view, why)
+            decided = self._triage_decisions(repo)
+        else:
+            levels = escalate(view.items, view, why)
+            decided = {}
         for it in view.items:
             if it["state"] != "open":
                 continue
             new = levels.get(it["id"], it["level"])
+            if triage_on and it.get("rules_level") != new:
+                it["rules_level"] = new
+                repo.put(f"attention/{it['id']}.json", it)
+            dec = decided.get(it["id"]) if it["kind"] != "asked_for_help" else None
+            if dec is not None:
+                # The two model levels set this item's level, up or down.
+                if dec["level"] != it["level"]:
+                    old = it["level"]
+                    it.update(level=dec["level"], level_changed_at=now.isoformat(),
+                              level_source="models",
+                              peak_level=level_max(it.get("peak_level", old), dec["level"]))
+                    it["history"].append({"at": now.isoformat(), "event": "level",
+                                          "level": dec["level"], "by": "models"})
+                    repo.put(f"attention/{it['id']}.json", it)
+                    self.audit(repo, "attention_triage", attention_id=it["id"], kind=it["kind"],
+                               from_level=old, level=dec["level"], rules_level=new)
+                    self.trace(repo, "attention", "triaged",
+                               {"attention_id": it["id"], "kind": it["kind"], "from_level": old,
+                                "level": dec["level"], "rules_level": new,
+                                "level1": dec.get("level1"), "level2": dec.get("verdict2")},
+                               notable=True)
+                continue
             if LEVELS.index(new) > LEVELS.index(it["level"]):
                 old = it["level"]
                 it.update(level=new, peak_level=new, level_changed_at=now.isoformat())
@@ -302,7 +335,177 @@ class Mind:
                 self.audit(repo, "notify_urgent", "refused", "notifier_error", attention_id=it["id"])
                 self.trace(repo, "notifier", "failed", {"attention_id": it["id"],
                                                          "reason": "notifier_error"})
+        if triage_on and not self._in_triage:
+            await self.schedule_triage(repo)
         return repo.items()
+
+    # ---- triage: the two model levels set the level of each open item --------------------
+    #
+    # TRIAGE_MODE=models. The watchers above are the triggers. Level 1 (the local
+    # model) reads the whole picture and sets a level for every open item;
+    # level 2 (Gemini, with the patient's consent) reads the same picture with
+    # level 1's answer and agrees, raises or lowers by one step. Code keeps:
+    # the list of items (only watchers open and close them), a request for help
+    # (always urgent, never sent to a model), and the rules' own level, which
+    # applies whenever no model answered.
+
+    @property
+    def triage_on(self) -> bool:
+        return getattr(self.settings, "triage_mode", "rules") == "models"
+
+    def _triage_decisions(self, repo: PatientRepo) -> dict[str, dict]:
+        doc = repo.get("mind/triage.json") or {}
+        return doc.get("levels") or {} if doc.get("status") == "ready" else {}
+
+    def _triage_inputs(self, repo: PatientRepo, now: datetime):
+        view = self.build_view(repo, now)
+        items = [it for it in view.items if it["state"] == "open"
+                 and it["kind"] != "asked_for_help"]
+        rules = {it["id"]: it.get("rules_level", it["level"]) for it in items}
+        if not items:
+            return view, items, rules, None, {}
+        cut14 = (now - timedelta(days=14)).isoformat()
+        cut7 = (now - timedelta(days=7)).isoformat()
+        payload, refs = INPUT_GATE.triage_payload(
+            items, rules, view.series,
+            notes_low=sum(1 for n in view.notes if n.get("mood") == "low" and n["at"] >= cut14),
+            sessions_7d=sum(1 for a in view.activities if a["started_at"] >= cut7
+                            and a["type"] in ("focus", "breathing")),
+            checkins_7d=sum(1 for a in view.activities if a["started_at"] >= cut7
+                            and a["type"] == "checkin"),
+            today=view.today)
+        return view, items, rules, payload, refs
+
+    @staticmethod
+    def _triage_basis(payload: dict | None) -> str:
+        import hashlib
+        return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:24]
+
+    async def schedule_triage(self, repo: PatientRepo) -> None:
+        """A new triage when the picture changed since the last one."""
+        now = self.clock.now()
+        try:
+            _view, items, _rules, payload, _refs = self._triage_inputs(repo, now)
+        except GateError as ge:
+            self.refuse(repo, ge.refusal)
+            return
+        doc = repo.get("mind/triage.json") or {}
+        if not items:
+            if doc.get("levels"):
+                repo.put("mind/triage.json", {"status": "ready", "basis": None, "levels": {},
+                                              "at": now.isoformat()})
+            return
+        basis = self._triage_basis(payload)
+        if doc.get("basis") == basis:
+            if doc.get("status") == "ready":
+                return
+            age = now - datetime.fromisoformat(doc["at"])
+            if age < timedelta(minutes=self.settings.triage_retry_minutes):
+                return
+        if self.settings.review_inline:
+            await self.run_triage(repo)
+            return
+
+        async def bg() -> None:
+            async with self.lock(repo.clinic_id, repo.patient_id):
+                try:
+                    await self.run_triage(repo)
+                except Exception:  # noqa: BLE001
+                    log.exception("triage failed")
+
+        task = asyncio.get_running_loop().create_task(bg())
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    async def run_triage(self, repo: PatientRepo) -> dict:
+        """Caller holds the patient lock."""
+        with self.tracer.chain(repo.clinic_id, repo.patient_id, "triage", fresh=True):
+            return await self._run_triage(repo)
+
+    async def _run_triage(self, repo: PatientRepo) -> dict:
+        now = self.clock.now()
+        patient = repo.patient() or {}
+        try:
+            _view, items, rules, payload, refs = self._triage_inputs(repo, now)
+        except GateError as ge:
+            self.refuse(repo, ge.refusal)
+            return {"status": "failed", "reason": "input_refused"}
+        if not items:
+            return {"status": "ready", "levels": {}}
+        basis = self._triage_basis(payload)
+        refusals: list[GateRefusal] = []
+        first: dict[str, dict] = {}
+        second: dict[str, dict] = {}
+        names = {"level1": None, "level2": None}
+        # Level 1: the local model sets a level for every item.
+        if getattr(self.local, "configured", False):
+            pack1 = INPUT_GATE.triage_pack(payload, refs, 1)
+            raw1 = await self.local.complete(pack1, json_mode=True, max_tokens=900)
+            res1 = OUTPUT_GATE.triage(raw1, pack1)
+            refusals.extend(res1.refusals)
+            if res1.ok:
+                first = res1.value
+                names["level1"] = getattr(self.settings, "local_llm_model", None) or "local"
+            self.trace(repo, "level1", "accepted" if res1.ok else
+                       "no_reply" if raw1 is None else "refused",
+                       {"task": "triage", "items": len(refs), "answered": len(first),
+                        "reasons": [r.reason for r in res1.refusals][:10]},
+                       notable=not res1.ok)
+        # Level 2: Gemini reads the same picture with level 1's answer.
+        if self.outreach is not None and self.outreach.gemini_on and \
+                patient.get("allow_outside_processing"):
+            shown = [{"ref": ref, "level": (first.get(ref) or {}).get("level") or rules[iid],
+                      "reason": (first.get(ref) or {}).get("reason") or "as_the_rules"}
+                     for ref, iid in refs.items()]
+            try:
+                pack2 = INPUT_GATE.triage_pack(payload, refs, 2, shown)
+                raw2 = await self.outreach.gemini_complete(pack2)
+                res2 = OUTPUT_GATE.triage(raw2, pack2, second=True)
+                refusals.extend(res2.refusals)
+                if res2.ok:
+                    second = res2.value
+                    names["level2"] = self.outreach.level2_model
+                self.trace(repo, "level2", "accepted" if res2.ok else
+                           "no_reply" if raw2 is None else "refused",
+                           {"task": "triage", "anonymized": True, "items": len(refs),
+                            "answered": len(second),
+                            "reasons": [r.reason for r in res2.refusals][:10]},
+                           notable=not res2.ok)
+            except GateError as ge:
+                refusals.append(ge.refusal)
+        for r in refusals:
+            self.refuse(repo, r)
+        if not first and not second:
+            # No model answered: the rules' levels stand. Tried again later.
+            repo.put("mind/triage.json", {"status": "no_models", "basis": basis,
+                                          "at": now.isoformat(), "levels": {}})
+            self.audit(repo, "triage", "refused", "no_model_answered", items=len(refs))
+            return {"status": "no_models"}
+        step = {"agree": 0, "raise": 1, "lower": -1}
+        decisions: dict[str, dict] = {}
+        for ref, iid in refs.items():
+            one, two = first.get(ref), second.get(ref)
+            if one is None and two is None:
+                continue  # neither reader answered for this item: the rules' level stands
+            base = one["level"] if one else rules[iid]
+            idx = LEVELS.index(base) + (step[two["verdict"]] if two else 0)
+            decisions[iid] = {
+                "level": LEVELS[max(0, min(len(LEVELS) - 1, idx))], "rules_level": rules[iid],
+                "level1": one["level"] if one else None, "reason1": one["reason"] if one else None,
+                "verdict2": two["verdict"] if two else None,
+                "reason2": two["reason"] if two else None}
+        repo.put("mind/triage.json", {"status": "ready", "basis": basis, "at": now.isoformat(),
+                                      "models": names, "levels": decisions})
+        self.audit(repo, "triage", items=len(refs), decided=len(decisions),
+                   level1=bool(first), level2=bool(second),
+                   changed=sum(1 for d in decisions.values() if d["level"] != d["rules_level"]))
+        # Apply now: the watchers and levels are looked at once more.
+        self._in_triage = True
+        try:
+            await self.observe(repo, patient, now)
+        finally:
+            self._in_triage = False
+        return {"status": "ready", "levels": decisions}
 
     def _apply(self, repo: PatientRepo, op: Op, now: datetime) -> None:
         now_s = now.isoformat()

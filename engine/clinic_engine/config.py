@@ -82,6 +82,13 @@ class Settings:
     # Gemini thinks before it answers on a long stream: it gets more room.
     frames_reader: str = "auto"  # auto (when level 2 is on) | off
     days_reader: str = "auto"  # the day reading: auto (when level 2 is on) | off
+    # Who sets the level of an attention item. "rules": the fixed rules in
+    # watchers.escalate. "models": the watchers stay the triggers, and the two
+    # model levels set the level (level 1, then level 2 agrees, raises or
+    # lowers); the rules' level is the fallback, and a request for help is
+    # always urgent by rule.
+    triage_mode: str = "rules"
+    triage_retry_minutes: int = 20  # after a run in which no model answered
     gemini_frames_max_tokens: int = 16000  # the model's thinking counts against it
     gemini_frames_retry_wait_s: float = 2.0
     gemini_frames_timeout_s: float = 60.0
@@ -158,6 +165,8 @@ class Settings:
             gemini_timeout_s=_env_float("GEMINI_TIMEOUT_S", 15.0),
             frames_reader=_env("FRAMES_READER", "auto").lower(),
             days_reader=_env("DAYS_READER", "auto").lower(),
+            triage_mode=_env("TRIAGE_MODE", "rules").lower(),
+            triage_retry_minutes=_env_int("TRIAGE_RETRY_MINUTES", 20),
             gemini_frames_max_tokens=_env_int("GEMINI_FRAMES_MAX_TOKENS", 16000),
             gemini_frames_retry_wait_s=_env_float("GEMINI_FRAMES_RETRY_WAIT_S", 2.0),
             gemini_frames_timeout_s=_env_float("GEMINI_FRAMES_TIMEOUT_S", 60.0),
