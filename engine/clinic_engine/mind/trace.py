@@ -147,8 +147,14 @@ class Tracer:
                                       "chain_id": ch.id, "layer": "trigger", "code": ch.kind,
                                       "detail": {}, "notable": False, "seq": next(_seq)})
                 ch.has_trigger = True
-            for e in ch.entries:
-                self.write(ch, e)
+            if ch.entries:
+                # One object per chain: reading a timeline costs one fetch per trigger,
+                # not one per step.
+                first = ch.entries[0]
+                ts = datetime.fromisoformat(first["at"]).astimezone(timezone.utc).strftime(
+                    "%Y%m%dT%H%M%S%f")
+                self.store.put(f"{prefix(ch.clinic_id, ch.patient_id)}{ts}-{first['seq']:09d}.json",
+                               {"chain_id": ch.id, "entries": ch.entries})
             self.prune(ch.clinic_id, ch.patient_id)
         except Exception as exc:  # noqa: BLE001
             log.warning("trace chain not recorded: %s", type(exc).__name__)
@@ -254,7 +260,16 @@ def trigger_detail(repo, kind: str, data: dict) -> dict:
 
 def load_entries(store: Store, clinic_id: str, patient_id: str, limit: int = _KEEP) -> list[dict]:
     keys = store.list(prefix(clinic_id, patient_id))[-limit:]
-    return [e for e in store.get_many(keys) if e]
+    out: list[dict] = []
+    for doc in store.get_many(keys):
+        if not doc:
+            continue
+        if "entries" in doc:  # one object per chain
+            out.extend(doc["entries"])
+        else:  # a single step: a late entry, or one written before chains were bundled
+            out.append(doc)
+    out.sort(key=lambda e: (e.get("at", ""), e.get("seq", 0)))
+    return out[-limit:]
 
 
 # ---- one row per chain: a headline (at most 6 words) and an outcome enum -----------

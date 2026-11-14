@@ -1,4 +1,4 @@
-"""Reads for the clinician page: side by side in S3, and once per request."""
+"""Reads for the clinician page: in order from S3, and once per request."""
 import io
 import json
 

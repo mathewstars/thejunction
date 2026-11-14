@@ -10,6 +10,12 @@ Keys are plain paths such as `clinics/{clinic_id}/patients/{patient_id}/days/202
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import http.client
+import threading
+from datetime import datetime, timezone
+from urllib.parse import quote, urlsplit
 import json
 import os
 import re
@@ -44,8 +50,7 @@ class Store(ABC):
         """Return all keys that start with prefix, sorted."""
 
     def get_many(self, keys: list[str]) -> list[dict | None]:
-        """One result per key, in the same order. Stores that pay per request
-        override this to fetch side by side."""
+        """One result per key, in the same order."""
         return [self.get(k) for k in keys]
 
     def list_docs(self, prefix: str) -> list[dict]:
@@ -128,6 +133,73 @@ class DirStore(Store):
         return sorted(out)
 
 
+class _SignedReader:
+    """GET one object with an AWS signature (version 4) over one kept-open
+    connection. Plain http endpoints only (the store sits on the same host).
+    Returns (True, doc), (False, None) for a missing key, or (None, None) when it
+    cannot say and the caller should use the general client."""
+
+    _EMPTY = hashlib.sha256(b"").hexdigest()
+
+    def __init__(self, endpoint_url: str, bucket: str, access_key: str, secret_key: str,
+                 region: str) -> None:
+        u = urlsplit(endpoint_url or "")
+        self.ok = u.scheme == "http" and bool(u.netloc and access_key and secret_key)
+        self.host, self.bucket, self.access, self.secret = u.netloc, bucket, access_key, secret_key
+        self.region = region or "us-east-1"
+        self._conn: http.client.HTTPConnection | None = None
+        self._key: tuple[str, bytes] | None = None
+        self._lock = threading.Lock()
+
+    def _signing_key(self, day: str) -> bytes:
+        if self._key is None or self._key[0] != day:
+            k = ("AWS4" + self.secret).encode()
+            for part in (day, self.region, "s3", "aws4_request"):
+                k = hmac.new(k, part.encode(), hashlib.sha256).digest()
+            self._key = (day, k)
+        return self._key[1]
+
+    def _headers(self, path: str) -> dict:
+        amz = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        scope = f"{amz[:8]}/{self.region}/s3/aws4_request"
+        canon = (f"GET\n{path}\n\nhost:{self.host}\nx-amz-content-sha256:{self._EMPTY}\n"
+                 f"x-amz-date:{amz}\n\nhost;x-amz-content-sha256;x-amz-date\n{self._EMPTY}")
+        to_sign = (f"AWS4-HMAC-SHA256\n{amz}\n{scope}\n"
+                   f"{hashlib.sha256(canon.encode()).hexdigest()}")
+        sig = hmac.new(self._signing_key(amz[:8]), to_sign.encode(), hashlib.sha256).hexdigest()
+        return {"x-amz-date": amz, "x-amz-content-sha256": self._EMPTY,
+                "Authorization": f"AWS4-HMAC-SHA256 Credential={self.access}/{scope}, "
+                                 f"SignedHeaders=host;x-amz-content-sha256;x-amz-date, "
+                                 f"Signature={sig}"}
+
+    def get(self, key: str) -> tuple[bool | None, dict | None]:
+        if not self.ok:
+            return None, None
+        path = "/" + self.bucket + "/" + quote(key, safe="/-_.~")
+        with self._lock:
+            for attempt in (1, 2):  # a kept-open connection may have been closed by the server
+                try:
+                    if self._conn is None:
+                        self._conn = http.client.HTTPConnection(self.host, timeout=10)
+                    self._conn.request("GET", path, headers=self._headers(path))
+                    resp = self._conn.getresponse()
+                    body = resp.read()
+                    break
+                except Exception:  # noqa: BLE001
+                    try:
+                        self._conn.close()
+                    except Exception:  # noqa: BLE001
+                        pass
+                    self._conn = None
+                    if attempt == 2:
+                        return None, None
+        if resp.status == 200:
+            return True, json.loads(body)
+        if resp.status == 404:
+            return False, None
+        return None, None
+
+
 class S3Store(Store):
     """S3 API via boto3. Path-style addressing, which RustFS expects."""
 
@@ -145,23 +217,24 @@ class S3Store(Store):
                 aws_secret_access_key=secret_key or None,
                 region_name=region,
                 config=Config(s3={"addressing_style": "path"}, retries={"max_attempts": 3},
-                              connect_timeout=5, read_timeout=10,
-                              max_pool_connections=self.PARALLEL * 2),
+                              connect_timeout=5, read_timeout=10),
             )
+            self._reader = _SignedReader(endpoint_url, bucket, access_key, secret_key, region)
         self.client = client
-        self._pool = None
 
-    PARALLEL = 16  # objects fetched side by side; each is one HTTP request
-
-    def get_many(self, keys: list[str]) -> list[dict | None]:
-        if len(keys) < 4:
-            return [self.get(k) for k in keys]
-        if self._pool is None:
-            from concurrent.futures import ThreadPoolExecutor
-            self._pool = ThreadPoolExecutor(max_workers=self.PARALLEL, thread_name_prefix="s3get")
-        return list(self._pool.map(self.get, keys))  # map keeps the order of keys
+    _reader = None  # only when this class made its own client (not in tests)
 
     def get(self, key: str) -> dict | None:
+        check_key(key)
+        if self._reader is not None:
+            # Reading is most of what the engine does, and the general client spends
+            # about 3 ms of CPU per object. A plain signed GET takes a third of that.
+            try:
+                found, doc = self._reader.get(key)
+                if found is not None:
+                    return doc if found else None
+            except Exception:  # noqa: BLE001 - any doubt: ask the general client
+                pass
         try:
             obj = self.client.get_object(Bucket=self.bucket, Key=check_key(key))
         except self.client.exceptions.NoSuchKey:
