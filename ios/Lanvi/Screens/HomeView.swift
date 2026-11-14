@@ -111,8 +111,11 @@ struct HomeView: View {
                 .position(x: L.foxCenter.x + entrance, y: L.foxCenter.y)
                 // Only moves when Lanvi sets off wandering or comes home; never every frame.
                 .animation(.spring(response: 0.7, dampingFraction: 0.8), value: away)
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Lanvi")
                 .accessibilityHint("Shows how Lanvi is growing")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityIdentifier("home.fox")
 
                 // What Lanvi says, in one soft bubble above it. Tap to talk.
                 speech(L)
@@ -141,6 +144,7 @@ struct HomeView: View {
                     Spacer()
                     Button { sheet = .growth } label: { dayPill }
                         .buttonStyle(SpeechPressStyle())
+                        .accessibilityIdentifier("home.day")
                         .accessibilityLabel("Day \(store.daysTogether) together. Shows how Lanvi is growing.")
                 }
                 .padding(.horizontal, 24)
@@ -241,6 +245,7 @@ struct HomeView: View {
             : CGPoint(x: L.foxCenter.x + L.fox * 0.10, y: L.foxTop + L.fox * 0.04)
         return HomeSpeech(text: bubbleText, target: target, width: L.size.width, mouth: $mouth) { open(.chat) }
             .homeZoomSource("speech", in: zoom)
+            .accessibilityIdentifier("home.speech")
             .offset(y: -lift)
             .opacity(arrived ? 1 : 0)
     }
@@ -290,6 +295,7 @@ struct HomeView: View {
                 moreButton
                 Button(TodayCopy.button(k)) { open(.activity(k)) }
                     .buttonStyle(HomePrimaryStyle())
+                    .accessibilityIdentifier("home.primary")
                 chatButton
             }
         case .story:
@@ -297,6 +303,7 @@ struct HomeView: View {
                 moreButton
                 Button("Hear my story") { openStory() }
                     .buttonStyle(HomePrimaryStyle())
+                    .accessibilityIdentifier("home.primary")
                 chatButton
             }
         case .realWorld(let s):
