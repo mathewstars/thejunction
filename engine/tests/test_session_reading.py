@@ -14,8 +14,9 @@ from conftest import NOW, Env, Level2Recorder
 
 SECRET = "zebra-umbrella-7"
 ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
-FLAT_FACE = {"smile_rate_per_min": 0.6, "smile_intensity": 0.15, "facial_activity": 0.25,
-             "blink_rate_per_min": 16.0, "look_down_share": 0.2, "head_tilt_deg": 3.0,
+# On the scale of real games: the example person's facial activity is near 0.13.
+FLAT_FACE = {"smile_rate_per_min": 0.0, "smile_intensity": 0.0, "facial_activity": 0.05,
+             "blink_rate_per_min": 8.0, "look_down_share": 0.15, "head_tilt_deg": 2.5,
              "tracking_quality": 0.9}
 
 
@@ -103,7 +104,7 @@ def test_the_pack_has_no_id_date_time_or_text_and_two_packs_share_nothing():
         assert ident not in blob, ident
     assert not ISO_DATE.search(blob) and not re.search(r"\d{2}:\d{2}", blob)
     assert payload["earlier"] and all(e["position"] < 0 for e in payload["earlier"])
-    assert payload["session"]["facial_activity"] == 0.25
+    assert payload["session"]["facial_activity"] == 0.05
     env.client.post("/v1/demo/analyze", headers=env.A,
                     json={"patient_id": d["patient_id"], "activity_id": "act-read-0001"})
     _, p2 = session_requests(rec)[-1]

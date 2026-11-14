@@ -16,6 +16,7 @@ All code, no model:
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import math
 from statistics import median
 
 from .thresholds import ACTIVITY_MIN_SCALE, T, Thresholds
@@ -218,6 +219,52 @@ def baseline(previous: list[dict], typ: str, th: Thresholds = T, kind: str | Non
     return out
 
 
+def fine_reach(a: dict) -> float | None:
+    """How far the face regions move in this session, in millimetres: the mean
+    reach over the regions of the fine movement stream (mind/face_fine.py).
+    None without a stream, or when too little of it was tracked."""
+    from .face_fine import headline
+    h = headline(a.get("face_fine"))
+    r = (h or {}).get("reach_mm")
+    return r if r is not None and r > 0 else None
+
+
+def fine_baseline(previous: list[dict], th: Thresholds = T) -> dict | None:
+    """Own normal of the reach, over the person's earlier sessions that sent a
+    fine stream (game or breathing). Taken on the logarithm: the reach cannot
+    go below zero and its spread grows with its size, so a halving and a
+    doubling are the same distance from usual. None with too few sessions."""
+    vals = [math.log(r) for r in (fine_reach(p) for p in previous) if r is not None]
+    vals = vals[-th.activity_baseline_max:]
+    if len(vals) < th.activity_baseline_min:
+        return None
+    med = median(vals)
+    mad = median(abs(v - med) for v in vals)
+    return {"median": med, "scale": max(mad * th.mad_to_sigma, ACTIVITY_MIN_SCALE["fine_reach_ln"]),
+            "n": len(vals)}
+
+
+def fine_recent(sessions: list[dict], th: Thresholds = T) -> dict | None:
+    """The middle of the last `fine_flat_window` reaches against the person's
+    usual from the sessions before them. One session says too little (see
+    thresholds.fine_flat_z), so this is what the watcher reads. None until
+    there are enough sessions for both."""
+    have = [s for s in sessions if fine_reach(s) is not None]
+    k = th.fine_flat_window
+    if len(have) < k:
+        return None
+    last, before = have[-k:], have[:-k]
+    base = fine_baseline(before, th)
+    if base is None:
+        return None
+    mid = median(math.log(fine_reach(s)) for s in last)
+    # A median of k values spreads about 1.25 / sqrt(k) as much as one value.
+    z = (mid - base["median"]) / (base["scale"] * 1.25 / math.sqrt(k))
+    return {"z": round(z, 2), "reach_mm": round(math.exp(mid), 3),
+            "usual_mm": round(math.exp(base["median"]), 3), "sessions": k, "earlier": base["n"],
+            "last": last}
+
+
 def _z(v, b: dict | None) -> float | None:
     if v is None or b is None:
         return None
@@ -238,6 +285,16 @@ def process_activity(a: dict, previous: list[dict], th: Thresholds = T) -> dict:
              for k, v in base.items()}
     out = {**a, "features": f, "face_quality": fq, "z": z, "face_z": face_z, "usual": usual,
            "baseline_sessions": sum(1 for p in previous if game_kind(p) == kind)}
+    # The fine movement stream, when the session has one: its reach in millimetres
+    # against the person's own earlier sessions. This is what the watcher for
+    # "less facial movement" reads (mind/watchers.py); a record without a stream
+    # gets none of these keys.
+    reach = fine_reach(a)
+    if reach is not None:
+        fb = fine_baseline(previous, th)
+        out["fine_reach_mm"] = reach
+        out["fine_z"] = None if fb is None else round((math.log(reach) - fb["median"]) / fb["scale"], 2)
+        out["fine_usual_mm"] = None if fb is None else round(math.exp(fb["median"]), 3)
     rvf = revontulet_features(a, th)
     if rvf is not None:
         # Own normal over the earlier Revontulet games only. A record without

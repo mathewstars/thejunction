@@ -105,10 +105,29 @@ class View:
                 or _read(a, "reactions") == "slower"]
         return hits if len(last) >= th.activity_window and len(hits) >= th.activity_min_hits else []
 
+    def fine_flat(self) -> dict | None:
+        """For a person whose sessions send the fine movement stream: the reach
+        in millimetres over the last few sessions against their own usual
+        (activities.fine_recent), when it is clearly lower. Else None."""
+        from .activities import fine_recent
+        r = fine_recent(self.activities, self.th)
+        return r if r is not None and r["z"] <= self.th.fine_flat_z else None
+
+    def has_fine(self) -> bool:
+        return any(a.get("fine_reach_mm") is not None for a in self.activities)
+
     def face_flat(self) -> list[dict]:
-        """Good-quality face sessions (focus or breathing) among the last few
-        where facial activity or smiling is clearly below own normal."""
+        """The sessions behind "less facial movement"; [] when it does not hold.
+
+        With a fine movement stream the reach in millimetres decides, over the
+        last `fine_flat_window` sessions together. A person whose app sends no
+        stream is judged as before: good-quality face sessions among the last
+        few where ARKit's facial activity or smiling is clearly below own
+        normal."""
         th = self.th
+        if self.has_fine():
+            r = self.fine_flat()
+            return r["last"] if r else []
         last = [a for a in self.activities if a.get("face_quality") == "good"
                 and any(v is not None for v in (a.get("face_z") or {}).values())][-th.activity_window:]
         def flat(a: dict) -> bool:
@@ -441,12 +460,22 @@ def watch_slower_reactions(view: View) -> list[Op]:
                    "reactions_usual_again")
 
 
+def _flat_detail(view: View, hits: list[dict]) -> dict:
+    if not hits:
+        return {}
+    r = view.fine_flat() if view.has_fine() else None
+    if r:   # millimetres: what the fine movement stream measured
+        return {"flat_sessions": len(hits), "of_last": r["sessions"], "reach_mm": r["reach_mm"],
+                "usual_mm": r["usual_mm"], "z": r["z"], "from": "fine"}
+    return {"flat_sessions": len(hits), "of_last": view.th.activity_window}
+
+
 def watch_face_flat(view: View) -> list[Op]:
     hits = view.face_flat()
     return _simple(view, "face_flat", bool(hits),
                    _local_day(view, hits[0]["started_at"]).isoformat() if hits else None,
                    "face_less_active_than_usual",
-                   {"flat_sessions": len(hits), "of_last": view.th.activity_window} if hits else {},
+                   _flat_detail(view, hits),
                    "face_usual_again")
 
 

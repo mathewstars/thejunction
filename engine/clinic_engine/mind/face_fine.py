@@ -7,9 +7,11 @@ how far that region is from the person's own resting shape after the head's
 movement is taken out, in millimetres. Numbers only.
 
 This module checks such a stream and sums it up. It describes movement and
-nothing else: no mood, no symptom, no flag. Nothing here is used by triage, by
-the baseline or by any model. The summary is kept beside the activity for
-research (docs/research-proposal.md, "A finer signal we would try next"), and
+nothing else: no mood, no symptom. One rule reads one number of it: the
+watcher for "less facial movement" compares the reach over the last five
+sessions with the person's own usual (mind/activities.fine_recent, since 15
+November 2026). No model reads it. The summary is kept beside the activity
+(docs/research-proposal.md, "A finer signal we would try next"), and
 the stream is stored as its own object so that the summary can be computed
 again when these rules change.
 
@@ -378,7 +380,8 @@ def headline(summary: dict | None) -> dict | None:
 def usual(earlier: list[dict]) -> dict:
     """The person's own usual value of each headline number: the median of
     their earlier sessions, or None with fewer than OWN_MIN_SESSIONS of them.
-    A description for a reader. No rule, flag or model takes it."""
+    A description for a reader. The flag has its own comparison, on the
+    reach only (mind/activities.fine_recent)."""
     out = {}
     for k in HEADLINE:
         vals = sorted(h[k] for h in earlier if h.get(k) is not None)

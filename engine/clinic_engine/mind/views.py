@@ -520,15 +520,18 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                     "rate_hz", "frames", "tracked_share", "channels")}
                 s["reading"] = _reading_out(a)
                 s["frames_reading"] = frames_reading_out(a)
-                # Fine facial movement (research only, docs/face-fine.md): the
+                # Fine facial movement (docs/face-fine.md): the
                 # session's numbers beside this person's own earlier sessions.
-                # Shown only; nothing is judged from it. Never the stream.
+                # The reach against own normal ("z") is what the watcher for less
+                # facial movement reads; the rest is shown only. Never the stream.
                 s["fine"] = None
                 fs, fh = a.get("face_fine"), FF.headline(a.get("face_fine"))
                 if fs:
                     s["fine"] = {**(a.get("face_fine_info") or {}), "quality": fs.get("quality"),
                                  "noise_mm": fs.get("noise_mm"), "values": fh,
                                  "usual": FF.usual(fine_before), "earlier": len(fine_before),
+                                 "z": a.get("fine_z"), "usual_reach_mm": a.get("fine_usual_mm"),
+                                 "recent_needed_z": view.th.fine_flat_z,
                                  "needed": FF.OWN_MIN_SESSIONS, "per_region": fs.get("regions"),
                                  "asymmetry": fs.get("asymmetry"),
                                  "mouth_corners": fs.get("mouth_corners"),

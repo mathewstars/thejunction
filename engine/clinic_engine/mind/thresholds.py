@@ -89,7 +89,16 @@ class Thresholds:
     activity_window: int = 3
     activity_min_hits: int = 2
     slower_reaction_z: float = 1.5  # median reaction time this far ABOVE own normal (slower)
-    face_flat_z: float = -1.5  # facial activity or smiling this far below own normal
+    face_flat_z: float = -1.5  # without a fine stream: facial activity or smiling this far
+    #                            below own normal, in 2 of the last 3 sessions
+    # With a fine stream the reach in millimetres decides. On the first real games it
+    # differed from game to game by about 0.6 on its logarithm (a factor of 1.8), far
+    # too much to judge one session. So the middle of the last `fine_flat_window`
+    # sessions is compared with the person's usual. At that spread the rule flags an
+    # unchanged person in about 5% of looks, a drop to a third in about 7 of 10, a
+    # halving in under half (python -m clinic_engine.fine_flat_check).
+    fine_flat_window: int = 5
+    fine_flat_z: float = -2.5
     checkins_habit_min: int = 3  # check-ins in the 14 days before, so stopping means something
     checkins_stopped_days: int = 3  # no check-in for this many days
     plans_not_done_in_a_row: int = 3  # plans answered "no" this many times in a row
@@ -345,7 +354,13 @@ ACTIVITY_MIN_SCALE = {
     # The two speeds: floors of about 4% of what real games showed on 14 November
     # (tracing near 14 cm/s, strokes near 20), as they were 4% of the first guess.
     "trace_speed_cm_s": 0.6, "stroke_speed_cm_s": 0.9,
-    "smile_rate_per_min": 0.5, "smile_intensity": 0.05, "facial_activity": 0.05,
+    # Facial activity: on the first real games (19, two phones, 14 November) it lay near
+    # 0.13 with a spread near 0.04, a quarter of the first guess, so the floor follows.
+    "smile_rate_per_min": 0.5, "smile_intensity": 0.05, "facial_activity": 0.03,
+    # The reach of the fine movement stream, on its logarithm. The real games of one
+    # person on one evening spread by about 0.5; the floor keeps a steadier person
+    # from being flagged for a change of a quarter (ln 0.75 = -0.29).
+    "fine_reach_ln": 0.3,
     "blink_rate_per_min": 2.0, "look_down_share": 0.05, "head_tilt_deg": 2.0,
     "smile_time_share": 0.03, "eye_smile_share": 0.05, "smile_response_share": 0.1,
     "smile_response_latency_s": 0.3, "brow_down_share": 0.03, "inner_brow_up_share": 0.03,

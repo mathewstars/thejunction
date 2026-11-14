@@ -788,6 +788,7 @@
       const x = i.detail || {};
       if (i.kind === "deviation") return "movement below own normal, " + x.low_days + " low days";
       if (i.kind === "slower_reactions") return "slower than usual in " + x.slower_sessions + " of the last " + x.of_last + " focus games";
+      if (i.kind === "face_flat" && x.from === "fine") return "the face moved less over the last " + x.of_last + " sessions: " + num(x.reach_mm, 2) + " mm against a usual " + num(x.usual_mm, 2) + " mm";
       if (i.kind === "face_flat") return "less facial movement in " + x.flat_sessions + " of the last " + x.of_last + " sessions";
       if (i.kind === "model_noticed") {
         const parts = [];
@@ -1341,8 +1342,9 @@
       over ? el("h3", { class: "fr-h" }, "Every session the model has read") : null, over);
   }
 
-  // Fine facial movement (research only, docs/face-fine.md): one session beside this
-  // person's own earlier sessions. Shown only; nothing is judged from it.
+  // Fine facial movement (docs/face-fine.md): one session beside this person's own
+  // earlier sessions. Its reach over the last five sessions decides the flag "less
+  // facial movement"; everything else here is shown only.
   function finePanel(sessions) {
     const have = sessions.filter((x) => x.fine);
     if (!have.length) return null;
@@ -1350,8 +1352,8 @@
     const f = cur.fine, v = f.values, u = f.usual || {};
     const pick = have.length > 1 ? el("div", { class: "seg", role: "group", "aria-label": "Session" }, have.slice(0, 8).map((sx) =>
       el("button", { type: "button", class: "btn btn-small", "aria-pressed": sx.id === cur.id ? "true" : "false", on: { click: () => { S.ffId = sx.id; render(); } } }, dayShort(sx.date) + " " + String(sx.started_at).slice(11, 16)))) : null;
-    const head = [cur.example ? el("p", { class: "readout muted" }, "Generated example session: no person was recorded. The numbers come from a generator with brief movements and slow expressions planted in them.") : null];
-    if (!v) return panel("Fine facial movement (research)", null, pick, head, empty("Too little of this session was tracked to say anything (" + num(f.frames) + " frames)."));
+    const head = [cur.example ? el("p", { class: "readout muted" }, "Generated example session: no person was recorded. The stream comes from a generator shaped on the first real games (how far the regions sit from rest, how much they move, how often briefly).") : null];
+    if (!v) return panel("Fine facial movement", null, pick, head, empty("Too little of this session was tracked to say anything (" + num(f.frames) + " frames)."));
     const own = (k, d, unit) => u[k] === null || u[k] === undefined ? "own usual: after " + f.needed + " earlier sessions (" + f.earlier + " so far)"
       : "own usual " + num(u[k], d) + unit + " (middle of " + f.earlier + " earlier sessions)";
     const why = f.quality === "noisy" ? "the phone’s own noise was " + num(f.noise_mm, 2) + " mm, above 1 mm"
@@ -1422,10 +1424,10 @@
     const rows = Object.keys(reg).filter((k) => reg[k]).map((k) => el("tr", null, el("td", null, words(k)),
       el("td", { class: "r num" }, num(reg[k].level_mm, 2)), el("td", { class: "r num" }, num(reg[k].reach_mm, 2)),
       el("td", { class: "r num" }, num(reg[k].speed_mm_s, 1)), el("td", { class: "r num" }, num(reg[k].twitches_per_min, 1))));
-    return panel("Fine facial movement (research)", null, pick, head, tiles, mcLine, chart, legend, load,
+    return panel("Fine facial movement", null, pick, head, tiles, mcLine, chart, legend, load,
       el("details", { class: "more" }, el("summary", null, "Every region in this session"), table(["Region", { t: "Rests at, mm", r: 1 }, { t: "Reach, mm", r: 1 }, { t: "Top speed, mm/s", r: 1 }, { t: "Brief movements / min", r: 1 }], rows)),
       el("p", { class: "muted fr-note" }, "The phone turns the face mesh into one number per region and frame: millimetres from this person's own resting shape. No picture, mesh or coordinate leaves the phone (" + words(f.source || "mesh") + ", " + num(f.frames) + " frames at " + f.rate_hz + " a second" + (f.noise_mm !== null && f.noise_mm !== undefined ? ", noise " + num(f.noise_mm, 2) + " mm" : "") + "). " +
-        "This is an experiment. Nobody has shown that these numbers say anything about how a person is, so no flag, level or model reading uses them, and “own usual” is only the middle of this person's earlier sessions. One session can be half the usual or less by chance alone: in our simulation that happened in one session out of five for a person who had not changed. The rule for a brief movement is a first guess, not set on recordings of people."));
+        "One flag reads the reach: “less facial movement” opens when the middle reach of the last five sessions is clearly below this person's usual. One session is never judged alone, because on the first real games the reach differed about 1.8 times from game to game in a person who was well. At that spread the rule speaks up for an unchanged person in about 1 look in 20, sees a drop to a third in about 7 of 10 and a halving in under half. It is set on ten real games from one person and on generated streams, and has not been tested on a patient. Nobody has shown that these numbers say anything about how a person is. The brief movements and the two sides are shown only, and their rule is a first guess."));
   }
 
   // ---- activity
@@ -1880,7 +1882,7 @@
       el("li", null, "Whether Gemini as second reader ever disagrees usefully. In the check it agreed on 369 of 372 flag readings, and on the example patients every time."),
       el("li", null, "A rule that is wrong or written to silence someone. The system limits it (14 days, a mark in the list, never a request for help) and shows it; it does not judge it.")))));
     wrap.appendChild(panel("What the fixed rules notice", null, el("div", { class: "bp-say wide" },
-      el("p", null, "Seventeen kinds of flag, grouped below, each opened and closed by code. Everything is compared with the person's own normal: the median and usual spread of their last 28 days, leaving out the newest five so that a drop does not move the yardstick it is measured with. Three of them (slowing down, slower reactions, less facial movement) also count a model's reading of a recording once code has confirmed it in the numbers."),
+      el("p", null, "Seventeen kinds of flag, grouped below, each opened and closed by code. Everything is compared with the person's own normal: the median and usual spread of their last 28 days, leaving out the newest five so that a drop does not move the yardstick it is measured with. Three of them (slowing down, slower reactions and, where the app sends no fine movement stream, less facial movement) also count a model's reading of a recording once code has confirmed it in the numbers."),
       table(["Flag", "Opens when"], [
         [kind("deviation"), "at least 3 of the last 5 days are clearly below own normal in steps and walking speed (2 are enough when reactions, the face or the sessions also changed)"],
         [kind("novelty"), "a single day very far from normal, either way"],
@@ -1888,7 +1890,8 @@
         [kind("asked_for_help"), "a note sounds like a request for help: a fixed word list catches it even when no model runs"],
         [kind("low_notes"), "2 notes labelled low within 5 days"],
         [kind("ignored") + ", " + kind("not_played").toLowerCase(), "3 offers in a row left without an answer, or 3 offered activities not played"],
-        [kind("slower_reactions") + ", " + kind("face_flat").toLowerCase(), "2 of the last 3 games clearly off the person's own normal"],
+        [kind("slower_reactions"), "2 of the last 3 games clearly off the person's own normal"],
+        [kind("face_flat"), "how far the face moves, in millimetres, over the last 5 sessions together, clearly below the person's usual (set on ten real games of one person; without the fine movement stream: 2 of the last 3 sessions by ARKit's values)"],
         [kind("checkins_stopped") + ", " + kind("plans_not_done").toLowerCase(), "no check-in for 3 days after a habit of them; 3 plans in a row not carried out"],
         [kind("weak_rounds") + ", " + kind("fading").toLowerCase() + ", " + kind("stopped_early").toLowerCase() + ", " + kind("round_mismatch").toLowerCase(), "the movement game: rounds below the person's own normal, slowing within a round, stopping early, or the game and the daily data pointing opposite ways"],
         [kind("oddity"), "the phone sent a record the server refused as impossible"],
