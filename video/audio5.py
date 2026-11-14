@@ -21,8 +21,13 @@ fc = (
  + part("e", "x3", 20.9, 30.6, T["E"] - 0.5, 0.6, 1.4)        # in during the pause before "Lanvi"
  + f"[2:a]atrim=0:5.7,asetpts=PTS-STARTPTS,highpass=f=220,lowpass=f=3800,loudnorm=I=-17:TP=-2,afade=t=in:d=0.05,afade=t=out:st=5.3:d=0.4,adelay={ms(T['NURSE'])}:all=1[n];"
  f"sine=f=150:d=1.1,tremolo=f=28:d=0.9,volume=0.10,afade=t=in:d=0.05,afade=t=out:st=0.9:d=0.2,adelay={ms(T['RING'])}:all=1[r];"
- f"anoisesrc=color=pink:amplitude=0.004:d={T['END']},lowpass=f=1800[air];"       # a breath of room tone so the gaps are not dead
- f"[a][b][d][e][n][r][air]amix=inputs=7:normalize=0:duration=longest,apad=whole_dur={T['END']},alimiter=limit=0.9[o]")
+ # Under the buzz and the nurse's call the music does not stop: the note the piano was on (G) is held softly,
+ # coming up as the piano fades and going down as the next piano fades in.
+ f"sine=f=98:d=10.4,volume=0.62[h1];sine=f=196:d=10.4,volume=0.52[h2];sine=f=293.66:d=10.4,volume=0.24[h3];sine=f=392:d=10.4,volume=0.12[h4];"
+ f"[h1][h2][h3][h4]amix=inputs=4:normalize=0,tremolo=f=0.35:d=0.25,lowpass=f=1200,aecho=0.8:0.6:120|190:0.25|0.18,"
+ f"afade=t=in:d=1.6:curve=qsin,afade=t=out:st=8.4:d=2.0:curve=qsin,adelay={ms(T['RING'] - 1.9)}:all=1[hold];"
+ f"anoisesrc=color=pink:amplitude=0.003:d={T['END']},lowpass=f=1800[air];"
+ f"[a][b][d][e][n][r][air][hold]amix=inputs=8:normalize=0:duration=longest,apad=whole_dur={T['END']},alimiter=limit=0.9[o]")
 sh(["ffmpeg", "-loglevel", "error", "-nostdin", "-y", "-i", "narr.m4a", "-i", "act3.m4a", "-i", "nurse.m4a", "-filter_complex", fc, "-map", "[o]", "-t", str(T["END"]), "-c:a", "aac", "-b:a", "192k", "track5.m4a"])
 json.dump(T, open("audio5.json", "w"))
 print(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", "track5.m4a"], capture_output=True, text=True).stdout.strip())
