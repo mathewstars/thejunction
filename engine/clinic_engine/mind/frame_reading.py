@@ -332,12 +332,18 @@ def verify(reply: dict, raw: dict, payload: dict, th: Thresholds = T) -> dict:
     smiles_out, faint_out, start_errors = [], [], []
     for sm in reply["smiles"]:
         a, b = sm["start_s"], sm["end_s"]
-        touches, taken, best_free = False, False, None
+        touches, taken, best_free, inside_long = False, False, None, False
         for j, cs in enumerate(view["smiles"]):
             inter = max(0.0, min(b, cs["end_s"]) - max(a, cs["start_s"]))
             if inter <= 0:
                 continue
             touches = True
+            # The report lies inside a smile of code's that is several times
+            # longer: the fixed rule may have merged a stretch into one smile
+            # (a mouth that rests near the onset does that).
+            if inter >= 0.8 * (b - a) and cs["end_s"] - cs["start_s"] >= max(
+                    th.frames_long_smile_min_s, th.frames_long_smile_ratio * (b - a)):
+                inside_long = True
             iou = inter / (max(b, cs["end_s"]) - min(a, cs["start_s"]))
             if iou < th.frames_smile_iou:
                 continue
@@ -347,8 +353,8 @@ def verify(reply: dict, raw: dict, payload: dict, th: Thresholds = T) -> dict:
                 best_free = (j, iou)
         if best_free is None:
             again = False
-            if not touches:
-                rise = faint_rise(view, a, b, th)
+            if not touches or (inside_long and not taken):
+                rise = faint_rise(view, a, b, th, within_code_smile=touches)
                 again = rise is not None and any(
                     min(b, f["end_s"]) > max(a, f["start_s"]) for f in faint_out)
                 if rise is not None and not again:
@@ -449,6 +455,8 @@ def verify(reply: dict, raw: dict, payload: dict, th: Thresholds = T) -> dict:
         # onset; "brief" passes it but is shorter than the rule's minimum length.
         "smiles_faint": sum(1 for f in faint_out if f["status"] == "faint"),
         "smiles_brief": sum(1 for f in faint_out if f["status"] == "brief"),
+        # A clear rise and return inside a far longer smile of the fixed rule's.
+        "smiles_inside_long": sum(1 for f in faint_out if f["status"] == "inside_long"),
         "smiles_dropped": len(reasons),
         # Of the dropped: nothing in the numbers, against a real smile matched badly
         # (a sliver of it, far wider than it, or reported twice).
@@ -481,7 +489,8 @@ def _median(vals: list[float]) -> float:
     return vals[len(vals) // 2]
 
 
-def faint_rise(view: dict, start_s: float, end_s: float, th: Thresholds = T) -> dict | None:
+def faint_rise(view: dict, start_s: float, end_s: float, th: Thresholds = T,
+               within_code_smile: bool = False) -> dict | None:
     """A reported smile that code's fixed rule did not find: is the rise in the
     numbers? Over the tracked full-rate frames of the span, the smile signal
     must lie above the local resting level by at least frames_faint_mean_rise
@@ -493,7 +502,13 @@ def faint_rise(view: dict, start_s: float, end_s: float, th: Thresholds = T) -> 
     baseline does not. With less than a second on either side, the session's
     median. Returns the measured rise with its status ("faint":
     the peak stays under the fixed onset; "brief": it passes the onset, but the
-    smile is shorter than the rule's minimum length), or None."""
+    smile is shorter than the rule's minimum length), or None.
+
+    within_code_smile: the span lies inside a much longer smile of code's. Then
+    code's smiles are not left out of the resting level (the long smile is what
+    is in doubt), the peak rise must be twice as large, and the status is
+    "inside_long": a clear rise and return inside a stretch the fixed rule
+    counted as one smile."""
     if not view["enough"]:
         return None
     rate, n = view["rate"], view["n"]
@@ -506,6 +521,8 @@ def faint_rise(view: dict, start_s: float, end_s: float, th: Thresholds = T) -> 
     for cs in view["smiles"]:
         for i in range(cs["a"], cs["b"]):
             in_smile[i] = True
+    if within_code_smile:
+        in_smile = [False] * n
     sides = [[i for i in rng if view["tracked"][i] and not in_smile[i]]
              for rng in (range(max(0, a - w), a), range(b, min(n, b + w)))]
     sides = [sd for sd in sides if len(sd) / rate >= 1.0]
@@ -519,17 +536,20 @@ def faint_rise(view: dict, start_s: float, end_s: float, th: Thresholds = T) -> 
         return sum(vals) / len(vals) - rest, max(vals) - rest, rest
 
     mean_rise, peak_rise, rest = rise_of(view["smile"], view["rest"])
-    if mean_rise < th.frames_faint_mean_rise or peak_rise < th.frames_faint_peak_rise:
+    need_peak = th.frames_faint_peak_rise * (2 if within_code_smile else 1)
+    if mean_rise < th.frames_faint_mean_rise or peak_rise < need_peak:
         return None
     side = th.frames_faint_side_share * th.frames_faint_mean_rise
     if rise_of(view["left"], None)[0] < side or rise_of(view["right"], None)[0] < side:
         return None
     peak = max(view["smile"][i] for i in idx)
-    return {"status": "faint" if peak < th.smile_onset else "brief",
+    return {"status": "inside_long" if within_code_smile else
+            "faint" if peak < th.smile_onset else "brief",
             "peak": round(peak, 2), "rise": round(peak_rise, 2), "rest": round(rest, 2)}
 
 
-_SUMS = ("smiles_reported", "smiles_matched", "smiles_faint", "smiles_brief", "smiles_dropped",
+_SUMS = ("smiles_reported", "smiles_matched", "smiles_faint", "smiles_brief",
+         "smiles_inside_long", "smiles_dropped",
          "smiles_not_in_numbers", "smiles_poor_match", "smiles_missed",
          "smiles_code", "segments_reported", "segments_confirmed", "moments_reported",
          "moments_agree")
@@ -546,7 +566,8 @@ def aggregate(agreements: list[dict], th: Thresholds = T) -> dict | None:
     out = {"sessions": len(agreements)}
     for k in _SUMS:
         out[k] = sum(int(a.get(k) or 0) for a in agreements)
-    at_code_level = out["smiles_reported"] - out["smiles_faint"] - out["smiles_brief"]
+    at_code_level = out["smiles_reported"] - out["smiles_faint"] - out["smiles_brief"] \
+        - out["smiles_inside_long"]
     out["smile_precision"] = round(out["smiles_matched"] / at_code_level, 2) \
         if at_code_level else None
     out["smile_recall"] = round(out["smiles_matched"] / out["smiles_code"], 2) \

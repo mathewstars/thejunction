@@ -84,8 +84,13 @@ struct HomeView: View {
     @State private var reaction: LanviMood = .happy
     @State private var reactTick = 0
     @State private var look: UnitPoint?
+    /// The mouth Lanvi shows while saying a new line (nil = the puppet decides).
+    @State private var mouth: MouthShape?
 
     var body: some View {
+        #if DEBUG
+        let _ = FrameMeter.count("Home")
+        #endif
         GeometryReader { geo in
             let w = geo.size.width
             let L = Layout(size: geo.size, insets: geo.safeAreaInsets, away: away)
@@ -99,10 +104,13 @@ struct HomeView: View {
                         .lanviReaction(reaction, trigger: reactTick)
                         .lanviMood(restingMood)
                         .lanviLookAt(look)
+                        .lanviMouth(mouth)
                         .onTapGesture { tapFox() }
                 }
                 .frame(width: L.fox * 2, height: L.fox * 2)
                 .position(x: L.foxCenter.x + entrance, y: L.foxCenter.y)
+                // Only moves when Lanvi sets off wandering or comes home; never every frame.
+                .animation(.spring(response: 0.7, dampingFraction: 0.8), value: away)
                 .accessibilityLabel("Lanvi")
                 .accessibilityHint("Shows how Lanvi is growing")
 
@@ -112,7 +120,8 @@ struct HomeView: View {
                 if let pop {
                     HomeXPPop(amount: pop.xpGained)
                         .id(pop.id)
-                        .position(x: min(L.foxCenter.x + L.fox * 0.40, L.size.width - 70), y: L.foxTop + L.fox * 0.30)
+                        // Floats up from the top of the head to sit centred above it.
+                        .position(x: L.foxCenter.x, y: L.foxTop + 16)
                         .allowsHitTesting(false)
                 }
 
@@ -148,6 +157,7 @@ struct HomeView: View {
                 // The zoom source is the whole action area, which is always there:
                 // closing a screen must never zoom back into a button that is gone.
                 actions
+                    .animation(.spring(response: 0.55, dampingFraction: 0.8), value: store.todayThing)
                     .frame(width: w - 48)
                     .homeZoomSource("today", in: zoom)
                     .position(x: w / 2, y: L.buttonY)
@@ -161,8 +171,6 @@ struct HomeView: View {
                         .zIndex(10)
                 }
             }
-            .animation(.spring(response: 0.7, dampingFraction: 0.8), value: away)
-            .animation(.spring(response: 0.55, dampingFraction: 0.8), value: store.todayThing)
             .onAppear { size = geo.size; insets = geo.safeAreaInsets }
             .onChange(of: geo.size) { _, s in size = s; insets = geo.safeAreaInsets }
         }
@@ -198,7 +206,7 @@ struct HomeView: View {
             if new == .back, old != .back { runIn() } else if !celebrating { settle() }
         }
         .onChange(of: store.cheerTick) { _, _ in
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .cheer }
+            pose = .cheer
             react(.happy)
             haptic &+= 1
             Task {
@@ -212,6 +220,9 @@ struct HomeView: View {
             if phase == .active, old == .background { welcomeBack() }
         }
         .onAppear {
+            #if DEBUG
+            FrameMeter.shared.start()
+            #endif
             if store.wandering?.state == .back { runIn() } else { settle() }
             withAnimation(.spring(response: 0.7, dampingFraction: 0.82).delay(0.25)) { arrived = true }
         }
@@ -220,24 +231,18 @@ struct HomeView: View {
 
     // MARK: Pieces
 
+    /// Lanvi's line in its speech bubble: up and to the right of the head, the
+    /// tail pointing down to the face. During the reward it lifts a little to make
+    /// room for "+10 XP" (an offset, so nothing is laid out again while it moves).
     private func speech(_ L: Layout) -> some View {
-        let top: CGFloat = L.compact ? 64 : 80
-        // Clear air above the ear tips (and the little marks) in every pose.
-        let bottom = max(away ? L.foxCenter.y - L.fox / 2 - 14 : L.foxTop - 14, top + 90)
-        return VStack {
-            Spacer(minLength: 0)
-            Button { open(.chat) } label: {
-                HomeSpeechBubble(text: bubbleText, pointAt: away ? 0.78 : 0.5, size: L.compact ? 20 : 21)
-            }
-            .buttonStyle(SpeechPressStyle())
+        let lift: CGFloat = pop != nil ? 58 : 0
+        let target = away
+            ? CGPoint(x: L.foxCenter.x - L.fox * 0.1, y: L.foxCenter.y - L.fox * 0.55)
+            : CGPoint(x: L.foxCenter.x + L.fox * 0.10, y: L.foxTop + L.fox * 0.04)
+        return HomeSpeech(text: bubbleText, target: target, width: L.size.width, mouth: $mouth) { open(.chat) }
             .homeZoomSource("speech", in: zoom)
-            .accessibilityHint("Opens a chat with Lanvi")
-        }
-        .padding(.horizontal, 24)
-        .frame(height: bottom - top)
-        .padding(.top, top)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: bubbleText)
-        .opacity(arrived ? 1 : 0)
+            .offset(y: -lift)
+            .opacity(arrived ? 1 : 0)
     }
 
     /// Solid white pill, navy type: reads on the pale dawn and the deep night alike.
@@ -373,10 +378,13 @@ struct HomeView: View {
 
     /// Eyes up to the bubble when Lanvi says something new, then back.
     private func glanceAtBubble() {
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { look = UnitPoint(x: 0.5, y: -0.35) }
+        #if DEBUG
+        FrameMeter.mark("glance at bubble")
+        #endif
+        look = UnitPoint(x: 0.8, y: -0.25)
         Task {
             try? await Task.sleep(for: .seconds(1.3))
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { look = nil }
+            look = nil
         }
     }
     private var isDoneToday: Bool { if case .done = store.todayThing { return true } else { return false } }
@@ -427,7 +435,9 @@ struct HomeView: View {
         }
     }
 
-    /// The resting pose for the state Lanvi is in and the time of day.
+    /// The resting pose for the state Lanvi is in and the time of day. Pose, mood and
+    /// look-at are set plainly: the puppet eases its own parts on its own clock, so
+    /// Home never wraps them in a second animation.
     private func settle() {
         let next: LanviPose
         switch store.wandering?.state {
@@ -445,7 +455,7 @@ struct HomeView: View {
             }
         }
         if next != pose {
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = next }
+            pose = next
         }
     }
 
@@ -466,7 +476,7 @@ struct HomeView: View {
         withAnimation(.easeOut(duration: 1.1)) { entrance = 0 }
         Task {
             try? await Task.sleep(for: .milliseconds(1100))
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .surprised }
+            pose = .surprised
             react(.surprised)
             haptic &+= 1
         }
@@ -475,7 +485,7 @@ struct HomeView: View {
     /// Opening the app again: Lanvi is pleased to see you.
     private func welcomeBack() {
         guard !celebrating, store.wandering?.state != .away else { return }
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .love }
+        pose = .love
         react(.happy)
         Task {
             try? await Task.sleep(for: .seconds(1.8))
@@ -486,22 +496,34 @@ struct HomeView: View {
     /// The reward: the growth bar slides up, Lanvi hops for joy, "+10 XP" pops,
     /// the bar fills and the day count ticks. No light effects on the fox.
     private func celebrate(_ c: HomeCelebration) {
+        #if DEBUG
+        FrameMeter.mark("reward start")
+        #endif
         celebrating = true
         if c.xpGained > 0 {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { showGrowth = true }
         }
         Task {
             try? await Task.sleep(for: .milliseconds(c.xpGained > 0 ? 350 : 150))
+            #if DEBUG
+            FrameMeter.mark("happy + pop")
+            #endif
             react(.happy)
             haptic &+= 1
             if c.xpGained > 0 {
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) { pop = c }
             }
             try? await Task.sleep(for: .seconds(2.8))
+            #if DEBUG
+            FrameMeter.mark("pop away")
+            #endif
             withAnimation(.easeOut(duration: 0.3)) { pop = nil }
             withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { showGrowth = false }
             try? await Task.sleep(for: .seconds(0.8))
             while store.grewUp != nil { try? await Task.sleep(for: .milliseconds(200)) }
+            #if DEBUG
+            FrameMeter.mark("settle")
+            #endif
             celebrating = false
             store.celebration = nil
             settle()

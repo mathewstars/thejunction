@@ -38,53 +38,33 @@ struct HomeRoundButtonStyle: ButtonStyle {
 
 // MARK: - Speech bubble
 
-/// What Lanvi says: one soft white bubble with a small tail toward Lanvi,
-/// navy type, no border, a very light shadow. The only container on Home.
+/// What Lanvi says on the other screens: the same bubble as Home (outline,
+/// chunky bottom edge, one shape with the tail), hugging its words.
 struct HomeSpeechBubble: View {
     var text: String
-    /// Horizontal position of the tail, 0 = left edge, 1 = right edge.
+    /// Where the tail sits along the bottom, 0 = left edge, 1 = right edge.
     var pointAt: CGFloat = 0.5
-    var size: CGFloat = 21
+    var size: CGFloat = 17
 
     var body: some View {
         Text(text)
-            .font(Theme.rounded(size, .heavy))
+            .font(Theme.rounded(text.count > 64 ? size - 2 : size, .bold))
             .foregroundStyle(Theme.ink)
-            .multilineTextAlignment(.center)
-            .lineSpacing(1)
+            .lineSpacing(2)
+            .multilineTextAlignment(.leading)
             .lineLimit(4)
-            .minimumScaleFactor(0.85)
+            .minimumScaleFactor(0.9)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 22)
-            .padding(.vertical, 16)
-            .background(
-                HomeBubbleShape(pointAt: pointAt)
-                    .fill(Color(hex: 0xFFFEFB))
-                    .shadow(color: Theme.ink.opacity(0.10), radius: 12, y: 4)
-            )
-            .padding(.bottom, 12)   // room for the tail
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(GeometryReader { g in
+                LanviBubbleBackground(tailX: g.size.width * pointAt,
+                                      lean: pointAt > 0.6 ? 1 : (pointAt < 0.4 ? -1 : 0))
+            })
+            .padding(.bottom, LanviBubbleShape.tailHeight)
             .id(text)
-            .transition(.asymmetric(insertion: .scale(scale: 0.92, anchor: .bottom).combined(with: .opacity),
+            .transition(.asymmetric(insertion: .scale(scale: 0.8, anchor: .bottom).combined(with: .opacity),
                                     removal: .opacity))
-    }
-}
-
-/// A generously rounded bubble with a small, soft tail at the bottom.
-struct HomeBubbleShape: Shape {
-    var pointAt: CGFloat
-    func path(in rect: CGRect) -> Path {
-        let body = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height)
-        var p = Path(roundedRect: body, cornerRadius: min(26, body.height / 2), style: .continuous)
-        let x = body.minX + max(0.2, min(0.8, pointAt)) * body.width
-        let base = body.maxY - 1
-        p.move(to: CGPoint(x: x - 13, y: base))
-        p.addCurve(to: CGPoint(x: x - 1, y: base + 12),
-                   control1: CGPoint(x: x - 6, y: base + 1), control2: CGPoint(x: x - 3, y: base + 8))
-        p.addQuadCurve(to: CGPoint(x: x + 2, y: base + 12), control: CGPoint(x: x + 0.5, y: base + 14))
-        p.addCurve(to: CGPoint(x: x + 13, y: base),
-                   control1: CGPoint(x: x + 4, y: base + 8), control2: CGPoint(x: x + 7, y: base + 1))
-        p.closeSubpath()
-        return p
     }
 }
 
@@ -107,7 +87,6 @@ struct HomeXPPop: View {
         .padding(.vertical, 9)
         .background(Capsule().fill(.white))
         .background(Capsule().fill(Theme.line).offset(y: 4))
-        .shadow(color: Color(hex: 0x7CF5C4).opacity(0.7), radius: 16)
         .scaleEffect(up ? 1 : 0.4)
         .offset(y: up ? -46 : 0)
         .opacity(up ? 1 : 0)

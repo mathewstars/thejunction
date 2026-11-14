@@ -153,6 +153,13 @@ class Thresholds:
     # (code's smiles left out), the higher of the two, so a step in the baseline
     # (the phone moved) is not read as a smile. Each mouth corner must carry at
     # least this share of the mean rise: jitter in one corner is not a smile.
+    # A report that lies inside a smile of code's at least this many times
+    # longer is not dropped as a poor match at once: the fixed rule merges a
+    # whole stretch into one smile when a mouth rests near the onset. It is
+    # tested against the local rest (code's smiles not left out, twice the
+    # peak rise) and kept apart as "inside_long" when the rise is there.
+    frames_long_smile_ratio: float = 4.0
+    frames_long_smile_min_s: float = 5.0  # and code's smile lasts at least this long
     frames_faint_window_s: float = 8.0
     frames_faint_side_share: float = 0.5
     # A reported segment must last this long (the prompt asks for two seconds);
@@ -192,6 +199,39 @@ class Thresholds:
     frames_gaze_down_share: float = 0.3
     # tracking: tracking_quality >= good "good", >= face_min_quality "partly", else "poor"
     frames_tracking_good: float = 0.9
+
+    # The day reading (mind/day_reading.py, data/days_prompt.txt): the level-2
+    # model reads the daily numbers of the last weeks; code checks every item.
+    # Clinician-only: none of these values touches attention, suggestions or
+    # lessons. All are estimates, not calibrated on real series.
+    dayr_max_days: int = 84  # the window sent, in calendar days
+    dayr_min_days: int = 21  # days with steps needed before anything is sent
+    dayr_min_channel_days: int = 14  # a channel is sent when it has this many values
+    dayr_min_before: int = 7  # values needed before a day or a stretch to judge it
+    # Code's own stretches: days at least this many spreads outside the trailing
+    # normal, for at least dayr_min_len days with data.
+    dayr_code_z: float = 1.5
+    dayr_min_len: int = 3
+    # A reported stretch is in the numbers when its median lies this many
+    # spreads from the days before (milder than code's own rule: the model may
+    # name a stretch the fixed rule does not flag, and code confirms it here).
+    dayr_stretch_z: float = 1.0
+    # A gradual stretch: at least this long, the values fall day by day
+    # (Spearman of value against day), and its last third lies dayr_stretch_z
+    # spreads from its first third.
+    dayr_gradual_min_len: int = 7
+    dayr_gradual_rho: float = 0.5
+    # The same stretch as code's: overlap over the union of the two spans.
+    dayr_iou: float = 0.3
+    # A weekday is this person's low day when its median lies this many spreads
+    # under the other days, with at least this many of that weekday, and it is
+    # low week after week.
+    dayr_weekday_z: float = 1.0
+    dayr_weekday_min_n: int = 3
+    dayr_weekday_share: float = 0.8  # and this share of that weekday's values lie under
+    dayr_gap_min: int = 2  # days in a row without steps
+    dayr_overall_z: float = 1.0  # the last seven days' median for "lower" or "higher"
+    dayr_min_hours_between: float = 6.0  # a new reading at most this often per person
 
     # Responder.
     suggestion_cooldown_hours: float = 6.0

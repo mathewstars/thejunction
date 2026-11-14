@@ -46,10 +46,22 @@ struct PaintedWorld: View {
     var scene: WorldScene
     var snow: Bool = true
 
+    /// Debug only, `-noLife`: the painting without snow, glints or shimmer (to measure their cost).
+    private static let lifeOff: Bool = {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains("-noLife")
+        #else
+        return false
+        #endif
+    }()
+
     var body: some View {
         GeometryReader { geo in
             let size = geo.size
             ZStack {
+                #if DEBUG
+                let _ = FrameMeter.count("World")
+                #endif
                 Image(scene.imageName)
                     .resizable()
                     .interpolation(.high)
@@ -58,7 +70,10 @@ struct PaintedWorld: View {
                     .clipped()
                     .id(scene)
                     .transition(.opacity)
-                WorldLife(scene: scene, frame: WorldFrame(screen: size), snow: snow)
+                if scene == .dawn { DawnWarmth() }
+                if !Self.lifeOff {
+                    WorldLife(scene: scene, frame: WorldFrame(screen: size), snow: snow)
+                }
             }
             .animation(.easeInOut(duration: 1.6), value: scene)
         }
@@ -67,9 +82,24 @@ struct PaintedWorld: View {
     }
 }
 
+/// Dawn light warming slowly and easing back. Driven by a system animation
+/// (no per-frame drawing on the main thread).
+private struct DawnWarmth: View {
+    @State private var warm = false
+    var body: some View {
+        LinearGradient(colors: [Color(hex: 0xFFC9A8).opacity(0), Color(hex: 0xFFC9A8).opacity(0.35)],
+                       startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.6))
+            .blendMode(.softLight)
+            .opacity(warm ? 1 : 0.4)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 12).repeatForever(autoreverses: true)) { warm = true }
+            }
+    }
+}
+
 /// Subtle, real life on the painting: slow snow at three depths; at night the
-/// painted stars glint and a faint shimmer moves through the aurora; at dawn
-/// the light warms slowly.
+/// painted stars glint and a faint shimmer moves through the aurora. Kept
+/// cheap: one canvas at 60 frames a second, plain gradients, no filters.
 private struct WorldLife: View {
     var scene: WorldScene
     var frame: WorldFrame
@@ -83,10 +113,9 @@ private struct WorldLife: View {
     ]
 
     var body: some View {
-        TimelineView(.animation) { context in
+        TimelineView(.animation(minimumInterval: 1.0 / 60)) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             Canvas { ctx, size in
-                if scene == .dawn { warmth(&ctx, size: size, t: t) }
                 if scene == .night { glints(&ctx, t: t); shimmer(&ctx, t: t) }
                 if snow { flakes(&ctx, size: size, t: t) }
             }
@@ -136,31 +165,20 @@ private struct WorldLife: View {
     private func shimmer(_ ctx: inout GraphicsContext, t: TimeInterval) {
         var g = ctx
         g.blendMode = .plusLighter
-        g.addFilter(.blur(radius: 18))
         let cycle = 16.0
         let u = (t.truncatingRemainder(dividingBy: cycle)) / cycle
         let fx = CGFloat(0.05 + 0.9 * u)
         let fy = CGFloat(0.10 + 0.26 * u * u)
         let p = frame.point(fx, fy)
         let fade = sin(u * .pi)
-        let w: CGFloat = 120, h: CGFloat = 46
+        let w: CGFloat = 170, h: CGFloat = 70
         var layer = g
         layer.translateBy(x: p.x, y: p.y)
         layer.rotate(by: .degrees(28))
         layer.fill(Path(ellipseIn: CGRect(x: -w / 2, y: -h / 2, width: w, height: h)),
-                   with: .radialGradient(Gradient(colors: [Color(hex: 0xB9FFE4).opacity(0.22 * fade), .clear]),
+                   with: .radialGradient(Gradient(colors: [Color(hex: 0xB9FFE4).opacity(0.16 * fade),
+                                                           Color(hex: 0xB9FFE4).opacity(0.05 * fade), .clear]),
                                          center: .zero, startRadius: 0, endRadius: w / 2))
-    }
-
-    /// Dawn light warming slowly, then easing back.
-    private func warmth(_ ctx: inout GraphicsContext, size: CGSize, t: TimeInterval) {
-        let a = 0.05 + 0.05 * sin(t * 2 * .pi / 24)
-        var g = ctx
-        g.blendMode = .softLight
-        g.fill(Path(CGRect(origin: .zero, size: size)),
-               with: .linearGradient(Gradient(colors: [Color(hex: 0xFFC9A8).opacity(0), Color(hex: 0xFFC9A8).opacity(a * 4)]),
-                                     startPoint: CGPoint(x: size.width / 2, y: 0),
-                                     endPoint: CGPoint(x: size.width / 2, y: size.height * 0.6)))
     }
 
     private func frac(_ v: Double) -> Double { v - floor(v) }

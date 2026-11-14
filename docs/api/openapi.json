@@ -174,6 +174,93 @@
         ]
       }
     },
+    "/v1/health/summary": {
+      "post": {
+        "tags": [
+          "device"
+        ],
+        "summary": "Upload an Apple Health summary: any HealthKit type, one value per day",
+        "description": "For the HealthKit harness app and a watch companion. Post the harness's\n`HealthDataSummary` JSON as it is: only `metrics[].typeIdentifier`, `unit`,\n`aggregation` and `daily[].day`, `count`, `sum`, `mean` are read; everything\nelse is ignored and never stored (source and device names, single samples).\n\nEvery type is stored per day (upsert by type and day; the most recent 400\ndays are kept). Steps, walking speed (m/s), sleep (hours) and HRV (SDNN, ms)\nalso fill the day records, with the same checks as `POST /v1/daily`, so the\ncomparison with the person's own normal sees them. Send it as often as you\nlike; unchanged days are not written again. The body may be up to 4 MiB:\nsend about 90 days per call, or the types in several calls.",
+        "operationId": "health_summary_v1_health_summary_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HealthSummaryIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthSummaryOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid or implausible input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/v1/activities": {
       "post": {
         "tags": [
@@ -3533,10 +3620,11 @@
             "type": "string",
             "enum": [
               "session",
-              "frames"
+              "frames",
+              "days"
             ],
             "title": "What",
-            "description": "With activity_id: `session` runs the session reading, `frames` the frame reading (level 2 reads the raw face frames, code checks every item; the activity must have been sent with face_raw).",
+            "description": "With activity_id: `session` runs the session reading, `frames` the frame reading (level 2 reads the raw face frames, code checks every item; the activity must have been sent with face_raw). `days`, without an id: the day reading (level 2 reads the daily numbers of the last weeks, code checks every item).",
             "default": "session"
           }
         },
@@ -5531,6 +5619,224 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HealthDailyIn": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day",
+            "description": "Calendar day, yyyy-MM-dd, in the phone's time zone."
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          },
+          "sum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sum"
+          },
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean",
+            "description": "The day's value: the sum for summed types, the mean for averaged ones, hours for sleep."
+          }
+        },
+        "type": "object",
+        "required": [
+          "day"
+        ],
+        "title": "HealthDailyIn"
+      },
+      "HealthMetricIn": {
+        "properties": {
+          "typeIdentifier": {
+            "type": "string",
+            "pattern": "^HK[A-Za-z0-9]{1,80}(:[A-Za-z0-9 _-]{1,40})?$",
+            "title": "Typeidentifier",
+            "description": "The HealthKit identifier, for example HKQuantityTypeIdentifierRestingHeartRate."
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 24
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "aggregation": {
+            "type": "string",
+            "enum": [
+              "sum",
+              "mean",
+              "durationHours",
+              "latest",
+              "count"
+            ],
+            "title": "Aggregation",
+            "default": "mean"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/HealthDailyIn"
+            },
+            "type": "array",
+            "maxItems": 400,
+            "title": "Daily"
+          }
+        },
+        "type": "object",
+        "required": [
+          "typeIdentifier",
+          "daily"
+        ],
+        "title": "HealthMetricIn"
+      },
+      "HealthMetricStored": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days",
+            "description": "Days of this type now stored."
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Day"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "days",
+          "last_day"
+        ],
+        "title": "HealthMetricStored"
+      },
+      "HealthSummaryIn": {
+        "properties": {
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/HealthMetricIn"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Metrics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metrics"
+        ],
+        "title": "HealthSummaryIn",
+        "examples": [
+          {
+            "metrics": [
+              {
+                "aggregation": "sum",
+                "daily": [
+                  {
+                    "count": 212,
+                    "day": "2026-11-13",
+                    "mean": 6400,
+                    "sum": 6400
+                  }
+                ],
+                "typeIdentifier": "HKQuantityTypeIdentifierStepCount",
+                "unit": "count"
+              },
+              {
+                "aggregation": "mean",
+                "daily": [
+                  {
+                    "count": 1,
+                    "day": "2026-11-13",
+                    "mean": 58
+                  }
+                ],
+                "typeIdentifier": "HKQuantityTypeIdentifierRestingHeartRate",
+                "unit": "count/min"
+              }
+            ]
+          }
+        ]
+      },
+      "HealthSummaryOut": {
+        "properties": {
+          "stored": {
+            "items": {
+              "$ref": "#/components/schemas/HealthMetricStored"
+            },
+            "type": "array",
+            "title": "Stored",
+            "description": "Every type that was stored."
+          },
+          "days_updated": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Days Updated",
+            "description": "Days whose steps, walking speed, sleep or HRV changed from this upload."
+          },
+          "rejected": {
+            "items": {
+              "$ref": "#/components/schemas/Rejected"
+            },
+            "type": "array",
+            "title": "Rejected"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stored",
+          "days_updated",
+          "rejected",
+          "status"
+        ],
+        "title": "HealthSummaryOut"
       },
       "LanviOut": {
         "properties": {

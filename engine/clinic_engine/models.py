@@ -80,6 +80,59 @@ class Rejected(BaseModel):
     reason: str
 
 
+# ---- device: Apple Health summary (the HealthKit harness app, a watch companion) -----
+#
+# The shape is the harness's own `HealthDataSummary` (ios/Lanvi/Sense/Peter/SharedModels.swift),
+# so its JSON can be posted as it is. Only the fields named here are read; every other
+# field of the summary is ignored and never stored (source names, device names, dates of
+# single samples).
+
+class _Lenient(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+
+class HealthDailyIn(_Lenient):
+    day: date = Field(description="Calendar day, yyyy-MM-dd, in the phone's time zone.")
+    count: Optional[int] = Field(None, ge=0, le=1_000_000)
+    sum: Optional[float] = None
+    mean: Optional[float] = Field(None, description="The day's value: the sum for summed types, "
+                                                    "the mean for averaged ones, hours for sleep.")
+
+
+class HealthMetricIn(_Lenient):
+    typeIdentifier: str = Field(pattern=r"^HK[A-Za-z0-9]{1,80}(:[A-Za-z0-9 _-]{1,40})?$",
+                                description="The HealthKit identifier, for example "
+                                            "HKQuantityTypeIdentifierRestingHeartRate.")
+    unit: Optional[str] = Field(None, max_length=24)
+    aggregation: Literal["sum", "mean", "durationHours", "latest", "count"] = "mean"
+    daily: list[HealthDailyIn] = Field(max_length=400)
+
+
+class HealthSummaryIn(_Lenient):
+    metrics: list[HealthMetricIn] = Field(min_length=1, max_length=200)
+
+    model_config = ConfigDict(extra="ignore", json_schema_extra={"examples": [{"metrics": [
+        {"typeIdentifier": "HKQuantityTypeIdentifierStepCount", "unit": "count",
+         "aggregation": "sum", "daily": [{"day": "2026-11-13", "count": 212, "sum": 6400,
+                                          "mean": 6400}]},
+        {"typeIdentifier": "HKQuantityTypeIdentifierRestingHeartRate", "unit": "count/min",
+         "aggregation": "mean", "daily": [{"day": "2026-11-13", "count": 1, "mean": 58}]}]}]})
+
+
+class HealthMetricStored(BaseModel):
+    type: str
+    days: int = Field(description="Days of this type now stored.")
+    last_day: Optional[str]
+
+
+class HealthSummaryOut(BaseModel):
+    stored: list[HealthMetricStored] = Field(description="Every type that was stored.")
+    days_updated: list[str] = Field(description="Days whose steps, walking speed, sleep or HRV "
+                                                "changed from this upload.")
+    rejected: list[Rejected]
+    status: str
+
+
 class DailyOut(BaseModel):
     accepted: list[str]
     rejected: list[Rejected]
@@ -733,13 +786,19 @@ class AnalyzeIn(Strict):
     patient_id: ServerId
     round_id: Optional[ClientId] = Field(None, description="An AR round (earlier design).")
     activity_id: Optional[ClientId] = Field(None, description="A focus or breathing activity.")
-    what: Literal["session", "frames"] = Field(
+    what: Literal["session", "frames", "days"] = Field(
         "session", description="With activity_id: `session` runs the session reading, `frames` "
                                "the frame reading (level 2 reads the raw face frames, code checks "
-                               "every item; the activity must have been sent with face_raw).")
+                               "every item; the activity must have been sent with face_raw). "
+                               "`days`, without an id: the day reading (level 2 reads the daily "
+                               "numbers of the last weeks, code checks every item).")
 
     @model_validator(mode="after")
     def _one(self):
+        if self.what == "days":
+            if self.round_id is not None or self.activity_id is not None:
+                raise ValueError("what=days takes no round_id or activity_id")
+            return self
         if (self.round_id is None) == (self.activity_id is None):
             raise ValueError("give either round_id or activity_id")
         if self.what == "frames" and self.activity_id is None:

@@ -98,52 +98,83 @@ class Outreach:
             if self.recorder is not None:
                 self.recorder(pack, out, (time.monotonic() - t0) * 1000, self.level2_model, 2)
 
-    async def _frames_call(self, url: str, headers: dict, body: dict,
+    async def _robust_call(self, url: str, headers: dict, body: dict,
                            timeout: float) -> str | None:
-        """The frame reading's call, at most three attempts with the same
-        checked stream: a 400 is tried once more without the response schema (a
-        model that does not take one); a busy or failing service (429, 5xx, a
-        timeout) once more after a short wait; an empty reply once more, with
-        twice the output limit when the model ran out of tokens while thinking.
-        Why it stopped and the token counts are kept in last_frames_meta."""
-        waited, attempts = False, 0
+        """One level-2 answer, with the same checked content in every attempt
+        (at most four). What it works around:
+
+        - a slow answer: the request asks the model to think little
+          (GEMINI_THINKING=low; a reading takes a few seconds instead of half a
+          minute and a fraction of the tokens). An empty answer is asked again
+          with the model's default thinking;
+        - a 400: tried again without the thinking setting, then without the
+          response schema (a model that takes neither);
+        - a busy or failing service (429, 5xx, a timeout): tried again after a
+          growing wait, the second time with GEMINI_FALLBACK_MODEL when set;
+        - out of tokens while thinking: tried again with twice the limit.
+
+        Why it stopped, the token counts, the model and the thinking used are
+        kept in last_frames_meta (codes and counts only)."""
+        level = (self.settings.gemini_thinking or "default").lower()
+        if level != "default":
+            body = {**body, "generationConfig": {**body["generationConfig"],
+                                                 "thinkingConfig": {"thinkingLevel": level}}}
+        model, failures, attempts = self.settings.gemini_model, 0, 0
         self.last_frames_meta = {}
-        for _ in range(3):
+
+        def without(key: str) -> dict:
+            return {**body, "generationConfig": {k: v for k, v in body["generationConfig"].items()
+                                                 if k != key}}
+
+        while attempts < 4:
             attempts += 1
+            config = body["generationConfig"]
+            used = {"attempts": attempts, "model": model,
+                    "thinking": (config.get("thinkingConfig") or {}).get("thinkingLevel", "default")}
             try:
                 data = await self._post("gemini", url, body, headers, timeout) or {}
                 text = gemini.parse_response(data)
-                self.last_frames_meta = {**gemini.reply_meta(data), "attempts": attempts}
-                if text is not None or waited:
+                self.last_frames_meta = {**gemini.reply_meta(data), **used}
+                if text is not None:
                     return text
                 if self.last_frames_meta.get("finish") == "MAX_TOKENS":
-                    config = body["generationConfig"]
                     body = {**body, "generationConfig": {
                         **config, "maxOutputTokens": 2 * config["maxOutputTokens"]}}
+                elif "thinkingConfig" in config:
+                    body = without("thinkingConfig")
+                else:
+                    failures += 1
             except httpx.HTTPStatusError as exc:
                 code = exc.response.status_code
-                self.last_frames_meta = {"finish": f"http_{code}", "attempts": attempts}
-                config = body["generationConfig"]
-                if code == 400 and "responseSchema" in config:
-                    body = {**body, "generationConfig": {k: v for k, v in config.items()
-                                                         if k != "responseSchema"}}
+                self.last_frames_meta = {"finish": f"http_{code}", **used}
+                if code == 400 and "thinkingConfig" in config:
+                    body = without("thinkingConfig")
                     continue
-                if waited or not (code == 429 or code >= 500):
+                if code == 400 and "responseSchema" in config:
+                    body = without("responseSchema")
+                    continue
+                if not (code == 429 or code >= 500):
                     raise
+                failures += 1
             except httpx.TransportError:
-                self.last_frames_meta = {"finish": "no_connection", "attempts": attempts}
-                if waited:
-                    raise
-            waited = True
-            await asyncio.sleep(self.settings.gemini_frames_retry_wait_s)
+                self.last_frames_meta = {"finish": "no_connection", **used}
+                failures += 1
+            if failures >= 3:
+                break
+            if failures:
+                fallback = self.settings.gemini_fallback_model
+                if failures >= 2 and fallback and model != fallback:
+                    url, model = url.replace(f"/models/{model}:", f"/models/{fallback}:"), fallback
+                await asyncio.sleep(self.settings.gemini_frames_retry_wait_s * failures)
         return None
 
     async def _level2(self, pack: Pack) -> str | None:
         # The frame reading sends a long stream and the model thinks before it
         # answers: it gets its own output limit and timeout; other tasks keep theirs.
-        frames = pack.task == "frames_reading"
+        frames = pack.task in ("frames_reading", "days_reading")  # the two long readings
         max_tokens = self.settings.gemini_frames_max_tokens if frames else None
-        timeout = self.settings.gemini_frames_timeout_s if frames else self.settings.gemini_timeout_s
+        timeout = self.settings.gemini_days_timeout_s if pack.task == "days_reading" else \
+            self.settings.gemini_frames_timeout_s if frames else self.settings.gemini_timeout_s
         try:
             if pack.task == "reading":
                 INPUT_GATE.check_reading_outbound(pack.payload)
@@ -151,6 +182,8 @@ class Outreach:
                 INPUT_GATE.check_session_outbound(pack.payload)
             elif pack.task == "frames_reading":
                 INPUT_GATE.check_frames_pack(pack)  # the only pack that carries frames
+            elif pack.task == "days_reading":
+                INPUT_GATE.check_days_pack(pack)
             elif pack.task == "sensor_reading":
                 INPUT_GATE.check_sensors_pack(pack)
             else:
@@ -163,17 +196,16 @@ class Outreach:
                     Pack(1, pack.task, pack.messages, pack.payload, pack.ref_map),
                     json_mode=True, max_tokens=max_tokens or 1500)
             schema = None
-            if frames:
+            if pack.task == "frames_reading":
                 from .mind.frame_reading import RESPONSE_SCHEMA as schema
+            elif pack.task == "days_reading":
+                from .mind.day_reading import RESPONSE_SCHEMA as schema
             elif pack.task == "sensor_reading":
                 from .mind.sensor_reading import RESPONSE_SCHEMA as schema
             url, headers, body = gemini.build_request(self.settings, pack,
                                                       max_output_tokens=max_tokens or 4000,
                                                       response_schema=schema)
-            if not frames:
-                data = await self._post("gemini", url, body, headers, timeout)
-                return gemini.parse_response(data or {})
-            return await self._frames_call(url, headers, body, timeout)
+            return await self._robust_call(url, headers, body, timeout)
         except GateError:
             raise
         except Exception as exc:  # noqa: BLE001

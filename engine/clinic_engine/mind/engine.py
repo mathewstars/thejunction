@@ -46,8 +46,8 @@ log = logging.getLogger("clinic_engine.mind")
 # Audit actions of the clinician-only outputs (the association appraisal and its
 # ratings, the frame reading). The learning review never sees them.
 RESEARCH_ACTIONS = {"association_appraisal", "association_run", "rating_add", "rating_delete",
-                    "frames_reading", "sensor_reading", "sensors_read"}
-RESEARCH_TASKS = {"association", "frames_reading", "sensor_reading"}
+                    "frames_reading", "days_reading", "sensor_reading", "sensors_read"}
+RESEARCH_TASKS = {"association", "frames_reading", "days_reading", "sensor_reading"}
 
 
 def is_research_event(ev: dict) -> bool:
@@ -944,9 +944,11 @@ class Mind:
             reply = await self.outreach.gemini_complete(pack)
             # Why the model stopped and its token counts (codes and counts only).
             meta = getattr(self.outreach, "last_frames_meta", None) or {}
-            sent.update({k: meta[k] for k in ("finish", "attempts", "prompt_tokens",
+            sent.update({k: meta[k] for k in ("finish", "attempts", "thinking", "prompt_tokens",
                                               "thought_tokens", "output_tokens")
                          if meta.get(k) is not None})
+            if meta.get("model"):
+                result["model"] = meta["model"] if not self.outreach.standin else result["model"]
             if reply is None:
                 result["reason"] = "no_reply"
             else:
@@ -963,7 +965,7 @@ class Mind:
             result["reason"] = "input_refused"
         ag = result.get("agreement") or {}
         counts = {k: ag.get(k) for k in ("smiles_reported", "smiles_confirmed",
-                                         "smiles_corrected", "smiles_faint", "smiles_brief",
+                                         "smiles_corrected", "smiles_faint", "smiles_brief", "smiles_inside_long",
                                          "smiles_not_in_numbers", "smiles_missed",
                                          "segments_reported", "segments_confirmed",
                                          "blinks_model", "blinks_code", "overall_same")}
@@ -991,6 +993,127 @@ class Mind:
             self.audit(repo, "frames_reading", activity_id=activity_id,
                        status=result["status"], reason=result.get("reason"),
                        frames_sent=sent.get("frames"), dropped=len(result.get("dropped", [])),
+                       **{k: v for k, v in counts.items() if v is not None})
+
+        if take_lock:
+            async with self.lock(repo.clinic_id, repo.patient_id):
+                await store()
+        else:
+            await store()
+        return result
+
+    # ---- the day reading (level 2 reads the daily numbers; code checks) -------------------
+    #
+    # Clinician-only. Reads the day records and the stored HealthKit types,
+    # writes ONLY research/days_reading.json, the trace, the audit log and the
+    # refusal log. Never attention, suggestions, lessons, questions or mind
+    # state, never an event on the bus, never any patient-facing text.
+
+    def days_reading_state(self, repo: PatientRepo) -> str:
+        """pending | off | not_allowed | too_few_days."""
+        if getattr(self.settings, "days_reader", "auto") == "off" or \
+                self.outreach is None or not self.outreach.gemini_on:
+            return "off"
+        # The numbers leave the private network: the patient's consent decides.
+        if not (repo.patient() or {}).get("allow_outside_processing"):
+            return "not_allowed"
+        have = sum(1 for d in repo.days().values() if d.get("steps") is not None)
+        return "pending" if have >= self.th.dayr_min_days else "too_few_days"
+
+    async def schedule_days_reading(self, repo: PatientRepo) -> None:
+        """After new days arrived: a new reading, at most every
+        dayr_min_hours_between hours per person."""
+        if self.days_reading_state(repo) != "pending":
+            return
+        old = repo.get("research/days_reading.json") or {}
+        if old.get("at"):
+            age = self.clock.now() - datetime.fromisoformat(old["at"])
+            if age < timedelta(hours=self.th.dayr_min_hours_between):
+                return
+        if self.settings.review_inline:
+            await self.run_days_reading(repo, take_lock=True)
+            return
+
+        async def bg() -> None:
+            try:
+                await self.run_days_reading(repo, take_lock=True)
+            except Exception:  # noqa: BLE001
+                log.exception("day reading failed")
+
+        task = asyncio.get_running_loop().create_task(bg())
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    async def run_days_reading(self, repo: PatientRepo, take_lock: bool = False) -> dict:
+        with self.tracer.chain(repo.clinic_id, repo.patient_id, "days_reading", fresh=True):
+            return await self._run_days_reading(repo, take_lock)
+
+    async def _run_days_reading(self, repo: PatientRepo, take_lock: bool) -> dict:
+        from .day_reading import first_date
+        state = self.days_reading_state(repo)
+        now = self.clock.now()
+        if state != "pending":
+            return {"status": state}
+        result: dict = {"status": "failed", "read_by": "level2",
+                        "model": self.outreach.level2_model, "checked_by": "code",
+                        "at": now.isoformat()}
+        refusals: list[GateRefusal] = []
+        sent: dict = {}
+        try:
+            days = repo.days()
+            health = {h["type"]: h for h in repo.docs("health") if h.get("type")}
+            pack = INPUT_GATE.days_pack(days, health)
+            if pack is None:
+                return {"status": "too_few_days"}
+            sent = {"days": pack.payload["days"], "channels": len(pack.payload["channels"])}
+            # What was sent, for the clinician's chart; the date of row 0 is kept
+            # beside it and was never sent.
+            result["stream"] = {"first_date": first_date(days, pack.payload), **pack.payload}
+            reply = await self.outreach.gemini_complete(pack)
+            meta = getattr(self.outreach, "last_frames_meta", None) or {}
+            sent.update({k: meta[k] for k in ("finish", "attempts", "thinking", "prompt_tokens",
+                                              "thought_tokens", "output_tokens")
+                         if meta.get(k) is not None})
+            if meta.get("model"):
+                result["model"] = meta["model"] if not self.outreach.standin else result["model"]
+            if reply is None:
+                result["reason"] = "no_reply"
+            else:
+                res = OUTPUT_GATE.days_reading(reply, pack)
+                refusals.extend(res.refusals)
+                if res.ok:
+                    result.update(status="ready", reading=res.value["reading"],
+                                  agreement=res.value["agreement"],
+                                  dropped=res.value["dropped"])
+                else:
+                    result["reason"] = res.refusals[0].reason if res.refusals else "refused"
+        except GateError as ge:
+            refusals.append(ge.refusal)
+            result["reason"] = "input_refused"
+        ag = result.get("agreement") or {}
+        counts = {k: ag.get(k) for k in ("stretches_reported", "stretches_same",
+                                         "stretches_model_only", "stretches_not_in_numbers",
+                                         "stretches_missed", "weekdays_confirmed",
+                                         "overall_same")}
+        try:
+            # Counts and codes only: never a day's value.
+            self.trace(repo, "level2", "accepted" if result["status"] == "ready" else
+                       "not_sent" if result.get("reason") == "input_refused" else
+                       "no_reply" if result.get("reason") == "no_reply" else "refused", {
+                           "task": "days_reading", "anonymized": True, **sent, **counts,
+                           "verdict": result["status"],
+                           "reasons": [r.reason for r in refusals][:20]},
+                       notable=bool(refusals))
+        except Exception:  # noqa: BLE001
+            pass
+
+        async def store() -> None:
+            repo.put("research/days_reading.json", result)
+            for r in refusals:
+                self.refuse(repo, r)
+            self.audit(repo, "days_reading", status=result["status"],
+                       reason=result.get("reason"), days_sent=sent.get("days"),
+                       dropped=len(result.get("dropped", [])),
                        **{k: v for k, v in counts.items() if v is not None})
 
         if take_lock:

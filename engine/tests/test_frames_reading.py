@@ -131,7 +131,8 @@ def test_a_correct_reading_is_confirmed_item_by_item():
     assert fr_["dropped"] == []
     assert fr_["agreement"] == {
         "smiles_reported": 3, "smiles_confirmed": 3, "smiles_corrected": 0, "smiles_matched": 3,
-        "smiles_faint": 0, "smiles_brief": 0, "smiles_dropped": 0, "smiles_not_in_numbers": 0,
+        "smiles_faint": 0, "smiles_brief": 0, "smiles_inside_long": 0, "smiles_dropped": 0,
+        "smiles_not_in_numbers": 0,
         "smiles_poor_match": 0, "smiles_missed": 0, "smiles_code": 3,
         "smile_precision": 1.0, "smile_recall": 1.0, "smile_start_error_s": 0.0,
         "segments_reported": 1, "segments_confirmed": 1,
@@ -283,6 +284,32 @@ def test_the_faint_rule_does_not_take_a_step_a_twitch_or_a_repeat_for_a_smile():
     assert [x["status"] for x in f] == ["brief"] and f[0]["peak"] == 0.6
     ag = r.value["agreement"]
     assert ag["smiles_faint"] == 0 and ag["smiles_brief"] == 1 and ag["smile_precision"] == 1.0
+
+
+def test_a_clear_smile_inside_an_over_long_smile_of_the_fixed_rule_is_kept_apart():
+    # A mouth that rests at 0.27, above the fixed onset: code sees one smile from
+    # start to end. Two real smiles (to 0.6) are in it.
+    raw = make_raw(seconds=45, seed=3)
+    _with(raw, 0, 45 * 30, 0.27)
+    _with(raw, 300, 45, 0.6)
+    _with(raw, 900, 45, 0.6)
+    view = fr.code_view(raw)
+    assert len(view["smiles"]) == 1 and view["smiles"][0]["end_s"] - view["smiles"][0]["start_s"] > 40
+    one = {"reaches_eyes": None, "side": "both"}
+    said = reply(smiles=[{"start_s": 10.0, "end_s": 11.5, **one}, {"start_s": 30.0, "end_s": 31.5, **one},
+                         {"start_s": 20.0, "end_s": 21.5, **one}], moments=[], segments=[])
+    r = check(said, raw)
+    kept = r.value["reading"]["faint_smiles"]
+    assert [(k["start_s"], k["status"]) for k in kept] == [(10.0, "inside_long"), (30.0, "inside_long")]
+    assert r.value["dropped"] == [{"item": "smile", "start_s": 20.0, "end_s": 21.5,
+                                   "reason": "poor_overlap"}]  # nothing rises there
+    ag = r.value["agreement"]
+    assert ag["smiles_inside_long"] == 2 and ag["smiles_poor_match"] == 1
+    # A part of an honest long smile is still a poor match, not a smile of its own.
+    grin = _with(make_raw(seconds=45, seed=3), 300, 300, 0.6)
+    r = check(reply(smiles=[{"start_s": 13.0, "end_s": 14.5, **one}], moments=[], segments=[]), grin)
+    assert r.value["reading"]["faint_smiles"] == []
+    assert r.value["dropped"][0]["reason"] == "poor_overlap"
 
 
 def test_slivers_and_far_too_wide_spans_are_not_the_same_smile():
@@ -526,8 +553,9 @@ def _flaky(statuses):
 @pytest.mark.parametrize("statuses, schema_on_last", [
     ([503, 200], True),    # a busy service: once more, the same body
     ([429, 200], True),
-    ([400, 200], False),   # a model that takes no schema: once more without it
-    ([400, 503, 200], False),
+    ([400, 200], True),    # a model that takes no thinking setting: once more without it
+    ([400, 503, 200], True),
+    ([400, 400, 200], False),  # and no schema either: once more without both
 ])
 def test_the_frame_reading_call_is_tried_again(statuses, schema_on_last):
     handler, seen = _flaky(statuses)
@@ -539,6 +567,9 @@ def test_the_frame_reading_call_is_tried_again(statuses, schema_on_last):
     assert len(seen) == len(statuses)
     assert ("responseSchema" in seen[-1]["generationConfig"]) is schema_on_last
     assert all(b["contents"] == seen[0]["contents"] for b in seen)
+    # The first request asks the model to think little; after a 400 that setting is gone.
+    assert seen[0]["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "low"}
+    assert ("thinkingConfig" in seen[-1]["generationConfig"]) is (statuses[0] != 400)
 
 
 def test_an_empty_reply_out_of_tokens_is_tried_again_with_a_larger_limit_and_traced():
@@ -570,14 +601,59 @@ def test_an_empty_reply_out_of_tokens_is_tried_again_with_a_larger_limit_and_tra
     assert det["finish"] == "STOP" and det["attempts"] == 2 and det["thought_tokens"] == 15900
 
 
-def test_a_service_that_keeps_failing_gives_no_reply_after_two_tries():
-    handler, seen = _flaky([503, 503, 200])
+def test_a_service_that_keeps_failing_gives_no_reply_after_three_tries():
+    handler, seen = _flaky([503, 503, 503, 200])
     env = Env(level2=handler)
     env.repo().put("patient.json", {**env.repo().patient(), "allow_outside_processing": True})
     assert env.client.post("/v1/activities", headers=env.H, json=focus()).status_code == 200
     env.run(env.mind.idle())
     assert stored(env)["status"] == "failed" and stored(env)["reason"] == "no_reply"
-    assert len(seen) == 2
+    assert len(seen) == 3
+
+
+def test_an_empty_answer_with_little_thinking_is_asked_again_with_the_default():
+    seen = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        body = json.loads(req.content)
+        if not is_frames_body(body):
+            return httpx.Response(200, json={"candidates": [{"content": {"parts": [
+                {"text": json.dumps({"objections": []})}]}}]})
+        seen.append(body)
+        if "thinkingConfig" in body["generationConfig"]:
+            return httpx.Response(200, json={"candidates": [{"finishReason": "STOP"}]})
+        return httpx.Response(200, json={"candidates": [{"finishReason": "STOP", "content": {
+            "parts": [{"text": json.dumps(GOOD)}]}}]})
+
+    env = Env(level2=handler)
+    env.repo().put("patient.json", {**env.repo().patient(), "allow_outside_processing": True})
+    assert env.client.post("/v1/activities", headers=env.H, json=focus()).status_code == 200
+    env.run(env.mind.idle())
+    assert stored(env)["status"] == "ready" and len(seen) == 2
+    assert "thinkingConfig" not in seen[1]["generationConfig"]
+
+
+def test_a_failing_model_falls_back_to_the_second_one_when_set():
+    urls = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        body = json.loads(req.content)
+        if not is_frames_body(body):
+            return httpx.Response(200, json={"candidates": [{"content": {"parts": [
+                {"text": json.dumps({"objections": []})}]}}]})
+        urls.append(str(req.url))
+        if "/models/test-model:" in str(req.url):
+            return httpx.Response(503, json={})
+        return httpx.Response(200, json={"candidates": [{"content": {"parts": [
+            {"text": json.dumps(GOOD)}]}}]})
+
+    env = Env(level2=handler, gemini_fallback_model="second-model")
+    env.repo().put("patient.json", {**env.repo().patient(), "allow_outside_processing": True})
+    assert env.client.post("/v1/activities", headers=env.H, json=focus()).status_code == 200
+    env.run(env.mind.idle())
+    f = stored(env)
+    assert f["status"] == "ready" and f["model"] == "second-model"
+    assert ["/models/second-model:" in u for u in urls] == [False, False, True]
 
 
 # ---- the pack ---------------------------------------------------------------------------------------
@@ -775,3 +851,22 @@ def test_reading_the_exchanges_is_audited():
     assert r.status_code == 200 and r.json()["exchanges"]
     ev = [e for e in env.audit() if e["action"] == "exchanges_read"]
     assert ev and ev[-1]["detail"] == {"task": "frames_reading", "limit": 50}
+
+
+def test_the_generated_face_frames_example():
+    from clinic_engine import seed_frames
+    env, rec = frames_env()
+    c = env.demo["clinic_id"]
+    pid = seed_frames.create(env.store, c, "Europe/Helsinki", NOW)
+    assert seed_frames.create(env.store, c, "Europe/Helsinki", NOW) == pid  # again, in place
+    d = env.client.get(f"/v1/clinic/patients/{pid}", headers=env.C()).json()
+    assert d["label"] == "Example F-001" and d["example"] is True
+    ss = d["activities"]["focus"]["sessions"]
+    assert len(ss) == 6 and all(s["face_source"] == "raw" and s["example"] for s in ss)
+    # The fixed rule's count falls to nothing in the last sessions: the planted smiles there are faint.
+    rates = [s["face"]["smile_rate_per_min"] for s in ss]
+    assert rates[0] > 2 and rates[-1] == 0 and rates[-2] == 0
+    assert [s["frames_reading"]["status"] for s in ss] == ["pending"] * 6
+    raw = env.client.get(f"/v1/clinic/patients/{pid}/activities/example-frames-005/face-raw",
+                         headers=env.C()).json()
+    assert len(raw["samples"]) == 45 * 30 and raw["moments_ms"]

@@ -7,15 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0288D785F813107D48C46B3A /* HarnessHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BCE1C4E2E05E409BD2EB754 /* HarnessHealth.swift */; };
 		053EBA860422BF2F170DD9E5 /* APIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D93B9957583CC3DB996A3C8 /* APIModels.swift */; };
 		09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB97273333C0DBAE7FC11418 /* FocusEngine.swift */; };
+		0CCBB65F07E504D7182EBF08 /* Harness.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; };
 		0CFF1ACB5D8BF4C22E1BCCBE /* GameMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B5C92796F5DE0B8D3DA00AF /* GameMoments.swift */; };
+		13A58E149CD244B58980B9F3 /* HomeSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8082B9E5762CA3450E914CE /* HomeSpeech.swift */; };
 		14D52ABE9497798035286052 /* LanviArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B5136458E518ED70EBBEF0 /* LanviArt.swift */; };
 		151BF5444E01D40CF03FB960 /* ChatLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84158FA0F8C7B4E9A416B47C /* ChatLink.swift */; };
 		1D2F0537C7AAB50875AA6F3B /* ActivityRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F685787902006429E41D5A7 /* ActivityRouter.swift */; };
+		1DCC6987446B4B58F5E32D82 /* SenseRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66066ACFCC6856BAFA1A7DED /* SenseRoot.swift */; };
 		20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CA1C956F7514A490E2C77E /* Theme.swift */; };
+		246F5298B66DEE487E49BD3E /* Harness.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; };
 		2A64688C8640CBD20F6751CE /* Nunito-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */; };
 		378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */; };
+		3F11B1A55A50095524067A63 /* HealthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7415116ED3C0D377127D698 /* HealthTests.swift */; };
+		42388E6A19E9972BFD34235B /* FaceRawTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9880ABDFC5EF111BB77915E2 /* FaceRawTests.swift */; };
 		43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856CB611495D91BE8B81E2D4 /* WelcomeView.swift */; };
 		45C0A7261327E95CF788718C /* FocusResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E369E41135184A2334A61A6 /* FocusResult.swift */; };
 		471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4534A11EF57C9E6ACC5030B /* HomeView.swift */; };
@@ -25,14 +32,24 @@
 		51DD8A76B382F693BF1DE2B8 /* TokenKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 561A37AABE894380B546DE42 /* TokenKeychain.swift */; };
 		52849D842800BB2FC9D57F97 /* CheckinParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */; };
 		5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */; };
+		63F055804A5075D00F92CCF8 /* FaceSense.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0FB8AE15346D15FAA5BA3AF /* FaceSense.swift */; };
+		65D2DC99CA91B8EF96FAEC64 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC334EE89ADCF793E4BC0D9B /* SharedModels.swift */; };
 		70C6A7B3EB4DC1265714772A /* CheckinModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C049B0C402500302F08D494 /* CheckinModels.swift */; };
 		7E44533D8B224A540E1246AA /* WhatHelpsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55866B9F718B556BABB20541 /* WhatHelpsView.swift */; };
+		801BB5516A9A840A6B6373FC /* HealthSummaryBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D140086C7FF38F31C3EE8E /* HealthSummaryBuilder.swift */; };
+		80C78847CDF1DDCA4C904495 /* FileExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06C37D8A2F572DC15C68D65 /* FileExport.swift */; };
 		83D94EC75E881A9964282D4B /* LanviFrameLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC85635871F0B51CDE8BF590 /* LanviFrameLog.swift */; };
 		85913E78D8BD74C9E1F25A7E /* CheckinView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E77620D747F3E1491FF87DCE /* CheckinView.swift */; };
+		86FA2AE12B3177708A7A23B2 /* HealthDays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BE5BB327EC6AAE2BE8CF146 /* HealthDays.swift */; };
 		922984AB73EB11C13340245F /* HomeParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607DA0BDB68AC9211EAADA43 /* HomeParts.swift */; };
 		942A29C36871C91B6C4230BA /* BreathePieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29013F2F7831D454F4237DF1 /* BreathePieces.swift */; };
+		96313F278A5FBE5EEE2B2790 /* FrameMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */; };
 		966709A0031A479E6D292413 /* HomeMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */; };
+		9B687749D49A04C7081D4DFA /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3595C8C9C83D14C2B300184 /* JSONValue.swift */; };
 		A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */; };
+		A27DCC0E64CA203AB2636FFB /* FaceTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D91945D05F0DA6BDBC2AB0A /* FaceTracker.swift */; };
+		A2C3F617ED5E2B4ED0E105FC /* AppleHealthXMLImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23F7E4011FDEDCAD3A94ACB7 /* AppleHealthXMLImporter.swift */; };
+		A509A7301897830193A55D08 /* FaceRawRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272A9EA4CC647F200AE95283 /* FaceRawRecorder.swift */; };
 		A99C233C3D469D27695CFD77 /* Nunito-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 264F14E3AC63B96BC18A9088 /* Nunito-Bold.ttf */; };
 		AF042D25043E7247AD53A177 /* LanviRig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 743C0B865552B2E8824FA20B /* LanviRig.swift */; };
 		B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA73738285D12F12C9ADB24B /* Chunky.swift */; };
@@ -40,12 +57,18 @@
 		B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B8C888729DE19EB41449A4 /* HomeOverlays.swift */; };
 		B50D10905664FAEB774A40AE /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 883989149D83098DC4D7155A /* AppStore.swift */; };
 		B6A861C26917D5B2F511CE9C /* BreatheResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B1F65C7973CFFB5D41825 /* BreatheResult.swift */; };
+		BED78E7017B94186F183E51E /* LocalStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85FD261A32144F8643C6EE7E /* LocalStatistics.swift */; };
 		C8EBD236C0121CE58A89C106 /* DemoBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575A49BAC44D679FBA763541 /* DemoBackend.swift */; };
+		CF120166C3B2436312B64F79 /* Harness.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		D8C2589303E6EFD2CBBF8440 /* FocusArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 974C2744C4CA94D5857C75A3 /* FocusArt.swift */; };
 		DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8451A836E61C66138838EE /* PaintedWorld.swift */; };
+		DBE064B344FE5E0C63C77FB2 /* SenseViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61DEB6AEE62EA63867535515 /* SenseViews.swift */; };
 		DD756509C515F4C1509219AD /* HomeMindScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252A074008D2696F20B23913 /* HomeMindScreen.swift */; };
 		DDD5D6ED52809D10373598F9 /* SkyScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A53ADD818B703E6EC089EFE /* SkyScene.swift */; };
+		E044BA2BBFDCB474374856BB /* HealthTypeCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1CB7C86C24141AF8D7F012 /* HealthTypeCatalog.swift */; };
+		E2E8D980A111E7995312B471 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5278EF530C0374EA70D2B2B /* HealthKitManager.swift */; };
 		E2EA7F75523F7FE49830A106 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */; };
+		EC579C3478D378C5BFB7C6E5 /* HealthSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63DA8488EFBF26C7B0DF5DCB /* HealthSync.swift */; };
 		EDAB3E53B21FBF2A45578C8D /* LanviClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */; };
 		EEDB19C869011580DA5780AC /* BreatheView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E9EB5764D665F8A8B7399B /* BreatheView.swift */; };
 		EF19B31CB4510B47533E7D06 /* Nunito-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B4817EE878DEB9396B0E72CB /* Nunito-ExtraBold.ttf */; };
@@ -56,6 +79,44 @@
 		F969A651BB389BD4688E0C75 /* Nunito-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D3C73568A4E2AF330F3A6A0E /* Nunito-SemiBold.ttf */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		D9A41303A18C3657F20B957D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1DECB0257BF1641BC0C7ACF9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9B94A115D2C04CA68182D70D;
+			remoteInfo = Harness;
+		};
+		E14974774DAF2A19DCFE2A22 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1DECB0257BF1641BC0C7ACF9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9B94A115D2C04CA68182D70D;
+			remoteInfo = Harness;
+		};
+		F8130C2921514631FA322BD0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1DECB0257BF1641BC0C7ACF9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 10898CC770015E851A7CB1E7;
+			remoteInfo = Lanvi;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D9860F21B1FEEF8482E95057 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				CF120166C3B2436312B64F79 /* Harness.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Black.ttf"; sourceTree = "<group>"; };
 		0E369E41135184A2334A61A6 /* FocusResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusResult.swift; sourceTree = "<group>"; };
@@ -63,21 +124,30 @@
 		15B8C888729DE19EB41449A4 /* HomeOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOverlays.swift; sourceTree = "<group>"; };
 		166A2EF8FECA301AACE53B2A /* HomeSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSheets.swift; sourceTree = "<group>"; };
 		1B5C92796F5DE0B8D3DA00AF /* GameMoments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameMoments.swift; sourceTree = "<group>"; };
+		1BCE1C4E2E05E409BD2EB754 /* HarnessHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HarnessHealth.swift; sourceTree = "<group>"; };
 		1C049B0C402500302F08D494 /* CheckinModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinModels.swift; sourceTree = "<group>"; };
+		23F7E4011FDEDCAD3A94ACB7 /* AppleHealthXMLImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleHealthXMLImporter.swift; sourceTree = "<group>"; };
 		248059A5DA624F501FEE521B /* Lanvi.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lanvi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		252A074008D2696F20B23913 /* HomeMindScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMindScreen.swift; sourceTree = "<group>"; };
 		264F14E3AC63B96BC18A9088 /* Nunito-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Bold.ttf"; sourceTree = "<group>"; };
+		272A9EA4CC647F200AE95283 /* FaceRawRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceRawRecorder.swift; sourceTree = "<group>"; };
 		29013F2F7831D454F4237DF1 /* BreathePieces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreathePieces.swift; sourceTree = "<group>"; };
+		39D140086C7FF38F31C3EE8E /* HealthSummaryBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSummaryBuilder.swift; sourceTree = "<group>"; };
 		455B1F65C7973CFFB5D41825 /* BreatheResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheResult.swift; sourceTree = "<group>"; };
+		47EB2CBCF8B846132146AC4C /* Harness.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Harness.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A2759DCEF87679E894DADAF /* ActivityOutbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityOutbox.swift; sourceTree = "<group>"; };
 		55866B9F718B556BABB20541 /* WhatHelpsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatHelpsView.swift; sourceTree = "<group>"; };
 		561A37AABE894380B546DE42 /* TokenKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenKeychain.swift; sourceTree = "<group>"; };
 		575A49BAC44D679FBA763541 /* DemoBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoBackend.swift; sourceTree = "<group>"; };
 		590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviApp.swift; sourceTree = "<group>"; };
 		5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviClient.swift; sourceTree = "<group>"; };
+		5D91945D05F0DA6BDBC2AB0A /* FaceTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTracker.swift; sourceTree = "<group>"; };
 		5E91BDD22A3D7AF3A6B1F654 /* LanviPuppetPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviPuppetPreview.swift; sourceTree = "<group>"; };
 		60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Nunito-OFL.txt"; sourceTree = "<group>"; };
 		607DA0BDB68AC9211EAADA43 /* HomeParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeParts.swift; sourceTree = "<group>"; };
+		61DEB6AEE62EA63867535515 /* SenseViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenseViews.swift; sourceTree = "<group>"; };
+		63DA8488EFBF26C7B0DF5DCB /* HealthSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSync.swift; sourceTree = "<group>"; };
+		66066ACFCC6856BAFA1A7DED /* SenseRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenseRoot.swift; sourceTree = "<group>"; };
 		743C0B865552B2E8824FA20B /* LanviRig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviRig.swift; sourceTree = "<group>"; };
 		7726B251A5F3DA944BA275A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfig.swift; sourceTree = "<group>"; };
@@ -85,18 +155,29 @@
 		84158FA0F8C7B4E9A416B47C /* ChatLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatLink.swift; sourceTree = "<group>"; };
 		84FCE02422EF7AD37B7EF8F0 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		856CB611495D91BE8B81E2D4 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		85FD261A32144F8643C6EE7E /* LocalStatistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStatistics.swift; sourceTree = "<group>"; };
 		883989149D83098DC4D7155A /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
 		8863592B90900967DE7CA797 /* LanviPuppet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviPuppet.swift; sourceTree = "<group>"; };
+		8CA51283FA54A55A2750704C /* Lanvi.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Lanvi.entitlements; sourceTree = "<group>"; };
 		8F685787902006429E41D5A7 /* ActivityRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityRouter.swift; sourceTree = "<group>"; };
 		96B5136458E518ED70EBBEF0 /* LanviArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviArt.swift; sourceTree = "<group>"; };
 		974C2744C4CA94D5857C75A3 /* FocusArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusArt.swift; sourceTree = "<group>"; };
+		983F096307C7FD0ACB400CFB /* LanviTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LanviTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9880ABDFC5EF111BB77915E2 /* FaceRawTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceRawTests.swift; sourceTree = "<group>"; };
 		98E9EB5764D665F8A8B7399B /* BreatheView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheView.swift; sourceTree = "<group>"; };
 		9A53ADD818B703E6EC089EFE /* SkyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyScene.swift; sourceTree = "<group>"; };
+		9BE5BB327EC6AAE2BE8CF146 /* HealthDays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthDays.swift; sourceTree = "<group>"; };
+		9D1CB7C86C24141AF8D7F012 /* HealthTypeCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthTypeCatalog.swift; sourceTree = "<group>"; };
+		A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameMeter.swift; sourceTree = "<group>"; };
+		B0FB8AE15346D15FAA5BA3AF /* FaceSense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceSense.swift; sourceTree = "<group>"; };
 		B2CF64DD8486227CA2F2DC5B /* LanviMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviMotion.swift; sourceTree = "<group>"; };
 		B4817EE878DEB9396B0E72CB /* Nunito-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraBold.ttf"; sourceTree = "<group>"; };
 		BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviView.swift; sourceTree = "<group>"; };
+		C3595C8C9C83D14C2B300184 /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
+		C8082B9E5762CA3450E914CE /* HomeSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeech.swift; sourceTree = "<group>"; };
 		CA73738285D12F12C9ADB24B /* Chunky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chunky.swift; sourceTree = "<group>"; };
 		CB97273333C0DBAE7FC11418 /* FocusEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusEngine.swift; sourceTree = "<group>"; };
+		CC334EE89ADCF793E4BC0D9B /* SharedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
 		CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinParts.swift; sourceTree = "<group>"; };
 		CD8451A836E61C66138838EE /* PaintedWorld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintedWorld.swift; sourceTree = "<group>"; };
 		D3C73568A4E2AF330F3A6A0E /* Nunito-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-SemiBold.ttf"; sourceTree = "<group>"; };
@@ -105,9 +186,31 @@
 		E77620D747F3E1491FF87DCE /* CheckinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinView.swift; sourceTree = "<group>"; };
 		EC85635871F0B51CDE8BF590 /* LanviFrameLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviFrameLog.swift; sourceTree = "<group>"; };
 		EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F06C37D8A2F572DC15C68D65 /* FileExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileExport.swift; sourceTree = "<group>"; };
+		F5278EF530C0374EA70D2B2B /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeChatScreen.swift; sourceTree = "<group>"; };
+		F7415116ED3C0D377127D698 /* HealthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthTests.swift; sourceTree = "<group>"; };
 		F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusGameView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		498A7CE9078B0B06862F3CCE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0CCBB65F07E504D7182EBF08 /* Harness.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7A6D7A6A6849AFA90D618319 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				246F5298B66DEE487E49BD3E /* Harness.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		0D7E93C8CF5FB597A3B43917 /* Breathe */ = {
@@ -118,6 +221,31 @@
 				98E9EB5764D665F8A8B7399B /* BreatheView.swift */,
 			);
 			path = Breathe;
+			sourceTree = "<group>";
+		};
+		1148EEA23E7751E57894F965 /* LanviTests */ = {
+			isa = PBXGroup;
+			children = (
+				9880ABDFC5EF111BB77915E2 /* FaceRawTests.swift */,
+				F7415116ED3C0D377127D698 /* HealthTests.swift */,
+			);
+			path = LanviTests;
+			sourceTree = "<group>";
+		};
+		1303F4D72A67DB0EFC72038D /* Peter */ = {
+			isa = PBXGroup;
+			children = (
+				23F7E4011FDEDCAD3A94ACB7 /* AppleHealthXMLImporter.swift */,
+				F06C37D8A2F572DC15C68D65 /* FileExport.swift */,
+				F5278EF530C0374EA70D2B2B /* HealthKitManager.swift */,
+				39D140086C7FF38F31C3EE8E /* HealthSummaryBuilder.swift */,
+				9D1CB7C86C24141AF8D7F012 /* HealthTypeCatalog.swift */,
+				C3595C8C9C83D14C2B300184 /* JSONValue.swift */,
+				85FD261A32144F8643C6EE7E /* LocalStatistics.swift */,
+				CC334EE89ADCF793E4BC0D9B /* SharedModels.swift */,
+			);
+			name = Peter;
+			path = Lanvi/Sense/Peter;
 			sourceTree = "<group>";
 		};
 		3117C03181DB791606EFF3AD /* Net */ = {
@@ -163,12 +291,14 @@
 			children = (
 				EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */,
 				7726B251A5F3DA944BA275A6 /* Info.plist */,
+				8CA51283FA54A55A2750704C /* Lanvi.entitlements */,
 				4F606C670065BC511016C9E0 /* App */,
 				36B552B215523292A0F4EB76 /* Design */,
 				BAEB71A27059AB4B724A6A48 /* Fonts */,
 				34E5733CDBCA97363404C909 /* Mascot */,
 				3117C03181DB791606EFF3AD /* Net */,
 				F0A030A22324AB7E17D462AE /* Screens */,
+				8AE6FF46D0E450DC82377D45 /* Sense */,
 				D5318346F329C50845551088 /* State */,
 			);
 			path = Lanvi;
@@ -177,7 +307,9 @@
 		3FC900789D97517605FE2E00 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				47EB2CBCF8B846132146AC4C /* Harness.framework */,
 				248059A5DA624F501FEE521B /* Lanvi.app */,
+				983F096307C7FD0ACB400CFB /* LanviTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -187,6 +319,8 @@
 			children = (
 				9710B256CE97B28519162F9F /* ios */,
 				3F0EBB194C53EDDC4A2C5862 /* Lanvi */,
+				1148EEA23E7751E57894F965 /* LanviTests */,
+				1303F4D72A67DB0EFC72038D /* Peter */,
 				3FC900789D97517605FE2E00 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -197,6 +331,21 @@
 				590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		8AE6FF46D0E450DC82377D45 /* Sense */ = {
+			isa = PBXGroup;
+			children = (
+				272A9EA4CC647F200AE95283 /* FaceRawRecorder.swift */,
+				B0FB8AE15346D15FAA5BA3AF /* FaceSense.swift */,
+				5D91945D05F0DA6BDBC2AB0A /* FaceTracker.swift */,
+				1BCE1C4E2E05E409BD2EB754 /* HarnessHealth.swift */,
+				9BE5BB327EC6AAE2BE8CF146 /* HealthDays.swift */,
+				63DA8488EFBF26C7B0DF5DCB /* HealthSync.swift */,
+				66066ACFCC6856BAFA1A7DED /* SenseRoot.swift */,
+				61DEB6AEE62EA63867535515 /* SenseViews.swift */,
+			);
+			path = Sense;
 			sourceTree = "<group>";
 		};
 		9710B256CE97B28519162F9F /* ios */ = {
@@ -234,6 +383,7 @@
 			isa = PBXGroup;
 			children = (
 				883989149D83098DC4D7155A /* AppStore.swift */,
+				A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */,
 			);
 			path = State;
 			sourceTree = "<group>";
@@ -258,6 +408,7 @@
 				15B8C888729DE19EB41449A4 /* HomeOverlays.swift */,
 				607DA0BDB68AC9211EAADA43 /* HomeParts.swift */,
 				166A2EF8FECA301AACE53B2A /* HomeSheets.swift */,
+				C8082B9E5762CA3450E914CE /* HomeSpeech.swift */,
 				CD8451A836E61C66138838EE /* PaintedWorld.swift */,
 			);
 			path = Home;
@@ -296,10 +447,13 @@
 			buildPhases = (
 				E5C7F7C9206C9613B2737DF2 /* Sources */,
 				2C2271AFF0A56B9E310F530F /* Resources */,
+				7A6D7A6A6849AFA90D618319 /* Frameworks */,
+				D9860F21B1FEEF8482E95057 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				4730AECCB6D6D40E49C14CEE /* PBXTargetDependency */,
 			);
 			name = Lanvi;
 			packageProductDependencies = (
@@ -307,6 +461,43 @@
 			productName = Lanvi;
 			productReference = 248059A5DA624F501FEE521B /* Lanvi.app */;
 			productType = "com.apple.product-type.application";
+		};
+		3A2AF2A19B4EB71F9C2F2895 /* LanviTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2D06AC7DC99E0F7298727109 /* Build configuration list for PBXNativeTarget "LanviTests" */;
+			buildPhases = (
+				F781D136A4F7472A09F4174B /* Sources */,
+				498A7CE9078B0B06862F3CCE /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DAAD70E17B6E9A8E80F32959 /* PBXTargetDependency */,
+				6883D1559907EFD6EA3634EF /* PBXTargetDependency */,
+			);
+			name = LanviTests;
+			packageProductDependencies = (
+			);
+			productName = LanviTests;
+			productReference = 983F096307C7FD0ACB400CFB /* LanviTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		9B94A115D2C04CA68182D70D /* Harness */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C1E49310D2C5425A7769D900 /* Build configuration list for PBXNativeTarget "Harness" */;
+			buildPhases = (
+				C1C7E56070A8489405735874 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Harness;
+			packageProductDependencies = (
+			);
+			productName = Harness;
+			productReference = 47EB2CBCF8B846132146AC4C /* Harness.framework */;
+			productType = "com.apple.product-type.framework";
 		};
 /* End PBXNativeTarget section */
 
@@ -333,7 +524,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				9B94A115D2C04CA68182D70D /* Harness */,
 				10898CC770015E851A7CB1E7 /* Lanvi */,
+				3A2AF2A19B4EB71F9C2F2895 /* LanviTests */,
 			);
 		};
 /* End PBXProject section */
@@ -355,6 +548,21 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		C1C7E56070A8489405735874 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2C3F617ED5E2B4ED0E105FC /* AppleHealthXMLImporter.swift in Sources */,
+				80C78847CDF1DDCA4C904495 /* FileExport.swift in Sources */,
+				E2E8D980A111E7995312B471 /* HealthKitManager.swift in Sources */,
+				801BB5516A9A840A6B6373FC /* HealthSummaryBuilder.swift in Sources */,
+				E044BA2BBFDCB474374856BB /* HealthTypeCatalog.swift in Sources */,
+				9B687749D49A04C7081D4DFA /* JSONValue.swift in Sources */,
+				BED78E7017B94186F183E51E /* LocalStatistics.swift in Sources */,
+				65D2DC99CA91B8EF96FAEC64 /* SharedModels.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E5C7F7C9206C9613B2737DF2 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -372,17 +580,25 @@
 				85913E78D8BD74C9E1F25A7E /* CheckinView.swift in Sources */,
 				B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */,
 				C8EBD236C0121CE58A89C106 /* DemoBackend.swift in Sources */,
+				A509A7301897830193A55D08 /* FaceRawRecorder.swift in Sources */,
+				63F055804A5075D00F92CCF8 /* FaceSense.swift in Sources */,
+				A27DCC0E64CA203AB2636FFB /* FaceTracker.swift in Sources */,
 				D8C2589303E6EFD2CBBF8440 /* FocusArt.swift in Sources */,
 				09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */,
 				5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */,
 				45C0A7261327E95CF788718C /* FocusResult.swift in Sources */,
+				96313F278A5FBE5EEE2B2790 /* FrameMeter.swift in Sources */,
 				0CFF1ACB5D8BF4C22E1BCCBE /* GameMoments.swift in Sources */,
+				0288D785F813107D48C46B3A /* HarnessHealth.swift in Sources */,
+				86FA2AE12B3177708A7A23B2 /* HealthDays.swift in Sources */,
+				EC579C3478D378C5BFB7C6E5 /* HealthSync.swift in Sources */,
 				B366EDE9B773EEA90854B56A /* HomeChatScreen.swift in Sources */,
 				DD756509C515F4C1509219AD /* HomeMindScreen.swift in Sources */,
 				966709A0031A479E6D292413 /* HomeMoments.swift in Sources */,
 				B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */,
 				922984AB73EB11C13340245F /* HomeParts.swift in Sources */,
 				5049EED66C9F32131E68F66D /* HomeSheets.swift in Sources */,
+				13A58E149CD244B58980B9F3 /* HomeSpeech.swift in Sources */,
 				471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */,
 				A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */,
 				14D52ABE9497798035286052 /* LanviArt.swift in Sources */,
@@ -394,6 +610,8 @@
 				AF042D25043E7247AD53A177 /* LanviRig.swift in Sources */,
 				F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */,
 				DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */,
+				1DCC6987446B4B58F5E32D82 /* SenseRoot.swift in Sources */,
+				DBE064B344FE5E0C63C77FB2 /* SenseViews.swift in Sources */,
 				378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */,
 				DDD5D6ED52809D10373598F9 /* SkyScene.swift in Sources */,
 				20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */,
@@ -403,9 +621,60 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F781D136A4F7472A09F4174B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				42388E6A19E9972BFD34235B /* FaceRawTests.swift in Sources */,
+				3F11B1A55A50095524067A63 /* HealthTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		4730AECCB6D6D40E49C14CEE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9B94A115D2C04CA68182D70D /* Harness */;
+			targetProxy = D9A41303A18C3657F20B957D /* PBXContainerItemProxy */;
+		};
+		6883D1559907EFD6EA3634EF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9B94A115D2C04CA68182D70D /* Harness */;
+			targetProxy = E14974774DAF2A19DCFE2A22 /* PBXContainerItemProxy */;
+		};
+		DAAD70E17B6E9A8E80F32959 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 10898CC770015E851A7CB1E7 /* Lanvi */;
+			targetProxy = F8130C2921514631FA322BD0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		470741DEBBCFD6F7EE17762F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.lanvi.Harness;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
 		508D4D4C556DB56F8EACAA50 /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 84FCE02422EF7AD37B7EF8F0 /* Base.xcconfig */;
@@ -467,6 +736,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Lanvi/Lanvi.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -487,6 +757,48 @@
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
+		};
+		748BEBFF1116131E785D5EFA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.lanvi.Harness;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Debug;
+		};
+		7FEC2CFCBA3ABF7F9D53CA1C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.lanvi.LanviTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lanvi.app/Lanvi";
+			};
+			name = Release;
 		};
 		922970F5DEBD0601D8E41D52 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -556,6 +868,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Lanvi/Lanvi.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -577,14 +890,50 @@
 			};
 			name = Release;
 		};
+		F463C8802E215480DAF8925E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.lanvi.LanviTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lanvi.app/Lanvi";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		2D06AC7DC99E0F7298727109 /* Build configuration list for PBXNativeTarget "LanviTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F463C8802E215480DAF8925E /* Debug */,
+				7FEC2CFCBA3ABF7F9D53CA1C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		BD0EB4F98DD1E091886F773B /* Build configuration list for PBXNativeTarget "Lanvi" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				555E194A5A0A2E5EB1D5522D /* Debug */,
 				BE7CA044E12E7315165FB3F0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C1E49310D2C5425A7769D900 /* Build configuration list for PBXNativeTarget "Harness" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				748BEBFF1116131E785D5EFA /* Debug */,
+				470741DEBBCFD6F7EE17762F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

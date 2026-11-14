@@ -113,6 +113,11 @@ async def demo_analyze(body: AnalyzeIn, request: Request, p: Principal = Depends
     ctx = ctx_of(request)
     c = _locate(request, p, body.patient_id)
     repo = ctx.mind.repo(c, body.patient_id)
+    if body.what == "days":
+        result = await ctx.mind.run_days_reading(repo, take_lock=True)
+        _audit(request, p, "demo_analyze", patient_id=body.patient_id, what="days",
+               status=result.get("status"))
+        return result
     if body.activity_id is not None:
         rec = repo.get(f"activities/{body.activity_id}.json")
         if rec is None:

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Path, Request
 from .. import service
 from ..mind import views
 from ..models import (ActivityIn, ActivityOut, ActivityReadingOut, AnalysisOut, AnswerIn,
+                      HealthSummaryIn, HealthSummaryOut,
                       CheckinOptionsOut, DailyIn, DailyOut, FeedbackIn, NoteIn, NoteOut, PairIn,
                       PairOut, PreferencesIn, PreferencesOut, RoundIn, RoundOut, RuleWrap,
                       TodayOut, WanderingAnswerIn)
@@ -39,6 +40,25 @@ async def daily(body: DailyIn, request: Request, p: Principal = Depends(device_o
     and never used for the baseline."""
     days = [d.model_dump(mode="json") for d in body.days]
     return await service.ingest_days(ctx_of(request), p, days, rid_of(request))
+
+
+@router.post("/health/summary", response_model=HealthSummaryOut, responses=AUTH_ERRORS,
+             summary="Upload an Apple Health summary: any HealthKit type, one value per day")
+async def health_summary(body: HealthSummaryIn, request: Request,
+                         p: Principal = Depends(device_only)):
+    """For the HealthKit harness app and a watch companion. Post the harness's
+    `HealthDataSummary` JSON as it is: only `metrics[].typeIdentifier`, `unit`,
+    `aggregation` and `daily[].day`, `count`, `sum`, `mean` are read; everything
+    else is ignored and never stored (source and device names, single samples).
+
+    Every type is stored per day (upsert by type and day; the most recent 400
+    days are kept). Steps, walking speed (m/s), sleep (hours) and HRV (SDNN, ms)
+    also fill the day records, with the same checks as `POST /v1/daily`, so the
+    comparison with the person's own normal sees them. Send it as often as you
+    like; unchanged days are not written again. The body may be up to 4 MiB:
+    send about 90 days per call, or the types in several calls."""
+    return await service.ingest_health(ctx_of(request), p, body.model_dump(mode="json"),
+                                       rid_of(request))
 
 
 @router.post("/activities", response_model=ActivityOut,

@@ -327,6 +327,8 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
         "questions": repo.questions(),
         "reviews": repo.reviews()[-10:],
         "activities": activities_block(mind, repo, view, share),
+        "days_reading": days_reading_out(mind, repo),
+        "health_types": health_types_out(repo),
         "lanvi": {k: v for k, v in xp.facts(xp.load(repo)).items() if k in ("xp", "stage")},
         "preferences": repo.preferences(),
         "notes": [{"id": n["id"], "at": n["at"], "source": n.get("source", "note"),
@@ -371,7 +373,7 @@ def _reading_out(a: dict) -> dict:
 
 
 _AGREEMENT_KEYS = ("smiles_reported", "smiles_confirmed", "smiles_corrected", "smiles_matched",
-                   "smiles_faint", "smiles_brief", "smiles_dropped", "smiles_not_in_numbers",
+                   "smiles_faint", "smiles_brief", "smiles_inside_long", "smiles_dropped", "smiles_not_in_numbers",
                    "smiles_poor_match", "smiles_missed", "smiles_code",
                    "smile_precision", "smile_recall", "smile_start_error_s",
                    "segments_reported", "segments_confirmed", "blinks_model", "blinks_code",
@@ -448,6 +450,45 @@ def frames_reading_out(a: dict) -> dict:
         "dropped": [{k: x.get(k) for k in ("item", "start_s", "end_s", "at_s", "what", "reason")
                      if x.get(k) is not None} for x in fr.get("dropped", [])],
     }
+
+
+def days_reading_out(mind, repo: PatientRepo) -> dict:
+    """The day reading for the clinician: the stretches the model named as code
+    confirmed them (the same as one of code's, or the model's alone with the
+    change confirmed in the numbers), code's stretches the model did not name,
+    the weekly rhythm, and the series that was sent (with the date of its first
+    row, which was not sent). The same keys in every state."""
+    dr = repo.get("research/days_reading.json") or {}
+    state = mind.days_reading_state(repo)
+    status = dr.get("status") if dr.get("status") in ("ready", "failed") else state
+    ready = status == "ready"
+    rd = dr.get("reading") or {}
+    return {
+        "status": status, "reason": dr.get("reason") if status == "failed" else None,
+        "read_by": dr.get("read_by") if dr else None, "model": dr.get("model") if dr else None,
+        "checked_by": dr.get("checked_by") if dr else None, "at": dr.get("at") if dr else None,
+        "agreement": dr.get("agreement") if ready else None,
+        "stretches": rd.get("stretches", []) if ready else [],
+        "missed_stretches": rd.get("missed_stretches", []) if ready else [],
+        "weekly": rd.get("weekly", []) if ready else [],
+        "weekly_missed": rd.get("weekly_missed", {}) if ready else {},
+        "gaps": rd.get("gaps", []) if ready else [],
+        "overall": rd.get("overall") if ready else None,
+        "overall_checks": rd.get("overall_checks") if ready else None,
+        "dropped": dr.get("dropped", []) if ready else [],
+        "stream": dr.get("stream") if ready else None,
+    }
+
+
+def health_types_out(repo: PatientRepo) -> list[dict]:
+    """The HealthKit types stored for this person: counts and the last day only."""
+    out = []
+    for h in repo.docs("health"):
+        days = h.get("days") or {}
+        if h.get("type") and days:
+            out.append({"type": h["type"], "unit": h.get("unit"), "days": len(days),
+                        "first_day": min(days), "last_day": max(days)})
+    return sorted(out, key=lambda x: x["type"])
 
 
 def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
