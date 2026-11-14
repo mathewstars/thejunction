@@ -67,10 +67,15 @@ struct LanviView: View {
     var pose: LanviPose
     var size: CGFloat = 220
     var bounceTrigger: Int = 0
+    /// The clip fox instead of the puppet (`-foxClips YES` or Help): `Clips/`.
+    @AppStorage(LanviFoxStyle.key) private var foxClips = false
 
     var body: some View {
         ZStack {
-            if pose.isPuppet {
+            if pose.isPuppet, foxClips {
+                LanviClipView(pose: pose, size: size, bounceTrigger: bounceTrigger)
+                    .transition(.opacity.animation(.easeOut(duration: 0.1)))
+            } else if pose.isPuppet {
                 LanviPuppet(pose: pose, size: size, bounceTrigger: bounceTrigger)
                     .transition(.asymmetric(
                         insertion: .scale(scale: 0.82, anchor: .bottom).combined(with: .opacity),

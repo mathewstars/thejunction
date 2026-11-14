@@ -83,6 +83,7 @@ struct HomeHelpScreen: View {
                                     Text("You'll need a new code from your clinic to connect again.")
                                 }
                         }
+                        LanviFoxStyleSwitch()
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, hill + 22)
