@@ -17,7 +17,7 @@
  TEXT        Change any words between the tags. Nothing else depends on them.
  TIME        data-seconds="24" is the time planned for the scene.
              All scenes together must stay at or under 180 (the microphone
-             is cut at 3:00). Today they add up to 175, so there are 5
+             is cut at 3:00). Today they add up to 169, so there are 11
              seconds of air. The page shows the sum and warns when it is over.
  CLICKS      data-step="1", "2", "3" ... is the click on which a thing appears.
              Things without data-step are there when the scene opens.
@@ -83,7 +83,7 @@
   </section>
 
   <!-- ============ 2 · THE FOX ============ -->
-  <section class="scene fox-scene" data-title="The fox" data-seconds="24" data-aurora="0.35" data-snow="1">
+  <section class="scene fox-scene" data-title="The fox" data-seconds="20" data-aurora="0.35" data-snow="1">
     <div class="col left">
       <p class="l">On the way home she finds a fox cub,<br>alone in the snow.</p>
       <p class="l" data-step="1">She picks him up.<br><span class="accent">He steps into her phone.</span></p>
@@ -108,7 +108,7 @@
     <aside>
       On the way home she finds a fox cub, alone in the snow.
       She picks him up, and he steps into her phone.
-      He asks for one small thing a day: a short game, a minute of breathing, three good things about today.
+      He asks for one small thing a day. [let them read the three]
       No score, no streak. A bad day costs her nothing.
     </aside>
   </section>
@@ -219,8 +219,8 @@
     <aside>
       One night she does open it. [pause]
       This is what a bad night can look like. [let it type; say nothing]
-      The help numbers open at once. [the clinic's phone buzzes; three seconds]
-      By morning, her clinic knows.
+      The help numbers open at once. [pause]
+      By morning, her clinic knows. [click; the clinic's phone buzzes; three seconds]
       Next morning, her nurse calls. "Anna, I read your note. I'm here."
       This time, she doesn't wait six weeks.
       (If asked: what the clinic does after the message is the clinic's decision. The call is our story, not a feature.)
@@ -228,7 +228,7 @@
   </section>
 
   <!-- ============ 6 · THE MIND (the proof comes after the story) ============ -->
-  <section class="scene mind-scene" data-title="The mind" data-seconds="29" data-aurora="0.3">
+  <section class="scene mind-scene" data-title="The mind" data-seconds="27" data-aurora="0.3">
     <h2 class="l center">Behind the fox: what we call the mind.</h2>
     <div class="layers">
       <div class="layer code" data-step="1">
@@ -257,7 +257,7 @@
     <aside>
       Behind the fox, the mind.
       Rules we can explain raise the flag.
-      Two models weigh it: the clinic's own, and Gemini, which also reads the face numbers.
+      Two models weigh it: the clinic's own, and Gemini.
       Code guards both.
       On forty generated cases, a worse case never got a lower level.
       But the same case, read twice, changed six times in a hundred and seven, so no model may lower what the rules call urgent.
@@ -274,15 +274,13 @@
       <div class="realcol">
         <span class="tag good">real today</span>
         <ul>
-          <li>Server, clinician page, both models and the alert are live.</li>
-          <li>A real iPhone sent games, face numbers and health days.</li>
+          <li>Live: server, clinician page, both models, the alert. A real iPhone has sent its data.</li>
         </ul>
       </div>
       <div class="realcol">
         <span class="tag warn">not yet</span>
         <ul>
-          <li>Anna is example data.</li>
-          <li>Nothing is tested with patients.</li>
+          <li>Anna is example data. Nothing is tested with patients.</li>
         </ul>
       </div>
     </div>
