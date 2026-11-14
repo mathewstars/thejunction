@@ -17,7 +17,7 @@ from .audit import write_audit
 from .config import Settings
 from .mind import face_features, lines, xp
 from .mind import notes as note_logic
-from .mind.activities import check_activity, process_activity
+from .mind.activities import check_activity, played_to_the_end, process_activity
 from .mind.engine import Clock, Mind
 from .mind.gates import INPUT_GATE, OUTPUT_GATE, GateError
 from .mind.repo import PatientRepo
@@ -501,7 +501,7 @@ def after_activity_line(rec: dict, crisis: bool) -> dict:
     if rec["ended_by"] == "interrupted" and t != "checkin":
         return lines.after_activity("interrupted")
     if t in ("focus", "breathing"):
-        return lines.after_activity(f"{t}_done" if rec["ended_by"] == "finished" else f"{t}_stopped")
+        return lines.after_activity(f"{t}_done" if played_to_the_end(rec) else f"{t}_stopped")
     if rec.get("plan_done") == "yes":
         return lines.after_activity("plan_done_yes")
     if rec.get("plan_done") == "no":
@@ -522,6 +522,7 @@ def _activity_out(ctx: Ctx, repo: PatientRepo, rec: dict, xp_gained: int, crisis
 def activity_reading(ctx: Ctx, p: Principal, activity_id: str) -> dict:
     """The patient-safe side of the session reading: a status and, when ready,
     one neutral line. Never the reading itself, never a mood or a face."""
+    from .mind.activities import game_kind
     from .mind.session_reading import PATIENT_LINES
     rec = repo_for(ctx, p).get(f"activities/{activity_id}.json")
     if rec is None:
@@ -529,7 +530,7 @@ def activity_reading(ctx: Ctx, p: Principal, activity_id: str) -> dict:
     a = rec.get("analysis") or {"status": "not_applicable"}
     status = a["status"]
     return {"status": status,
-            "line": PATIENT_LINES.get(rec["type"]) if status == "ready" else None}
+            "line": PATIENT_LINES.get(game_kind(rec)) if status == "ready" else None}
 
 
 async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:

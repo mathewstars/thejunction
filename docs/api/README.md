@@ -124,7 +124,7 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
    | `ended_by` | `finished`, `user_stopped`, `interrupted` |
    | `suggestion_id` | optional: the suggestion it was played from |
 
-   `focus` (Sparks and snow): `correct_taps`, `wrong_taps` (tapped a snowflake), `misses` (whole numbers), `reaction_ms` (list of whole milliseconds, at most 200; the server computes the statistics), optional `face_raw` (or, from older clients, `face`).
+   `focus` (Revontulet with the `revontulet` object below, or the earlier Sparks and snow without it): `correct_taps`, `wrong_taps` (tapped a snowflake), `misses` (whole numbers), `reaction_ms` (list of whole milliseconds, at most 200; the server computes the statistics), optional `face_raw` (or, from older clients, `face`).
 
    `revontulet` (optional, only on `focus`, only from the Revontulet game): what that game measures beyond taps and reaction times. Leave it out (or send null) and the record means exactly what it did before; a record without it hashes as before. Numbers only, no touch paths or positions; every object refuses unknown fields (422 `invalid_request`). What each measure is and the study idea behind it: [`docs/revontulet-measures.md`](../revontulet-measures.md).
 

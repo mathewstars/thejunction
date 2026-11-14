@@ -4,7 +4,8 @@ returned to the clinician, and nothing changes for a record without them."""
 import copy
 from datetime import timedelta
 
-from conftest import NOW
+import pytest
+from conftest import NOW, Env
 
 ROUND_EASY = {"effort": "easy", "choice_ms": 2310, "trace_start_ms": 1840, "trace_ms": 1650, "trace_length_pt": 288.4,
               "trace_mean_speed_pt_s": 174.8, "trace_peak_speed_pt_s": 362.0, "trace_lifts": 0,
@@ -22,6 +23,18 @@ MEASURES = {
     "broke_through_s": 52.4, "fox_finished": False, "pt_per_cm": 64.2, "touch_radius_mean_pt": 21.3,
     "touch_radius_var": 4.7,
 }
+
+
+@pytest.fixture
+def env():
+    """The demo patient without the seeded example games (they are Revontulet
+    games too), so every count of earlier games below is this file's own."""
+    e = Env()
+    base = f"clinics/{e.demo['clinic_id']}/patients/{e.demo['patient_id']}/activities/"
+    for key in e.store.list(base):
+        if (e.store.get(key) or {}).get("type") == "focus":
+            e.store.delete(key)
+    return e
 
 
 def game(aid, measures=MEASURES, **kw):
@@ -49,11 +62,78 @@ def test_a_full_game_is_accepted_and_stored_whole(env):
     assert r.json()["type"] == "focus" and r.json()["xp_gained"] > 0
     stored = env.repo().get("activities/rv-full-000001.json")
     assert stored["revontulet"] == MEASURES
-    # The taps and reactions are read exactly as before.
-    assert stored["features"]["error_rate"] == round(1 / 7, 3)
+    # Read as Revontulet: the error rate is embers missed over embers shown
+    # (1 of 4; the three launches cannot go wrong), and its three ember taps are
+    # enough for a middle reaction time (revontulet_min_reactions is 2).
+    assert stored["features"]["error_rate"] == 0.25
     assert stored["features"]["reactions_used"] == 3
-    # Three ember taps: enough for a Revontulet game (revontulet_min_reactions is 2).
-    assert stored["features"]["median_reaction_ms"] == 380.0  # three ember taps are enough for a game
+    assert stored["features"]["median_reaction_ms"] == 380.0
+    assert stored["features"]["reaction_spread_ms"] is None  # the spread needs four
+
+
+def test_no_embers_means_no_error_rate_and_sparks_keeps_its_own_rule(env):
+    easy = copy.deepcopy(MEASURES)
+    easy["rounds"] = [ROUND_EASY, ROUND_EASY, ROUND_EASY]
+    assert post(env, game("rv-easy-000001", measures=easy, correct_taps=3, misses=0,
+                          reaction_ms=[])).status_code == 200
+    f = env.repo().get("activities/rv-easy-000001.json")["features"]
+    assert f["error_rate"] is None and f["median_reaction_ms"] is None
+    # A Sparks and snow record keeps its own rule: five reaction times, taps over taps.
+    assert post(env, game("rv-plain-00001", measures=None)).status_code == 200
+    f = env.repo().get("activities/rv-plain-00001.json")["features"]
+    assert f["median_reaction_ms"] is None and f["error_rate"] == round(1 / 7, 3)
+
+
+def test_the_two_focus_games_are_never_compared_with_each_other(env):
+    """A real Revontulet game on 14 November, set after Sparks and snow games,
+    came out 2.9 away on error rate only because the game had changed."""
+    sparks = dict(measures=None, duration_s=45.0, correct_taps=16, wrong_taps=1, misses=1,
+                  reaction_ms=[500 + 7 * i for i in range(16)])
+    for k in range(6):
+        assert post(env, game(f"kind-sparks-{k:04d}", started_at=_days_ago(20 - k), **sparks)).status_code == 200
+    assert post(env, game("kind-rv-0000001", started_at=_days_ago(10))).status_code == 200
+    first = env.repo().get("activities/kind-rv-0000001.json")
+    assert first["baseline_sessions"] == 0 and first["usual"] == {}
+    assert all(v is None for v in first["z"].values())
+    for k in range(2, 7):
+        assert post(env, game(f"kind-rv-{k:07d}", started_at=_days_ago(10 - k))).status_code == 200
+    sixth = env.repo().get("activities/kind-rv-0000006.json")
+    assert sixth["baseline_sessions"] == 5 and sixth["usual"]["error_rate"]["n"] == 5
+    assert sixth["z"]["error_rate"] == 0.0 and sixth["z"]["median_reaction_ms"] == 0.0
+    # And the other way: a Sparks game after them sees only the Sparks games.
+    assert post(env, game("kind-sparks-last", started_at=_days_ago(1), **sparks)).status_code == 200
+    last = env.repo().get("activities/kind-sparks-last.json")
+    assert last["baseline_sessions"] == 6 and last["usual"]["median_reaction_ms"]["n"] == 6
+
+
+def test_leaving_during_the_strokes_after_the_wall_burst_is_not_stopping_early(env):
+    """Seven of the nine real games on 14 November ended `user_stopped` with all
+    three rounds played and the wall broken."""
+    left = game("rv-left-000001", duration_s=56.6, completed=False, ended_by="user_stopped")
+    assert post(env, left).status_code == 200
+    assert env.repo().get("activities/rv-left-000001.json")["features"]["completed"] is True
+    early = copy.deepcopy(MEASURES)
+    early.update(rounds=early["rounds"][:1], strokes=[], broke_through_s=None, fox_finished=None)
+    gave_up = game("rv-early-00001", measures=early, duration_s=14.0, completed=False,
+                   ended_by="user_stopped", correct_taps=1, misses=0, reaction_ms=[])
+    assert post(env, gave_up).status_code == 200
+    assert env.repo().get("activities/rv-early-00001.json")["features"]["completed"] is False
+    d = env.client.get(f"/v1/clinic/patients/{env.demo['patient_id']}", headers=env.C()).json()
+    done = {s["id"]: s["completed"] for s in d["activities"]["focus"]["sessions"]}
+    assert done["rv-left-000001"] is True and done["rv-early-00001"] is False
+
+
+def test_a_coached_round_and_a_flick_are_left_out_of_the_four_numbers(env):
+    m = copy.deepcopy(MEASURES)
+    # The first-time coach showed round one: traced, but no trace_start_ms.
+    m["rounds"][0] = {**ROUND_EASY, "trace_start_ms": None, "choice_ms": 9000,
+                      "trace_mean_speed_pt_s": 900.0}
+    m["strokes"].append({"ms": 121, "length_pt": 149.0, "mean_speed_pt_s": 1233.0})
+    assert post(env, game("rv-coach-00001", measures=m)).status_code == 200
+    f = env.repo().get("activities/rv-coach-00001.json")["revontulet_features"]
+    assert f["choice_ms"] == 940.0 and f["trace_speed_cm_s"] == round(228.9 / 64.2, 3)
+    assert f["stroke_speed_cm_s"] == round((282.8 + 229.9 + 211.6) / 3 / 64.2, 3)
+    assert f["hard_share"] == round(2 / 3, 3)  # the choice in a coached round still counts
 
 
 def test_a_games_few_ember_taps_give_a_reaction_time(env):
