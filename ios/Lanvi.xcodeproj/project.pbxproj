@@ -7,12 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01573C87E76E6510830A4383 /* WatchProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99D99C0787D6D6B1FFE0F685 /* WatchProtocol.swift */; };
+		020ABBC1F22819BF31022D3C /* WatchProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99D99C0787D6D6B1FFE0F685 /* WatchProtocol.swift */; };
 		0288D785F813107D48C46B3A /* HarnessHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BCE1C4E2E05E409BD2EB754 /* HarnessHealth.swift */; };
+		03EB6E66EB027B7695FB393C /* LanviWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79AE7075359F0430CCEA6EE2 /* LanviWatchApp.swift */; };
 		053EBA860422BF2F170DD9E5 /* APIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D93B9957583CC3DB996A3C8 /* APIModels.swift */; };
 		09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB97273333C0DBAE7FC11418 /* FocusEngine.swift */; };
 		0CCBB65F07E504D7182EBF08 /* Harness.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; };
 		0CFF1ACB5D8BF4C22E1BCCBE /* GameMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B5C92796F5DE0B8D3DA00AF /* GameMoments.swift */; };
 		13A58E149CD244B58980B9F3 /* HomeSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8082B9E5762CA3450E914CE /* HomeSpeech.swift */; };
+		14B61EECD3A2D7B823C818B9 /* WatchLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1880CBD2531C292A631CD74A /* WatchLink.swift */; };
 		14D52ABE9497798035286052 /* LanviArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B5136458E518ED70EBBEF0 /* LanviArt.swift */; };
 		151BF5444E01D40CF03FB960 /* ChatLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84158FA0F8C7B4E9A416B47C /* ChatLink.swift */; };
 		1D2F0537C7AAB50875AA6F3B /* ActivityRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F685787902006429E41D5A7 /* ActivityRouter.swift */; };
@@ -23,6 +27,7 @@
 		378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */; };
 		3F11B1A55A50095524067A63 /* HealthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7415116ED3C0D377127D698 /* HealthTests.swift */; };
 		42388E6A19E9972BFD34235B /* FaceRawTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9880ABDFC5EF111BB77915E2 /* FaceRawTests.swift */; };
+		42495D0DCA135C125D393535 /* WatchHome.swift in Sources */ = {isa = PBXBuildFile; fileRef = F479A3996102EA4D94CEEDD0 /* WatchHome.swift */; };
 		43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856CB611495D91BE8B81E2D4 /* WelcomeView.swift */; };
 		45C0A7261327E95CF788718C /* FocusResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E369E41135184A2334A61A6 /* FocusResult.swift */; };
 		471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4534A11EF57C9E6ACC5030B /* HomeView.swift */; };
@@ -35,6 +40,9 @@
 		63F055804A5075D00F92CCF8 /* FaceSense.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0FB8AE15346D15FAA5BA3AF /* FaceSense.swift */; };
 		65D2DC99CA91B8EF96FAEC64 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC334EE89ADCF793E4BC0D9B /* SharedModels.swift */; };
 		70C6A7B3EB4DC1265714772A /* CheckinModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C049B0C402500302F08D494 /* CheckinModels.swift */; };
+		7305395260AE14217D7FAB2D /* WatchGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6154AE9F27FDEF421E4852B6 /* WatchGate.swift */; };
+		749A31138DEA4DB2345BAD41 /* LanviWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = EA7317A01E3E9A8945B4FDB5 /* LanviWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7BF2448E3C5F2E54F593B22F /* WorkoutRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FD7EAEC0130936FC37059F8 /* WorkoutRecorder.swift */; };
 		7E44533D8B224A540E1246AA /* WhatHelpsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55866B9F718B556BABB20541 /* WhatHelpsView.swift */; };
 		801BB5516A9A840A6B6373FC /* HealthSummaryBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D140086C7FF38F31C3EE8E /* HealthSummaryBuilder.swift */; };
 		80C78847CDF1DDCA4C904495 /* FileExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06C37D8A2F572DC15C68D65 /* FileExport.swift */; };
@@ -51,8 +59,10 @@
 		A2C3F617ED5E2B4ED0E105FC /* AppleHealthXMLImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23F7E4011FDEDCAD3A94ACB7 /* AppleHealthXMLImporter.swift */; };
 		A509A7301897830193A55D08 /* FaceRawRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272A9EA4CC647F200AE95283 /* FaceRawRecorder.swift */; };
 		A99C233C3D469D27695CFD77 /* Nunito-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 264F14E3AC63B96BC18A9088 /* Nunito-Bold.ttf */; };
+		A9D28920D9D5F0967CCAF84F /* SensorSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E3C4D4D456FA096A689B24 /* SensorSession.swift */; };
 		AD463101603D7159662FCF61 /* LanviFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D60D7109047F207FBF71FBE2 /* LanviFlowUITests.swift */; };
 		AF042D25043E7247AD53A177 /* LanviRig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 743C0B865552B2E8824FA20B /* LanviRig.swift */; };
+		B1F573713479FC06A2B1DC16 /* PhoneLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6966ABC12E2A7D7243D90B58 /* PhoneLink.swift */; };
 		B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA73738285D12F12C9ADB24B /* Chunky.swift */; };
 		B366EDE9B773EEA90854B56A /* HomeChatScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */; };
 		B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B8C888729DE19EB41449A4 /* HomeOverlays.swift */; };
@@ -60,6 +70,7 @@
 		B6A861C26917D5B2F511CE9C /* BreatheResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B1F65C7973CFFB5D41825 /* BreatheResult.swift */; };
 		BC1B1DE3FDB56F877CB09FE4 /* LanviTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 043F24BD4810CC96B85B74B4 /* LanviTiming.swift */; };
 		BED78E7017B94186F183E51E /* LocalStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85FD261A32144F8643C6EE7E /* LocalStatistics.swift */; };
+		C74F9680B057EFAD2CF191CC /* SensorSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1EA87CCFB9907EDE83CA64 /* SensorSessionTests.swift */; };
 		C8EBD236C0121CE58A89C106 /* DemoBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575A49BAC44D679FBA763541 /* DemoBackend.swift */; };
 		CF120166C3B2436312B64F79 /* Harness.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		D8C2589303E6EFD2CBBF8440 /* FocusArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 974C2744C4CA94D5857C75A3 /* FocusArt.swift */; };
@@ -110,9 +121,27 @@
 			remoteGlobalIDString = 10898CC770015E851A7CB1E7;
 			remoteInfo = Lanvi;
 		};
+		FE3094376C4401AB963D2692 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1DECB0257BF1641BC0C7ACF9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E45C4E9A99BD9F44E4D0BB45;
+			remoteInfo = LanviWatch;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		B509DD2A33A7F33CC183D9F0 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				749A31138DEA4DB2345BAD41 /* LanviWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D9860F21B1FEEF8482E95057 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -130,9 +159,11 @@
 		033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Black.ttf"; sourceTree = "<group>"; };
 		043F24BD4810CC96B85B74B4 /* LanviTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviTiming.swift; sourceTree = "<group>"; };
 		0E369E41135184A2334A61A6 /* FocusResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusResult.swift; sourceTree = "<group>"; };
+		0FD7EAEC0130936FC37059F8 /* WorkoutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutRecorder.swift; sourceTree = "<group>"; };
 		11CA1C956F7514A490E2C77E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		15B8C888729DE19EB41449A4 /* HomeOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOverlays.swift; sourceTree = "<group>"; };
 		166A2EF8FECA301AACE53B2A /* HomeSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSheets.swift; sourceTree = "<group>"; };
+		1880CBD2531C292A631CD74A /* WatchLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLink.swift; sourceTree = "<group>"; };
 		1B5C92796F5DE0B8D3DA00AF /* GameMoments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameMoments.swift; sourceTree = "<group>"; };
 		1BCE1C4E2E05E409BD2EB754 /* HarnessHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HarnessHealth.swift; sourceTree = "<group>"; };
 		1C049B0C402500302F08D494 /* CheckinModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinModels.swift; sourceTree = "<group>"; };
@@ -145,6 +176,7 @@
 		39D140086C7FF38F31C3EE8E /* HealthSummaryBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSummaryBuilder.swift; sourceTree = "<group>"; };
 		455B1F65C7973CFFB5D41825 /* BreatheResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheResult.swift; sourceTree = "<group>"; };
 		47EB2CBCF8B846132146AC4C /* Harness.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Harness.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		48E3C4D4D456FA096A689B24 /* SensorSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorSession.swift; sourceTree = "<group>"; };
 		4A2759DCEF87679E894DADAF /* ActivityOutbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityOutbox.swift; sourceTree = "<group>"; };
 		55866B9F718B556BABB20541 /* WhatHelpsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatHelpsView.swift; sourceTree = "<group>"; };
 		561A37AABE894380B546DE42 /* TokenKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenKeychain.swift; sourceTree = "<group>"; };
@@ -156,11 +188,15 @@
 		5E91BDD22A3D7AF3A6B1F654 /* LanviPuppetPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviPuppetPreview.swift; sourceTree = "<group>"; };
 		60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Nunito-OFL.txt"; sourceTree = "<group>"; };
 		607DA0BDB68AC9211EAADA43 /* HomeParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeParts.swift; sourceTree = "<group>"; };
+		6154AE9F27FDEF421E4852B6 /* WatchGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchGate.swift; sourceTree = "<group>"; };
 		61DEB6AEE62EA63867535515 /* SenseViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenseViews.swift; sourceTree = "<group>"; };
 		63DA8488EFBF26C7B0DF5DCB /* HealthSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSync.swift; sourceTree = "<group>"; };
 		66066ACFCC6856BAFA1A7DED /* SenseRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenseRoot.swift; sourceTree = "<group>"; };
+		6966ABC12E2A7D7243D90B58 /* PhoneLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneLink.swift; sourceTree = "<group>"; };
+		73BAD82F171E2F51E05F3900 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		743C0B865552B2E8824FA20B /* LanviRig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviRig.swift; sourceTree = "<group>"; };
 		7726B251A5F3DA944BA275A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		79AE7075359F0430CCEA6EE2 /* LanviWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviWatchApp.swift; sourceTree = "<group>"; };
 		7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfig.swift; sourceTree = "<group>"; };
 		7D93B9957583CC3DB996A3C8 /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
 		84158FA0F8C7B4E9A416B47C /* ChatLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatLink.swift; sourceTree = "<group>"; };
@@ -176,7 +212,9 @@
 		983F096307C7FD0ACB400CFB /* LanviTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LanviTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9880ABDFC5EF111BB77915E2 /* FaceRawTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceRawTests.swift; sourceTree = "<group>"; };
 		98E9EB5764D665F8A8B7399B /* BreatheView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheView.swift; sourceTree = "<group>"; };
+		99D99C0787D6D6B1FFE0F685 /* WatchProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchProtocol.swift; sourceTree = "<group>"; };
 		9A53ADD818B703E6EC089EFE /* SkyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyScene.swift; sourceTree = "<group>"; };
+		9AB135E00B5FB53D96AAA434 /* LanviWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LanviWatch.entitlements; sourceTree = "<group>"; };
 		9BE5BB327EC6AAE2BE8CF146 /* HealthDays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthDays.swift; sourceTree = "<group>"; };
 		9D1CB7C86C24141AF8D7F012 /* HealthTypeCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthTypeCatalog.swift; sourceTree = "<group>"; };
 		A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameMeter.swift; sourceTree = "<group>"; };
@@ -187,6 +225,7 @@
 		C3595C8C9C83D14C2B300184 /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
 		C8082B9E5762CA3450E914CE /* HomeSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeech.swift; sourceTree = "<group>"; };
 		CA73738285D12F12C9ADB24B /* Chunky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chunky.swift; sourceTree = "<group>"; };
+		CB1EA87CCFB9907EDE83CA64 /* SensorSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorSessionTests.swift; sourceTree = "<group>"; };
 		CB97273333C0DBAE7FC11418 /* FocusEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusEngine.swift; sourceTree = "<group>"; };
 		CC334EE89ADCF793E4BC0D9B /* SharedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
 		CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinParts.swift; sourceTree = "<group>"; };
@@ -196,9 +235,11 @@
 		DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMoments.swift; sourceTree = "<group>"; };
 		E4534A11EF57C9E6ACC5030B /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		E77620D747F3E1491FF87DCE /* CheckinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinView.swift; sourceTree = "<group>"; };
+		EA7317A01E3E9A8945B4FDB5 /* LanviWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LanviWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EC85635871F0B51CDE8BF590 /* LanviFrameLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviFrameLog.swift; sourceTree = "<group>"; };
 		EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F06C37D8A2F572DC15C68D65 /* FileExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileExport.swift; sourceTree = "<group>"; };
+		F479A3996102EA4D94CEEDD0 /* WatchHome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHome.swift; sourceTree = "<group>"; };
 		F5278EF530C0374EA70D2B2B /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeChatScreen.swift; sourceTree = "<group>"; };
 		F7415116ED3C0D377127D698 /* HealthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthTests.swift; sourceTree = "<group>"; };
@@ -240,6 +281,7 @@
 			children = (
 				9880ABDFC5EF111BB77915E2 /* FaceRawTests.swift */,
 				F7415116ED3C0D377127D698 /* HealthTests.swift */,
+				CB1EA87CCFB9907EDE83CA64 /* SensorSessionTests.swift */,
 			);
 			path = LanviTests;
 			sourceTree = "<group>";
@@ -323,6 +365,7 @@
 				248059A5DA624F501FEE521B /* Lanvi.app */,
 				983F096307C7FD0ACB400CFB /* LanviTests.xctest */,
 				5902AF89D6F6E5D7F772C619 /* LanviUITests.xctest */,
+				EA7317A01E3E9A8945B4FDB5 /* LanviWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -334,7 +377,9 @@
 				3F0EBB194C53EDDC4A2C5862 /* Lanvi */,
 				1148EEA23E7751E57894F965 /* LanviTests */,
 				C82FE6A9C41BD7436747CA77 /* LanviUITests */,
+				B2128E8B379BFB1106D68CEF /* LanviWatch */,
 				1303F4D72A67DB0EFC72038D /* Peter */,
+				878F72F844223C3F558F739D /* Shared */,
 				3FC900789D97517605FE2E00 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -345,6 +390,14 @@
 				590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		878F72F844223C3F558F739D /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				99D99C0787D6D6B1FFE0F685 /* WatchProtocol.swift */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 		8AE6FF46D0E450DC82377D45 /* Sense */ = {
@@ -358,6 +411,7 @@
 				63DA8488EFBF26C7B0DF5DCB /* HealthSync.swift */,
 				66066ACFCC6856BAFA1A7DED /* SenseRoot.swift */,
 				61DEB6AEE62EA63867535515 /* SenseViews.swift */,
+				AC53E42790D24C4A43CE8C41 /* Watch */,
 			);
 			path = Sense;
 			sourceTree = "<group>";
@@ -369,6 +423,29 @@
 			);
 			name = ios;
 			path = .;
+			sourceTree = "<group>";
+		};
+		AC53E42790D24C4A43CE8C41 /* Watch */ = {
+			isa = PBXGroup;
+			children = (
+				48E3C4D4D456FA096A689B24 /* SensorSession.swift */,
+				6154AE9F27FDEF421E4852B6 /* WatchGate.swift */,
+				1880CBD2531C292A631CD74A /* WatchLink.swift */,
+			);
+			path = Watch;
+			sourceTree = "<group>";
+		};
+		B2128E8B379BFB1106D68CEF /* LanviWatch */ = {
+			isa = PBXGroup;
+			children = (
+				73BAD82F171E2F51E05F3900 /* Info.plist */,
+				9AB135E00B5FB53D96AAA434 /* LanviWatch.entitlements */,
+				79AE7075359F0430CCEA6EE2 /* LanviWatchApp.swift */,
+				6966ABC12E2A7D7243D90B58 /* PhoneLink.swift */,
+				F479A3996102EA4D94CEEDD0 /* WatchHome.swift */,
+				0FD7EAEC0130936FC37059F8 /* WorkoutRecorder.swift */,
+			);
+			path = LanviWatch;
 			sourceTree = "<group>";
 		};
 		BAEB71A27059AB4B724A6A48 /* Fonts */ = {
@@ -472,11 +549,13 @@
 				2C2271AFF0A56B9E310F530F /* Resources */,
 				7A6D7A6A6849AFA90D618319 /* Frameworks */,
 				D9860F21B1FEEF8482E95057 /* Embed Frameworks */,
+				B509DD2A33A7F33CC183D9F0 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				4730AECCB6D6D40E49C14CEE /* PBXTargetDependency */,
+				C98F12A1F98960EDB6005AD2 /* PBXTargetDependency */,
 			);
 			name = Lanvi;
 			packageProductDependencies = (
@@ -540,6 +619,23 @@
 			productReference = 47EB2CBCF8B846132146AC4C /* Harness.framework */;
 			productType = "com.apple.product-type.framework";
 		};
+		E45C4E9A99BD9F44E4D0BB45 /* LanviWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5A2A3A1AE1AB65FE48F2D6F3 /* Build configuration list for PBXNativeTarget "LanviWatch" */;
+			buildPhases = (
+				9B1C8FEA9A71F025E0F215A5 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LanviWatch;
+			packageProductDependencies = (
+			);
+			productName = LanviWatch;
+			productReference = EA7317A01E3E9A8945B4FDB5 /* LanviWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -572,6 +668,7 @@
 				10898CC770015E851A7CB1E7 /* Lanvi */,
 				3A2AF2A19B4EB71F9C2F2895 /* LanviTests */,
 				6FF1566663B03BFADDEC2D63 /* LanviUITests */,
+				E45C4E9A99BD9F44E4D0BB45 /* LanviWatch */,
 			);
 		};
 /* End PBXProject section */
@@ -593,6 +690,18 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		9B1C8FEA9A71F025E0F215A5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				03EB6E66EB027B7695FB393C /* LanviWatchApp.swift in Sources */,
+				B1F573713479FC06A2B1DC16 /* PhoneLink.swift in Sources */,
+				42495D0DCA135C125D393535 /* WatchHome.swift in Sources */,
+				01573C87E76E6510830A4383 /* WatchProtocol.swift in Sources */,
+				7BF2448E3C5F2E54F593B22F /* WorkoutRecorder.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B675EF76BC12B62631053AF9 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -666,10 +775,14 @@
 				DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */,
 				1DCC6987446B4B58F5E32D82 /* SenseRoot.swift in Sources */,
 				DBE064B344FE5E0C63C77FB2 /* SenseViews.swift in Sources */,
+				A9D28920D9D5F0967CCAF84F /* SensorSession.swift in Sources */,
 				378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */,
 				DDD5D6ED52809D10373598F9 /* SkyScene.swift in Sources */,
 				20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */,
 				51DD8A76B382F693BF1DE2B8 /* TokenKeychain.swift in Sources */,
+				7305395260AE14217D7FAB2D /* WatchGate.swift in Sources */,
+				14B61EECD3A2D7B823C818B9 /* WatchLink.swift in Sources */,
+				020ABBC1F22819BF31022D3C /* WatchProtocol.swift in Sources */,
 				43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */,
 				7E44533D8B224A540E1246AA /* WhatHelpsView.swift in Sources */,
 			);
@@ -681,6 +794,7 @@
 			files = (
 				42388E6A19E9972BFD34235B /* FaceRawTests.swift in Sources */,
 				3F11B1A55A50095524067A63 /* HealthTests.swift in Sources */,
+				C74F9680B057EFAD2CF191CC /* SensorSessionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -701,6 +815,11 @@
 			isa = PBXTargetDependency;
 			target = 9B94A115D2C04CA68182D70D /* Harness */;
 			targetProxy = E14974774DAF2A19DCFE2A22 /* PBXContainerItemProxy */;
+		};
+		C98F12A1F98960EDB6005AD2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E45C4E9A99BD9F44E4D0BB45 /* LanviWatch */;
+			targetProxy = FE3094376C4401AB963D2692 /* PBXContainerItemProxy */;
 		};
 		DAAD70E17B6E9A8E80F32959 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -749,6 +868,27 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_TARGET_NAME = Lanvi;
+			};
+			name = Debug;
+		};
+		5069A0843A947C7A0C3FB41F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = LanviWatch/LanviWatch.entitlements;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LanviWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Lanvi;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = app.lanvi.Lanvi;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lanvi.Lanvi.watchkitapp;
+				PRODUCT_NAME = Lanvi;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
 			};
 			name = Debug;
 		};
@@ -802,10 +942,10 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
 			};
 			name = Release;
 		};
@@ -834,6 +974,27 @@
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
+		};
+		58153863EF84503DDDF08F15 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = LanviWatch/LanviWatch.entitlements;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LanviWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Lanvi;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = app.lanvi.Lanvi;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lanvi.Lanvi.watchkitapp;
+				PRODUCT_NAME = Lanvi;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
 		};
 		6020ED7D8FFA0C8CDDA28A27 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -952,10 +1113,10 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
 			};
 			name = Debug;
 		};
@@ -1020,6 +1181,15 @@
 			buildConfigurations = (
 				F463C8802E215480DAF8925E /* Debug */,
 				7FEC2CFCBA3ABF7F9D53CA1C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5A2A3A1AE1AB65FE48F2D6F3 /* Build configuration list for PBXNativeTarget "LanviWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5069A0843A947C7A0C3FB41F /* Debug */,
+				58153863EF84503DDDF08F15 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
