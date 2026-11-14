@@ -53,6 +53,9 @@ a { color: var(--sun); }
 
 main { max-width: 1180px; margin: 0 auto; padding: 20px max(16px, env(safe-area-inset-left, 0px)) 40px max(16px, env(safe-area-inset-right, 0px)); }
 .foot { max-width: 1180px; margin: 0 auto; padding: 0 16px 28px; color: var(--muted); font-size: 12px; }
+.visit-note { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 12px; margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+.visit-note b { color: var(--ink); }
+body.visitor #logout { display: none; }
 .flash { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--amber); border-radius: var(--r); padding: 8px 12px; margin: 0 0 14px; }
 
 /* buttons */

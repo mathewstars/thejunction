@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 
 from .store import Store
 
-SCOPES = ("device", "clinician", "admin")
+SCOPES = ("device", "clinician", "admin", "visitor")
 _PAIR_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O, 1/I
 
 
@@ -94,6 +94,8 @@ class Principal:
             return f"device:{self.device_id}"
         if self.scope == "clinician":
             return f"clinician:{self.clinician_id}"
+        if self.scope == "visitor":
+            return "visitor"
         return "admin"
 
 
@@ -107,6 +109,8 @@ def issue_token(store: Store, scope: str, *, clinic_id: str | None = None,
         raise ValueError("device token needs clinic, patient and device")
     if scope == "clinician" and not (clinic_id and clinician_id):
         raise ValueError("clinician token needs clinic and clinician")
+    if scope == "visitor" and not (clinic_id and ttl):
+        raise ValueError("visitor token needs a clinic and an expiry")
     token = new_token()
     now = now or datetime.now(timezone.utc)
     h = sha256_hex(token)

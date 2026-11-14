@@ -1627,6 +1627,48 @@
         }
       }
     },
+    "/v1/clinic/visit": {
+      "post": {
+        "tags": [
+          "clinician"
+        ],
+        "summary": "The open demo: a short-lived read-only token, no login",
+        "description": "Only while DEMO_PUBLIC and DEMO_ENABLED are on. The token may GET what a\nclinician of the demo clinic may GET, for generated example patients only;\nit can change nothing. Rate limited like the login.",
+        "operationId": "visit_v1_clinic_visit_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (or not in your tenant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/clinic/me": {
       "get": {
         "tags": [
@@ -4954,6 +4996,12 @@
           },
           "demo": {
             "$ref": "#/components/schemas/ClinicDemo"
+          },
+          "read_only": {
+            "type": "boolean",
+            "title": "Read Only",
+            "description": "True for a visitor of the open demo: the page shows generated example patients only and offers nothing that changes data.",
+            "default": false
           }
         },
         "type": "object",

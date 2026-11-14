@@ -56,7 +56,14 @@ def require(*scopes: str):
             _refuse(request, None, "invalid_token", 401, "unauthorized", "The token is not valid.")
         if not request.app.state.limiter.allow(p.token_hash):
             _refuse(request, p, "rate_limited", 429, "rate_limited", "Too many requests.")
-        if p.scope not in scopes:
+        if p.scope == "visitor":
+            # The open demo (POST /v1/clinic/visit): read only. A visitor may GET
+            # what a clinician may GET, and nothing else; which patients it sees is
+            # narrowed in api/clinic.py (generated examples only).
+            if "clinician" not in scopes or request.method != "GET":
+                _refuse(request, p, "visitor_read_only", 403, "forbidden",
+                        "The open demo is read only.")
+        elif p.scope not in scopes:
             _refuse(request, p, f"wrong_scope:{p.scope}", 403, "forbidden",
                     "This token may not call this endpoint.")
         request.state.principal = p
