@@ -915,7 +915,84 @@
   // Code's fixed rule and the level-2 model read the same numbers. The bars
   // come from the stored reading; the curve is the audited raw download.
   const FR = { onset: 0.25 };
+  // Revontulet over time. Above: in how many of a game's three rounds the harder crack was chosen.
+  // Below: tracing speed, with the range of the games before each one shaded (the moving reference)
+  // and a dashed line at the middle of the person's start, games 3 to 12 (the fixed reference).
+  // One point is one game. Drawn from 4 games on.
+  function revontuletChart(games) {
+    const own0 = games[0].revontulet_own || {}, cut = own0.unusual_z || 2, start = own0.start || {};
+    const seen = {};
+    const g = games.slice().reverse().map((x) => {
+      const rv = x.revontulet, rounds = rv.rounds || [], own = x.revontulet_own || {};
+      const sp = rounds.map((r) => r.trace_mean_speed_pt_s).filter((v) => typeof v === "number");
+      const day = String(x.date).slice(0, 10), k = seen[day] = (seen[day] || 0) + 1;   // a second game on a day sits a little later
+      return { t: Date.parse(day + "T00:00:00Z") + (k - 1) * 4 * 36e5, date: x.date,
+        hard: rounds.length >= 3 ? rounds.filter((r) => r.effort === "hard").length : null,  // a game cut short has too few choices
+        z: own.z || {}, u: own.usual || {},
+        speed: sp.length && rv.pt_per_cm ? sp.reduce((s, v) => s + v, 0) / sp.length / rv.pt_per_cm : null };
+    }).filter((p) => !isNaN(p.t) && (p.hard !== null || p.speed !== null));
+    if (g.length < 4) return null;
+    const sv = g.map((p) => p.speed).filter((v) => v !== null), lower = sv.length >= 2;
+    const narrow = window.innerWidth < 640;
+    const W = narrow ? 430 : 1000, PL = narrow ? 44 : 64, PR = 12, AT = 26, AH = 62, BT = AT + AH + 50, BH = narrow ? 96 : 116;
+    const H = (lower ? BT + BH : AT + AH) + 26;
+    const t0 = g[0].t, span = Math.max(1, g[g.length - 1].t - t0);
+    const x = (p) => PL + ((p.t - t0) / span) * (W - PL - PR);
+    const ya = (v) => AT + (1 - v / 3) * AH;
+    const lo = lower ? Math.floor(Math.min.apply(null, sv) - 0.3) : 0, hi = lower ? Math.ceil(Math.max.apply(null, sv) + 0.3) : 1;
+    const yb = (v) => BT + (1 - (Math.max(lo, Math.min(hi, v)) - lo) / ((hi - lo) || 1)) * BH;
+    const off = (z) => typeof z === "number" && Math.abs(Math.round(z * 10) / 10) >= cut;
+    const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "chart rv", role: "img",
+      "aria-label": "Above, in how many of a game's three rounds the harder crack was chosen, for " + g.length + " games." + (lower ? " Below, the speed of tracing the half circle in centimetres per second. The shaded area is the range of the games before each one, the dashed line is the middle of this person's start, and games outside the shaded range are yellow." : "") });
+    const title = (y, text) => s.appendChild(svg("text", { x: 0, y: y, class: "rv-t" }, text));
+    const dashed = (y, text) => {
+      s.appendChild(svg("line", { x1: PL, y1: y, x2: W - PR, y2: y, class: "rv-start" }));
+      if (text) s.appendChild(svg("text", { x: W - PR - 4, y: y - 5, "text-anchor": "end" }, text));
+    };
+    // above: harder crack chosen (left empty when no game has all three rounds)
+    const ga = g.filter((p) => p.hard !== null);
+    if (ga.length) title(AT - 10, "Harder crack chosen, of the game’s 3 rounds");
+    if (ga.length) [0, 1, 2, 3].forEach((v) => {
+      s.appendChild(svg("line", { x1: PL, y1: ya(v), x2: W - PR, y2: ya(v), class: "axis" }));
+      if (v === 0 || v === 3) s.appendChild(svg("text", { x: PL - 12, y: ya(v) + 4, "text-anchor": "end" }, narrow ? String(v) : v + " of 3"));
+    });
+    if (ga.length && start.hard_share) dashed(ya(start.hard_share.median * 3), narrow ? "start" : "start, games 3 to 12");
+    s.appendChild(svg("polyline", { class: "line rv-thin", points: ga.map((p) => x(p).toFixed(1) + "," + ya(p.hard).toFixed(1)).join(" ") }));
+    ga.forEach((p) => s.appendChild(svg("circle", { class: "pt", cx: x(p), cy: ya(p.hard), r: narrow ? 3 : 4 },
+      svg("title", null, dayShort(p.date) + ": harder crack in " + p.hard + " of 3"))));
+    // below: tracing speed
+    if (lower) {
+      title(BT - 12, "Tracing speed, cm/s");
+      const have = g.filter((p) => p.u.trace_speed_cm_s && p.speed !== null);
+      if (have.length >= 2) {
+        const edge = (p, sign) => yb(p.u.trace_speed_cm_s.median + sign * cut * p.u.trace_speed_cm_s.scale);
+        s.appendChild(svg("polygon", { class: "normal", points: have.map((p) => x(p).toFixed(1) + "," + edge(p, 1).toFixed(1))
+          .concat(have.slice().reverse().map((p) => x(p).toFixed(1) + "," + edge(p, -1).toFixed(1))).join(" ") }));
+        s.appendChild(svg("text", { x: x(have[0]) + 4, y: Math.max(BT + 10, edge(have[0], 1) - 6) }, narrow ? "recent range" : "range of the games before each one"));
+        const kx = W - PR - (narrow ? 132 : 232);
+        s.appendChild(svg("circle", { class: "pt pt-high", cx: kx, cy: BT - 16, r: 4 }));
+        s.appendChild(svg("text", { x: kx + 9, y: BT - 12 }, narrow ? "outside the shaded range" : "outside the shaded range, faster or slower"));
+      }
+      [lo, hi].forEach((v) => {
+        s.appendChild(svg("line", { x1: PL, y1: yb(v), x2: W - PR, y2: yb(v), class: "axis" }));
+        s.appendChild(svg("text", { x: PL - 12, y: yb(v) + 4, "text-anchor": "end" }, String(v)));
+      });
+      if (start.trace_speed_cm_s) dashed(yb(start.trace_speed_cm_s.median), null);
+      const runs = []; let cur = [];
+      g.forEach((p) => { if (p.speed === null) { if (cur.length) runs.push(cur); cur = []; } else cur.push(p); });
+      if (cur.length) runs.push(cur);
+      runs.forEach((r) => s.appendChild(svg("polyline", { class: "line", points: r.map((p) => x(p).toFixed(1) + "," + yb(p.speed).toFixed(1)).join(" ") })));
+      g.forEach((p) => { if (p.speed !== null) s.appendChild(svg("circle", { class: off(p.z.trace_speed_cm_s) ? "pt pt-high" : "pt", cx: x(p), cy: yb(p.speed), r: narrow ? 3 : 4 },
+        svg("title", null, dayShort(p.date) + ": " + num(p.speed, 1) + " cm/s"))); });
+    }
+    const ticks = narrow ? [0, g.length - 1] : [0, Math.round((g.length - 1) / 3), Math.round(2 * (g.length - 1) / 3), g.length - 1];
+    ticks.filter((v, i, a) => a.indexOf(v) === i).forEach((i, k, a) => s.appendChild(svg("text", { x: x(g[i]), y: H - 6,
+      "text-anchor": k === 0 ? "start" : k === a.length - 1 ? "end" : "middle" }, dayShort(g[i].date))));
+    return s;
+  }
   // Revontulet's own measures (docs/revontulet-measures.md): stored and shown, not used to judge a day.
+  // Two movement speeds are compared per game with the games before it; the choice of the harder crack
+  // has three values a game, so it is only ever judged over several games.
   function revontuletPanel(sessions) {
     const got = sessions.filter((x) => x.revontulet);
     if (!got.length) return null;
@@ -923,50 +1000,108 @@
     const median = (a) => { if (!a.length) return null; const s = a.slice().sort((p, q) => p - q), h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
     const vals = (list, k) => list.map((r) => r[k]).filter((v) => typeof v === "number");
     const sum = (list, k) => list.reduce((s, r) => s + (r[k] || 0), 0);
+    const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
     // Speeds are shown in cm/s only; without the phone's points per centimetre there is no honest unit.
-    const speed = (v, rv) => (v === null || !rv.pt_per_cm ? null : num(v / rv.pt_per_cm, 1) + "\u00a0cm/s");
+    const speed = (v, rv) => (v === null || !rv.pt_per_cm ? null : num(v / rv.pt_per_cm, 1) + " cm/s");
     const facts = (x) => {
       const rv = x.revontulet, rounds = rv.rounds || [], strokes = rv.strokes || [];
       const choose = median(vals(rounds, "choice_ms"));
       const traced = rounds.filter((r) => typeof r.trace_mean_speed_pt_s === "number" || typeof r.trace_ms === "number");
       const wall = rv.fox_finished === true ? "by the game, time ran out"
-        : rv.broke_through_s != null ? (rv.fox_finished === false ? "by the person, " : "") + "after " + num(rv.broke_through_s) + "\u00a0s"
+        : rv.broke_through_s != null ? (rv.fox_finished === false ? "by the person, " : "") + "after " + num(rv.broke_through_s) + " s"
         : rv.fox_finished === false || x.completed === false ? "not broken" : null;
       return { rounds: rounds.length, hard: rounds.filter((r) => r.effort === "hard").length,
-        choose: choose === null ? null : num(choose / 1000, 1) + "\u00a0s",
+        choose: choose === null ? null : num(choose / 1000, 1) + " s",
         trace: speed(mean(vals(rounds, "trace_mean_speed_pt_s")), rv), traced: traced.length, lifts: sum(traced, "trace_lifts"),
         noSize: !rv.pt_per_cm && vals(rounds, "trace_mean_speed_pt_s").length > 0, strokeNoSize: !rv.pt_per_cm && vals(strokes, "mean_speed_pt_s").length > 0,
         shown: sum(rounds, "embers_shown"), hit: sum(rounds, "embers_hit"),
         strokes: strokes.length, stroke: speed(mean(vals(strokes, "mean_speed_pt_s")), rv), wall: wall };
     };
+    const own0 = got[0].revontulet_own || {}, cut = own0.unusual_z || 2, needed = own0.needed || 8;
+    const zOf = (x, k) => { const o = x.revontulet_own; return o && o.z && typeof o.z[k] === "number" ? Math.round(o.z[k] * 10) / 10 : null; };
+    // Only the two speeds are compared game by game. [word when higher, word when lower].
+    const WORDS = { trace_speed_cm_s: ["faster", "slower"], stroke_speed_cm_s: ["faster", "slower"] };
+    const far = (z) => (Math.abs(z) > 3 ? "more than 3" : signed(z));
+    const against = (x, k) => { const z = zOf(x, k); return z === null ? null : Math.abs(z) >= cut ? WORDS[k][z > 0 ? 0 : 1] + " than recent" : "within recent range"; };
+    // The fixed reference beside the moving one: far from the person's start, said in words only.
+    const fromStart = (x, k) => { const o = x.revontulet_own, z = o && o.start_z && typeof o.start_z[k] === "number" ? Math.round(o.start_z[k] * 10) / 10 : null;
+      return z !== null && Math.abs(z) >= cut ? WORDS[k][z > 0 ? 0 : 1] + " than start" : null; };
+    const subOf = (x, k) => {
+      const a = against(x, k), b = fromStart(x, k), z = zOf(x, k);
+      if (!a && !b) return null;
+      const off = a && a !== "within recent range";
+      const text = off && b ? (a.split(" ")[0] === b.split(" ")[0] ? a + " and than start" : a + ", " + b) : off ? a : b || a;
+      return el("span", { class: "sub", title: z === null ? null : "Against the recent games: " + far(z) + " of their usual spread" }, text);
+    };
     const dash = (v, why) => (v === null || v === undefined ? el("span", { class: "muted", title: why || null }, why ? "not known" : "–") : v);
-    const last = facts(got[0]);
-    const said = [];
-    if (last.rounds) said.push("chose the harder crack in " + last.hard + " of " + last.rounds + " " + (last.rounds === 1 ? "round" : "rounds"));
-    if (last.trace) said.push("traced the half circle at " + last.trace + " on average");
-    if (last.strokes) said.push("stroked the fox " + last.strokes + " " + (last.strokes === 1 ? "time" : "times"));
-    const wallSaid = got[0].revontulet.fox_finished === true ? " Time ran out, so the game broke the wall."
-      : got[0].revontulet.broke_through_s != null ? (got[0].revontulet.fox_finished === false ? " The person broke the wall after " : " The wall was broken after ") + num(got[0].revontulet.broke_through_s) + "\u00a0s."
-      : last.wall === "not broken" ? " The wall was not broken." : "";
-    const lines = [el("p", { class: "readout" }, el("b", null, "Last Revontulet game, " + dayShort(got[0].date) + ": "),
-      said.length ? "the person " + said.join(", ") + "." : "no round was played.", wallSaid, got[0].completed === false ? " The game was not finished." : null),
-      el("p", { class: "muted small" }, "In this 90-second game the person picks one of two cracks in an ice wall three times (the harder one gives a bigger reward), traces a half circle with a finger, taps the embers that flash after picking the harder crack, and at the end strokes a sleeping fox. If time runs out, the game breaks the wall for them.")];
+    const lines = [];
+    if (got[0].example) lines.push(el("p", { class: "readout muted" }, el("b", null, "Generated example. "),
+      "No person played these games. The fall in harder choices and tracing speed from week five was written into the generator, together with a rising questionnaire score. It is not a sign that such a link exists, and it is far cleaner than real play would be."));
+    // The finding, if there is one: the last three games against the person's start (or, with fewer games, against all before).
+    const pool = (list) => {
+      const rs = [].concat.apply([], list.map((x) => ((x.revontulet.rounds || []).length >= 3 ? x.revontulet.rounds : [])));
+      const sp = list.map((x) => { const rv = x.revontulet, v = vals(rv.rounds || [], "trace_mean_speed_pt_s"); return v.length && rv.pt_per_cm ? mean(v) / rv.pt_per_cm : null; }).filter((v) => v !== null);
+      return { rounds: rs.length, hard: rs.filter((r) => r.effort === "hard").length, speed: mean(sp) };
+    };
+    const chrono = got.slice().reverse();
+    // One rule for the headline: the start as soon as the engine has one (from the 13th game), else all games before.
+    // With one or two games after the start the choices are too few (3 or 6), so only the tracing speed is said.
+    const hasStart = Object.keys(own0.start || {}).length > 0 && got.length > 12, late = Math.min(3, got.length - 12);
+    const ref = hasStart ? { n: late, list: chrono.slice(2, 12), lead: "Last " + plural(late, "game", "games") + " against this person’s start (games 3 to 12): ", word: "start" }
+      : got.length >= 6 ? { n: 3, list: got.slice(3), lead: "Last 3 games against the " + (got.length - 3) + " before: ", word: "before" } : null;
+    if (ref) {
+      const now = pool(got.slice(0, ref.n)), was = pool(ref.list), parts = [];
+      if (ref.n >= 3 && now.rounds && was.rounds) parts.push("harder crack in " + now.hard + " of " + plural(now.rounds, "round", "rounds") + " (" + ref.word + ": " + was.hard + " of " + was.rounds + ")");
+      if (now.speed !== null && was.speed !== null) parts.push("tracing at " + num(now.speed, 1) + "\u00a0cm/s (" + ref.word + ": " + num(was.speed, 1) + "\u00a0cm/s)");
+      if (parts.length) lines.push(el("p", { class: "readout" }, el("b", null, ref.lead), parts.join(", ") + "."));
+    }
+    const zNow = Object.keys(WORDS).map((k) => [k, zOf(got[0], k)]).filter((p) => p[1] !== null);
+    const NAME = { trace_speed_cm_s: "tracing speed", stroke_speed_cm_s: "stroke speed" };
+    const f0 = (got[0].revontulet_own && got[0].revontulet_own.values) || {};
+    const hasSpeed = Object.keys(WORDS).some((k) => typeof f0[k] === "number");
+    const SAY = { trace_speed_cm_s: "traced ", stroke_speed_cm_s: "stroked the fox " };
+    const unusual = zNow.filter((p) => Math.abs(p[1]) >= cut).map((p) => SAY[p[0]] + WORDS[p[0]][p[1] > 0 ? 0 : 1]);
+    const earlier = own0.earlier_games || 0;
+    lines.push(el("p", { class: "readout" }, el("b", null, "Last game, " + dayShort(got[0].date) + ", against the games just before it: "),
+      zNow.length ? (unusual.length ? "the person " + unusual.join(" and ") + " than in those games." : zNow.map((p) => NAME[p[0]]).join(" and ") + (zNow.length > 1 ? " were" : " was") + " within the recent range.")
+          + (["trace_speed_cm_s", "stroke_speed_cm_s"].some((k) => fromStart(got[0], k)) ? " Against the start: " + ["trace_speed_cm_s", "stroke_speed_cm_s"].filter((k) => fromStart(got[0], k)).map((k) => (k === "trace_speed_cm_s" ? "tracing " : "stroking ") + fromStart(got[0], k).replace(" than start", "")).join(", ") + "." : "")
+        : earlier < needed ? "not enough earlier games yet (" + earlier + " of the " + needed + " needed)."
+        : hasSpeed ? "too few earlier games with a speed to compare." : "this game has no speed to compare."));
+    lines.push(el("p", { class: "muted small" }, "In this 90-second game the person picks one of two cracks in an ice wall three times (the harder one gives a bigger reward), traces a half circle with a finger, taps the embers that flash after picking the harder crack, and at the end strokes a sleeping fox. If time runs out, the game breaks the wall for them."));
+    // A different screen size than in the game before means another phone: speeds before and after do not compare.
+    const newPhone = {};
+    chrono.forEach((x, i) => { const a = i && chrono[i - 1].revontulet.pt_per_cm, b = x.revontulet.pt_per_cm; if (a && b && Math.abs(a - b) > 0.5) newPhone[x.id] = true; });
     const row = (x) => {
       const f = facts(x);
       return el("tr", null,
-        el("td", { class: "num nowrap" }, dayShort(x.date), x.completed === false ? el("span", { class: "sub" }, "not finished") : null),
+        el("td", { class: "num nowrap" }, dayShort(x.date), x.completed === false ? el("span", { class: "sub" }, "not finished") : null,
+          newPhone[x.id] ? el("span", { class: "sub" }, "new phone") : null),
         el("td", null, dash(f.wall)),
         el("td", { class: "r num" }, f.rounds ? f.hard + " of " + f.rounds : dash(null)),
         el("td", { class: "r num" }, dash(f.choose)),
-        el("td", { class: "r num" }, dash(f.trace, f.noSize ? "phone size not sent" : null)),
+        el("td", { class: "r num" }, dash(f.trace, f.noSize ? "phone size not sent" : null), subOf(x, "trace_speed_cm_s")),
         el("td", { class: "r num" }, f.traced ? f.lifts : dash(null)),
-        el("td", { class: "r num" }, f.shown ? f.hit + " of " + f.shown : f.rounds && !f.hard ? el("span", { class: "muted" }, "no hard shot") : dash(null)),
-        el("td", { class: "r num" }, f.strokes ? f.strokes + (f.strokes === 1 ? " stroke" : " strokes") + (f.stroke ? ", " + f.stroke : f.strokeNoSize ? ", speed not known" : "") : dash(null)));
+        el("td", { class: "r num" }, f.shown ? f.hit + " of " + f.shown : f.rounds && !f.hard ? el("span", { class: "muted" }, "easy cracks only") : dash(null)),
+        el("td", { class: "r num" }, f.strokes ? plural(f.strokes, "stroke", "strokes") + (f.stroke ? ", " + f.stroke : f.strokeNoSize ? ", speed not known" : "") : dash(null), subOf(x, "stroke_speed_cm_s")));
     };
-    return panel("Revontulet: choices and finger movement", got.length, lines,
+    const rc = revontuletChart(got);
+    const fold = (title, ...paras) => el("details", { class: "more" }, el("summary", null, title), paras.map((p) => el("p", { class: "muted small" }, p)));
+    return panel("Revontulet: choices and finger movement", got.length, lines, rc,
+      rc ? el("p", { class: "muted small" }, "One point is one game. Shaded: the range of this person’s games before each one (up to 20). Dashed: the middle of their start, games 3 to 12. Yellow means different from the recent games, faster or slower. It does not mean worse.") : null,
       table(["Date", "Wall broken", { t: "Harder crack", r: 1 }, { t: "Time to choose", r: 1 }, { t: "Tracing speed", r: 1 },
         { t: "Finger lifts", r: 1 }, { t: "Embers tapped", r: 1 }, { t: "Fox strokes", r: 1 }], got.map(row), null, { id: "revontulet" }),
-      el("p", { class: "muted small" }, "Read these as a record, not a result. Tracing speed is how fast the finger moved along the half circle, and finger lifts counts how often it left the screen before the end. Time to choose is the middle value of the rounds, and speeds are averages over the rounds that were traced. A speed shows as not known when the phone did not send its screen size. Each game has only three rounds, so one choice changes the count a lot, and no usual range is known for any of these numbers. It is also not known whether higher or lower is better. They do not change how the day is judged, and they have not been tested as a measure of mood."));
+      el("p", { class: "muted small" }, "A record, not a result. A change here is a reason to ask the person, not a sign of relapse. Getting used to the game changes these numbers too. They do not change how the day is judged and have not been tested as a measure of mood."),
+      fold("How to read these numbers",
+        "Tracing and stroke speed are compared, game by game, with this person’s own Revontulet games just before (at least " + needed + ", at most 20). A game " + cut + " or more of their usual spread away from the middle of those games, faster or slower, gets a label. The " + needed + " games and the cut of " + cut + " were picked on generated games, not on people. On generated games where nothing changes, about 2 in 100 still got a label against the recent games and about 2 in 100 against the start, and almost no unchanged person got three in a row. Real play varies more, so expect more. One yellow point means little. Look for several games in a row.",
+        "No yellow does not mean all is well. After a slow change the lower values count as recent, which is why the start (games 3 to 12; the first two are practice) is shown as a second reference that does not move. The start is only where this person began. It is not a healthy level: for someone who started just after treatment, the start may be their worst weeks. People keep getting faster for many games as they learn the game, so faster than start is expected. A run of labels against the start can also come from an odd start alone.",
+        "The harder crack is chosen three times a game, so one game says nothing; it is only compared over several games, in the line above the chart. With 9 choices, two or three more or fewer can be chance. Time to choose is the middle value of the rounds, and speeds are averages over the rounds that were traced. A stroke speed is compared only when there were at least two strokes.",
+        "Slower tracing can also mean more careful tracing: the game does not yet measure how closely the line was followed. The game asks for slow strokes, so slower stroking may only mean the person did as asked.",
+        "Things other than mood that change these numbers: getting used to the game (many people stop picking the harder crack once the bigger reward is no longer new), the 90-second limit (the easy crack can simply be the faster way to finish), time of day, tiredness, medicines that slow or calm, which hand and finger, holding the phone or laying it down, cold hands, a new screen cover, and doing something else while playing. Speeds are only comparable for one person on one phone: a new phone changes them, and after one the start no longer fits. A row marked “new phone” is the first game on a screen drawn at a different density. A new phone with the same density is not noticed."),
+      fold("Where these measures come from",
+        "The choice of the harder crack follows a laboratory task with about fifty choices. In 2009, among 61 students, those who reported less pleasure chose the harder option a little less often, on some questionnaires and not on others (Treadway and others, PLoS ONE). In 2012 a small study found fewer hard choices in 20 people with depression than in 15 others (Treadway and others, Journal of Abnormal Psychology). Most of those patients were taking medicine for depression, and among the patients a higher depression score did not go with fewer hard choices. Later studies do not all agree.",
+        "Slowed movement that other people can see is one of the listed signs of depression. Whether finger speed on a phone shows it is not known. The tracing idea came from a 2025 tablet handwriting study of young people (Džepina and others, Applied Sciences) that we could not open to check, so we claim nothing from it.",
+        "Stroke speed follows a 2025 study of 78 people playing phone games, where slower swipes went with higher depression scores in one of the games (Chitale and others, JMIR Mental Health). That study tried hundreds of measures without correcting for it and calls itself exploratory.",
+        "These studies compared different people at one moment. None followed one person over weeks, which is what this panel does. Revontulet has three choices and a few seconds of tracing with a finger, and nobody has tested it."));
   }
   function framesPanel(sessions, agreement) {
     const ready = sessions.filter((x) => x.frames_reading && x.frames_reading.status === "ready");

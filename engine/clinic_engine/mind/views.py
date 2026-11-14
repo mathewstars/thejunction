@@ -18,7 +18,7 @@ from .repo import PatientRepo
 from .round_configs import ROUND_DURATION_S
 from .rounds import pick_round_config
 from .baseline import baseline_for
-from .thresholds import METRICS
+from .thresholds import METRICS, T
 from .watchers import LEVELS, View, compute_status, deviation_now, silent
 
 PATIENT_SUMMARY = {
@@ -518,6 +518,15 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                 if t == "focus":
                     # Revontulet's own measures, as sent (numbers only), or null.
                     s["revontulet"] = a.get("revontulet")
+                    # The same game against the person's own earlier Revontulet
+                    # games (shown only; it does not judge the day).
+                    s["revontulet_own"] = None if not a.get("revontulet_features") else {
+                        "values": a["revontulet_features"], "z": a.get("revontulet_z") or {},
+                        "usual": a.get("revontulet_usual") or {},
+                        "start": a.get("revontulet_start") or {},
+                        "start_z": a.get("revontulet_start_z") or {},
+                        "earlier_games": a.get("revontulet_baseline_sessions", 0),
+                        "needed": T.revontulet_baseline_min, "unusual_z": T.revontulet_unusual_z}
             else:
                 s["good_things"] = [item(g, "good_things") for g in a.get("good_things") or []]
                 s["plan"] = item(a.get("plan"), "plans")
