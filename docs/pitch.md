@@ -72,7 +72,7 @@ Rules for this version:
 
 **3. The slide (0:28 to 0:50).** Phone: the evening check-in with three, then two, then one; then a dark phone held for two seconds. Laptop: Anna's Overview for three seconds, as confirmation.
 
-> Every evening in October, Anna told the fox three good things about her day.
+> Every evening in late October, Anna told the fox three good things about her day.
 > In November, two.
 > Then one.
 > Then, most evenings, nothing. [dark phone, two seconds]
@@ -117,7 +117,7 @@ The extra minute goes to the fox and the slide, not to more exhibits. The proof 
 
 **3. The slide (0:50 to 1:25).** Phone: check-ins. Laptop: Overview for three seconds.
 
-> Every evening in October, Anna told the fox three good things about her day.
+> Every evening in late October, Anna told the fox three good things about her day.
 > In November, two.
 > Then one.
 > Then, most evenings, nothing. [dark phone, two seconds]
@@ -149,7 +149,7 @@ The extra minute goes to the fox and the slide, not to more exhibits. The proof 
 
 ### Sixty seconds at the table
 
-> This is Anna. We made her up. Six weeks of clinic visits, then the door closes and nobody is looking. [phone] This fox stays: one small thing a day. In October she told him three good things every evening. In November two, then one, then, most evenings, nothing. [type the note; second phone buzzes; wait] That is the clinic's phone. They know today, not at her next appointment. [laptop] Example data. For a patient who stayed well, it refuses to conclude. The study is what we want to do with you. [hand them the phone showing "I kept the light on for you."]
+> This is Anna. We made her up. Six weeks of clinic visits, then the door closes and nobody is looking. [phone] This fox stays: one small thing a day. In late October she told him three good things every evening. In November two, then one, then, most evenings, nothing. [type the note; second phone buzzes; wait] That is the clinic's phone. They know today, not at her next appointment. [laptop] Example data. For a patient who stayed well, it refuses to conclude. The study is what we want to do with you. [hand them the phone showing "I kept the light on for you."]
 
 ### What makes it land
 
@@ -195,7 +195,7 @@ Video:
 ## What must be true before we say it
 
 - One activity runs live on the phone. Without it the middle of the pitch falls.
-- Anna's example data really shows three good things in October, then two, then one, then most evenings no check-in, a walk offered three times and not taken, and her steps at about half of her normal. Check the clinician page before saying the numbers.
+- Anna's example data shows it (Activity tab, Evening check-in, with the demo in its dip state): three good things every evening for the last two weeks of October, then two on three evenings, then one on two, then no check-in; a walk offered three times and not taken; her steps at about half of her normal. Look at the page on the day before saying the numbers, because the dates move with the calendar.
 - The app shows `welcome_back.1` in the demo. The set has three lines, so the demo must force this one.
 - The alert really arrives on a phone during the demo, and the help screen on the demo server shows 112 and an example clinic contact, not a placeholder.
 - Gemini runs on the demo server (key and model set, the patient allowed outside processing), and one session recorded by one of us shows an item that code dropped and a faint smile that Gemini found below the fixed rule. Never call that session Anna's. If not, drop the Gemini sentence.
