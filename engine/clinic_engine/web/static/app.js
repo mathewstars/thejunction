@@ -130,14 +130,30 @@
     metric: "movement", open: {}, tbl: {}, actTab: "summary", tq: "", changedOnly: true, page: 0, demoMsg: "", busy: false, timer: null,
   };
   try { S.token = sessionStorage.getItem("clinic_session") || null; } catch (e) { S.token = null; }
+  // The open demo (/demo): no sign-in. The page asks the server for a read-only visitor token, which
+  // shows the generated example people only and can change nothing. It is kept in memory, never stored,
+  // so it cannot be taken for a clinician's session on the normal address.
+  const VISIT = location.pathname === "/demo";
+  if (VISIT) S.token = null;
+  const READ_ONLY = "The open demo is read only. For a login, write to stafurik@gmail.com or call +421 917 916 569.";
+  async function startVisit() {
+    const res = await fetch("/v1/clinic/visit", { method: "POST", cache: "no-store" });
+    if (!res.ok) throw new Error(res.status === 404 ? "The open demo is not switched on." : res.status === 429 ? "Too many visits just now. Try again in a minute." : "The open demo could not start (" + res.status + ").");
+    S.token = (await res.json()).session_token;
+    S.visitor = true;
+    document.body.classList.add("visitor");
+    const n = $("visit-note"); if (n) n.hidden = false;
+  }
 
-  async function api(method, path, body) {
+  async function api(method, path, body, again) {
+    if (S.visitor && method !== "GET") throw new Error(READ_ONLY);
     const headers = {};
     if (S.token) headers.Authorization = "Bearer " + S.token;
     if (body !== undefined) headers["Content-Type"] = "application/json";
     const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), cache: "no-store" });
     let data = null;
     try { data = await res.json(); } catch (e) { data = null; }
+    if (res.status === 401 && S.visitor && !again) { await startVisit(); return api(method, path, body, true); }   // a visit lasts two hours; start another
     if (res.status === 401 && path !== "/v1/clinic/login") { signOut("Your session ended. Sign in again."); throw new Error("signed out"); }
     if (!res.ok) throw new Error((data && data.error && data.error.message) || "Request failed (" + res.status + ")");
     return data;
@@ -161,6 +177,9 @@
   async function onRoute() {
     const prev = S.route;
     S.route = parseHash();
+    if (!S.token && VISIT) {
+      try { await startVisit(); } catch (e) { $("login-form").hidden = true; return showLogin(e.message); }
+    }
     if (!S.token) return showLogin();
     const samePatient = prev.view === "patient" && S.route.view === "patient" && prev.pid === S.route.pid;
     if (S.route.view === "patient" && !samePatient) { S.detail = null; S.trace = null; S.assoc = null; S.exch = null; S.page = 0; }

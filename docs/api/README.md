@@ -243,6 +243,10 @@ The reply is `{"template_id": "gemini", "text": ...}` in the same response shape
 
 To switch it on, put in the server's `.env`: `CHAT_MODE=gemini`, `GEMINI_API_KEY`, and a model id in `CHAT_MODEL` (or `GEMINI_MODEL`). `CHAT_THINKING` (for example `low`) asks the chat model to think less so it answers sooner; empty, the default, sends no such setting. It does not need `OUTREACH_MODE`.
 
+## The open demo (no login, read only)
+
+`DEMO_PUBLIC=true` (off by default, and only while `DEMO_ENABLED` is on) opens the page at `/demo`. The page asks `POST /v1/clinic/visit` for a visitor token, valid two hours. A visitor may `GET` what a clinician of the demo clinic may `GET`, and nothing else: every other method answers 403, on every endpoint. It sees the generated example patients only. A profile that holds a real person's data (a patient, or the team's test play) is shown only when its patient record carries `open_demo: true`, which the person it belongs to has to agree to. The demo panel is never offered. Tests: `engine/tests/test_open_demo.py`.
+
 ## The clinician page
 
 The engine serves a plain web page for clinicians at `/` (files in `engine/clinic_engine/web/`, no build step, no outside resources, its own strict Content-Security-Policy). It uses only these calls:

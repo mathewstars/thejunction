@@ -128,6 +128,11 @@ class Settings:
     clinic_timezone: str = "Europe/Helsinki"
 
     demo_enabled: bool = True
+    # The open demo: anyone may read the generated example patients of the demo
+    # clinic without a login (GET only, never a real or test-play patient).
+    # Off unless DEMO_PUBLIC=true, and only while DEMO_ENABLED is on.
+    demo_public: bool = False
+    demo_visit_minutes: int = 120
 
     # The association appraisal (clinician-only research output), once a day per patient.
     associations_enabled: bool = True
@@ -193,5 +198,6 @@ class Settings:
             notify_max_per_hour=_env_int("NOTIFY_MAX_PER_HOUR", 10),
             clinic_timezone=_env("CLINIC_TIMEZONE", "Europe/Helsinki"),
             demo_enabled=_env_bool("DEMO_ENABLED", True),
+            demo_public=_env_bool("DEMO_PUBLIC", False),
             associations_enabled=_env_bool("ASSOCIATIONS_ENABLED", True),
         )
