@@ -27,7 +27,8 @@ FACE_FIELDS = ("smile_rate_per_min", "smile_intensity", "facial_activity", "blin
                # smile_rate_per_min.
                "smile_time_share", "eye_smile_share", "smile_response_share",
                "smile_response_latency_s", "brow_down_share", "inner_brow_up_share",
-               "blink_duration_ms", "head_pitch_deg", "head_movement", "smile_asymmetry")
+               "blink_duration_ms", "head_pitch_deg", "head_movement", "smile_asymmetry",
+               "lip_down_share", "lip_press_share")
 # Features compared with own normal, per type. Completion is a yes/no per
 # session; watchers look at it over several sessions instead of a z.
 Z_FEATURES = {
