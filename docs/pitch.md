@@ -34,9 +34,9 @@ The jury are researchers. So: every claim can be checked, the demo is the real a
 >
 > The clinician sees one line per patient. Urgent cases do not wait in a dashboard: an alert reaches the clinician the same day, with a case label and a link, and no health data in it.
 
-**The mind and the models (1:20 to 1:40)**
+**Who notices, and what the models do (1:20 to 1:40)**
 
-> What Lanvi offers comes from a short list we wrote ourselves, and plain code picks from it. A small model on the clinic's hardware puts it into words. Gemini reads the numbers of how the face moved in a session and describes the movement, and our code checks every item it reports. We tried to make the system learn something harmful. Here is the log of what it refused.
+> The phone notices when a person drifts from their own normal. Rules we can explain tell the clinic. And Gemini reads the same numbers as a second pair of eyes: when it catches something the rules missed, and the numbers confirm it, the clinic gets a flag. What Lanvi says and offers comes from a short list we wrote ourselves. We tried to make the system learn something harmful. Here is the log of what it refused.
 
 **What we know and do not know (1:40 to 1:52)**
 
@@ -213,6 +213,8 @@ Video:
 | needs review today | emergency |
 | numbers about how the face moves, never a picture | reads emotions, knows you are sad |
 | offers one small thing | treats, therapy |
+| the system notices; rules we can explain | the mind; the AI decides |
+| a second pair of eyes (Gemini) | the AI brain |
 
 ## Questions we expect
 

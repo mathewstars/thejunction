@@ -55,9 +55,9 @@ Lanvi stays with the person through good weeks and dips, and steps in early.
 5. It lets go when they're back: after three days in a row near their normal, or once a clinician has looked.
 6. It remembers what worked and starts with that next time.
 
-THE MIND
+HOW IT NOTICES
 
-Behind the fox is what we call the mind: attention, memory and learning. Small watchers check every new day, activity or note, and once something needs attention Lanvi holds on to it until things really recover. One good day doesn't make it forget a slow slide.
+Behind the fox is a set of plain rules that we can explain: attention, memory and learning. Small watchers check every new day, activity or note, and once something needs attention Lanvi holds on to it until things really recover. One good day doesn't make it forget a slow slide.
 
 It has two kinds of memory: the person's own rules, like "not before 9", which come first, and the lessons it learns about what helps them. Each lesson is checked against the person's real data, and they can see it and say "not true".
 
@@ -79,7 +79,7 @@ HOW IT USES AI
 
 Two models work behind Lanvi, and neither is in charge. A small model on the clinic's own hardware does the everyday work: it words Lanvi's suggestion and sorts a typed note into a few labels.
 
-Gemini does the harder reading. ARKit turns the front camera into numbers about how the face moves; no picture leaves the phone. Plain code counts smiles and blinks with a fixed rule. Gemini reads the same numbers and reports each smile with its start and end, judged against that person's own resting level. Code then checks every item Gemini reports. On 50 sessions we generated with smiles planted at known places, Gemini reported every planted smile and nothing else. That shows how the readers handle a known signal, not how well they read a person. Gemini reads the last weeks of daily Apple Health numbers the same way and names the stretches that changed, including a slow slide that never crosses our fixed rule on a single day. Code checks each one.
+Gemini does the harder reading. ARKit turns the front camera into numbers about how the face moves; no picture leaves the phone. Plain code counts smiles and blinks with a fixed rule. Gemini reads the same numbers and reports each smile with its start and end, judged against that person's own resting level. Code then checks every item Gemini reports. On 50 sessions we generated with smiles planted at known places, Gemini reported every planted smile and nothing else. That shows how the readers handle a known signal, not how well they read a person. Gemini reads the last weeks of daily Apple Health numbers the same way and names the stretches that changed, including a slow slide that never crosses our fixed rule on a single day. Code checks each one. When Gemini catches something the fixed rules missed and code confirms it in the numbers (a slow decline in the daily numbers, or smiles that have become faint), the clinic gets a low-level flag: noticed by the model, confirmed by code.
 
 SAFETY
 
@@ -89,7 +89,7 @@ Gemini gets numbers only, with no name, date or text, and only when the patient'
 
 WHAT IS REAL AND WHAT IS NOT
 
-This is a weekend prototype, not a validated measure. Live at lanvi.app: the server and clinician page, the mind with its record of every decision, the local model, Gemini reading the face and daily numbers, and the same-day alert. The patients on the page are examples with invented names and simulated histories, and the page says so; the model answers shown are real. Nothing has been tested with patients, and nothing here shows that these measures follow depression. That is the study we would like to run with Aalto: about thirty people after TMS, twelve weeks, each compared only with themselves.
+This is a weekend prototype, not a validated measure. Live at lanvi.app: the server and clinician page, the rules with their record of every decision, the local model, Gemini reading the face and daily numbers, and the same-day alert. The patients on the page are examples with invented names and simulated histories, and the page says so; the model answers shown are real. Nothing has been tested with patients, and nothing here shows that these measures follow depression. That is the study we would like to run with Aalto: about thirty people after TMS, twelve weeks, each compared only with themselves.
 
 BUILT WITH
 
