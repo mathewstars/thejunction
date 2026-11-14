@@ -526,7 +526,8 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                         "start": a.get("revontulet_start") or {},
                         "start_z": a.get("revontulet_start_z") or {},
                         "earlier_games": a.get("revontulet_baseline_sessions", 0),
-                        "needed": T.revontulet_baseline_min, "unusual_z": T.revontulet_unusual_z}
+                        "needed": T.revontulet_baseline_min, "unusual_z": T.revontulet_unusual_z,
+                        "pooled_z": T.revontulet_pooled_z}
             else:
                 s["good_things"] = [item(g, "good_things") for g in a.get("good_things") or []]
                 s["plan"] = item(a.get("plan"), "plans")

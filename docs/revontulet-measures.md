@@ -26,14 +26,20 @@ Four numbers are taken from each game (`revontulet_features` in `engine/clinic_e
 
 Both count only games on the same phone (the same `pt_per_cm`, within 0.5): on a new phone they start again. The page labels a game only on the two speeds, at 2.5 or more either way, and a stroke speed needs at least two strokes. The harder crack has four possible values a game, so it is only compared over several games. Sparks and snow games never enter these references, and nothing here reaches the watchers or the judging of a day.
 
-How the rule behaves on generated games: `python -m clinic_engine.revontulet_check`. "Spread" is how much the two speeds vary from game to game, as a multiple of the example's 10% either way; nobody has measured it on people. Measured on 5,000 runs of 24 games per row, with the rule as it is (8 games, 2.5):
+How the rules behave on generated games: `python -m clinic_engine.revontulet_check`. The generator's speeds and game-to-game variation are set from the first real games the team has (six Revontulet games from one person on one evening, 14 November: tracing about 14 cm/s varying by about 13% from game to game, strokes about 21 cm/s varying by about 29%). "Spread" scales that variation; 1.0 is as in those games. Measured on 5,000 runs of 24 games per row:
 
-| Spread | Unchanged games labelled, recent | start | either | Unchanged people with three in a row, recent | start | Example's slide, last two weeks, labelled slower: recent | start |
-|---|---|---|---|---|---|---|---|
-| 1 | 0.1% | 0.1% | 0.2% | 0.0% | 0.0% | 70% | 100% |
-| 2 | 7.4% | 7.1% | 9.9% | 1.0% | 1.1% | 32% | 98% |
-| 3 | 9.4% | 9.8% | 13.2% | 2.5% | 3.9% | 17% | 81% |
+| Spread | Unchanged games labelled: recent | start | either | Unchanged people with three in a row: recent | start | Last three together: looks labelled | people labelled at least once in ten looks | Example's slide labelled slower at its end: one game, recent | one game, start | last three together |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 0.5 | 11% | 11% | 15% | 4% | 6% | 7% | 28% | 30% | 97% | 100% |
+| 1.0 | 11% | 11% | 15% | 4% | 6% | 7% | 27% | 12% | 61% | 92% |
+| 1.5 | 10% | 11% | 15% | 4% | 6% | 7% | 27% | 7% | 33% | 65% |
 
-How the rule got here, on the same generator: with 5 games, a cut of 1.5 and a label on time to choose as well, 37% of unchanged games were labelled at spread 1. With 8 games, 2.0 and two speeds it was 2% at spread 1 but 15 to 17% at spreads 2 and 3. The cut of 2.5 was chosen from this table. It trades away the moving reference's power to see a slow slide, which is what the start is for. The generated games also lack what real play has: odd games (a distracted game, another finger) and slow drifts from day to day. Both add labels, and drifts add runs of them, so the three-in-a-row figures are the most optimistic in the table. The example's slide is large (tracing falls by more than a third); a smaller change would be caught less often, and that has not been measured. These are properties of the generator, not of people.
+Three rules: one game against the games just before (cut 2.5), one game against the start (cut 2.5), and the last three games together against the start (their mean, in units of the start's spread over root three, cut 3.0; `revontulet_pooled_z`). What the table says:
+
+- The false-label rates do not depend on the spread, because the rule measures a game in units of the person's own spread. They come from estimating that spread from 8 to 20 games: about one unchanged game in nine gets a label per reference. With 10 start games this cannot be made much smaller without losing the slide.
+- One game against the recent games sees little of a slow slide, because the recent games slide along. That is what the start is for.
+- Three games together catch the slide far more often than one game, at a lower false rate per look. Over ten looks, though, about one unchanged person in four sees that label at least once: a single label is still weak evidence.
+
+How the rule got here: with the first, steadier generator (3% variation) the numbers looked much better (0 to 13% false labels, 81 to 100% of the slide caught against the start). The first real games showed four times the speed and four to ten times the variation, and the table above replaced the earlier one. The numbers 8, 2.5 and 3.0 were picked on generated games. The generated games lack what real play has: odd games (a distracted game, another finger) and slow drifts from day to day, which both add labels. The example's slide is large (speeds fall by over a third); a smaller change would be caught less often, and that has not been measured. These are properties of the generator, not of people.
 
 The example person for the page: `python -m clinic_engine.seed_revontulet` (Example V-001, 24 generated games with the slide written in).

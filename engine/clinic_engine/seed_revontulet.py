@@ -32,22 +32,35 @@ PHQ9 = (5, 4, 5, 6, 8, 11, 13, 15)
 PT_PER_CM = 64.2
 
 
+# Speeds and their game-to-game variation are set from the first real games the
+# team has (six Revontulet games from one person on one evening, 14 Nov 2026):
+# tracing about 14 cm/s varying by about 13% from game to game, strokes about
+# 21 cm/s varying by about 29%. One person, ten minutes: a first look, not a norm.
+TRACE_CM_S, TRACE_VARIES = 14.0, 0.13
+STROKE_CM_S, STROKE_VARIES = 21.0, 0.29
+SLIDE_DROP = 0.37             # how far the speeds fall at the bottom of the example's slide
+
+
 def _game(rng: random.Random, slide: float, spread: float = 1.0) -> dict:
     """One game's `revontulet` object (the shape of models.RevontuletIn).
-    `spread` widens how much the two speeds vary from game to game (1.0: the
-    example's 10% either way), for revontulet_check."""
-    wob = lambda: rng.uniform(1 - 0.1 * spread, 1 + 0.1 * spread)  # noqa: E731
+    `spread` scales how much the two speeds vary from game to game (1.0: as in
+    the first real games), for revontulet_check."""
+    def level(base: float, varies: float) -> float:
+        # one draw per game: a good or a slow game moves all its rounds together
+        return base * (1 - SLIDE_DROP * slide) * max(0.3, rng.gauss(1.0, varies * spread))
+
+    trace, stroke = level(TRACE_CM_S, TRACE_VARIES), level(STROKE_CM_S, STROKE_VARIES)
     rounds = []
     for _ in range(3):
         hard = rng.random() < 0.8 - 0.7 * slide
         shown = 2 if hard else 0
-        speed = PT_PER_CM * (3.4 - 1.25 * slide) * wob()
-        ms = int(rng.uniform(1100, 1500) * (1 + 0.6 * slide))
+        speed = PT_PER_CM * trace * rng.uniform(0.9, 1.1)
+        length = rng.uniform(270, 300)
         rounds.append({
             "effort": "hard" if hard else "easy",
             "choice_ms": int(rng.uniform(900, 1900) * (1 + 0.9 * slide)),
             "trace_start_ms": int(rng.uniform(350, 800) * (1 + 0.5 * slide)),
-            "trace_ms": ms, "trace_length_pt": round(speed * ms / 1000, 1),
+            "trace_ms": int(1000 * length / speed), "trace_length_pt": round(length, 1),
             "trace_mean_speed_pt_s": round(speed, 1),
             "trace_peak_speed_pt_s": round(speed * rng.uniform(1.8, 2.2), 1),
             "trace_lifts": 1 if rng.random() < 0.1 + 0.4 * slide else 0,
@@ -56,12 +69,12 @@ def _game(rng: random.Random, slide: float, spread: float = 1.0) -> dict:
             "embers_shown": shown,
             "embers_hit": sum(rng.random() < 0.9 - 0.3 * slide for _ in range(shown)),
             "bonus": hard and rng.random() < 0.3})
-    strokes = [{"ms": int(rng.uniform(1100, 1700)), "length_pt": round(rng.uniform(350, 430), 1),
-                "mean_speed_pt_s": round(PT_PER_CM * (4.6 - 1.4 * slide) * wob(), 1)}
+    strokes = [{"ms": int(rng.uniform(300, 700)), "length_pt": round(rng.uniform(350, 430), 1),
+                "mean_speed_pt_s": round(PT_PER_CM * stroke * rng.uniform(0.9, 1.1), 1)}
                for _ in range(rng.randint(1, 3))]
     fox = rng.random() < 0.6 * slide
     return {"rounds": rounds, "strokes": strokes,
-            "broke_through_s": None if fox else round(rng.uniform(46, 62) + 14 * slide, 1),
+            "broke_through_s": None if fox else round(rng.uniform(18, 40) + 14 * slide, 1),
             "fox_finished": fox, "pt_per_cm": PT_PER_CM,
             "touch_radius_mean_pt": round(rng.uniform(19, 23), 1),
             "touch_radius_var": round(rng.uniform(3, 6), 1)}

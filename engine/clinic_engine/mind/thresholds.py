@@ -69,6 +69,10 @@ class Thresholds:
     # and 37% with 5 games, 1.5 and a label on time to choose as well).
     revontulet_baseline_min: int = 8
     revontulet_unusual_z: float = 2.5
+    # The last three games taken together against the start: their mean, in
+    # units of the start's spread divided by root three. One game varies a lot
+    # (about 13% in tracing speed in the first real games), three together less.
+    revontulet_pooled_z: float = 3.0
     # The fixed reference: the person's start, games 3 to 12 (the first two are practice).
     revontulet_start_from: int = 2
     revontulet_start_to: int = 12
