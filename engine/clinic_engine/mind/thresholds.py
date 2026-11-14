@@ -153,6 +153,13 @@ class Thresholds:
     # (code's smiles left out), the higher of the two, so a step in the baseline
     # (the phone moved) is not read as a smile. Each mouth corner must carry at
     # least this share of the mean rise: jitter in one corner is not a smile.
+    # A report that lies inside a smile of code's at least this many times
+    # longer is not dropped as a poor match at once: the fixed rule merges a
+    # whole stretch into one smile when a mouth rests near the onset. It is
+    # tested against the local rest (code's smiles not left out, twice the
+    # peak rise) and kept apart as "inside_long" when the rise is there.
+    frames_long_smile_ratio: float = 4.0
+    frames_long_smile_min_s: float = 5.0  # and code's smile lasts at least this long
     frames_faint_window_s: float = 8.0
     frames_faint_side_share: float = 0.5
     # A reported segment must last this long (the prompt asks for two seconds);

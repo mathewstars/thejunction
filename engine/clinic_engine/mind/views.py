@@ -371,7 +371,7 @@ def _reading_out(a: dict) -> dict:
 
 
 _AGREEMENT_KEYS = ("smiles_reported", "smiles_confirmed", "smiles_corrected", "smiles_matched",
-                   "smiles_faint", "smiles_brief", "smiles_dropped", "smiles_not_in_numbers",
+                   "smiles_faint", "smiles_brief", "smiles_inside_long", "smiles_dropped", "smiles_not_in_numbers",
                    "smiles_poor_match", "smiles_missed", "smiles_code",
                    "smile_precision", "smile_recall", "smile_start_error_s",
                    "segments_reported", "segments_confirmed", "blinks_model", "blinks_code",

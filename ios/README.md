@@ -7,7 +7,7 @@ The Xcode project goes here. Peter writes the code, Matthew builds it on his Mac
 Read first:
 
 - `docs/app-design.md`: the screens and the calls to the server.
-- `docs/game-interface.md`: what the app logs during an AR round and the record it sends.
+- `docs/game-interface.md`: what the app logs during each activity and the record it sends.
 
 Rules:
 
