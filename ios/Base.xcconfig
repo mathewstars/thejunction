@@ -1,7 +1,11 @@
-// Committed defaults. The real values live in the git-ignored Config.xcconfig
-// next to this file (copy Config.example.xcconfig). With no Config.xcconfig the
-// app runs in offline demo mode with sample data.
-LANVI_SERVER_URL =
+// Committed defaults. Every build talks to the team's live server, lanvi.app
+// (its address is public in the root README). A pairing code is never committed:
+// the app asks for the one-time code from the clinic on first run.
+//
+// A private, git-ignored Config.xcconfig next to this file may override both
+// (for example a local engine). Launch with -offline for sample data instead.
+// In xcconfig files "//" starts a comment, hence the $() between the slashes.
+LANVI_SERVER_URL = https:/$()/lanvi.app
 LANVI_PAIRING_CODE =
 
 #include? "Config.xcconfig"
