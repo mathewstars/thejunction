@@ -135,6 +135,16 @@ struct LanviMotion {
         // the newest picture fades in over the one before it (drawn first, fading out).
         let faces = [now.face] + past.prefix(3).map(\.face)
         f.eyes = Self.fade(faces.map(\.eyes))
+        // Wide eyes pop: the swap to and from them is at once (a cross-fade between two
+        // open eyes showed both, see-through, for a few frames), and the wide eye starts
+        // a touch big and settles.
+        if f.eyes.contains(where: { $0.0 == .wide }) {
+            f.eyes = [(now.face.eyes, 1)]
+            if now.face.eyes == .wide {
+                let since = Self.taps.indices.first(where: { past[$0].face.eyes != .wide }).map { Self.taps[$0] } ?? 1
+                f.eyePop = 0.08 * (1 - Motion.smooth(0, 0.16, since))
+            }
+        }
         f.mouths = Self.fade(faces.map(\.mouth))
         // A talking mouth changes shape many times a second: it swaps at once (the swaps
         // fall where it is smallest), so it is never left half see-through between two.

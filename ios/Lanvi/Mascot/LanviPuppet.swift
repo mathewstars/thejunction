@@ -683,8 +683,8 @@ struct LanviPuppet: View {
             .opacity(lidded)
             ForEach(Array(others.enumerated()), id: \.offset) { _, layer in
                 ZStack(alignment: .topLeading) {
-                    eye(layer.0, left: true, f.pose)
-                    eye(layer.0, left: false, f.pose)
+                    eye(layer.0, left: true, f.pose, pop: f.eyePop)
+                    eye(layer.0, left: false, f.pose, pop: f.eyePop)
                 }
                 .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k, alignment: .topLeading)
                 .opacity(layer.0 == .happy ? Motion.smooth(0.5, 1, happy) : layer.1)
@@ -718,10 +718,10 @@ struct LanviPuppet: View {
     }
 
     /// A closed, happy or wide eye: its own picture.
-    private func eye(_ shape: EyeShape, left: Bool, _ q: Pose) -> some View {
+    private func eye(_ shape: EyeShape, left: Bool, _ q: Pose, pop: Double = 0) -> some View {
         let name = shape.name + (left ? "-l" : "-r")
         return onPatch(name, dropY: shape.dropY, left: left, q) { _, _ in
-            Image("puppet-" + name).resizable().interpolation(.high)
+            Image("puppet-" + name).resizable().interpolation(.high).scaleEffect(1 + pop)
         }
     }
 

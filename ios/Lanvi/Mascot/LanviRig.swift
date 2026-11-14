@@ -304,6 +304,8 @@ struct RigFrame {
     var headSX = 1.0, headSY = 1.0
     /// Eye and mouth pictures with weights (they cross-fade over three or four frames).
     var eyes: [(EyeShape, Double)] = [(.open, 1)]
+    /// The wide eyes' pop as they open (extra size, settling to 0).
+    var eyePop = 0.0
     var mouths: [(MouthShape, Double)] = [(.smile, 1)]
     var face = Face()
 

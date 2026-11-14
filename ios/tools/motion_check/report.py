@@ -63,7 +63,9 @@ def judge(name, rows):
     jerk = max(abs((ys[i + 1] - ys[i]) - (ys[i] - ys[i - 1])) + abs((xs[i + 1] - xs[i]) - (xs[i] - xs[i - 1]))
                for i in range(1, len(xs) - 1))
     eye_swaps = sum(1 for a, b in zip(rows, rows[1:]) if a["eyes"] != b["eyes"])
-    eye_pops = sum(1 for a, b in zip(rows, rows[1:]) if a["eyes"] != b["eyes"] and b["eyeFade"] >= 0.999)
+    # (wide eyes pop in and out at once by design: not counted)
+    eye_pops = sum(1 for a, b in zip(rows, rows[1:]) if a["eyes"] != b["eyes"] and b["eyeFade"] >= 0.999
+                   and "wide" not in (a["eyes"], b["eyes"]))
     mouth_swaps = sum(1 for a, b in zip(rows, rows[1:]) if a["mouth"] != b["mouth"])
     # (a talking mouth swaps shape at once by design, where it is smallest: not a pop)
     mouth_pops = sum(1 for a, b in zip(rows, rows[1:])
