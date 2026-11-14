@@ -14,6 +14,7 @@ struct HomeChatScreen: View {
     @Environment(AppStore.self) private var store
     @State private var draft = ""
     @FocusState private var focused: Bool
+    @State private var closing = false
     @State private var pose: LanviPose = .curious
 
     private let limit = 280
@@ -66,6 +67,7 @@ struct HomeChatScreen: View {
                     LanviView(pose: pose, size: 74)
                         .lanviHops(false)
                         .lanviMood(draft.isEmpty ? nil : .listening)
+                        .showsAfterRise(closing: closing)
                 }
                 .frame(width: 96, height: 80)
                 // The little fox here takes no touches of its own, so a tap on him
@@ -147,6 +149,7 @@ struct HomeChatScreen: View {
 
     /// Close: put the keyboard away first, so it never shrinks along with the screen.
     private func close() {
+        closing = true
         guard focused else { onClose(); return }
         focused = false
         Task { @MainActor in
@@ -453,6 +456,6 @@ private struct ChatCardPressStyle: ButtonStyle {
             .offset(y: pressed ? 4 : 0)
             .background(shape.fill(Theme.line).offset(y: 4))
             .animation(LanviTiming.press, value: pressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: pressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: pressed) { wasDown, isDown in isDown && !wasDown }
     }
 }

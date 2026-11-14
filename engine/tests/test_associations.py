@@ -754,3 +754,19 @@ def test_task_bound_is_set_by_code_whatever_caveats_a_model_adds(env):
     flags = {r["key"]: r["task_bound"] for r in out["rows"]}
     assert flags and all(v == (k in _TASK_CONFOUND) for k, v in flags.items())
     assert flags.get("face.look_down_share") is True and flags.get("face.smile_intensity") is False
+
+
+def test_a_measure_specific_caveat_is_kept_only_where_code_lists_it():
+    rows = [_row("face.look_down_share", "face", "consistent", "moderate"),
+            _row("face.smile_intensity", "face", "consistent", "weak"),
+            _row("daily.steps", "daily", "consistent", "moderate")]
+    code_ov = A.code_overall(rows, "rating", [], unit="rating", n_obs=13)
+    reply = {"rows": [{"key": r["key"], "agreement": r["agreement"], "strength": r["strength"],
+                       "caveats": ["task_confound", "single_person"]} for r in rows],
+             "overall": dict(code_ov)}
+    out, _, corrections = A.merge(reply, rows, code_ov, "rating", unit="rating", n_obs=13)
+    by = {r["key"]: [c["code"] for c in r["caveats"]] for r in out}
+    assert "task_confound" in by["face.look_down_share"]
+    assert "task_confound" not in by["face.smile_intensity"] and "task_confound" not in by["daily.steps"]
+    assert all("single_person" in v for v in by.values())            # a general caveat stays
+    assert sum(c["reason"] == "caveat_not_for_this_measure" for c in corrections) == 2

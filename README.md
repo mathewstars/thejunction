@@ -13,6 +13,20 @@ After TMS treatment for depression the daily clinic visits end, and the person i
 
 Built at Junction 2026 for Aalto University's challenge "Beyond the Clinic", with the Gemini API.
 
+## Open the demo
+
+Go to https://lanvi.app. To sign in you need the demo login: write to stafurik@gmail.com or call +421 917 916 569 and we will send it. It is a demo server: the patients are examples with generated histories, plus one shared test profile, "Team test P" (Patient T-001), that receives what our own phones send. Start with Anna Korhonen.
+
+## Install the app
+
+You need a Mac with Xcode and an iPhone. The face numbers need a phone with Face ID; everything else also runs in the simulator.
+
+1. Clone this repository and open `ios/Lanvi.xcodeproj` in Xcode.
+2. Under Signing & Capabilities choose your own team, pick your iPhone and press Run.
+3. There is nothing to link for now: every install connects to the shared test profile on lanvi.app. Play a game or do the evening check-in, then open "Team test P" on the clinician page to see it arrive.
+
+The demo login above is public, so anyone can see what an install sends (games, face numbers and, if you allow it, Apple Health days). Do not allow Apple Health on a phone whose data you want to keep private. More about the app: [`ios/README.md`](ios/README.md).
+
 ## Two things to look at
 
 ### The mind

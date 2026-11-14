@@ -15,8 +15,16 @@ struct ServerConfig {
         if let u = URL(string: rawURL), let scheme = u.scheme, ["http", "https"].contains(scheme), u.host != nil {
             url = u
         }
-        return ServerConfig(serverURL: url, pairingCode: rawCode.isEmpty ? nil : rawCode)
+        return ServerConfig(serverURL: url, pairingCode: rawCode.isEmpty ? openLinkingCode : rawCode)
     }()
+
+    /// Linking is switched off for now (dad, 14 Nov evening): a build with no clinic code
+    /// still connects, and the server puts every phone on the shared test profile
+    /// (its `OPEN_PAIRING_PATIENT` setting; it does not look at the code while that is on).
+    /// The placeholder only has the shape of a code. To bring clinic codes back, set this
+    /// to nil: a build without a code then runs on offline sample data again.
+    static let openLinkingCode: String? = "OPEN-OPEN-OPEN"
+    // static let openLinkingCode: String? = nil
 
     /// Talk to a real server. `-offline` forces the demo even with a config.
     var isLive: Bool {

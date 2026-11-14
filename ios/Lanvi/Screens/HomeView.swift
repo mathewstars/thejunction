@@ -61,6 +61,8 @@ struct HomeView: View {
     @State private var look: UnitPoint?
     /// The mouth Lanvi shows while saying a new line (nil = the puppet decides).
     @State private var mouth: MouthShape?
+    /// `-bubbleTest`: Lanvi's line changes three times (recordings of the bubble).
+    @State private var testLine: String?
     /// What the chat grows out of: the bubble or the round chat button.
     /// A screen to open once the sheet on top has gone.
 
@@ -228,7 +230,6 @@ struct HomeView: View {
         return HomeSpeech(text: bubbleText, target: target, width: L.size.width, mouth: $mouth) {
             open(.chat)
         }
-            .accessibilityIdentifier("home.speech")
             .offset(y: -lift)
             .opacity(arrived ? 1 : 0)
     }
@@ -392,6 +393,7 @@ struct HomeView: View {
     /// In the care voice: Lanvi asks for today's thing; after an activity, the
     /// server's line; when it is done, glad you came; never guilt, never a countdown.
     private var bubbleText: String {
+        if let testLine { return testLine }
         if celebrating { return store.line.isEmpty ? " " : store.line }
         if case .done(let d) = store.todayThing {
             return d.restful ? "That's all right. I'm here." : "That was our thing for today. I'm glad you came."
@@ -507,6 +509,13 @@ struct HomeView: View {
     private func runDemo() async {
         await store.start()
         let args = ProcessInfo.processInfo.arguments
+        if args.contains("-bubbleTest") {
+            for line in ["Hi!", "The ice is thick today, and the lights are waiting behind it. Help me break it?", "Sit with me a minute?"] {
+                try? await Task.sleep(for: .seconds(2.2))
+                testLine = line
+            }
+            return
+        }
         func value(_ key: String) -> String? {
             guard let i = args.firstIndex(of: key), i + 1 < args.count else { return nil }
             return args[i + 1]
@@ -616,6 +625,6 @@ private struct SpeechPressStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .opacity(configuration.isPressed ? 0.85 : 1)
             .animation(.spring(response: 0.18, dampingFraction: 0.7), value: configuration.isPressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed) { wasDown, isDown in isDown && !wasDown }
     }
 }

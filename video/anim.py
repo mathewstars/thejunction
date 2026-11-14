@@ -19,11 +19,11 @@ BARS = [("smile, left", "mouthSmileLeft"), ("smile, right", "mouthSmileRight"), 
         ("jaw open", "jawOpen"), ("look down", "eyeLookDownLeft")]
 BCOL = [col(n) for _, n in BARS]
 
-def stream(t, start):
+def stream(t, start, qt=1e9):
     w, h = 640 * S, 720 * S; im = Image.new("RGB", (w, h), BG); g = ImageDraw.Draw(im)
     a = min(1.0, t / 0.5)
     g.text((40 * S, 44 * S), "What leaves the phone", font=f(32), fill=mix(BG, INK, a))
-    g.text((40 * S, 90 * S), "55 numbers, 30 times a second. No photo, no video.", font=f(16), fill=mix(BG, MUTED, a))
+    g.text((40 * S, 90 * S), "No photo, no video. Face-movement numbers only, 30 a second.", font=f(16), fill=mix(BG, MUTED, a))
     pos = (start + t) * RATE; i0 = min(len(SM) - 2, int(pos)); fr = pos - i0
     for k, (label, _) in enumerate(BARS):
         if t < 0.25 + 0.06 * k: continue
@@ -44,7 +44,10 @@ def stream(t, start):
             y = (472 + r * 21) * S; b = 0.25 + 0.75 * (r + 1) / rows
             txt = f"{i / RATE:6.3f}  " + " ".join(f"{SM[i][CH.index(n)]:.2f}" for _, n in BARS)
             g.text((40 * S, y), txt, font=f(13, True), fill=mix(BG, INK if r == rows - 1 else MUTED, b))
-    g.text((40 * S, 668 * S), "Example session, generated numbers", font=f(14), fill=MUTED)
+    if t >= qt:
+        al = min(1.0, (t - qt) / 0.6)
+        g.text((40 * S, 652 * S), "Do they change before a hard week?", font=f(24), fill=mix(BG, GLOW, al))
+    g.text((40 * S, 692 * S), "Example session, generated numbers", font=f(14), fill=MUTED)
     return im.resize((640, 720), Image.LANCZOS)
 
 SMILE = [(a + b) / 2 for a, b in zip(col("mouthSmileLeft"), col("mouthSmileRight"))]
@@ -61,7 +64,7 @@ def check(t, beats):
     # at the third beat: what the model reported, and what code made of it
     spans = [(truth[0]["start_s"], truth[0]["end_s"], True), (17.2, 18.9, False), (truth[2]["start_s"], truth[2]["end_s"], True)]
     for k, (a, b, ok) in enumerate(spans):
-        st = t3 + (0.5, 2.4, 1.0)[k]
+        st = t3 + (0.5, 1.7, 1.0)[k]
         if t < st: continue
         al = min(1.0, (t - st) / 0.35); c = GLOW if ok else RED
         g.rectangle((X(a - 0.5), yb - amp - 6 * S, X(b + 0.5), yb), fill=mix(BG, c, 0.20 * al), outline=mix(BG, c, al), width=2 * S)
@@ -71,7 +74,7 @@ def check(t, beats):
     upto = min(1.0, t / 1.6) * (len(SMILE) - 1); pts = []
     for i in range(0, int(upto) + 1, 3): pts.append((X(i / RATE), Y(SMILE[i])))
     if len(pts) > 1: g.line(pts, fill=INK, width=3 * S, joint="curve")
-    heads = [("Rules notice a change.", "Plain rules we can explain raise each flag."),
+    heads = [("Rules raise a flag.", "Plain rules we can explain, not a model."),
              ("Two models weigh in.", "A small local model and Gemini: agree, raise or lower."),
              ("Code checks every claim.", "What the numbers don't support is dropped.")]
     for k, (hd, sub) in enumerate(heads):
@@ -80,8 +83,8 @@ def check(t, beats):
         g.text((x, y), str(k + 1), font=f(44), fill=mix(BG, GLOW, al))
         g.text((x + 44 * S, y + 4 * S), hd, font=f(25), fill=mix(BG, INK, al))
         g.text((x + 44 * S, y + 42 * S), sub, font=f(14), fill=mix(BG, MUTED, al))
-    if t >= t3 + 3.6:
-        al = min(1.0, (t - t3 - 3.6) / 0.5)
+    if t >= t3 + 2.6:
+        al = min(1.0, (t - t3 - 2.6) / 0.5)
         txt = "One real run on our server:   3 smiles reported   ·   2 confirmed by code   ·   1 dropped"
         tw = g.textlength(txt, font=f(22)); g.text(((w - tw) / 2, 500 * S), txt, font=f(22), fill=mix(BG, GLOW, al))
         t2 = "Only confirmed items reach the clinician."; tw = g.textlength(t2, font=f(17)); g.text(((w - tw) / 2, 540 * S), t2, font=f(17), fill=mix(BG, MUTED, al))
@@ -90,8 +93,8 @@ def check(t, beats):
 
 mode, out, secs = sys.argv[1], sys.argv[2], float(sys.argv[3]); os.makedirs(out, exist_ok=True); n = int(secs * 24)
 if mode == "stream":
-    start = float(sys.argv[4]) if len(sys.argv) > 4 else 3.6
-    for k in range(n): stream(k / 24, start).save(f"{out}/{k:04d}.png")
+    start = float(sys.argv[4]) if len(sys.argv) > 4 else 3.6; qt = float(sys.argv[5]) if len(sys.argv) > 5 else 1e9
+    for k in range(n): stream(k / 24, start, qt).save(f"{out}/{k:04d}.png")
 else:
     beats = [float(x) for x in sys.argv[4].split(",")]
     for k in range(n): check(k / 24, beats).save(f"{out}/{k:04d}.png")

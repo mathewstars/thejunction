@@ -457,7 +457,7 @@ private struct RoundChunkyStyle: ButtonStyle {
             .background(Circle().fill(Theme.nightTop).offset(y: 4))
             .contentShape(Circle())
             .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: pressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: pressed) { wasDown, isDown in isDown && !wasDown }
     }
 }
 

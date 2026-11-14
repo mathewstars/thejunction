@@ -57,6 +57,9 @@ class Settings:
     rate_burst: int = 60
     session_ttl_minutes: int = 120
     pairing_ttl_hours: int = 24
+    # Linking switched off for a demo: the label of the one patient every phone is
+    # connected to, whatever pairing code it sends. Empty (the default) = codes are checked.
+    open_pairing_patient: str = ""
 
     # The mind
     default_timezone: str = "Europe/Helsinki"
@@ -149,6 +152,7 @@ class Settings:
             rate_burst=_env_int("RATE_BURST", 60),
             session_ttl_minutes=_env_int("SESSION_TTL_MINUTES", 120),
             pairing_ttl_hours=_env_int("PAIRING_TTL_HOURS", 24),
+            open_pairing_patient=_env("OPEN_PAIRING_PATIENT", ""),
             default_timezone=_env("DEFAULT_TIMEZONE", "Europe/Helsinki"),
             tick_seconds=_env_int("TICK_SECONDS", 300),
             review_inline=_env_bool("REVIEW_INLINE", False),

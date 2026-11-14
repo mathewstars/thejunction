@@ -174,6 +174,6 @@ private struct HelpsChipStyle: ButtonStyle {
             .offset(y: pressed ? 4 : 0)
             .background(shape.fill(on ? Theme.brandEdge : Theme.line).offset(y: 4))
             .animation(LanviTiming.press, value: pressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: pressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: pressed) { wasDown, isDown in isDown && !wasDown }
     }
 }
