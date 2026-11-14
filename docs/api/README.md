@@ -298,7 +298,7 @@ How it works: code builds one row per day (measures averaged per day, face value
 
 Response fields: `status`, `appraised_by`, `checked_by`, `generated_at`, `design` {type, days, sessions, first_day, last_day, rows_tested, min_n}, `reference` {key, label, kind, worse_is, ratings}, `rows` [{key, label, group, expected, support, why, status, n, rho, ci_low, ci_high, p_adj, lead_days, contrast, quality, agreement, strength, agreement_source, strength_source, caveats [{code, text, by}]}], `overall` {pattern, confidence, independent_lines, strongest, leads_reference, main_alternative, main_alternative_text, next_step, sources}, `data_notes` [{code, text}], `corrections` [{where, key, field, model, code, reason}], `hypotheses_reviewed_by_clinician`, `disclaimer`, `inputs` {reference, n_days, n_sessions, generated_at, model}.
 
-The face summary (`face` on focus and breathing activities) also accepts, all optional and numbers only: `smile_time_share`, `eye_smile_share`, `smile_response_share`, `smile_response_latency_s`, `brow_down_share`, `inner_brow_up_share`, `blink_duration_ms`, `head_pitch_deg`, `head_movement`, `smile_asymmetry`. Each is compared with the person's own normal like the others.
+The face summary (`face` on focus and breathing activities) also accepts, all optional and numbers only: `smile_time_share`, `eye_smile_share`, `smile_response_share`, `smile_response_latency_s`, `brow_down_share`, `inner_brow_up_share`, `blink_duration_ms`, `head_pitch_deg`, `head_movement`, `smile_asymmetry`, `lip_down_share`, `lip_press_share`. Each is compared with the person's own normal like the others.
 
 ## Errors
 

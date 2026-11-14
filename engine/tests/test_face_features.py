@@ -91,12 +91,28 @@ def test_head_angles_and_shares():
     assert s["head_tilt_deg"] == pytest.approx(3.0, abs=0.1)
     assert s["look_down_share"] == pytest.approx(0.25, abs=1e-3)
     assert s["brow_down_share"] == 0 and s["inner_brow_up_share"] == 0
+    assert s["lip_down_share"] == 0 and s["lip_press_share"] == 0
+
+
+def test_lip_corners_down_and_lips_pressed_shares():
+    # Corners down for 15 of 60 s, lips pressed for the last 30 s; a resting mouth
+    # (ARKit jitter around 0.05) never reaches the threshold.
+    s = summarize(make_raw(lip_down=[(0, 15)], lip_press=[(30, 30)]))
+    assert s["lip_down_share"] == pytest.approx(0.25, abs=1e-3)
+    assert s["lip_press_share"] == pytest.approx(0.5, abs=1e-3)
+    # One side alone at 0.5 gives a mean of about 0.27: under the 0.3 threshold.
+    raw = make_raw()
+    i = raw["channels"].index("mouthFrownLeft")
+    for row in raw["samples"]:
+        row[i] = 0.5
+    assert summarize(raw)["lip_down_share"] == 0
 
 
 def test_missing_optional_channels_give_null_for_what_needs_them():
     s = summarize(make_raw(channels=REQUIRED, smiles=[(10, 1, SMILE, SMILE)]))
     for k in ("look_down_share", "brow_down_share", "inner_brow_up_share", "eye_smile_share",
-              "head_pitch_deg", "head_tilt_deg", "head_movement"):
+              "head_pitch_deg", "head_tilt_deg", "head_movement", "lip_down_share",
+              "lip_press_share"):
         assert s[k] is None, k
     assert s["smile_rate_per_min"] == 1.0 and s["blink_rate_per_min"] == 0
     assert s["facial_activity"] is not None  # from the two smile channels
@@ -106,10 +122,11 @@ def test_untracked_stretches_are_left_out():
     # Second half untracked; a smile inside it does not count, one before does.
     s = summarize(make_raw(untracked=[(30, 30)], smiles=[(10, 1, SMILE, SMILE),
                                                          (40, 1, SMILE, SMILE)],
-                           look_down=[(0, 15)]))
+                           look_down=[(0, 15)], lip_press=[(45, 15)]))
     assert s["tracking_quality"] == 0.5
     assert s["smile_rate_per_min"] == 2.0  # one smile in 30 tracked seconds
     assert s["look_down_share"] == pytest.approx(0.5, abs=1e-3)  # 15 of 30 tracked seconds
+    assert s["lip_press_share"] == 0  # pressed only while untracked
 
 
 def test_a_blink_cut_by_lost_tracking_is_dropped_a_smile_is_kept():
