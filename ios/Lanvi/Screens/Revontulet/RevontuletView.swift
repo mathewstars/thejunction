@@ -518,6 +518,10 @@ struct RevontuletView: View {
         result?.ptPerCm = API.Revontulet.pointsPerCentimetre(displayScale: displayScale)
         print("revontulet: handed back \(result == nil ? "nothing" : result!.completed ? "a finished game" : "a stopped game")")
         if box.auto != nil, let r = result {
+            // For the connection check: the measures exactly as the record carries them.
+            if let m = ActivityRouter.record(r).revontulet, let json = try? API.encoder.encode(m) {
+                print("revontulet: measures \(String(decoding: json, as: UTF8.self))")
+            }
             print("revontulet: result completed=\(r.completed) interrupted=\(r.interrupted) seconds=\(String(format: "%.1f", r.endUptime - r.startUptime)) launches=\(r.launches) embers=\(r.embersHit)/\(r.embersShown) reactions=\(r.reactionMs) strokes=\(r.strokes.count) foxFinished=\(r.foxFinishedWall)")
         }
         onDone(result)
