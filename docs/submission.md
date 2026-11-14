@@ -11,14 +11,14 @@ The platform does not read this file. After a change here, the same change has t
 | Field | Limit | Value now |
 |---|---|---|
 | Project name | 30 characters | Lanvi |
-| Punchline | 200 characters | See below (155 characters) |
-| Description | 5,000 characters | See below (4,997 characters) |
+| Punchline | 200 characters | See below (181 characters) |
+| Description | 5,000 characters | See below (4,990 characters) |
 | Challenge | one | Aalto University, Beyond the Clinic |
 | Tech challenge | any number | Google DeepMind, Best Use of Gemini API |
 | Project demo | link | https://lanvi.app/demo (no login, read only; https://lanvi.app itself needs a login, which is no longer published) |
 | Source code | link | https://github.com/mathewstars/thejunction |
 | Video | public link, at most 2:00 | the film is ready (1:49); the link is missing until it is uploaded |
-| Other link | link | empty |
+| Other link | link | https://lanvi.app/demo#/blueprint (the research and the mind in depth, no login) |
 | Presentation | PDF or slides, at most 20 MB | deck ready as a PDF (8 slides, 1.1 MB); not uploaded yet |
 
 Still to do before Sunday 10:00:
@@ -32,53 +32,55 @@ Still to do before Sunday 10:00:
 ## Punchline
 
 ```
-Lanvi helps people stay well at home after depression treatment. It learns each person's own normal, notices a slide early and answers with one small step.
+After TMS for depression, a rescued fox asks one small thing a day. The phone compares you with your own normal, and the clinic hears when you start to slide. Try it: lanvi.app/demo
 ```
 
 ## Description
 
-Plain text on purpose. The form says it supports markdown, but we keep it without markdown symbols so it reads the same everywhere. Rewritten on Saturday night at Matej's word: brief on the clinic software, long on the AR research and on how the mind was tested; the film carries the whole prototype.
+Plain text on purpose. The form says it supports markdown, but we keep it without markdown symbols so it reads the same everywhere. Rewritten on Saturday night at Matej's word: its headings are the jury's four questions, it is brief on the clinic software and long on what the phone measures and on how the mind was tested; the film carries the whole prototype. An independent reader scored it as a juror against the earlier version and its edits are in.
 
 ```
-IN SHORT
+After TMS the daily clinic visits end and nobody sees a slow slide back. Lanvi is a small Arctic fox on the phone that asks for one small thing a day. While the person plays, the phone measures; rules and two models, checked on generated cases, tell the clinic. A prototype on example data: open lanvi.app/demo, no login.
 
-After TMS treatment for depression the clinic visits end and nobody is looking. Lanvi is a small Arctic fox on the phone that asks for one small thing a day. Behind it the phone keeps count in numbers only, each person is compared with their own normal, and a clinic page shows who has drifted. The film shows the whole prototype. This text is about the two parts we tested hardest: what the camera and the game measure, and the mind that decides what the clinic hears.
+COULD IT HELP PEOPLE STAY WELL AT HOME?
 
-THE AR RESEARCH
+The clinic hears before the next appointment, in two ways. When someone drifts from their own normal for days, their name moves to the top of the clinic's list and, if it is serious, the clinic gets one message the same day. When someone writes that they need help, help numbers open on the phone at once and the clinic is told, with no model in between. Lanvi is not a crisis service; the help wording still needs a clinician's review. The person gets one small offer, chosen from what helped them before: sense, respond, learn.
 
-During the 90-second game and the breathing minute, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. The server computes 18 measures from them: smiles and whether they reach the eyes, blinks, gaze down, brows, lip corners, how much the face moves at all.
+WOULD SOMEONE RECOVERING FROM DEPRESSION USE IT EVERY DAY?
 
-The game, Revontulet, is built from tasks with a study behind them: a choice between an easy and a hard shot (effort for reward), a traced half circle (drawing speed and lifts), reaction time to embers, and slow strokes over the sleeping fox (swipe speed). Each number is compared only with that person's own earlier games.
+One thing a day, ninety seconds or less: a game, a minute of breathing together, three good things in the evening. No score, no streak, nothing to set up, and a bad day costs nothing. After a week away the fox says "I kept the light on for you." The camera is optional and everything works without it.
 
-Two readers go through every face session: a fixed rule in code, and Gemini, whose every reported smile is checked against the numbers. We tested both on sessions we generated with smiles planted at known places. On ten hard sessions, with talking and a moving phone, the fixed rule found 20 of 28 clear smiles and none of 13 faint ones. A simple rule relative to the person's own rest found them all but also reported 22 things that were not smiles. Gemini found all 41 and reported nothing else; across 50 sessions it did the same. Gemini had been told what talking looks like and the rules had not, and generated data is cleaner than a face. Step one of the study is the same count on real recordings marked by two people.
+SMART SENSING: WHAT THE PHONE MEASURES
 
-We fixed 24 hypotheses before any data: which way each measure should move when symptoms are worse (three were redefined when the game changed). For each person the server computes a rank correlation between every measure and their PHQ-9, one observation per rating, with a bootstrap interval, a permutation test and a correction for many measures. For an example person whose score stayed stable, the page says there is too little change to tell.
+During the game and the breathing, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. Gemini gets a reduced stream of numbers, no name or date, with consent (that screen is not built yet). The server computes 18 measures: smiles and whether they reach the eyes, blinks, gaze, brows, how much the face moves at all. The game, Revontulet, borrows from published tasks, far shorter than the originals: an easy or a hard shot (effort for reward), a traced half circle (drawing speed), reaction to embers, slow strokes over the sleeping fox (swipe speed). Steps and walking speed come from Apple Health. Each number is compared only with the person's own earlier days.
 
-TESTING THE MIND
+Two readers go through each face session: a fixed rule in code, and Gemini, whose every reported smile is checked against the numbers. On ten hard sessions we generated, with talking and a moving phone and smiles planted at known places, the fixed rule found 20 of 28 clear smiles and none of 13 faint ones. A simple rule relative to the person's own rest found all but also reported 22 things that were not smiles. Gemini found all 41 and nothing else. Gemini had been told what talking looks like; the rule had not. Generated data is cleaner than a face; step one of the study repeats this on real recordings.
 
-The mind has three layers. Plain rules we can explain notice a change and raise a flag. Two models weigh it: a small one on the clinic's own hardware sets how soon someone should look, and Gemini, as second reader, agrees, raises or lowers by one step. Plain code guards both: a request for help is always urgent and waits for no model, no model can lower a flag the rules hold at "needs review today", and the rules' level stands when no model answers. A clinician can write a rule for one person in plain words; the clinic's own model reads it and the words never leave the clinic's server.
+We fixed 24 hypotheses before any data (three redefined when the game changed). For each person the server relates every measure to their PHQ-9 with a rank correlation, a permutation test and a correction for many measures. For an example whose score stayed stable, it says: too little change to tell.
 
-We checked it on 40 generated cases read by the real models: each as it is, a second time, strictly worse, and with a clinic rule.
+THE MIND, AND HOW WE TESTED IT
 
+Plain rules we can explain notice a change and raise a flag. Two models weigh it: a small one on the clinic's own hardware sets how soon someone should look, and Gemini, as second reader, agrees, raises or lowers one step. Code guards both: help is always urgent, no model can lower what the rules call "needs review today", and the rules stand when no model answers. A clinician can add a rule for one person in plain words.
+
+On 40 generated cases read by the real models, each as it is, again, strictly worse, and with a clinic rule:
 Worse never meant lower: 0 of 107 flags.
-The models respond to severity: of 88 flags the rules level the same in both cases, they set 33 higher and none lower.
-Where they differ from the rules as the cases stand, they only lower: 12 of 107, by one step.
-The clinic rule was applied to the flag it was about in 20 of 20 cases and named on no other.
-What does not flatter us: the same case read twice changed on 7 of 107 flags, and Gemini agreed in 369 of 372 readings, so far a second signature more than a second opinion.
+The models respond to severity: of 88 flags the rules level the same, 33 went higher, none lower.
+Against the rules alone the models only lowered: 12 of 107 flags, one step. No level is yet compared with a clinician's.
+The clinic rule was applied where it belonged in 20 of 20 cases, and nowhere else.
+What does not flatter us: the same case read twice changed 7 of 107 flags, and Gemini agreed in 369 of 372 readings.
+The night before the deadline the check caught the local model ignoring a clinic rule (0 of 4); one changed paragraph fixed it (6 of 6).
 
-The check earned its place the night before the deadline. On a case with six open flags the local model ignored a clinic rule, 0 of 4. We changed one paragraph of its instruction, got 6 of 6, and the full check then showed our first, larger rewrite had made the model more timid everywhere else, so we kept the small change. The check's output is in the repository.
+WHAT IS NEW
 
-THE CLINIC SOFTWARE, BRIEFLY
-
-One page: a line per patient, those who drifted on top, every flag with what the rules, the local model and Gemini each said, a timeline of every decision with exactly what was sent to a model, and the research page. It is open at lanvi.app/demo with no login, read only. Signing in is needed only to change something.
+In Finnish the northern lights are revontulet, fox fires. A rescued fox instead of a tracker, a game that borrows from research tasks, and models that only weigh, under code that guards.
 
 WHAT IS REAL AND WHAT IS NOT
 
-A weekend prototype, not a validated measure. Live: the server, the clinician page, both models, the same-day alert. One team member's iPhone has sent real games, face numbers and Apple Health days through the whole path. The other people on the page are generated examples and the page says so. Nothing is tested with patients, and nothing here shows these measures follow depression. That is the study we want to run with Aalto: about thirty people after TMS, twelve weeks, each compared only with themselves.
+A weekend prototype. Live: the server, the clinician page, both models, the alert; one team member's iPhone sent real games, face numbers and Apple Health days through the whole path. The other people on the page are generated examples. Nothing is tested with patients and nothing here shows these measures follow depression. That is the study we want to run with Aalto: 20 to 30 people after TMS, twelve weeks, each compared only with themselves.
 
-BUILT WITH
+The research and the mind in depth: lanvi.app/demo#/blueprint.
 
-Swift, SwiftUI, ARKit face tracking, HealthKit, Python, FastAPI, a local open model, the Gemini API.
+Built with Swift, SwiftUI, ARKit, HealthKit, Python, FastAPI, a local open model and the Gemini API.
 ```
 
 ## Rules for the wording
