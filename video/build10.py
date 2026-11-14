@@ -2,7 +2,7 @@
 import os, subprocess, json
 from PIL import Image, ImageDraw, ImageFont
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-OLD = ".."; F = "/System/Library/Fonts/Helvetica.ttc"; BGHEX = "0x0b131e"
+OLD = ".."; F = "/System/Library/Fonts/Helvetica.ttc"; BGHEX = "0x0b131e"; CHBG = "0x0f0e13"
 V = "-c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p -r 24 -an".split()
 os.system("rm -rf seg8"); os.makedirs("seg8")
 def run(a): subprocess.run(["ffmpeg", "-loglevel", "error", "-nostdin", "-y"] + a, check=True)
@@ -94,7 +94,7 @@ def from_light(fn_out, d, fin=0.7):
 def measure_screen(app_src, panel, d, ss=1.0):
     """One calm screen for the three measures: the app on the left, the three lines arriving on the right."""
     o = out()
-    vf = f"[0:v]fps=24,scale=-2:680,pad=640:720:(ow-iw)/2:20:color={BGHEX}[l];[1:v]fps=24,tpad=stop_mode=clone:stop_duration=9[r];[l][r]hstack[v]"
+    vf = f"[0:v]fps=24,scale=-2:624,pad=640:720:(ow-iw)/2:16:color={BGHEX}[l];[1:v]fps=24,tpad=stop_mode=clone:stop_duration=9,scale=576:648,pad=640:720:32:0:color={CHBG}[r];[l][r]hstack[v]"
     run(["-stream_loop", "3", "-ss", str(ss), "-i", app_src, "-i", panel, "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
 def two_step_card(first, second, d, at2):
     """One card over the scrolling numbers: the first statement, then the second joins it."""
@@ -126,7 +126,7 @@ def still(src, d, z0=1.0, z1=1.1, fx=0.5, fy=0.5, tag="tag_gen.png", fit=False):
 def card(src, d, fade=0.3):
     o = out(); run(["-loop", "1", "-i", src, "-vf", f"fps=24,fade=t=in:d={fade}", "-t", str(d)] + V + [o]); check(o, d)
 def chart(src, d):
-    o = out(); run(["-i", src, "-i", f"{OLD}/tag_ex.png", "-filter_complex", "[0:v]fps=24,tpad=stop_mode=clone:stop_duration=9[v];[v][1:v]overlay=0:0", "-t", str(d)] + V + [o]); check(o, d)
+    o = out(); run(["-i", src, "-i", f"{OLD}/tag_ex.png", "-filter_complex", f"[0:v]fps=24,tpad=stop_mode=clone:stop_duration=9,scale=1152:648,pad=1280:720:64:0:color={CHBG}[v];[v][1:v]overlay=0:-58", "-t", str(d)] + V + [o]); check(o, d)
 def phone(src, d, ss=1.0):
     """The app's own screen, upright in the middle of a dark frame."""
     o = out()
