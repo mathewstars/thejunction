@@ -125,4 +125,149 @@ final class LanviEyesTests: XCTestCase {
         XCTAssertEqual(after.eyeY, rest.eyeY, accuracy: 1e-4)
         XCTAssertEqual(after.headTilt, rest.headTilt, accuracy: 1e-3)
     }
+
+    // MARK: Eyes while a finger is dragged (the captain's "eyes fade in and out and close
+    // and open while tracking")
+
+    /// A finger path over and around the fox, a new place every 1/60 s.
+    private func dragSteps(from start: Double, seconds: Double) -> [LookStep] {
+        var steps = [LookStep(at: -100, target: nil)]
+        for i in 0...Int(seconds * 60) {
+            let t = Double(i) / 60
+            let a = 2 * Double.pi * t / 3
+            steps.append(LookStep(at: start + t, target: CGPoint(x: 1085 + 1400 * sin(a), y: 700 + 900 * sin(2 * a))))
+        }
+        return steps
+    }
+
+    /// Checks frames from `from` to `to` s: the eye is never see-through, the lid only
+    /// comes down for single quick blinks, 2.5 s or more apart; no idle moment starts.
+    private func assertOnlyQuickBlinks(_ make: (Double) -> LanviMotion, from: Double, to: Double, _ what: String,
+                                       file: StaticString = #filePath, line: UInt = #line) {
+        var closings: [Double] = []
+        var downSince: Double?
+        var t = from
+        while t <= to {
+            let m = make(t)
+            let lid = m.frame().lid
+            XCTAssertEqual(lid.weight, 1, accuracy: 1e-9, "\(what): eye picture swapped at \(t) s", file: file, line: line)
+            if lid.down > 0.01 {
+                if downSince == nil { downSince = t; closings.append(t) }
+                XCTAssertLessThan(t - downSince!, 0.2, "\(what): lid down longer than a quick blink at \(t) s", file: file, line: line)
+            } else {
+                downSince = nil
+            }
+            XCTAssertNil(m.currentMoment(m.t), "\(what): an idle moment during the drag at \(t) s", file: file, line: line)
+            t += 1.0 / 60
+        }
+        for (a, b) in zip(closings, closings.dropFirst()) {
+            XCTAssertGreaterThan(b - a, 2.5, "\(what): two blinks close together at \(a) and \(b) s", file: file, line: line)
+        }
+    }
+
+    func testADraggedFingerGetsOnlySingleQuickBlinks() {
+        for seed in [0, 123, 380, 555, 909] {
+            let steps = dragSteps(from: clock, seconds: 8)
+            assertOnlyQuickBlinks({ t in
+                var m = self.motion(Array(steps.prefix { $0.at <= self.clock + t }), at: self.clock + t)
+                m.seed = seed
+                m.appearAt = self.clock - 100          // idle moments on: none may start
+                return m
+            }, from: 0.4, to: 8, "seed \(seed)")
+        }
+    }
+
+    func testDraggingAfterPettingOpensTheEyesAtOnce() {
+        // the finger rests 1.1 s (petting from 0.5 s, the happy squint), then drags 6 s
+        let steps = dragSteps(from: clock + 1.6, seconds: 6)
+        let make: (Double) -> LanviMotion = { t in
+            var m = self.motion(Array(steps.prefix { $0.at <= self.clock + t }), at: self.clock + t)
+            m.seed = 909
+            m.appearAt = self.clock - 100
+            m.petting = t >= 0.5 && t < 1.6
+            m.pettingFrom = t >= 0.5 ? self.clock + 0.5 : -100
+            m.pettingSince = t < 0.5 ? -100 : self.clock + (t < 1.6 ? 0.5 : 1.6)
+            m.pettingEndedByDrag = t >= 1.6
+            return m
+        }
+        assertOnlyQuickBlinks(make, from: 2.0, to: 7.6, "after petting")
+    }
+
+    // MARK: The head turn
+
+    func testTheHeadOutlineMovesAtMostThreePercentOfItsWidth() {
+        for dirX in stride(from: -1.0, through: 1.0, by: 0.05) {
+            let e = Rig.headEdges(dirX: dirX)
+            XCTAssertLessThanOrEqual(abs(e.left), 0.031, "left edge at dirX \(dirX)")
+            XCTAssertLessThanOrEqual(abs(e.right), 0.031, "right edge at dirX \(dirX)")
+        }
+        // and the turn is real: at a full turn the far edge tucks in by more than 2 %
+        XCTAssertLessThan(Rig.headEdges(dirX: 1).right, -0.02)
+        XCTAssertGreaterThan(Rig.headEdges(dirX: -1).left, 0.02)
+    }
+
+    func testADragNeverWobblesTheHead() {
+        // a slow circle fed by touch events at uneven times (a real finger): the head's
+        // turn speed changes smoothly, at most two small wobbles in 5 s
+        var r: UInt64 = 12345
+        func rnd() -> Double { r = r &* 6364136223846793005 &+ 1442695040888963407; return Double(r >> 11) / Double(1 << 53) }
+        var steps = [LookStep(at: -100, target: nil)]
+        var t = 0.0
+        while t < 6 {
+            let a = 2 * Double.pi * t / 6
+            steps.append(LookStep(at: clock + t, target: CGPoint(x: 1085 + 900 * cos(a), y: 600 + 650 * sin(a))))
+            t += (1.0 / 60) * (0.6 + 0.8 * rnd()) * (rnd() < 0.05 ? 2 : 1)
+        }
+        var xs: [Double] = []
+        for i in 0..<(60 * 6) { xs.append(motion(steps, at: clock + Double(i) / 60).frame().pose.dirX) }
+        var wobbles = 0
+        for i in 60..<(xs.count - 2) {
+            let a0 = (xs[i + 1] - xs[i]) - (xs[i] - xs[i - 1]), a1 = (xs[i + 2] - xs[i + 1]) - (xs[i + 1] - xs[i])
+            if a0 * a1 < 0, abs(a0 - a1) > 0.0004 { wobbles += 1 }
+        }
+        XCTAssertLessThanOrEqual(wobbles, 2)
+    }
+
+    // MARK: Saying a line (`.lanviSays`)
+
+    func testSayingALineFollowsItsWords() {
+        for line in ["Hi! I kept a spot warm for you.", "That sounds like a long day. Want to break the ice with me?",
+                     "Okay. I'm here, whenever you are.", "Mmm, maybe."] {
+            let beats = LanviSpeech.beats(line)
+            let letters = Double(line.filter { $0.isLetter }.count)
+            let length = LanviSpeech.length(line)
+            XCTAssertGreaterThan(letters / length, 8, "too slow: \(line)")
+            XCTAssertLessThan(letters / length, 15, "too fast: \(line)")
+            // one beat after another, no gaps, never ending on a pause
+            for (a, b) in zip(beats, beats.dropFirst()) { XCTAssertEqual(a.end, b.at, accuracy: 1e-9, line) }
+            XCTAssertNotEqual(beats.last?.shape, .smile, line)
+            // a pause of at least 0.2 s after each comma or full stop inside the line
+            let stops = line.dropLast().filter { ",.!?".contains($0) }.count
+            XCTAssertEqual(beats.filter { $0.shape == .smile && $0.end - $0.at >= 0.2 }.count, stops, line)
+        }
+        // the lips meet on m, b and p
+        XCTAssertEqual(LanviSpeech.beats("Mmm, maybe.").first?.shape, .flat)
+    }
+
+    func testSayingALineEndsBackAtRest() {
+        let line = "That sounds like a long day. Want to break the ice with me?"
+        let end = LanviSpeech.length(line)
+        var said = motion([LookStep(at: -100, target: nil)], at: clock + end + 1)
+        said.speech = LanviSpeech.beats(line)
+        said.speechAt = clock
+        let rest = motion([LookStep(at: -100, target: nil)], at: clock + end + 1)
+        XCTAssertEqual(said.frame().pose.headY, rest.frame().pose.headY, accuracy: 1e-9)
+        XCTAssertEqual(said.frame().pose.dirX, rest.frame().pose.dirX, accuracy: 1e-9)
+        XCTAssertEqual(said.frame().face.mouth, rest.frame().face.mouth)
+        // and while saying it, the mouth moves: more than 10 changes of shape
+        var shapes: [MouthShape] = []
+        for i in 0..<Int(end * 60) {
+            var m = said
+            m.t = clock + Double(i) / 60
+            let mouth = m.frame().face.mouth
+            if shapes.last != mouth { shapes.append(mouth) }
+        }
+        XCTAssertGreaterThan(shapes.count, 10)
+    }
 }
+

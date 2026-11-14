@@ -353,3 +353,13 @@ def test_the_rules_behave_as_the_page_says_on_generated_games():
     assert out["slide_last_three_together_slower"] > out["slide_last_three_tracing_slower_start"]
     steady = run(runs=300, spread=0.5)
     assert steady["slide_last_three_tracing_slower_start"] > 0.90
+
+
+def test_games_from_one_sitting_are_not_a_usual_range(env):
+    """Ten games in one evening (the first real games): enough games, too few days."""
+    for k in range(10):
+        started = (NOW - timedelta(minutes=60 - 5 * k)).isoformat()
+        assert post(env, game(f"rv-sitting-{k:04d}", started_at=started)).status_code == 200
+    last = env.repo().get("activities/rv-sitting-0009.json")
+    assert last["revontulet_baseline_sessions"] == 9 and last["revontulet_baseline_days"] <= 2
+    assert last["revontulet_usual"] == {} and all(v is None for v in last["revontulet_z"].values())

@@ -133,7 +133,7 @@ struct RevontuletLayout: Equatable {
         warmFoxScale = warmSize / foxSize
         let warmFeet = min(h * 0.875, h - safeBottom - 70)
         warmFoxCenter = CGPoint(x: w / 2, y: warmFeet - warmSize / 2)
-        strokeLength = warmSize * 0.36
+        strokeLength = warmSize * 0.3
         let buttonY = h - safeBottom - 16 - 27
         restLineY = buttonY - 27 - 26
         restFoxCenter = CGPoint(x: w / 2, y: restLineY - 30 - warmSize / 2)
@@ -162,9 +162,11 @@ struct RevontuletLayout: Equatable {
         return CGRect(x: c.x - s / 2, y: c.y - s / 2, width: s, height: s)
     }
 
-    /// The two fault lines for a round, as polylines in screen points, easy first.
-    /// Each round's lines sit on ice no earlier impact has touched and clear of that round's
-    /// half-circle: the crack always low and thin, the vein always higher and long.
+    /// The two fault lines for a round, as polylines in screen points, easy first. The rounds
+    /// build: round one is a quick win (the vein low and close to the spark, a short shot),
+    /// round two's vein is thicker and higher, round three's is the big one across the top.
+    /// Each sits on ice no earlier impact has touched and clear of that round's half-circle;
+    /// the crack is always lower and thinner than the vein.
     func faults(round: Int) -> (easy: [CGPoint], hard: [CGPoint]) {
         func p(_ fx: CGFloat, _ fy: CGFloat) -> CGPoint {
             CGPoint(x: fx * size.width, y: wall.minY + fy * wall.height)
@@ -172,13 +174,13 @@ struct RevontuletLayout: Equatable {
         switch round % 3 {
         case 0:
             return ([p(0.07, 0.79), p(0.13, 0.775), p(0.19, 0.795), p(0.25, 0.78), p(0.3, 0.79)],
-                    [p(0.48, 0.12), p(0.55, 0.19), p(0.62, 0.15), p(0.7, 0.24), p(0.78, 0.2), p(0.86, 0.28), p(0.94, 0.25)])
+                    [p(0.55, 0.66), p(0.61, 0.6), p(0.67, 0.63), p(0.73, 0.57), p(0.79, 0.6), p(0.86, 0.55), p(0.92, 0.57)])
         case 1:
             return ([p(0.3, 0.8), p(0.36, 0.785), p(0.42, 0.805), p(0.48, 0.79), p(0.53, 0.8)],
                     [p(0.04, 0.25), p(0.11, 0.18), p(0.18, 0.22), p(0.25, 0.14), p(0.33, 0.17), p(0.41, 0.1), p(0.48, 0.12)])
         default:
-            return ([p(0.66, 0.77), p(0.72, 0.755), p(0.78, 0.775), p(0.84, 0.76), p(0.9, 0.775)],
-                    [p(0.24, 0.5), p(0.32, 0.44), p(0.4, 0.48), p(0.49, 0.4), p(0.58, 0.44), p(0.67, 0.37), p(0.76, 0.4)])
+            return ([p(0.07, 0.55), p(0.13, 0.535), p(0.19, 0.555), p(0.25, 0.54), p(0.3, 0.55)],
+                    [p(0.3, 0.33), p(0.4, 0.25), p(0.5, 0.29), p(0.6, 0.2), p(0.7, 0.25), p(0.82, 0.16), p(0.95, 0.2)])
         }
     }
 
@@ -250,6 +252,8 @@ struct RevontuletFlight: Equatable {
     var emberU: [Double] = []
     var emberT: [Double] = []
     var emberShownAt: [Double?] = []
+    /// The real-clock instant each ember flashed (reaction times are measured from it).
+    var emberShownReal: [Double?] = []
     var emberHitAt: [Double?] = []
     var emberMissed: [Bool] = []
     /// Worked out once the last ember can no longer be tapped (at once for an easy shot).
@@ -268,9 +272,9 @@ struct RevontuletFlight: Equatable {
         return launch + last + Self.emberGrace
     }
 
-    static let emberLead = 0.42      // an ember flashes this long before the spark reaches it
-    static let emberGrace = 0.32     // and can still be tapped this long after
-    static let emberEarly = 0.12     // a tap this much before the flash still counts
+    static let emberLead = 0.6       // an ember flashes this long before the spark reaches it
+    static let emberGrace = 0.3      // and can still be tapped this long after
+    static let emberEarly = 0.15     // a tap this much before the flash still counts
 
     func bezier(_ u: Double) -> CGPoint {
         let a = 1 - u
@@ -412,10 +416,10 @@ struct RevontuletResult: Equatable {
     var launches: Int { rounds.filter { $0.launchUptime != nil }.count }
     var embersShown: Int { rounds.reduce(0) { $0 + $1.embersShown } }
     var embersHit: Int { rounds.reduce(0) { $0 + $1.emberHits.count } }
-    /// Only the ember taps, flash to finger, in order (the server compares them with the
-    /// person's normal tap reactions; the slow first touch on a half-circle goes in the
-    /// measures as `trace_start_ms` instead).
+    /// Every ember tap, flash to finger on the real clock, in order (the first-ever coached
+    /// ember included: it is a real tap, only slower). The slow first touch on a half-circle
+    /// goes in the measures as `trace_start_ms` instead. An easy-only game sends `[]`.
     var reactionMs: [Int] {
-        rounds.flatMap { $0.emberHits.filter { !$0.coached }.map(\.reactionMs) }
+        rounds.flatMap { $0.emberHits.map(\.reactionMs) }
     }
 }

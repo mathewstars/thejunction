@@ -89,32 +89,35 @@ actor LanviClient: LanviBackend {
     }
 
     func send(_ activity: API.ActivityIn) async throws -> API.ActivityOut {
-        // Revontulet's measures: a server that does not take them yet refuses the record, so
-        // it goes once more, same id, without them (and plain for the rest of this run).
-        let first = RevontuletSendGate.shared.first(activity)
-        do {
-            return try await call("POST", "/v1/activities", body: first)
-        } catch {
-            guard let plain = RevontuletSendGate.shared.retry(after: error, sent: first) else {
-                return try await resendWithoutFace(after: error, sent: first)
-            }
+        // A game is never lost to a refusal: the same record (same id) goes again, smaller,
+        // until it is taken or nothing more can be left out (see `smaller`).
+        var record = RevontuletSendGate.shared.first(activity)
+        while true {
             do {
-                return try await call("POST", "/v1/activities", body: plain)
+                return try await call("POST", "/v1/activities", body: record)
             } catch {
-                return try await resendWithoutFace(after: error, sent: plain)
+                guard let next = Self.smaller(after: error, sent: record) else { throw error }
+                Self.log("activities: \(record.type.rawValue) \(record.id) refused (\(error)); sending it again "
+                         + (next.faceRaw == nil && record.faceRaw != nil ? "without the frames" : "without the Revontulet measures"))
+                record = next
             }
         }
+    }
+
+    /// What to send after a refusal. Too large: the face frames go first (the measures are a
+    /// few hundred bytes). Refused for its content: Revontulet's measures go first (a server
+    /// that does not take them yet), then the frames. Nil when nothing more can go.
+    static func smaller(after error: Error, sent: API.ActivityIn) -> API.ActivityIn? {
+        guard case APIError.rejected(let code) = error else { return nil }
+        if code == "body_too_large", let lighter = withoutFaceFallback(after: error, sent: sent) { return lighter }
+        if let plain = RevontuletSendGate.shared.retry(after: error, sent: sent) { return plain }
+        return withoutFaceFallback(after: error, sent: sent)
     }
 
     /// The face frames are the big, optional part of a record. When the server refuses a
     /// record that carries them (413 too large, 422 a shape it does not take), the record
     /// goes once more without them, same id, so the game itself is never lost and the
     /// reason is in the log. Any other error is passed on as it is.
-    private func resendWithoutFace(after error: Error, sent: API.ActivityIn) async throws -> API.ActivityOut {
-        guard let plain = Self.withoutFaceFallback(after: error, sent: sent) else { throw error }
-        Self.log("activities: \(sent.type.rawValue) \(sent.id) refused with face_raw (\(error)); sending it again without the frames")
-        return try await call("POST", "/v1/activities", body: plain)
-    }
 
     /// The record to send again without the frames, or nil when the failure had nothing to do
     /// with them (no frames, or a temporary error that keeps the record in the outbox).
@@ -208,6 +211,14 @@ actor LanviClient: LanviBackend {
         guard let http = response as? HTTPURLResponse else { throw APIError.offline }
         guard (200..<300).contains(http.statusCode) else {
             if big { Self.log("\(method) \(path): \(bodyBytes / 1024) KB answered \(http.statusCode)") }
+            // Debug console: the server's own reason for a refusal (its code, the field and
+            // problem it names, the request id to find it in the server log).
+            if [400, 409, 413, 422].contains(http.statusCode) {
+                let reason = (try? API.decoder.decode(API.ErrorResponse.self, from: data))
+                    .map { "\($0.error.code): \($0.error.message) (request \($0.error.requestId))" }
+                    ?? String(decoding: data.prefix(400), as: UTF8.self)
+                Self.log("\(method) \(path) refused \(http.statusCode): \(reason)")
+            }
             throw Self.error(status: http.statusCode, data: data)
         }
         do {

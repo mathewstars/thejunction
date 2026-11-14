@@ -16,6 +16,7 @@ struct LanviPuppet: View {
     @Environment(\.lanviReactionRequest) private var reactionRequest
     @Environment(\.lanviLook) private var lookUnit
     @Environment(\.lanviTalking) private var talking
+    @Environment(\.lanviSayRequest) private var sayRequest
     @Environment(\.lanviMouth) private var mouthOverride
     @Environment(\.lanviMomentRequest) private var momentRequest
     @Environment(\.lanviTouchRequest) private var touchRequest
@@ -50,6 +51,8 @@ struct LanviPuppet: View {
     @State private var lastTapAt: Double = -100
     @State private var petting = false
     @State private var pettingSince: Double = -100
+    @State private var pettingFrom: Double = -100
+    @State private var pettingEndedByDrag = false
     @State private var finger: Finger?
     @State private var lastFollowAt: Double = -100
     @State private var follow: Int?                 // preview: a scripted finger path
@@ -60,6 +63,8 @@ struct LanviPuppet: View {
     @State private var mouthFrom: MouthShape?
     @State private var drivenSince: Double = -100
     @State private var talkStart: Double = -100
+    @State private var speech: [LanviSpeech.Beat] = []
+    @State private var speechAt: Double = -100
     @State private var moment: LanviMoment?
     @State private var momentAt: Double = -100
     @State private var momentSide: Double = 1
@@ -83,10 +88,11 @@ struct LanviPuppet: View {
 
     var body: some View {
         TimelineView(.animation) { context in
-            let f = motion(at: context.date.timeIntervalSinceReferenceDate).frame()
-            let _ = LanviFrameLog.shared?.record(date: context.date, f)
+            let m = motion(at: context.date.timeIntervalSinceReferenceDate)
+            let f = m.frame()
+            let _ = LanviFrameLog.shared?.record(date: context.date, f, extra: logState(m))
+            // (nothing is drawn under him: the captain wants the painted snow as it is)
             ZStack(alignment: .bottom) {
-                shadow(f.pose)
                 rig(f)
                     .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k)
                     .scaleEffect(x: 1 + f.pose.rootSX, y: 1 + f.pose.rootSY, anchor: Self.feet)
@@ -128,6 +134,11 @@ struct LanviPuppet: View {
             talkingSince = now
             if on { talkStart = now }
         }
+        .onChange(of: sayRequest) { _, new in
+            guard let new else { return }
+            speech = LanviSpeech.beats(new.text)
+            speechAt = now
+        }
         .onChange(of: mouthOverride) { old, new in
             mouthFrom = old
             mouthTickAt = now
@@ -149,6 +160,7 @@ struct LanviPuppet: View {
             let forced = UserDefaults.standard.string(forKey: "hour").flatMap { Int($0) }
             let hour = forced ?? Calendar.current.component(.hour, from: Date())
             lateHour = hour >= 20 || hour < 5
+            if let script = UserDefaults.standard.string(forKey: "puppetDrag") { scriptedDrag(script) }
         }
         .accessibilityElement()
         .accessibilityLabel("Lanvi the fox")
@@ -171,6 +183,8 @@ struct LanviPuppet: View {
         m.prevTouchAt = prevTouchAt
         m.petting = petting
         m.pettingSince = pettingSince
+        m.pettingFrom = pettingFrom
+        m.pettingEndedByDrag = pettingEndedByDrag
         m.prevReaction = prevReaction
         m.prevReactionAt = prevReactionAt
         m.talking = talking
@@ -180,6 +194,8 @@ struct LanviPuppet: View {
         m.mouthFrom = mouthFrom
         m.mouthTickAt = mouthTickAt
         m.drivenSince = drivenSince
+        m.speech = speech
+        m.speechAt = speechAt
         m.moment = moment
         m.momentAt = momentAt
         m.momentSide = momentSide
@@ -206,6 +222,7 @@ struct LanviPuppet: View {
             m.prevTouch = nil
             m.petting = false
             m.pettingSince = -100
+            m.pettingFrom = -100
             m.hopAt = -100
             m.lookSteps = [LookStep(at: -100, target: freeze.look.map(canvasPoint(unit:)))]
         }
@@ -259,12 +276,70 @@ struct LanviPuppet: View {
         }
     }
 
+    /// Debug (`-puppetLog YES`): the puppet's own state for the frame log.
+    private func logState(_ m: LanviMotion) -> String {
+        let fingerState = finger.map { $0.dragging ? "drag" : "down" } ?? "-"
+        let moment = m.currentMoment(m.t).map { $0.kind.rawValue } ?? "-"
+        return "\(petting ? 1 : 0),\(fingerState),\(touch.map { "\($0)" } ?? "-"),\(moment),\(lookSteps.count)," +
+            String(format: "%.4f", now - m.t)
+    }
+
+    /// Debug (`-puppetDrag hold|quick`): a finger driven through the real touch handlers
+    /// at 60 events a second, 3 s after the fox appears, for 6 s: down on the cheek,
+    /// (`hold`: resting there 0.6 s first, like a person placing a finger), then dragged
+    /// far left, far right, up, down and round in circles across the whole screen, lifted;
+    /// then a second drag that moves at once.
+    private func scriptedDrag(_ kind: String) {
+        let side = size
+        func at(_ u: Double) -> CGPoint {
+            // a path through the fox's square (0...1), reaching well outside it
+            let keys: [(Double, CGPoint)] = [(0, CGPoint(x: 0.62, y: 0.42)), (0.12, CGPoint(x: -0.9, y: 0.4)),
+                (0.27, CGPoint(x: 1.9, y: 0.45)), (0.4, CGPoint(x: 0.5, y: -1.2)), (0.52, CGPoint(x: 0.5, y: 1.6)),
+                (0.6, CGPoint(x: 0.5, y: 0.4))]
+            if u <= 0.6 {
+                for j in 1..<keys.count where u <= keys[j].0 {
+                    let (ua, a) = keys[j - 1], (ub, b) = keys[j]
+                    let e = (u - ua) / (ub - ua)
+                    let s = e * e * (3 - 2 * e)
+                    return CGPoint(x: (a.x + (b.x - a.x) * s) * side, y: (a.y + (b.y - a.y) * s) * side)
+                }
+            }
+            let a = (u - 0.6) / 0.4 * 2 * 2 * Double.pi
+            let r = 0.15 + 0.6 * min((u - 0.6) / 0.1, 1)
+            return CGPoint(x: (0.5 + r * sin(a)) * side, y: (0.4 - r * cos(a)) * side)
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            let start = now
+            let rest = kind == "hold" ? 0.6 : 0
+            fingerMoved(at(0))
+            while now - start < rest { try? await Task.sleep(for: .milliseconds(16)) }
+            let t0 = now
+            while now - t0 < 6 {
+                fingerMoved(at((now - t0) / 6))
+                try? await Task.sleep(for: .milliseconds(16))
+            }
+            fingerUp(at(1))
+            try? await Task.sleep(for: .seconds(1.2))
+            let t1 = now
+            fingerMoved(CGPoint(x: 0.3 * side, y: 0.45 * side))
+            while now - t1 < 2 {
+                let u = (now - t1) / 2
+                fingerMoved(CGPoint(x: (0.3 + 0.5 * u) * side, y: (0.45 - 0.3 * sin(u * .pi)) * side))
+                try? await Task.sleep(for: .milliseconds(16))
+            }
+            fingerUp(CGPoint(x: 0.8 * side, y: 0.45 * side))
+        }
+    }
+
     // MARK: Touch
 
-    /// A finger on the fox: where it went down, where it is, and whether it is dragging.
+    /// A finger on the fox: where it went down, whether it has moved off that spot
+    /// (then it is not petting) and whether it is dragging.
     private struct Finger {
         var at: Double
         var start: CGPoint
+        var moved = false
         var dragging = false
     }
 
@@ -277,18 +352,23 @@ struct LanviPuppet: View {
         guard var f = finger else {
             finger = Finger(at: t, start: location)
             contacts += 1
-            // held still for 0.4 s: petting
+            // held still for half a second: petting
             Task { @MainActor in
-                try? await Task.sleep(for: .seconds(0.4))
-                guard let f = finger, f.at == t, !f.dragging else { return }
+                try? await Task.sleep(for: .seconds(0.5))
+                guard let f = finger, f.at == t, !f.moved else { return }
                 startPetting(at: canvas(f.start))
             }
             return
         }
-        if !f.dragging, hypot(location.x - f.start.x, location.y - f.start.y) > 12 {
+        let off = hypot(location.x - f.start.x, location.y - f.start.y)
+        if !f.moved, off > 6 {
+            f.moved = true
+            finger = f
+        }
+        if !f.dragging, off > 12 {
             f.dragging = true
             finger = f
-            if petting { stopPetting() }
+            if petting { stopPetting(byDrag: true) }
         }
         // a drag: every touch event is a new place to look; the pupils (then the head)
         // follow it on their springs
@@ -310,11 +390,15 @@ struct LanviPuppet: View {
         touchSide = LanviTouchZone.at(p).side
         petting = true
         pettingSince = now
+        pettingFrom = now
     }
 
-    private func stopPetting() {
+    /// `byDrag`: the finger went on to drag, so the eyes open at once to follow it (no
+    /// contented slow blink).
+    private func stopPetting(byDrag: Bool = false) {
         petting = false
         pettingSince = now
+        pettingEndedByDrag = byDrag
     }
 
     /// A tap at a canvas point: a reaction for that place, never the same twice running.
@@ -338,7 +422,8 @@ struct LanviPuppet: View {
         }
         // The eyes go to the finger, unless the reaction aims them itself.
         let aims: Set<LanviTouchAct> = [.boop, .boopGiggle, .boopSniff, .earFlick, .earTickle, .earDouble,
-                                        .tailLook, .tailSwish, .tailCurlLook, .pawLift, .pawPat, .pawHold]
+                                        .tailLook, .tailSwish, .tailCurlLook, .pawLift, .pawPat, .pawHold,
+                                        .nod, .giggleShy]
         if act == nil || !aims.contains(act!) {
             lookAtFinger(p, back: max(1.1, (act?.duration ?? 1.2) - 0.5))
         }
@@ -381,38 +466,6 @@ struct LanviPuppet: View {
     }
 
     // MARK: Drawing
-
-    /// A soft contact shadow: a wide soft pool and a tighter, darker core under the
-    /// haunches. It lightens and shrinks as the fox lifts, and tightens and darkens
-    /// when it lands (the feet spread). A faint one under the tail.
-    private func shadow(_ p: Pose) -> some View {
-        let lift = min(max(-p.rootY / 70, 0), 1)
-        let squash = max(-p.rootSY, 0) * 10 + p.spread * 2      // landing
-        let breath = p.bodySX
-        let ink = Theme.ink
-        return ZStack {
-            Ellipse()
-                .fill(RadialGradient(colors: [ink.opacity(0.16), ink.opacity(0.07), ink.opacity(0)],
-                                     center: .center, startRadius: 0, endRadius: size * 0.33))
-                .frame(width: size * 0.66, height: size * 0.1)
-                .scaleEffect(x: (1 - 0.18 * lift) * (1 + 0.08 * squash + breath * 0.6), y: 1 - 0.15 * lift)
-                .opacity(1 - 0.45 * lift)
-            Ellipse()
-                .fill(RadialGradient(colors: [ink.opacity(0.24), ink.opacity(0.1), ink.opacity(0)],
-                                     center: .center, startRadius: 0, endRadius: size * 0.22))
-                .frame(width: size * 0.44, height: size * 0.045)
-                .scaleEffect(x: (1 - 0.32 * lift) * (1 + 0.12 * squash + breath * 0.5), y: 1 - 0.2 * lift)
-                .opacity(min(1, (1 - 0.85 * lift) * (1 + 0.6 * squash)))
-            Ellipse()
-                .fill(RadialGradient(colors: [ink.opacity(0.12), ink.opacity(0)],
-                                     center: .center, startRadius: 0, endRadius: size * 0.12))
-                .frame(width: size * 0.24, height: size * 0.04)
-                .offset(x: (Rig.tail.center.x - Rig.centerX) * k * 0.92)
-                .opacity(1 - 0.6 * lift)
-        }
-        .offset(y: size * 0.012)
-        .allowsHitTesting(false)
-    }
 
     private func rig(_ f: RigFrame) -> some View {
         ZStack(alignment: .topLeading) {
@@ -492,10 +545,12 @@ struct LanviPuppet: View {
         let q = f.pose
         let hx = q.dirX, hy = q.dirY
         let near = max(left ? hx : -hx, 0), far = max(left ? -hx : hx, 0)
-        let dx = hx * (near > 0 ? 12 : 3)
-        let dy = 5 * far + 4 * abs(hy)
-        let sx = (1 + 0.08 * near - 0.04 * far) * (1 - 0.14 * far)
-        let sy = (1 + 0.08 * near - 0.04 * far) * (1 - 0.07 * abs(hy)) * (1 + (left ? q.earLS : q.earRS))
+        // (the perspective turn of the whole head does most of it; this is the ear's own
+        // turn on top: the far ear swings round behind the skull)
+        let dx = hx * (near > 0 ? 5 : 2)
+        let dy = 4 * far + 3 * abs(hy)
+        let sx = (1 + 0.04 * near - 0.02 * far) * (1 - 0.1 * far)
+        let sy = (1 + 0.04 * near - 0.02 * far) * (1 - 0.05 * abs(hy)) * (1 + (left ? q.earLS : q.earRS))
         let angle = left ? -q.earL : q.earR
         return banded(p, left ? "ear-left" : "ear-right", count: 10, bend: left ? f.earLBend : f.earRBend)
             .scaleEffect(x: sx, y: sy, anchor: p.pivot)
@@ -539,8 +594,16 @@ struct LanviPuppet: View {
     /// eyes and mouth in front) gets the same tilt around the neck, shift and settle.
     private func headTurn<Content: View>(_ f: RigFrame, @ViewBuilder _ content: () -> Content) -> some View {
         let neck = UnitPoint(x: Rig.neck.x / Rig.canvas.width, y: Rig.neck.y / Rig.canvas.height)
+        let centre = UnitPoint(x: Rig.head.local.x / Rig.canvas.width, y: Rig.head.local.y / Rig.canvas.height)
         return ZStack(alignment: .topLeading) { content() }
             .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k, alignment: .topLeading)
+            // The whole head turns in perspective around its centre (the face, eyes,
+            // muzzle and ears as one piece, so nothing slides off it): the near side
+            // grows, the far side shrinks and tucks in.
+            .rotation3DEffect(.degrees(Rig.turnYaw * f.pose.dirX), axis: (x: 0, y: 1, z: 0),
+                              anchor: centre, perspective: Rig.turnPerspective)
+            .rotation3DEffect(.degrees(-Rig.turnPitch * f.pose.dirY), axis: (x: 1, y: 0, z: 0),
+                              anchor: centre, perspective: Rig.turnPerspective)
             .scaleEffect(x: f.headSX, y: f.headSY, anchor: neck)
             .rotationEffect(.degrees(f.pose.headTilt), anchor: neck)
             .transformEffect(CGAffineTransform(translationX: f.pose.headX * mu, y: f.pose.headY * mu))
@@ -552,14 +615,15 @@ struct LanviPuppet: View {
     private func head(_ f: RigFrame) -> some View {
         let p = Rig.head, q = f.pose
         return ZStack(alignment: .topLeading) {
-            // The head in two halves: the far cheek tucks in behind the head and the near
-            // one comes forward (each half scales from the middle line).
+            // The head in two halves: the far cheek tucks in a little more than the
+            // perspective turn alone gives, and the near one comes forward (each half
+            // scales from the middle line).
             ForEach(["head-base-l", "head-base-r"], id: \.self) { name in
                 let c = layerCentre(name, p)
                 let isFar = (name == "head-base-r") == (q.dirX > 0)
                 let a = abs(q.dirX)
                 layerImage(name, p)
-                    .scaleEffect(x: isFar ? 1 - 0.06 * a : 1 + 0.025 * a, y: 1,
+                    .scaleEffect(x: isFar ? 1 - Rig.farCheekTuck * a : 1 + Rig.nearCheekGrow * a, y: 1,
                                  anchor: anchor(UnitPoint(x: 0.5, y: 0.5), in: name))
                     .position(x: c.x, y: c.y)
             }
@@ -600,36 +664,30 @@ struct LanviPuppet: View {
         return (t.dx * s, t.dy * s, t.sx, t.sy)
     }
 
-    /// The eyes. Open eyes are drawn in layers (the white, the iris clipped to the white,
-    /// the glints, the lid line) so the pupils move smoothly; a half-closed lid lowers
-    /// over them; closed, happy and wide eyes are their own pictures, cross-faded.
+    /// The eyes. Open, half-closed and shut are one eye under a lid that slides down
+    /// (`lidEye`), so a blink never turns the eye see-through. Happy eyes (closed arcs)
+    /// come in over the shut lid: the lid closes first, then the arcs take over (and the
+    /// other way round). Wide eyes are their own picture, cross-faded.
     private func eyes(_ f: RigFrame) -> some View {
-        let layeredShapes: [EyeShape] = [.open, .half, .left, .right, .up]
-        let layered = f.eyes.filter { layeredShapes.contains($0.0) }.reduce(0.0) { $0 + $1.1 }
-        let lid = f.eyes.first(where: { $0.0 == .half })?.1 ?? 0
-        let others = f.eyes.filter { !layeredShapes.contains($0.0) }
+        let lid = f.lid
+        let happy = f.eyes.filter { $0.0 == .happy }.reduce(0.0) { $0 + $1.1 }
+        let down = max(lid.down, min(1, happy / 0.75))
+        let lidded = lid.weight + happy * (1 - Motion.smooth(0.7, 1, happy))
+        let others = f.eyes.filter { !$0.0.isLidded }
         return ZStack(alignment: .topLeading) {
             ZStack(alignment: .topLeading) {
-                layeredEye(left: true, f.pose)
-                layeredEye(left: false, f.pose)
-                if lid > 0.001 {
-                    ZStack(alignment: .topLeading) {
-                        halfLid(left: true, f.pose)
-                        halfLid(left: false, f.pose)
-                    }
-                    .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k, alignment: .topLeading)
-                    .opacity(lid / max(layered, 0.001))
-                }
+                lidEye(left: true, down: down, f.pose)
+                lidEye(left: false, down: down, f.pose)
             }
             .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k, alignment: .topLeading)
-            .opacity(layered)
+            .opacity(lidded)
             ForEach(Array(others.enumerated()), id: \.offset) { _, layer in
                 ZStack(alignment: .topLeading) {
                     eye(layer.0, left: true, f.pose)
                     eye(layer.0, left: false, f.pose)
                 }
                 .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k, alignment: .topLeading)
-                .opacity(layer.1)
+                .opacity(layer.0 == .happy ? Motion.smooth(0.5, 1, happy) : layer.1)
             }
         }
         .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k, alignment: .topLeading)
@@ -667,14 +725,45 @@ struct LanviPuppet: View {
         }
     }
 
-    /// One open eye in layers: the white, the iris and glints (moving, clipped to the
-    /// white so they never leave the eye), and the lid line on top (it lowers a hair when
-    /// looking down).
-    private func layeredEye(left: Bool, _ q: Pose) -> some View {
+    /// One eye under its lid. The open eye in layers: the white, the iris and glints
+    /// (moving, clipped to the white so they never leave the eye) and the lid line (it
+    /// lowers a hair when looking down). Over it the lid (the fur and lid line cut from
+    /// the half-closed eye, clipped to the eye) slides down to half and then stretches to
+    /// shut, and the shut eye's lashes come in at the end, over the fur. `down`: 0 open,
+    /// 0.5 half, 1 shut.
+    private func lidEye(left: Bool, down: Double, _ q: Pose) -> some View {
         let side = left ? "l" : "r"
+        let openName = "eyes-open-" + side
         let pupil = Rig.pupil(left: left, pose: q)
         let s = Rig.eyeScale * Rig.head.scale * k
-        return onPatch("eyes-open-" + side, dropY: EyeShape.open.dropY, left: left, q) { w, h in
+        let hs = Rig.head.scale * k
+        let d = min(max(down, 0), 1)
+        return onPatch(openName, dropY: EyeShape.open.dropY, left: left, q) { w, h in
+            // where another eye picture's frame sits inside the open eye's (points)
+            let frameOf: (EyeShape) -> CGRect = { shape in
+                let name = shape.name + "-" + side
+                let px = LanviArt.px(name)
+                let c = LanviArt.eyeCenter[name] ?? CGPoint(x: px.width / 2, y: px.height / 2)
+                let c0 = LanviArt.eyeCenter[openName] ?? CGPoint(x: w / s / 2, y: h / s / 2)
+                return CGRect(x: (c0.x - c.x) * s, y: (c0.y - c.y) * s + (shape.dropY - EyeShape.open.dropY) * hs,
+                              width: px.width * s, height: px.height * s)
+            }
+            let half = frameOf(.half), lashes = frameOf(.closed)
+            let lidBox = LanviArt.layer["eye-halflid-" + side] ?? CGRect(x: 0, y: 0, width: 1, height: 0.5)
+            let white = LanviArt.layer["eye-white-" + side] ?? CGRect(x: 0, y: 0, width: 1, height: 1)
+            let lidTop = half.minY + lidBox.minY * half.height
+            let lidH = lidBox.height * half.height
+            // down to half: the lid slides in from above; past half: it stretches from the
+            // top of the eye (and widens, so it fills the eye's round sides) until it
+            // covers it to the bottom, already at 85 % (a quick blink is shut for only a
+            // few frames, and a pupil looking down must never peek out under it)
+            let slide = d < 0.5 ? -(1 - d / 0.5) * lidH : 0
+            // (stretched just past the bottom, so its own lid line is clipped away under
+            // the lashes)
+            let full = max((white.maxY * h - lidTop) / lidH, 1) * 1.14
+            let shut = min(max((d - 0.5) / 0.35, 0), 1)
+            let stretch = 1 + shut * (full - 1)
+            let widen = 1 + 0.2 * shut
             ZStack(alignment: .topLeading) {
                 piece("eye-white-" + side, w, h)
                 ZStack(alignment: .topLeading) {
@@ -690,17 +779,27 @@ struct LanviPuppet: View {
                 }
                 piece("eye-lid-" + side, w, h)
                     .transformEffect(CGAffineTransform(translationX: 0, y: pupil.y * s * 0.12))
+                if d > 0.001 {
+                    ZStack(alignment: .topLeading) {
+                        ZStack(alignment: .topLeading) { piece("eye-halflid-" + side, half.width, half.height) }
+                            .frame(width: half.width, height: half.height, alignment: .topLeading)
+                            .scaleEffect(x: widen, y: stretch, anchor: UnitPoint(x: lidBox.midX, y: lidBox.minY))
+                            .transformEffect(CGAffineTransform(translationX: half.minX, y: half.minY + slide))
+                    }
+                    .frame(width: w, height: h, alignment: .topLeading)
+                    .mask {
+                        ZStack(alignment: .topLeading) { piece("eye-white-" + side, w, h) }
+                            .frame(width: w, height: h, alignment: .topLeading)
+                    }
+                    Image("puppet-eyes-closed-" + side)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: lashes.width, height: lashes.height)
+                        .opacity(Motion.smooth(0.75, 0.9, d))
+                        .transformEffect(CGAffineTransform(translationX: lashes.minX, y: lashes.minY))
+                }
             }
             .frame(width: w, height: h, alignment: .topLeading)
-        }
-    }
-
-    /// The half-closed lid (cut from the half-closed eye), lowered over an open eye.
-    private func halfLid(left: Bool, _ q: Pose) -> some View {
-        let side = left ? "l" : "r"
-        return onPatch("eyes-half-" + side, dropY: EyeShape.half.dropY, left: left, q) { w, h in
-            ZStack(alignment: .topLeading) { piece("eye-halflid-" + side, w, h) }
-                .frame(width: w, height: h, alignment: .topLeading)
         }
     }
 

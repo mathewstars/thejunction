@@ -20,7 +20,7 @@ enum LanviTouchZone: String, CaseIterable {
     /// The reactions a touch here can play (they take turns, never the same twice running).
     var acts: [LanviTouchAct] {
         switch self {
-        case .head: return [.petLean, .petNuzzle, .petWiggle]
+        case .head: return [.petLean, .nod, .petNuzzle, .petWiggle]
         case .nose: return [.boop, .boopGiggle, .boopSniff]
         case .ear: return [.earFlick, .earTickle, .earDouble]
         case .cheek: return [.giggle, .giggleShy, .giggleSqueeze]
@@ -71,7 +71,7 @@ enum LanviTouchZone: String, CaseIterable {
 
 /// One touch reaction.
 enum LanviTouchAct: String, CaseIterable, Equatable {
-    case petLean, petNuzzle, petWiggle
+    case petLean, petNuzzle, petWiggle, nod
     case boop, boopGiggle, boopSniff
     case earFlick, earTickle, earDouble
     case giggle, giggleShy, giggleSqueeze
@@ -85,12 +85,13 @@ enum LanviTouchAct: String, CaseIterable, Equatable {
         switch self {
         case .petLean, .petNuzzle: return 2.0
         case .petWiggle: return 1.7
+        case .nod: return 1.5
         case .boop, .boopGiggle: return 1.7
         case .boopSniff: return 1.8
         case .earFlick, .earDouble: return 1.5
         case .earTickle: return 1.6
         case .giggle, .giggleSqueeze: return 1.5
-        case .giggleShy: return 1.7
+        case .giggleShy: return 2.0
         case .tickle: return 1.8
         case .tickleCurl: return 1.9
         case .tickleBig: return 2.0
@@ -140,15 +141,22 @@ extension LanviMotion {
             let slow = petting ? 0.5 - 0.5 * cos(2 * .pi * max(lt, 0) / 2.6) : 0
             p.chest += (0.012 + 0.012 * slow) * w; p.bodySY += 0.005 * slow * w
             p.mouthScale += 0.1 * w
-            // happy eyes while petted (and in the frames just before the finger lifted)
-            if (petting && lt > 0.1) || (!petting && lt < 0) { face.eyes = .happy }
+            // happy eyes while petted (once the lean has settled, so a finger that rests a
+            // moment before dragging gets the lean, not a squint), and in the frames just
+            // before the finger lifted
+            if (petting && lt > 0.3) || (!petting && lt < 0 && pettedLong) { face.eyes = .happy }
         }
-        // after: open slowly, then one soft slow blink
-        if !petting, pettingSince > 0 {
+        // after: the lids open from the squint (shut, half, open); when the finger lifted
+        // (not when it went on to drag), one soft slow blink a moment later
+        if !petting, pettingSince > 0, pettedLong {
             let lt = x - pettingSince
-            if Motion.inside(lt, 0, 0.18) || Motion.inside(lt, 0.55, 0.72) || Motion.inside(lt, 1.0, 1.18) {
-                face.eyes = .half
-            } else if Motion.inside(lt, 0.72, 1.0) { face.eyes = .closed }
+            if Motion.inside(lt, 0, 0.06) { face.eyes = .closed }
+            else if Motion.inside(lt, 0.06, 0.16) { face.eyes = .half }
+            else if !pettingEndedByDrag {
+                if Motion.inside(lt, 0.55, 0.72) || Motion.inside(lt, 1.0, 1.18) {
+                    face.eyes = .half
+                } else if Motion.inside(lt, 0.72, 1.0) { face.eyes = .closed }
+            }
         }
     }
 
@@ -197,6 +205,17 @@ extension LanviMotion {
             p.tail += 9 * sin(2 * .pi * (t - 0.05) / 0.5) * Motion.env(t, 0.05, 0.2, 1.0, 1.5)
             if Motion.inside(t, 0.06, 1.3) { face.eyes = .happy }
             if Motion.inside(t, 0.1, 1.2) { face.mouth = .happy; p.mouthScale -= 0.3 }
+
+        case .nod:
+            // A happy nod, twice ("yes!"): the head dips quickly toward you and comes back
+            // up more slowly, the eyes stay on you, the ears follow, a smile.
+            let nod = Motion.env(t, 0.04, 0.16, 0.19, 0.42) + 0.75 * Motion.env(t, 0.46, 0.57, 0.6, 0.86)
+            p.dirY += 0.55 * nod; p.headY += 9 * nod; p.headTilt += 2 * s * nod
+            p.eyeY -= 4 * nod
+            p.earL -= 4 * nod; p.earR -= 4 * nod
+            p.chest += 0.006 * nod
+            let smile = Motion.env(t, 0.06, 0.2, 1.05, 1.35)
+            if smile > 0.5 { face.mouth = .happy; p.mouthScale -= 0.42 }
 
         // --- Nose: boop ---
         case .boop:
@@ -266,13 +285,18 @@ extension LanviMotion {
             if Motion.inside(t, 0.04, 1.2) { face.eyes = .happy }
             if Motion.inside(t, 0.06, 1.15) { face.mouth = .happy; p.mouthScale += -0.25 + 0.15 * b }
         case .giggleShy:
-            // A shy giggle: the head dips and turns away from the finger, then comes back.
-            let shy = Motion.pulse(t, start: 0.02, end: 1.0, response: 0.4, damping: 0.68, settle: 0.65)
-            p.dirX -= 0.25 * s * shy; p.dirY += 0.2 * shy; p.headTilt -= 5 * s * shy
-            let b = bounces(t, start: 0.15, n: 2, every: 0.2)
-            p.headY -= 2 * b; p.bodySY += 0.008 * b
-            if Motion.inside(t, 0.05, 1.3) { face.eyes = .happy }
-            p.mouthScale += 0.15 * shy
+            // Shy: a little giggle, then he looks away and down from the finger with a
+            // small smile, ears soft, and peeks back at you (the eyes first).
+            if Motion.inside(t, 0.03, 0.3) { face.eyes = .happy }
+            let b = bounces(t, start: 0.04, n: 2, every: 0.14)
+            p.headY -= 1.5 * b; p.bodySY += 0.006 * b
+            let away = Motion.pulse(t, start: 0.12, end: 1.15, response: 0.42, damping: 0.72, settle: 0.65)
+            p.dirX -= 0.32 * s * away; p.dirY += 0.22 * away; p.headTilt -= 6 * s * away; p.headY += 1.5 * away
+            p.earL += 5 * away; p.earR += 5 * away
+            let eyes = Motion.env(t, 0.26, 0.36, 1.0, 1.12)
+            p.eyeX -= 5 * s * eyes; p.eyeY += 4 * eyes
+            if Motion.inside(t, 0.3, 1.55) { face.mouth = .happy; p.mouthScale -= 0.35 }
+            returnBlink(t, at: 1.08, &face)
         case .giggleSqueeze:
             // Eyes squeeze, shoulders up, two squashy giggles, ears back.
             let up = Motion.env(t, 0.02, 0.15, 0.9, 1.3)
@@ -362,8 +386,9 @@ extension LanviMotion {
 
         // --- Near him: the eyes follow the finger (the look itself is set by the touch) ---
         case .look, .lookPerk:
-            let tilt = Motion.pulse(t, start: 0.25, end: 1.0, response: 0.45, damping: 0.6, settle: 0.55)
-            p.headTilt += 5 * s * tilt
+            // A curious tilt toward the finger (the eyes are already on it).
+            let tilt = Motion.pulse(t, start: 0.15, end: 1.0, response: 0.45, damping: 0.6, settle: 0.55)
+            p.headTilt += 10 * s * tilt; p.headX += 2 * s * tilt
             let perk = a == .lookPerk ? Motion.pulse(t, start: 0.05, end: 0.9, response: 0.25, damping: 0.5, settle: 0.6) : 0
             p.earL -= (3 + 5 * perk) * tilt + 4 * perk; p.earR -= (3 + 5 * perk) * tilt + 4 * perk
             if a == .lookPerk, Motion.inside(t, 0.06, 0.5) { face.eyes = .wide }

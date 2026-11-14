@@ -18,11 +18,11 @@ struct RevontuletEngine: Equatable {
 
     static let rounds = 3
     static let easyFlight = 0.7
-    static let hardFlight = 1.25
+    static let hardFlight = 1.8
     static let foxFlight = 1.0
     /// Where the two embers sit along a hard path, and when the spark reaches each.
     static let emberU = [0.36, 0.7]
-    static let emberT = [0.45, 0.88]
+    static let emberT = [0.85, 1.45]
     static let impactHold = 0.95        // the next lines light while the debris still falls
     static let breakDelay = 0.55        // the breaking impact's cracks race before the burst
     static let celebrateDelay = 0.8     // the burst, then the fox's celebration
@@ -167,15 +167,15 @@ struct RevontuletEngine: Equatable {
         case .interrupt:
             guard beat != .done, startUptime != nil else { return ev }
             if stroking { ev += endStroke(at: now) }
-            let asleep = beat == .sleep && completed
+            // Once the wall has burst the game is finished, however the person leaves; before
+            // that, leaving the app is an interruption.
+            let finished = burstAt != nil
             beat = .done
             beatStart = now
-            if !asleep {
-                endAt = now
-                completed = false
-                interrupted = true
-            }
-            ev.append(.ended(completed: asleep))
+            if !(completed && endAt != nil) { endAt = now }
+            completed = finished
+            interrupted = !finished
+            ev.append(.ended(completed: finished))
         case .finish:
             // Continue, once the fox is asleep.
             guard beat == .sleep, completed else { return ev }
@@ -186,15 +186,14 @@ struct RevontuletEngine: Equatable {
             resumeFlight(at: now)
             guard beat != .done else { return ev }
             if stroking { ev += endStroke(at: now) }
-            // Closing on the goodnight, once asleep, is a finished game.
-            let asleep = beat == .sleep && completed
+            // Once the wall has burst the game is finished, however the person leaves
+            // (celebration, warmth, goodnight); closing before that is stopped by the person.
+            let finished = burstAt != nil
             beat = .done
             beatStart = now
-            if !asleep {
-                endAt = now
-                completed = false
-            }
-            ev.append(.ended(completed: asleep))
+            if !(completed && endAt != nil) { endAt = now }
+            completed = finished
+            ev.append(.ended(completed: finished))
         case let .down(p, r):
             noteRadius(r)
             // One finger plays. A second finger landing while one is down is ignored (unless
@@ -420,6 +419,7 @@ struct RevontuletEngine: Equatable {
             f.emberU = Self.emberU
             f.emberT = Self.emberT
             f.emberShownAt = [nil, nil]
+            f.emberShownReal = [nil, nil]
             f.emberHitAt = [nil, nil]
             f.emberMissed = [false, false]
         }
@@ -462,11 +462,13 @@ struct RevontuletEngine: Equatable {
             guard t >= f.emberT[i] - RevontuletFlight.emberLead - RevontuletFlight.emberEarly,
                   t <= f.emberT[i] + RevontuletFlight.emberGrace else { continue }
             let d = hypot(p.x - f.emberPoint(i).x, p.y - f.emberPoint(i).y)
-            if d < max(64, layout.size.width * 0.2), d < (best?.d ?? .infinity) { best = (i, d) }
+            if d < max(76, layout.size.width * 0.22), d < (best?.d ?? .infinity) { best = (i, d) }
         }
         guard let hit = best else { return [] }
         let shown = f.launch + f.emberT[hit.i] - RevontuletFlight.emberLead
-        let ms = Self.ms(fc - shown)
+        // On the real clock, from the flash the person saw to the finger (a tap a moment
+        // before the flash counts, as 0).
+        let ms = Self.ms(now - (f.emberShownReal[hit.i] ?? now))
         f.emberHitAt[hit.i] = now
         if f.emberShownAt[hit.i] == nil {
             f.emberShownAt[hit.i] = shown
@@ -488,7 +490,7 @@ struct RevontuletEngine: Equatable {
             records[round].impactUptime = time
             records[round].bonus = ribbon
         }
-        skyLight = min(0.85, skyLight + (f.hard ? 0.2 + 0.08 * Double(hits) : 0.13))
+        skyLight = min(0.85, skyLight + (f.hard ? 0.24 + 0.08 * Double(hits) : 0.1))
         setBeat(.impact, at: time)
         return [.impact(round: round, pieces: pieces, breaking: breaking)]
     }
@@ -508,7 +510,9 @@ struct RevontuletEngine: Equatable {
     private mutating func plan(for f: RevontuletFlight, landing t: Double) -> RevontuletFlight.Planned {
         let hits = f.emberHitAt.compactMap { $0 }.count
         let breaking = f.foxOwn || round >= Self.rounds - 1 || t >= Self.breakOnImpactAfter
-        let pieces = f.foxOwn ? 2 : (f.hard ? 2 + hits : 1)
+        // Round one is thin ice: a quick, generous first win. Later rounds build to the burst.
+        // Easy: one piece. Hard: a much wider hole, wider still with each ember lit.
+        let pieces = f.foxOwn ? 2 : (f.hard ? 3 + hits : 1) + (round == 0 ? 1 : 0)
         let ribbon = f.hard && hits == 2 && rng.next() < 0.6
         return .init(pieces: pieces, embersHit: hits, breaking: breaking, ribbon: ribbon)
     }
@@ -548,6 +552,7 @@ struct RevontuletEngine: Equatable {
                 let shown = f.launch + f.emberT[i] - RevontuletFlight.emberLead
                 if f.emberShownAt[i] == nil, fc >= shown {
                     f.emberShownAt[i] = shown
+                    f.emberShownReal[i] = now
                     records[round].embersShown += 1
                     ev.append(.emberShown(index: i))
                 }

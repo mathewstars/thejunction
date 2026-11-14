@@ -210,7 +210,8 @@ def _clinician_line(mind, repo: PatientRepo) -> dict:
         "spark": spark(view),
         "patient_id": repo.patient_id, "label": patient["label"],
         "display_name": patient.get("display_name"),
-        "example": bool(patient.get("example")), "status": status,
+        "example": bool(patient.get("example")), "test_play": bool(patient.get("test_play")),
+        "status": status,
         "level": LEVELS[top] if top >= 0 else None,
         "attention": [{"id": i["id"], "kind": i["kind"], "level": i["level"], "since": i["since"]}
                       for i in items],
@@ -527,6 +528,8 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                         "start": a.get("revontulet_start") or {},
                         "start_z": a.get("revontulet_start_z") or {},
                         "earlier_games": a.get("revontulet_baseline_sessions", 0),
+                        "earlier_days": a.get("revontulet_baseline_days", 0),
+                        "needed_days": T.revontulet_min_days,
                         "needed": T.revontulet_baseline_min, "unusual_z": T.revontulet_unusual_z}
             else:
                 s["good_things"] = [item(g, "good_things") for g in a.get("good_things") or []]

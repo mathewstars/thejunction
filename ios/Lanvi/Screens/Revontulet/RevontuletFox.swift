@@ -1,11 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// The fox on the snow, acting through `LanviView` as it is (never drawn, tinted or lit here).
-///
-/// Swap points for clips: when `LanviClipView` lands on main, `.celebrating` can show the
-/// play-bow clip and `.sleeping` the curled-up sleeping clip, by replacing the matching line
-/// in `body` below. Everything else (the moments, the timing) stays as it is.
+/// The fox on the snow, acting through `LanviView` as it is (never drawn, tinted or lit
+/// here). The puppet is the only fox.
 struct RevontuletFox: View, Equatable {
     enum Act: Equatable { case playing, celebrating, sleeping }
 
@@ -16,11 +13,13 @@ struct RevontuletFox: View, Equatable {
     var look: UnitPoint?
     var yawnTick: Int
     var petTick: Int
+    /// Held while a stroke asks for it (the third stroke: eyes closed happily).
+    var petMood: LanviMood? = nil
+    /// A moment of real joy (both embers lit): the fox may hop.
+    var joy = false
 
     var body: some View {
-        // Swap points (one line each), e.g.:
-        //   if act == .celebrating { LanviClipView(.playBow) } else if act == .sleeping { LanviClipView(.sleeping) } else { puppet }
-        // Until then one puppet plays every act, so the fox never jumps between them.
+        // One puppet plays every act, so the fox never jumps between them.
         puppet
     }
 
@@ -28,9 +27,12 @@ struct RevontuletFox: View, Equatable {
     /// what it is told.
     private var puppet: some View {
         LanviView(pose: .curious, size: size)
-            .lanviHops(act == .celebrating)
+            .lanviHops(act == .celebrating || joy)
             .lanviReaction(reaction, trigger: reactionTick)
-            .lanviMood(act == .sleeping ? .sleepy : nil)
+            // Asleep: it yawns (the moment below), then its eyes close and stay closed (the
+            // closed crescent eyes `.okay` holds), breathing on. A true sleeping face would
+            // need a held closed-eyes mood from Mascot/ (asked in for-main.md).
+            .lanviMood(act == .sleeping ? .okay : petMood)
             .lanviMoment(.yawn, trigger: yawnTick)
             .lanviLookAt(act == .sleeping ? nil : look)
             .lanviTouch(.head, hold: 1.5, trigger: petTick)

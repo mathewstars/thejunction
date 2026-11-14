@@ -648,3 +648,109 @@ def test_earlier_weeks_for_the_demo_patient_leave_the_mind_as_it_was(env):
     assert out["design"]["days"] >= 80 and out["design"]["unit"] == "rating"
     assert 8 <= rows["face.facial_activity"]["n"] <= out["design"]["observations"] <= 14
     assert len([r for r in out["rows"] if r["agreement"] == "consistent"]) >= 5
+
+
+# ============================================================================
+# the verdict is secured by code (review of 14 November 2026)
+# ============================================================================
+
+def _row(key, group, agreement, strength="weak", expected="lower", n=13, rho=0.5):
+    return {"key": key, "group": group, "expected": expected, "support": "moderate",
+            "status": "tested", "n": n, "rho": rho, "quality": 1.0, "agreement": agreement,
+            "strength": strength, "lead_days": None}
+
+
+def test_fewer_than_twenty_ratings_is_always_low_confidence():
+    rows = [_row("face.a", "face", "consistent", "moderate"), _row("face.b", "face", "consistent"),
+            _row("daily.a", "daily", "consistent", "moderate"),
+            _row("activity.a", "activity", "consistent", "moderate")]
+    as_days = A.code_overall(rows, "rating", [])
+    assert as_days["pattern"] == "consistent_with_worse_state" and as_days["confidence"] == "medium"
+    few = A.code_overall(rows, "rating", [], unit="rating", n_obs=13)
+    assert few["pattern"] == "consistent_with_worse_state" and few["confidence"] == "low"
+    enough = A.code_overall(rows, "rating", [], unit="rating", n_obs=20)
+    assert enough["confidence"] == "medium"
+
+
+def test_a_model_cannot_raise_confidence_above_low_with_few_ratings():
+    rows = [_row("face.smile_rate_per_min", "face", "consistent", "moderate"),
+            _row("daily.steps", "daily", "consistent", "moderate"),
+            _row("checkin.good_things", "activity", "consistent", "moderate")]
+    code_ov = A.code_overall(rows, "rating", [], unit="rating", n_obs=13)
+    reply = {"rows": [{"key": r["key"], "agreement": r["agreement"], "strength": r["strength"],
+                       "caveats": []} for r in rows],
+             "overall": {**code_ov, "confidence": "medium"}}
+    _, ov, corrections = A.merge(reply, rows, code_ov, "rating", unit="rating", n_obs=13)
+    assert ov["confidence"] == "low" and ov["sources"]["confidence"] == "code_corrected"
+    assert any(c["field"] == "confidence" and c["reason"] == "confidence_above_cap_for_few_ratings"
+               for c in corrections)
+
+
+def test_consistent_needs_half_of_each_agreeing_group():
+    rows = [_row("face.a", "face", "consistent"), _row("face.b", "face", "consistent"),
+            _row("daily.a", "daily", "consistent"),
+            _row("daily.b", "daily", "inconclusive", "negligible"),
+            _row("activity.a", "activity", "consistent"),
+            _row("activity.b", "activity", "inconclusive", "negligible"),
+            _row("activity.c", "activity", "inconclusive", "negligible")]
+    ov = A.code_overall(rows, "rating", [])
+    assert ov["pattern"] == "partly_consistent" and ov["independent_lines"] == 3   # 1 of 3 in activity
+    assert not A._pattern_allowed("consistent_with_worse_state", rows, 3, len(rows))
+    assert A._pattern_allowed("partly_consistent", rows, 3, len(rows))
+    rows[-1] = _row("activity.c", "activity", "consistent")                            # now 2 of 3
+    assert A.code_overall(rows, "rating", [])["pattern"] == "consistent_with_worse_state"
+    # a row with no expected direction does not count against its group
+    rows.append(_row("daily.sleep_h", "daily", "inconclusive", "negligible", expected="mixed"))
+    assert A.code_overall(rows, "rating", [])["pattern"] == "consistent_with_worse_state"
+
+
+def test_week_to_week_change_separates_a_shared_drift_from_a_shared_movement():
+    days = [date(2026, 8, 3) + timedelta(days=7 * i) for i in range(13)]
+    score = [5, 4, 6, 5, 7, 6, 8, 9, 8, 11, 10, 13, 15]
+    ref = dict(zip(days, map(float, score)))
+    follows = dict(zip(days, [-float(s) for s in score]))          # moves with every change
+    wobble = [0.11, 0.68, 0.61, 0.2, 0.4, 0.36, 0.52, 0.63, 0.08, 0.02, 0.67, 0.35, 0.61]
+    drifts = dict(zip(days, [-float(i) + w for i, w in enumerate(wobble)]))   # only shares the slow rise
+    a = A.row_stats("daily.steps", "lower", follows, ref, set(), find_lag=False)
+    b = A.row_stats("daily.steps", "lower", drifts, ref, set(), find_lag=False)
+    assert a["rho"] > 0.9 and b["rho"] > 0.9                        # in level both look the same
+    assert a["change_rho"] > 0.9 and a["change_n"] == 12
+    assert abs(b["change_rho"]) < 0.3                               # a steady drift does not follow the changes
+    # per day (a proxy reference) the value is not computed
+    assert A.row_stats("daily.steps", "lower", follows, ref, set())["change_rho"] is None
+
+
+def test_what_the_page_headline_rests_on_does_not_depend_on_the_model():
+    """The headline names measures by their strength label and passes over a measure the task
+    itself moves; the first chip prints the pattern. All three are code's, whatever is answered."""
+    rows = [_row("face.look_down_share", "face", "consistent", "moderate"),
+            _row("face.smile_intensity", "face", "consistent", "weak"),
+            _row("daily.steps", "daily", "consistent", "moderate"),
+            _row("checkin.good_things", "activity", "consistent", "weak"),
+            _row("focus.median_reaction_ms", "activity", "inconclusive", "negligible")]
+    code_ov = A.code_overall(rows, "rating", [], unit="rating", n_obs=13)
+    seen = set()
+    for strength in A.STRENGTHS:
+        for pattern in ("consistent_with_worse_state", "partly_consistent", "no_clear_relation",
+                        "insufficient_data"):
+            reply = {"rows": [{"key": r["key"], "agreement": r["agreement"], "strength": strength,
+                               "caveats": []} for r in rows],
+                     "overall": {**code_ov, "pattern": pattern}}
+            out, ov, _ = A.merge(reply, rows, code_ov, "rating", unit="rating", n_obs=13)
+            seen.add((tuple(r["strength"] for r in out), ov["pattern"], ov["independent_lines"],
+                      tuple(sorted(c["code"] for c in out[0]["caveats"]))))
+    assert len(seen) == 1
+    strengths, pattern, lines, look_down_caveats = next(iter(seen))
+    assert strengths == tuple(r["strength"] for r in rows) and pattern == code_ov["pattern"]
+    assert "task_confound" in look_down_caveats
+
+
+def test_task_bound_is_set_by_code_whatever_caveats_a_model_adds(env):
+    """A model that tags every face measure as depending on how the phone is held must not
+    change which measures the page's headline may name."""
+    from clinic_engine.mind.associations import _TASK_CONFOUND
+    C, pid = env.C(), env.demo["patient_id"]
+    out = env.client.post(f"/v1/clinic/patients/{pid}/associations/run", headers=C).json()
+    flags = {r["key"]: r["task_bound"] for r in out["rows"]}
+    assert flags and all(v == (k in _TASK_CONFOUND) for k, v in flags.items())
+    assert flags.get("face.look_down_share") is True and flags.get("face.smile_intensity") is False

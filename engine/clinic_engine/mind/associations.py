@@ -258,7 +258,8 @@ def row_stats(key: str, expected: str, measure: dict[date, float], ref: dict[dat
     xs, ys = lagged_pairs(measure, ref, 0)
     n = len(xs)
     out: dict = {"n": n, "rho": None, "ci_low": None, "ci_high": None, "p": None,
-                 "lead_days": None, "lead_n": None, "contrast": None}
+                 "lead_days": None, "lead_n": None, "contrast": None,
+                 "change_rho": None, "change_n": None}
     per_day = measure if daily is None else daily
     held_vals = [v for d, v in per_day.items() if d in held]
     other_vals = [v for d, v in per_day.items() if d not in held]
@@ -282,6 +283,14 @@ def row_stats(key: str, expected: str, measure: dict[date, float], ref: dict[dat
     lead, lead_n = best_lag(measure, ref, expected, th) if find_lag else (None, None)
     out.update(status="tested", rho=_r2(sign * raw), ci_low=_r2(lo), ci_high=_r2(hi),
                p=p, lead_days=lead, lead_n=lead_n)
+    if not find_lag:
+        # With one observation per rating: does the measure CHANGE when the
+        # score changes, from one rating to the next? Two series that only drift
+        # slowly over the same weeks correlate in level and not in change.
+        dx = [b - a for a, b in zip(xs, xs[1:])]
+        dy = [b - a for a, b in zip(ys, ys[1:])]
+        ch = spearman(dx, dy) if len(dx) >= th.assoc_min_n - 1 else None
+        out.update(change_rho=None if ch is None else _r2(sign * ch), change_n=len(dx))
     return out
 
 
@@ -491,7 +500,8 @@ def compute_rows(ds: dict, th: Thresholds = T) -> list[dict]:
         if f["key"] in is_ref:
             rows.append({**base, "status": "is_reference", "n": len(ds["measures"][f["key"]]),
                          "rho": None, "ci_low": None, "ci_high": None, "p": None,
-                         "lead_days": None, "lead_n": None, "contrast": None})
+                         "lead_days": None, "lead_n": None, "contrast": None,
+                         "change_rho": None, "change_n": None})
             continue
         stat_m = ds.get("stat_measures", ds["measures"])[f["key"]]
         rows.append({**base, **row_stats(f["key"], f["expected"], stat_m,
@@ -565,7 +575,9 @@ def code_caveats(row: dict, ref_kind: str, th: Thresholds = T) -> tuple[list[str
         req.append("mixed_literature")
     k = row["key"]
     if k in _TASK_CONFOUND:
-        sug.append("task_confound")
+        # Required: the page's headline passes over a measure the task itself
+        # moves (looking down at the phone), and must do so whatever a model says.
+        req.append("task_confound")
     if k in _MEDICATION:
         sug.append("medication")
     if k in _GLASSES:
@@ -582,10 +594,29 @@ def _lines(rows: list[dict]) -> tuple[list[dict], int]:
     return cons, len({r["group"] for r in cons})
 
 
-def _confidence_cap(ref_kind: str, lines: int, strongest_n: int, th: Thresholds = T) -> str:
+def _confidence_cap(ref_kind: str, lines: int, strongest_n: int, th: Thresholds = T,
+                    unit: str = "day", n_obs: int | None = None) -> str:
+    """The most confidence the data can carry, whoever asks. With one
+    observation per rating, fewer than assoc_low_ratings ratings from one
+    person always give "low": no pattern of rows changes that."""
+    if unit == "rating" and (n_obs or 0) < th.assoc_low_ratings:
+        return "low"
     if ref_kind == "rating" and lines >= th.assoc_high_lines and strongest_n >= th.assoc_high_n:
         return "high"
     return "medium"
+
+
+def _groups_mostly_agree(rows: list[dict]) -> bool:
+    """For "consistent": in every group that has a line (a consistent row that
+    is at least weak), at least half of the rows with an expected direction are
+    as expected. One good row among five in a group is "partly"."""
+    cons, _ = _lines(rows)
+    for g in {r["group"] for r in cons}:
+        directional = [r for r in rows if r["group"] == g and r["expected"] != "mixed"]
+        agree = [r for r in directional if r.get("agreement") == "consistent"]
+        if 2 * len(agree) < len(directional):
+            return False
+    return True
 
 
 def _pattern_allowed(pattern: str, rows: list[dict], lines: int, tested: int,
@@ -594,7 +625,7 @@ def _pattern_allowed(pattern: str, rows: list[dict], lines: int, tested: int,
         return pattern == "insufficient_data"
     cons, _ = _lines(rows)
     if pattern == "consistent_with_worse_state":
-        return lines >= 2
+        return lines >= 2 and _groups_mostly_agree(rows)
     if pattern == "partly_consistent":
         return bool(cons)
     if pattern == "opposite_to_expectation":
@@ -602,14 +633,15 @@ def _pattern_allowed(pattern: str, rows: list[dict], lines: int, tested: int,
     return True  # no_clear_relation and insufficient_data: restraint is always allowed
 
 
-def code_overall(rows: list[dict], ref_kind: str, notes: list[str], th: Thresholds = T) -> dict:
+def code_overall(rows: list[dict], ref_kind: str, notes: list[str], th: Thresholds = T,
+                 unit: str = "day", n_obs: int | None = None) -> dict:
     tested = [r for r in rows if r["status"] == "tested"]
     cons, lines = _lines(tested)
     opp = [r for r in tested if r.get("agreement") == "opposite"
            and r.get("strength") not in (None, "negligible")]
     if len(tested) < th.assoc_min_tested_rows:
         pattern = "insufficient_data"
-    elif cons and lines >= 2 and not opp:
+    elif cons and lines >= 2 and not opp and _groups_mostly_agree(tested):
         pattern = "consistent_with_worse_state"
     elif cons:
         pattern = "partly_consistent"
@@ -619,8 +651,8 @@ def code_overall(rows: list[dict], ref_kind: str, notes: list[str], th: Threshol
         pattern = "no_clear_relation"
     strongest = sorted(cons, key=lambda r: (-STRENGTHS.index(r["strength"]), -r["rho"], r["key"]))[:3]
     min_n = min((r["n"] for r in strongest), default=0)
-    cap = _confidence_cap(ref_kind, lines, min_n, th)
-    if pattern == "insufficient_data" or not cons:
+    cap = _confidence_cap(ref_kind, lines, min_n, th, unit, n_obs)
+    if pattern == "insufficient_data" or not cons or cap == "low":
         conf = "low"
     elif cap == "high":
         conf = "high"
@@ -657,7 +689,8 @@ OVERALL_FIELDS = ("pattern", "confidence", "independent_lines", "strongest", "le
 
 
 def code_appraisal(rows: list[dict], ref_kind: str, notes: list[str],
-                   th: Thresholds = T) -> tuple[list[dict], dict]:
+                   th: Thresholds = T, unit: str = "day",
+                   n_obs: int | None = None) -> tuple[list[dict], dict]:
     """Code's full appraisal, no model. Returns (rows with judgements, overall)."""
     out = []
     for r in rows:
@@ -672,13 +705,14 @@ def code_appraisal(rows: list[dict], ref_kind: str, notes: list[str],
             r.update(agreement=None, strength=None, agreement_source=None, strength_source=None,
                      caveats=[{"code": c, "by": "code"} for c in cav])
         out.append(r)
-    overall = code_overall(out, ref_kind, notes, th)
+    overall = code_overall(out, ref_kind, notes, th, unit, n_obs)
     overall["sources"] = {k: "code" for k in OVERALL_FIELDS}
     return out, overall
 
 
 def merge(reply: dict, code_rows: list[dict], code_ov: dict, ref_kind: str,
-          th: Thresholds = T) -> tuple[list[dict], dict, list[dict]]:
+          th: Thresholds = T, unit: str = "day",
+          n_obs: int | None = None) -> tuple[list[dict], dict, list[dict]]:
     """Hold the model's reply (already shape-checked by the output gate) to
     code's rules. Returns (rows, overall, corrections). Every value the model
     got wrong is replaced by code's value and listed as a correction; the
@@ -703,11 +737,16 @@ def merge(reply: dict, code_rows: list[dict], code_ov: dict, ref_kind: str,
             fix("row", r["key"], "agreement", m["agreement"], cr["agreement"],
                 "agreement_not_supported_by_numbers")
             r.update(agreement=cr["agreement"], agreement_source="code_corrected")
-        if STRENGTHS.index(m["strength"]) <= STRENGTHS.index(cr["strength"]):
-            r.update(strength=m["strength"], strength_source="model")
+        # The strength label is code's, always: it decides which rows count as a
+        # line and which measure the page's headline names, so it must not change
+        # with what a model happens to answer. A differing answer is listed.
+        if m["strength"] == cr["strength"]:
+            r.update(strength=cr["strength"], strength_source="model")
         else:
             fix("row", r["key"], "strength", m["strength"], cr["strength"],
-                "stronger_than_interval_supports")
+                "stronger_than_interval_supports"
+                if STRENGTHS.index(m["strength"]) > STRENGTHS.index(cr["strength"])
+                else "strength_set_by_code")
             r.update(strength=cr["strength"], strength_source="code_corrected")
         req, _ = code_caveats(r, ref_kind, th)
         cav = [{"code": c, "by": "model"} for c in dict.fromkeys(m["caveats"])]
@@ -742,27 +781,36 @@ def merge(reply: dict, code_rows: list[dict], code_ov: dict, ref_kind: str,
         src["strongest"] = "model"
     ov["strongest"] = kept
 
-    # pattern: must fit the corrected rows.
-    if _pattern_allowed(mo["pattern"], tested, lines, len(tested), th):
-        ov["pattern"], src["pattern"] = mo["pattern"], "model"
+    # pattern: code's rule on the corrected rows, always. A model may not lower it
+    # either: "no clear relation" beside a forest of agreeing rows would contradict
+    # the page. A differing answer is listed as a correction.
+    if mo["pattern"] == code_ov["pattern"]:
+        ov["pattern"], src["pattern"] = code_ov["pattern"], "model"
     else:
         ov["pattern"], src["pattern"] = code_ov["pattern"], "code_corrected"
         fix("overall", None, "pattern", mo["pattern"], code_ov["pattern"],
-            "pattern_not_supported_by_rows")
+            "pattern_not_supported_by_rows"
+            if not _pattern_allowed(mo["pattern"], tested, lines, len(tested), th)
+            else "pattern_set_by_code")
 
     # confidence: capped by the reference kind, the lines and the observations.
     by_row = {r["key"]: r for r in tested}
     min_n = min((by_row[k]["n"] for k in kept), default=0)
-    cap = _confidence_cap(ref_kind, lines, min_n, th)
-    if CONFIDENCE.index(mo["confidence"]) <= CONFIDENCE.index(cap):
-        ov["confidence"], src["confidence"] = mo["confidence"], "model"
+    cap = _confidence_cap(ref_kind, lines, min_n, th, unit, n_obs)
+    # Code's value, always, like the pattern: the page says confidence is set by
+    # code, and that has to hold with twenty ratings too.
+    code_conf = code_ov["confidence"]
+    if CONFIDENCE.index(code_conf) > CONFIDENCE.index(cap):
+        code_conf = cap
+    if mo["confidence"] == code_conf:
+        ov["confidence"], src["confidence"] = code_conf, "model"
     else:
-        code_conf = code_ov["confidence"]
-        if CONFIDENCE.index(code_conf) > CONFIDENCE.index(cap):
-            code_conf = cap
         ov["confidence"], src["confidence"] = code_conf, "code_corrected"
         fix("overall", None, "confidence", mo["confidence"], code_conf,
-            "confidence_above_cap_for_" + ("proxy" if ref_kind == "proxy" else "data"))
+            "confidence_above_cap_for_" + ("proxy" if ref_kind == "proxy" else
+                                            "few_ratings" if cap == "low" else "data")
+            if CONFIDENCE.index(mo["confidence"]) > CONFIDENCE.index(cap)
+            else "confidence_set_by_code")
 
     # leads_reference: a claim of an early signal needs consistent rows that lead.
     if mo["leads_reference"] and not any((r.get("lead_days") or 0) < 0 for r in cons):
@@ -840,7 +888,8 @@ def allowed_pack_strings() -> set[str]:
 # ============================================================================
 
 ROW_OUT = ("key", "label", "group", "expected", "support", "why", "status", "n", "rho",
-           "ci_low", "ci_high", "p_adj", "lead_days", "contrast", "quality", "agreement",
+           "ci_low", "ci_high", "p_adj", "lead_days", "contrast", "change_rho", "change_n",
+           "quality", "agreement",
            "strength", "agreement_source", "strength_source")
 
 
@@ -852,6 +901,10 @@ def assemble(ds: dict, rows: list[dict], overall: dict, corrections: list[dict],
     out_rows = []
     for r in rows:
         o = {k: r.get(k) for k in ROW_OUT}
+        # Set by code from the key, not from the caveat list: a model may add the
+        # phone-position caveat to every face measure, and the page's headline
+        # must still know which measures the task itself moves.
+        o["task_bound"] = r["key"] in _TASK_CONFOUND
         o["caveats"] = [{"code": c["code"], "text": note_text(c["code"]), "by": c["by"]}
                         for c in r.get("caveats", [])]
         out_rows.append(o)
@@ -866,7 +919,8 @@ def assemble(ds: dict, rows: list[dict], overall: dict, corrections: list[dict],
         "design": {"type": DESIGN_TYPE, "days": ds["n_days"], "sessions": ds["n_sessions"],
                    "first_day": ds["start"].isoformat(), "last_day": ds["end"].isoformat(),
                    "rows_tested": tested, "min_n": T.assoc_min_n,
-                   "unit": ds.get("unit", "day"), "observations": ds.get("n_obs")},
+                   "unit": ds.get("unit", "day"), "observations": ds.get("n_obs"),
+                   "low_below_ratings": T.assoc_low_ratings},
         "reference": {"key": ref["key"], "label": ref_info["label"], "kind": ref["kind"],
                       "worse_is": ref_info["worse_is"], "ratings": ref["n_ratings"]},
         "rows": out_rows,

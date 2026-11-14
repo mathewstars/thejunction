@@ -33,6 +33,10 @@ struct RevontuletPainter {
     private var L: RevontuletLayout { e.layout }
     private var since: Double { now - e.beatStart }
     private var burstAge: Double? { e.burstAt.map { now - $0 } }
+    /// 0 for the whole wall, rising by a third with each impact (eased in after the hit).
+    private var thinness: Double {
+        e.impacts.reduce(0) { $0 + min(1, max(0, (now - $1.time) / 0.8)) } / 3
+    }
 
     // MARK: - Sky (behind the ice)
 
@@ -42,12 +46,37 @@ struct RevontuletPainter {
         let sweep: Double = burstAge.map { min(1, max(0, ($0 - 0.1) / 2.4)) } ?? 1
         var g = ctx
         g.blendMode = .plusLighter
-        aurora(&g, size: size, light: light, sweep: e.broken ? sweep : 1)
+        let burstX = art.burstPoint.map { Double($0.x) }
+        aurora(&g, size: size, light: light, sweep: e.broken ? sweep : 1, origin: burstX)
+        // Every impact adds a ribbon of aurora behind the ice (bigger for the vein), unfurling
+        // from the hit: seen through the holes and the thinning glass, the sky being won.
+        for (k, hit) in e.impacts.enumerated() where !hit.breaking {
+            let age = now - hit.time
+            guard age > 0 else { continue }
+            // Easy: a small warm ribbon that opens fast. Hard: a big bright one unfurling slowly,
+            // bigger again with each ember lit.
+            let big = hit.hard ? 1.2 + 0.25 * Double(hit.embersHit) : 0.4
+            let fade = e.beat == .sleep || e.beat == .done ? 0.6 : 1
+            curtain(&g, size: size, base: 0.2 + 0.07 * Double(k), amp: 10 + 14 * big, height: 0.06 + 0.09 * big,
+                    alpha: (0.14 + 0.36 * big) * fade, speed: 0.12 + 0.03 * Double(k), phase: 4 + 1.7 * Double(k),
+                    violetTop: hit.hard, reveal: min(1, age / (hit.hard ? 1.9 : 0.8)), origin: Double(hit.point.x), step: 8)
+        }
         for (k, r) in e.impacts.enumerated() where r.ribbon {
             let age = now - r.time
             let a = min(1, age / 1.2) * (e.beat == .sleep || e.beat == .done ? 0.6 : 1)
             curtain(&g, size: size, base: 0.36 + 0.05 * Double(k), amp: 22, height: 0.13, alpha: 0.5 * a,
                     speed: 0.21, phase: 2.0 + Double(k), violetTop: true, reveal: min(1, age / 1.6))
+        }
+        if let b = burstAge {
+            // The sky won: stars come on one by one, and the snow takes a soft tint from it.
+            let on = min(1, max(0, (b - 0.6) / 2.2))
+            if on > 0 {
+                stars(&g, size: size, on: on)
+                let h = size.height
+                g.fill(Path(CGRect(x: 0, y: h * 0.52, width: size.width, height: h * 0.48)), with: .linearGradient(
+                    Gradient(colors: [RevontuletColor.teal.opacity(0.09 * on * light), RevontuletColor.green.opacity(0.04 * on * light), .clear]),
+                    startPoint: CGPoint(x: 0, y: h * 0.52), endPoint: CGPoint(x: 0, y: h)))
+            }
         }
         if let b = burstAge, b < 1.4 {
             // The sky opening: one soft bloom of green light, gone in a breath.
@@ -59,24 +88,44 @@ struct RevontuletPainter {
         }
     }
 
-    private func aurora(_ ctx: inout GraphicsContext, size: CGSize, light: Double, sweep: Double) {
+    private func aurora(_ ctx: inout GraphicsContext, size: CGSize, light: Double, sweep: Double, origin: Double? = nil) {
         guard light > 0.01 else { return }
-        curtain(&ctx, size: size, base: 0.25, amp: 30, height: 0.19, alpha: 0.42 * light, speed: 0.11, phase: 0, violetTop: true, reveal: sweep)
-        curtain(&ctx, size: size, base: 0.33, amp: 24, height: 0.16, alpha: 0.5 * light, speed: 0.15, phase: 1.7, violetTop: false, reveal: sweep)
-        curtain(&ctx, size: size, base: 0.16, amp: 18, height: 0.12, alpha: 0.3 * light, speed: 0.08, phase: 3.1, violetTop: true, reveal: sweep)
+        curtain(&ctx, size: size, base: 0.25, amp: 30, height: 0.19, alpha: 0.42 * light, speed: 0.11, phase: 0, violetTop: true, reveal: sweep, origin: origin)
+        curtain(&ctx, size: size, base: 0.33, amp: 24, height: 0.16, alpha: 0.5 * light, speed: 0.15, phase: 1.7, violetTop: false, reveal: sweep, origin: origin)
+        curtain(&ctx, size: size, base: 0.16, amp: 18, height: 0.12, alpha: 0.3 * light, speed: 0.08, phase: 3.1, violetTop: true, reveal: sweep, origin: origin)
+    }
+
+    /// Small four-pointed glints that come on one by one after the burst.
+    private func stars(_ g: inout GraphicsContext, size: CGSize, on: Double) {
+        for i in 0..<34 {
+            let di = Double(i)
+            let fx = abs(sin(di * 12.9898) * 43758.5453).truncatingRemainder(dividingBy: 1)
+            let fy = abs(sin(di * 78.233) * 12345.678).truncatingRemainder(dividingBy: 1)
+            let p = CGPoint(x: CGFloat(fx) * size.width, y: size.height * CGFloat(0.06 + 0.4 * fy))
+            let lit = min(1, max(0, on * 34 - di * 0.8))
+            let tw = 0.55 + 0.45 * sin(now * (0.7 + 0.05 * di) + di * 1.3)
+            let a = lit * tw
+            guard a > 0.02 else { continue }
+            let len: CGFloat = CGFloat(2.5 + 2.5 * fy)
+            g.fill(Path(ellipseIn: CGRect(x: p.x - len, y: p.y - 0.5, width: len * 2, height: 1)), with: .color(Color.white.opacity(0.7 * a)))
+            g.fill(Path(ellipseIn: CGRect(x: p.x - 0.5, y: p.y - len, width: 1, height: len * 2)), with: .color(Color.white.opacity(0.7 * a)))
+            g.fill(Path(ellipseIn: CGRect(x: p.x - 2.2, y: p.y - 2.2, width: 4.4, height: 4.4)), with: .radialGradient(
+                Gradient(colors: [Color.white.opacity(0.6 * a), .clear]), center: p, startRadius: 0, endRadius: 2.2))
+        }
     }
 
     /// One curtain of aurora: vertical rays hanging from a slowly swaying lower edge,
     /// brightest at the edge, green into teal, a violet fringe at the top.
     private func curtain(_ ctx: inout GraphicsContext, size: CGSize, base: Double, amp: Double, height: Double,
-                         alpha: Double, speed: Double, phase: Double, violetTop: Bool, reveal: Double) {
+                         alpha: Double, speed: Double, phase: Double, violetTop: Bool, reveal: Double, origin: Double? = nil,
+                         step: Double = 4) {
         let w = Double(size.width), h = Double(size.height)
-        let step = 4.0
         let k1 = 2 * Double.pi / (w * 1.15), k2 = 2 * Double.pi / (w * 0.42)
         let t = now
         var x = -10.0
         while x < w + 10 {
-            let lead = reveal * (w + 260) - x
+            // Unfurling from the left, or outward both ways from a point (a hit, the burst).
+            let lead = origin.map { reveal * (w * 1.1 + 260) - abs(x - $0) } ?? (reveal * (w + 260) - x)
             let shown = min(1, max(0, lead / 260))
             if shown > 0.01 {
                 let y1 = sin(x * k1 + t * speed + phase) * amp
@@ -110,6 +159,7 @@ struct RevontuletPainter {
         let standing = art.standing(at: now, burstAt: e.burstAt)
         if !standing.isEmpty {
             glass(&ctx, standing: standing)
+            holeSky(&ctx)
             var inside = ctx
             inside.clip(to: standing)
             holes(&inside)
@@ -133,9 +183,25 @@ struct RevontuletPainter {
         if let sky = art.frostedSky {
             g.draw(Image(decorative: sky, scale: 1), in: art.skyRect.offsetBy(dx: 3, dy: 5))
         }
-        // More light comes through after every impact.
+        // The wall thins with every impact: the real sky glows through more and more, so the
+        // player sees how close they are without a counter.
+        let thin = thinness
         let open = e.skyLight
-        g.fill(Path(wall), with: .color(RevontuletColor.iceDeep.opacity(0.22 * (1 - open))))
+        var through = g
+        through.opacity = 0.1 + 0.32 * thin
+        through.draw(ctx.resolve(Image("world-night")), in: art.skyRect)
+        // Faint shapes of the aurora drifting behind the glass.
+        var behind = g
+        behind.blendMode = .plusLighter
+        let shapes: [(Double, Double, Double, Color)] = [(0.2, 0.3, 0.05, RevontuletColor.green), (0.62, 0.22, 0.035, RevontuletColor.teal),
+                                                         (0.85, 0.42, 0.045, RevontuletColor.violet)]
+        for (k, sh) in shapes.enumerated() {
+            let fx: Double = sh.0 + 0.12 * sin(now * sh.2 + Double(k) * 1.9)
+            let fy: Double = sh.1 + 0.06 * sin(now * sh.2 * 1.6 + Double(k))
+            let c = CGPoint(x: L.size.width * CGFloat(fx), y: wall.minY + wall.height * CGFloat(fy))
+            softEllipse(&behind, c, rx: wall.width * 0.32, ry: wall.height * 0.1, [sh.3.opacity(0.1 + 0.16 * thin), sh.3.opacity(0.04 + 0.06 * thin)])
+        }
+        g.fill(Path(wall), with: .color(RevontuletColor.iceDeep.opacity(0.3 * (1 - thin))))
         // Shadow gathering toward the base.
         g.fill(Path(wall), with: .linearGradient(
             Gradient(colors: [.clear, Color.black.opacity(0.08), Color.black.opacity(0.34)]),
@@ -191,17 +257,90 @@ struct RevontuletPainter {
         g.stroke(art.topEdge, with: .color(Color.white.opacity(0.62)), lineWidth: 1.1)
     }
 
-    /// The holes the impacts left: the real sky shows through (nothing is drawn there); the
-    /// glass around each has a broken, thick, lit rim.
-    private func holes(_ ctx: inout GraphicsContext) {
+    /// Inside each hole: the sky itself, bright and sharp, with its stars and a breath of
+    /// aurora light, so a hole reads as a window onto the night, not a patch.
+    private func holeSky(_ ctx: inout GraphicsContext) {
+        var opened = Path()
+        var any = false
+        for (i, f) in art.facets.enumerated() {
+            guard let t = art.fallAt[i], now >= t else { continue }
+            opened.addPath(f.path)
+            any = true
+        }
+        guard any else { return }
         var g = ctx
+        g.clip(to: opened)
         g.blendMode = .plusLighter
+        // The sharp sky, brightened: its aurora and its light come through clear.
+        var bright = g
+        bright.opacity = 0.45
+        bright.draw(ctx.resolve(Image("world-night")), in: art.skyRect)
+        let box = opened.boundingRect
+        let c = CGPoint(x: box.midX, y: box.midY)
+        softEllipse(&g, c, rx: max(box.width, box.height) * 0.9, ry: max(box.width, box.height) * 0.7,
+                    [RevontuletColor.teal.opacity(0.24 + 0.1 * e.skyLight), RevontuletColor.green.opacity(0.08), RevontuletColor.violet.opacity(0.06)])
+        // Stars in the window, a few per piece, twinkling.
+        for (i, f) in art.facets.enumerated() {
+            guard let t = art.fallAt[i], now >= t else { continue }
+            let b = f.path.boundingRect
+            for k in 0..<5 {
+                let dk = Double(i * 7 + k)
+                let fx = abs(sin(dk * 12.9898) * 43758.5453).truncatingRemainder(dividingBy: 1)
+                let fy = abs(sin(dk * 78.233) * 12345.678).truncatingRemainder(dividingBy: 1)
+                let p = CGPoint(x: b.minX + b.width * CGFloat(fx), y: b.minY + b.height * CGFloat(fy))
+                guard f.path.contains(p) else { continue }
+                let a = (0.55 + 0.45 * sin(now * (0.9 + 0.1 * Double(k)) + dk)) * min(1, (now - t) / 0.6)
+                let len: CGFloat = CGFloat(2 + 2.5 * fy)
+                g.fill(Path(ellipseIn: CGRect(x: p.x - len, y: p.y - 0.5, width: len * 2, height: 1)), with: .color(Color.white.opacity(0.8 * a)))
+                g.fill(Path(ellipseIn: CGRect(x: p.x - 0.5, y: p.y - len, width: 1, height: len * 2)), with: .color(Color.white.opacity(0.8 * a)))
+                g.fill(Path(ellipseIn: CGRect(x: p.x - 1.6, y: p.y - 1.6, width: 3.2, height: 3.2)), with: .color(Color.white.opacity(0.7 * a)))
+            }
+        }
+    }
+
+    /// The broken rim of each hole, on the glass that is left: thick and uneven, lit in places
+    /// and broken in others, with small chips, and a shaded side for the glass's thickness.
+    private func holes(_ ctx: inout GraphicsContext) {
         for (i, f) in art.facets.enumerated() {
             guard let t = art.fallAt[i], now >= t else { continue }
             let fresh = max(0, 1 - (now - t) / 0.8)
-            g.stroke(f.path, with: .color(RevontuletColor.iceCold.opacity(0.12)), lineWidth: 6)
-            g.stroke(f.path, with: .color(RevontuletColor.frost.opacity(0.26 + 0.4 * fresh)), lineWidth: 2.2)
-            g.stroke(f.path, with: .color(Color.white.opacity(0.7)), lineWidth: 0.7)
+            var side = ctx
+            side.translateBy(x: 1.5, y: 3)
+            side.stroke(f.path, with: .color(Color.black.opacity(0.3)), lineWidth: 5)
+            var g = ctx
+            g.blendMode = .plusLighter
+            let pts = f.points
+            var n = 0
+            for k in 0..<pts.count {
+                let a = pts[k], b = pts[(k + 1) % pts.count]
+                // Each edge in a few pieces of different weight; some pieces are missing.
+                for piece in 0..<3 {
+                    n += 1
+                    let r1 = abs(sin(Double(i * 31 + n) * 12.9898) * 43758.5453).truncatingRemainder(dividingBy: 1)
+                    let r2 = abs(sin(Double(i * 17 + n) * 78.233) * 12345.678).truncatingRemainder(dividingBy: 1)
+                    guard r1 > 0.34 else { continue }
+                    let u0 = CGFloat(piece) / 3, u1 = CGFloat(piece + 1) / 3
+                    let p0 = CGPoint(x: a.x + (b.x - a.x) * u0, y: a.y + (b.y - a.y) * u0)
+                    let p1 = CGPoint(x: a.x + (b.x - a.x) * u1, y: a.y + (b.y - a.y) * u1)
+                    var seg = Path()
+                    seg.move(to: p0)
+                    seg.addLine(to: p1)
+                    let w = CGFloat(1.2 + 8 * r2 * r2)
+                    let lit = 0.2 + 0.7 * r1 * r1 + 0.3 * fresh
+                    g.stroke(seg, with: .color(RevontuletColor.iceCold.opacity(0.12 * lit)), style: StrokeStyle(lineWidth: w * 1.5, lineCap: .round))
+                    g.stroke(seg, with: .color(RevontuletColor.frost.opacity(0.6 * lit)), style: StrokeStyle(lineWidth: max(0.8, w * 0.45), lineCap: .butt))
+                    if r2 > 0.55 {
+                        // A small chip of glass sitting on the edge, catching the light.
+                        let m = CGPoint(x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2)
+                        var chip = Path()
+                        chip.move(to: CGPoint(x: m.x - 3, y: m.y - 1))
+                        chip.addLine(to: CGPoint(x: m.x + 1, y: m.y - 4))
+                        chip.addLine(to: CGPoint(x: m.x + 3, y: m.y + 2))
+                        chip.closeSubpath()
+                        g.fill(chip, with: .color(Color.white.opacity(0.5 * lit)))
+                    }
+                }
+            }
         }
     }
 
@@ -275,18 +414,20 @@ struct RevontuletPainter {
     /// shimmer travelling along it and the three knots of the combo pulsing in order.
     private func vein(_ ctx: inout GraphicsContext, _ f: RevontuletArt.Fault, glow: Double, sharp: GraphicsContext.ResolvedImage) {
         let pulse = glow * (0.82 + 0.18 * sin(now * 1.3 + 1))
+        // Each round's vein promises more: more light pouring out, a wider glow.
+        let grand = 1 + 0.25 * Double(min(e.round, 2))
         var g = ctx
         g.blendMode = .plusLighter
         // Light pouring up out of the vein: soft rays, teal into violet.
         for (i, p) in f.line.enumerated() where i % 3 == 1 {
             let sway = CGFloat(sin(now * 0.7 + Double(i))) * 4
-            let h = CGFloat(52 + 30 * sin(Double(i) * 1.7 + now * 0.5))
+            let h = CGFloat((52 + 30 * sin(Double(i) * 1.7 + now * 0.5)) * grand)
             let rect = CGRect(x: p.x - 13 + sway, y: p.y - h, width: 26, height: h)
             g.fill(Path(ellipseIn: rect), with: .linearGradient(
                 Gradient(colors: [.clear, RevontuletColor.violet.opacity(0.1 * pulse), RevontuletColor.teal.opacity(0.22 * pulse)]),
                 startPoint: CGPoint(x: rect.midX, y: rect.minY), endPoint: CGPoint(x: rect.midX, y: rect.maxY)))
         }
-        softEllipse(&g, f.center, rx: f.length * 0.62, ry: f.length * 0.36,
+        softEllipse(&g, f.center, rx: f.length * 0.62 * CGFloat(grand), ry: f.length * 0.36 * CGFloat(grand),
                     [RevontuletColor.teal.opacity(0.24 * pulse), RevontuletColor.violet.opacity(0.09 * pulse)])
         var w = ctx
         w.clip(to: f.window)
@@ -386,10 +527,15 @@ struct RevontuletPainter {
         g.rotate(by: .radians(angle))
         let face = abs(flip)
         g.scaleBy(x: CGFloat(max(0.08, face) * scale), y: CGFloat(scale))
-        g.opacity = alpha * (0.5 + 0.35 * face)
+        g.opacity = alpha * (0.36 + 0.3 * face)
         g.draw(Image(decorative: image, scale: 2), in: s.bounds)
         g.opacity = alpha
         g.blendMode = .plusLighter
+        // The aurora bending in the glass: a band of its colours sliding as the piece turns.
+        let slide = CGFloat(sin(angle * 1.7 + s.phase)) * s.bounds.width
+        g.fill(s.local, with: .linearGradient(
+            Gradient(colors: [.clear, RevontuletColor.teal.opacity(0.22), RevontuletColor.violet.opacity(0.18), .clear]),
+            startPoint: CGPoint(x: s.bounds.minX + slide, y: s.bounds.minY), endPoint: CGPoint(x: s.bounds.maxX + slide, y: s.bounds.maxY)))
         g.fill(s.local, with: .color(RevontuletColor.frost.opacity(0.06 + 0.2 * pow(face, 3))))
         let catchLight = 0.3 + 0.7 * pow(abs(sin(angle * 1.2 + s.phase)), 2)
         let hue: Color = [RevontuletColor.green, RevontuletColor.teal, RevontuletColor.violet][s.hue]
@@ -416,13 +562,48 @@ struct RevontuletPainter {
         for (k, hit) in e.impacts.enumerated() {
             let t = now - hit.time
             guard t >= 0, t < 1.0 else { continue }
-            if t < 0.45 {
-                let k2 = pow(1 - t / 0.45, 2)
-                let big = hit.hard ? 1.0 + 0.25 * Double(hit.embersHit) : 0.6
-                let r = CGFloat((22 + 120 * t / 0.45) * big)
+            // Easy: a small warm flash, quick. Hard: a big bright one in the aurora's colours,
+            // with a second ring of light running out after it.
+            let span = hit.hard ? 0.6 : 0.35
+            if t < span {
+                let k2 = pow(1 - t / span, 2)
+                let big = hit.hard ? 1.5 + 0.35 * Double(hit.embersHit) : 0.5
+                let r = CGFloat((22 + 120 * t / span) * big)
+                let tint: [Color] = hit.hard
+                    ? [RevontuletColor.core.opacity(0.9 * k2), RevontuletColor.green.opacity(0.4 * k2), RevontuletColor.teal.opacity(0.18 * k2), .clear]
+                    : [RevontuletColor.core.opacity(0.8 * k2), RevontuletColor.gold.opacity(0.5 * k2), RevontuletColor.amber.opacity(0.15 * k2), .clear]
                 g.fill(Path(ellipseIn: CGRect(x: hit.point.x - r, y: hit.point.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
-                    Gradient(colors: [RevontuletColor.core.opacity(0.85 * k2), RevontuletColor.gold.opacity(0.45 * k2), RevontuletColor.amber.opacity(0.15 * k2), .clear]),
-                    center: hit.point, startRadius: 0, endRadius: r))
+                    Gradient(colors: tint), center: hit.point, startRadius: 0, endRadius: r))
+                if hit.hard, t > 0.08 {
+                    let r2 = r * 1.6
+                    let k3 = pow(1 - (t - 0.08) / (span - 0.08), 2)
+                    g.fill(Path(ellipseIn: CGRect(x: hit.point.x - r2, y: hit.point.y - r2, width: r2 * 2, height: r2 * 2)), with: .radialGradient(
+                        Gradient(stops: [.init(color: .clear, location: 0.7), .init(color: RevontuletColor.teal.opacity(0.3 * k3), location: 0.9),
+                                         .init(color: .clear, location: 1)]), center: hit.point, startRadius: 0, endRadius: r2))
+                }
+            }
+            // Light racing across the ice from the hit.
+            if t < 0.5, !hit.breaking {
+                let r = CGFloat(t / 0.5) * L.wall.width * 0.9
+                let k = 1 - t / 0.5
+                var sweep = g
+                sweep.clip(to: art.standing(at: now, burstAt: e.burstAt))
+                sweep.fill(Path(ellipseIn: CGRect(x: hit.point.x - r, y: hit.point.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
+                    Gradient(stops: [.init(color: .clear, location: 0.7), .init(color: RevontuletColor.frost.opacity(0.22 * k), location: 0.92),
+                                     .init(color: .clear, location: 1)]), center: hit.point, startRadius: 0, endRadius: max(r, 1)))
+            }
+            // Snow puffing off the wall's foot below the hit.
+            if t < 0.9 {
+                let foot = CGPoint(x: hit.point.x, y: L.wall.maxY - 20)
+                for i in 0..<(8 + hit.pieces * 3) {
+                    let a = -Double.pi / 2 + (Double(i % 7) - 3) * 0.35
+                    let sp = 40 + 26 * Double(i % 4)
+                    let q = CGPoint(x: foot.x + CGFloat(cos(a) * sp * t) + CGFloat((i % 5) - 2) * 9,
+                                    y: foot.y + CGFloat(sin(a) * sp * t + 120 * t * t))
+                    let o = (1 - t / 0.9) * 0.8
+                    let rr: CGFloat = 1.6 + CGFloat(i % 3)
+                    ctx.fill(Path(ellipseIn: CGRect(x: q.x - rr, y: q.y - rr, width: rr * 2, height: rr * 2)), with: .color(Color.white.opacity(o)))
+                }
             }
             for (i, m) in art.motes.enumerated() where i < 10 + hit.pieces * 4 {
                 guard t < m.life else { continue }
@@ -490,21 +671,21 @@ struct RevontuletPainter {
     private func sparkState() -> (p: CGPoint, size: Double, heat: Double)? {
         switch e.beat {
         case .intro:
-            return (L.anchor, 0.8 + 0.06 * sin(now * 2.2), 0.75)
+            return (L.anchor, 1.15 + 0.08 * sin(now * 2.2), 0.85)
         case .choice:
             let grow = e.round == 0 ? 1 : min(1, since / 0.3)
-            return (L.anchor, 0.8 * grow, 0.75)
+            return (L.anchor, 1.15 * grow, 0.85)
         case .trace:
-            return (L.anchor, 0.8 + 0.5 * e.progress, 0.75 + 0.25 * e.progress)
+            return (L.anchor, 1.15 + 0.6 * e.progress, 0.85 + 0.15 * e.progress)
         case .sling:
             let level = Double(hypot(e.pull.dx, e.pull.dy) / L.maxPull)
-            let pop = since < 0.25 ? 0.3 * (1 - since / 0.25) : 0
-            return (e.sparkPoint(now), 1.3 + pop + 0.15 * level, 1)
+            let pop = since < 0.25 ? 0.35 * (1 - since / 0.25) : 0
+            return (e.sparkPoint(now), 1.75 + pop + 0.2 * level, 1)
         case .flight:
             guard let f = e.flight else { return nil }
             let fnow = e.flightClock(now)
             let lit = f.emberHitAt.enumerated().filter { $0.element != nil && fnow - f.launch >= f.emberT[$0.offset] }.count
-            return (f.point(at: fnow), f.foxOwn ? 1.4 : 1.3 + 0.2 * Double(lit), 1)
+            return (f.point(at: fnow), f.foxOwn ? 1.8 : 1.75 + 0.25 * Double(lit), 1)
         default:
             return nil
         }
@@ -625,7 +806,7 @@ struct RevontuletPainter {
                 g.fill(Path(ellipseIn: CGRect(x: q.x - 1.5, y: q.y - 1.5, width: 3, height: 3)), with: .color(RevontuletColor.gold.opacity(o)))
             }
             if e.progress < 1 {
-                spark(&g, at: arc.point(e.progress, reversed: e.reversed), size: 0.42, heat: 1)
+                spark(&g, at: arc.point(e.progress, reversed: e.reversed), size: 0.6, heat: 1)
             }
         }
     }
@@ -890,37 +1071,34 @@ struct RevontuletPainter {
         let a = c.alpha(now)
         guard a > 0.001 else { return }
         let t = now - c.since
-        var spots: [(CGPoint, CGFloat)] = []
+        // Pools that only lift the veil (never brighten): centre, horizontal and vertical radius.
+        var spots: [(CGPoint, CGFloat, CGFloat)] = []
         switch c.kind {
-        case .start: spots = [(L.anchor, 74)]
+        case .start: spots = [(L.anchor, 66, 66)]
         case .choice:
             let f = L.faults(round: e.round)
-            spots = [(f.easy[f.easy.count / 2], 70), (f.hard[f.hard.count / 2], 100)]
-        case .trace: spots = [(L.anchor, L.arcRadius + 58)]
-        case .sling: spots = [(CGPoint(x: L.anchor.x, y: L.anchor.y + L.maxPull * 0.4), L.maxPull * 0.62 + 50)]
+            spots = [(f.easy[f.easy.count / 2], 74, 46), (f.hard[f.hard.count / 2], 110, 70)]
+        case .trace: spots = [(L.anchor, L.arcRadius + 48, L.arcRadius + 40)]
+        case .sling: spots = [(CGPoint(x: L.anchor.x, y: L.anchor.y + L.maxPull * 0.42), 62, L.maxPull * 0.42 + 46)]
         case .embers:
-            if let f = e.flight, f.emberU.indices.contains(c.ember) { spots = [(f.emberPoint(c.ember), 64)] }
+            if let f = e.flight, f.emberU.indices.contains(c.ember) { spots = [(f.emberPoint(c.ember), 60, 60)] }
         case .stroke:
             let sq = L.foxSquare(.warm)
-            spots = [(CGPoint(x: sq.midX, y: sq.midY - sq.height * 0.05), sq.width * 0.52)]
+            spots = [(CGPoint(x: sq.midX, y: sq.midY - sq.height * 0.05), sq.width * 0.5, sq.height * 0.5)]
         }
-        // The veil: soft dark navy, about half strength, with feathered holes.
+        // The veil: soft dark navy, about half strength, lifted softly inside each pool.
         ctx.drawLayer { layer in
             layer.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(red: 0.03, green: 0.05, blue: 0.16).opacity(c.kind.veil * a)))
             layer.blendMode = .destinationOut
-            for (p, r) in spots {
-                layer.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
-                    Gradient(stops: [.init(color: .black, location: 0), .init(color: .black.opacity(0.9), location: 0.55), .init(color: .clear, location: 1)]),
-                    center: p, startRadius: 0, endRadius: r))
+            for (p, rx, ry) in spots {
+                var hole = layer
+                hole.translateBy(x: p.x, y: p.y)
+                hole.scaleBy(x: 1, y: ry / rx)
+                hole.fill(Path(ellipseIn: CGRect(x: -rx, y: -rx, width: rx * 2, height: rx * 2)), with: .radialGradient(
+                    Gradient(stops: [.init(color: .black.opacity(0.92), location: 0), .init(color: .black.opacity(0.7), location: 0.45),
+                                     .init(color: .black.opacity(0.25), location: 0.78), .init(color: .clear, location: 1)]),
+                    center: .zero, startRadius: 0, endRadius: rx))
             }
-        }
-        // A warm rim of light around each pool, so the eye goes there (never on the fox).
-        var rim = ctx
-        rim.blendMode = .plusLighter
-        for (p, r) in spots where c.kind != .stroke {
-            rim.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
-                Gradient(stops: [.init(color: .clear, location: 0.6), .init(color: RevontuletColor.gold.opacity(0.1 * a), location: 0.82), .init(color: .clear, location: 1)]),
-                center: p, startRadius: 0, endRadius: r))
         }
         ghost(&ctx, c, t: reduceMotion ? 0 : t, alpha: a)
     }
@@ -994,27 +1172,34 @@ struct RevontuletPainter {
         }
     }
 
-    /// A soft fingertip of light: a glowing pad, a little tilted, and a ripple when it presses.
+    /// A soft fingertip of light: a bright pad, a little tilted, with a soft shadow so it reads
+    /// on snow and a glow so it reads on dark ice, and a ripple when it presses.
     private func fingertip(_ ctx: inout GraphicsContext, at p: CGPoint, alpha: Double, press: Double?) {
         guard alpha > 0.01 else { return }
-        var g = ctx
-        g.blendMode = .plusLighter
-        softEllipse(&g, p, rx: 34, ry: 34, [Color.white.opacity(0.16 * alpha), Color.white.opacity(0.05 * alpha)])
+        var glow = ctx
+        glow.blendMode = .plusLighter
+        softEllipse(&glow, p, rx: 40, ry: 40, [RevontuletColor.gold.opacity(0.22 * alpha), Color.white.opacity(0.06 * alpha)])
         if let k = press {
-            let r = CGFloat(14 + 30 * k)
-            g.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
-                Gradient(stops: [.init(color: .clear, location: 0.55), .init(color: RevontuletColor.gold.opacity(0.5 * (1 - k) * alpha), location: 0.8),
+            let r = CGFloat(16 + 34 * k)
+            glow.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
+                Gradient(stops: [.init(color: .clear, location: 0.55), .init(color: RevontuletColor.gold.opacity(0.7 * (1 - k) * alpha), location: 0.8),
                                  .init(color: .clear, location: 1)]), center: p, startRadius: 0, endRadius: r))
         }
+        let squash: CGFloat = press != nil ? 0.9 : 1
+        let rect = CGRect(x: -12.5, y: -16.5 * squash, width: 25, height: 33 * squash)
+        var shadow = ctx
+        shadow.translateBy(x: p.x + 2.5, y: p.y + 4)
+        shadow.rotate(by: .degrees(-18))
+        shadow.fill(Path(ellipseIn: rect.insetBy(dx: -2, dy: -2)), with: .radialGradient(
+            Gradient(colors: [Color(red: 0.05, green: 0.08, blue: 0.25).opacity(0.3 * alpha), .clear]), center: .zero, startRadius: 0, endRadius: 20))
         var pad = ctx
         pad.translateBy(x: p.x, y: p.y)
         pad.rotate(by: .degrees(-18))
-        let squash: CGFloat = press != nil ? 0.9 : 1
-        let rect = CGRect(x: -10.5, y: -14 * squash, width: 21, height: 28 * squash)
         pad.fill(Path(ellipseIn: rect), with: .radialGradient(
-            Gradient(colors: [Color.white.opacity(0.62 * alpha), Color.white.opacity(0.3 * alpha), Color.white.opacity(0.08 * alpha)]),
-            center: CGPoint(x: -2, y: -4), startRadius: 0, endRadius: 16))
-        pad.stroke(Path(ellipseIn: rect), with: .color(Color.white.opacity(0.4 * alpha)), lineWidth: 1)
+            Gradient(colors: [Color.white.opacity(0.95 * alpha), Color(red: 0.95, green: 0.96, blue: 1).opacity(0.85 * alpha),
+                              RevontuletColor.warmWhite.opacity(0.7 * alpha)]),
+            center: CGPoint(x: -3, y: -5), startRadius: 0, endRadius: 19))
+        pad.stroke(Path(ellipseIn: rect), with: .color(RevontuletColor.gold.opacity(0.75 * alpha)), lineWidth: 1.4)
     }
 
     private func press(_ ctx: inout GraphicsContext, at p: CGPoint, k: Double, alpha: Double) {

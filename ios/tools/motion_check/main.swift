@@ -59,7 +59,7 @@ func numbers(_ f: RigFrame) -> [Double] {
 /// One scene. `rest` is the largest gap between the scene and the same clock with no
 /// event (the plain idle underneath): it must end at 0 (back exactly to rest).
 func write(_ name: String, from t0: Double, seconds: Double, _ configure: (inout LanviMotion) -> Void) {
-    var rows = ["t,rootY,rootSY,rootTilt,bodySY,chest,spread,headX,headY,headTilt,dirX,dirY,earL,earR,earLBend,earRBend,tail,tailBend,headSY,eyeX,eyeY,mouthScale,pupilX,pupilY,rest,eyes,mouth,eyeFade,mouthFade"]
+    var rows = ["t,rootY,rootSY,rootTilt,bodySY,chest,spread,headX,headY,headTilt,dirX,dirY,earL,earR,earLBend,earRBend,tail,tailBend,headSY,eyeX,eyeY,mouthScale,pupilX,pupilY,rest,eyes,mouth,eyeFade,mouthFade,talk"]
     let frames = Int(seconds * 60)
     for i in 0..<frames {
         let t = t0 + Double(i) / 60
@@ -71,7 +71,7 @@ func write(_ name: String, from t0: Double, seconds: Double, _ configure: (inout
         plain.evening = m.evening
         let nums = numbers(f)
         let rest = zip(nums, numbers(plain.frame())).map { abs($0 - $1) }.max() ?? 0
-        let face = "\(f.face.eyes),\(f.face.mouth),\(f.eyes.count > 1 ? f.eyes[1].1 : 1),\(f.mouths.count > 1 ? f.mouths[1].1 : 1)"
+        let face = "\(f.face.eyes),\(f.face.mouth),\(f.eyes.count > 1 ? f.eyes[1].1 : 1),\(f.mouths.count > 1 ? f.mouths[1].1 : 1),\(m.talkingMouth(t) ? 1 : 0)"
         rows.append(([Double(i) / 60] + nums + [rest]).map { String(format: "%.4f", $0) }.joined(separator: ",") + "," + face)
     }
     try? rows.joined(separator: "\n").write(toFile: "\(out)/\(name).csv", atomically: true, encoding: .utf8)
@@ -87,13 +87,13 @@ write("idle-base", from: base, seconds: 20) { $0.appearAt = .infinity }
 
 // Each idle moment, forced, with half a second of rest either side.
 for m in LanviMoment.allCases {
-    write("moment-\(m.rawValue)", from: base - 0.5, seconds: m.duration + 1.2) {
+    write("moment-\(m.rawValue)", from: base - 0.5, seconds: m.duration + 1.8) {
         $0.appearAt = .infinity; $0.moment = m; $0.momentAt = base; $0.momentSide = 1
     }
 }
 // Each reaction.
 for r in LanviMood.allCases where r != .calm {
-    write("reaction-\(r.rawValue)", from: base - 0.5, seconds: r.reactionLength + 1.2) {
+    write("reaction-\(r.rawValue)", from: base - 0.5, seconds: r.reactionLength + 1.8) {
         $0.appearAt = .infinity; $0.reaction = r; $0.reactionAt = base
     }
 }
@@ -101,7 +101,7 @@ for r in LanviMood.allCases where r != .calm {
 write("hop", from: base - 0.5, seconds: 2.2) { $0.appearAt = .infinity; $0.hopAt = base }
 // Each touch reaction (no hop in any of them), on the right side.
 for a in LanviTouchAct.allCases {
-    write("touch-\(a.rawValue)", from: base - 0.5, seconds: a.duration + 1.2) {
+    write("touch-\(a.rawValue)", from: base - 0.5, seconds: a.duration + 1.8) {
         $0.appearAt = .infinity; $0.touch = a; $0.touchAt = base; $0.touchSide = 1
     }
 }
@@ -124,6 +124,12 @@ write("talking", from: base - 0.5, seconds: 5.5) {
     $0.talkStart = base
 }
 // A speech bubble driving the mouth: open, closed, open... every 0.12 s for 2 s.
+// Saying a line (`.lanviSays`): the mouth follows its syllables.
+write("say", from: base - 0.5, seconds: LanviSpeech.length("That sounds like a long day. Want to break the ice with me?") + 1.8) {
+    $0.appearAt = .infinity
+    $0.speech = LanviSpeech.beats("That sounds like a long day. Want to break the ice with me?")
+    $0.speechAt = base
+}
 write("bubble", from: base - 0.5, seconds: 3.5) {
     $0.appearAt = .infinity
     let t = $0.t
