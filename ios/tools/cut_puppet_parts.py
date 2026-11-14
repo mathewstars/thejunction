@@ -17,12 +17,14 @@ What it does, in plain words:
 2. Cleans the edge: the sheets keep a coloured glow in their see-through pixels,
    so every soft edge pixel takes the colour of the solid paint just inside it
    (no glow, no dark rim). Nearly solid pixels become fully solid.
-3. Trims each piece, scales it to 60 % (plenty sharp on a phone) and saves it into
+3. Trims each piece, scales it to 90 % (about 2x its largest size on a phone) and saves it into
    ios/Lanvi/Assets.xcassets as puppet-<name>.imageset.
 4. Writes ios/Lanvi/Mascot/LanviArt.swift with every piece's size on the sheet,
-   so the rig in code always matches the art. Each eye pair stays one image; the
-   file also says where to split it, so the two eyes can sit on the head's own
-   eye patches (they are further apart on the head than on the face sheet).
+   so the rig in code always matches the art. Each eye pair from the sheet is saved
+   as its two halves (eyes-open-l, eyes-open-r) so the two eyes can sit on the
+   head's own eye patches (they are further apart on the head than on the sheet).
+5. Bakes the soft fades in (neck stub under the cheeks, top of the front legs), so
+   the phone draws plain pictures with no masks.
 
 Only Pillow is needed. Re-run it whenever better art arrives.
 """
@@ -38,8 +40,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.normpath(os.path.join(HERE, "..", "Lanvi", "Assets.xcassets"))
 SWIFT = os.path.normpath(os.path.join(HERE, "..", "Lanvi", "Mascot", "LanviArt.swift"))
 STEP = 4          # blob finding works on a 4x smaller mask
-SAVE_SCALE = 0.6  # saved assets are this size of the sheet
+SAVE_SCALE = 0.9  # saved assets are this size of the sheet (head about 730 px wide)
 PAIR_GAP = 70     # face sheet pixels: pieces closer than this in a row are one image (eye pairs)
+
+# Soft fades baked into the art (so the phone never masks them every frame):
+# the head's neck stub fades out under the cheeks, the front legs fade in at the top.
+NECK_FADE = (575 / 749, 650 / 749)   # 0...1 of the head's height
+LEG_FADE = 0.42                      # top share of each front leg
 
 PART_NAMES = [["ear-left", "head", "ear-right"], ["body", "tail"], ["leg-left", "leg-right"]]
 FACE_NAMES = [["eyes-open", "eyes-half", "eyes-closed", "eyes-happy"],
@@ -139,6 +146,25 @@ def bleed(piece):
     return out
 
 
+def fade(img, rows):
+    """Multiply alpha by f(y) for each row (f gets 0...1 of the height)."""
+    a = img.getchannel("A")
+    px = a.load()
+    for y in range(img.height):
+        f = rows(y / max(img.height - 1, 1))
+        if f >= 1:
+            continue
+        for x in range(img.width):
+            px[x, y] = int(px[x, y] * f)
+    img.putalpha(a)
+    return img
+
+
+def smooth(x):
+    x = min(max(x, 0.0), 1.0)
+    return x * x * (3 - 2 * x)
+
+
 def save_asset(img, name):
     d = os.path.join(ASSETS, name + ".imageset")
     os.makedirs(d, exist_ok=True)
@@ -170,14 +196,28 @@ def main():
         found, small_size = blobs(sheet.getchannel("A"))
         for name, pieces in rows(found, names, gap):
             img, box = cut(sheet, pieces, small_size)
+            if name == "head":
+                a0, a1 = NECK_FADE
+                img = fade(img, lambda y: 1 - smooth((y - a0) / (a1 - a0)))
+            if name.startswith("leg-"):
+                img = fade(img, lambda y: smooth(y / LEG_FADE))
+            if name.startswith("eyes-") and len(pieces) == 2:
+                # one eye pair from the sheet, saved as its left and right halves so
+                # each eye can sit on its own patch on the head (no clipping on the phone)
+                l, r = pieces
+                split = round((l["box"][2] + r["box"][0]) / 2 - box[0])
+                for side, b, x0, x1 in (("l", l, 0, split), ("r", r, split, img.width)):
+                    half = img.crop((x0, 0, x1, img.height))
+                    save_asset(half, f"puppet-{name}-{side}")
+                    cx = (b["box"][0] + b["box"][2]) / 2 - box[0] - x0
+                    cy = (b["box"][1] + b["box"][3]) / 2 - box[1]
+                    sizes[f"{name}-{side}"] = (half.width, half.height, 0, 0)
+                    eyes[f"{name}-{side}"] = (cx, cy)
+                if preview:
+                    img.save(os.path.join(preview, name + ".png"))
+                continue
             save_asset(img, "puppet-" + name)
             sizes[name] = (img.width, img.height, box[0], box[1])
-            if name.startswith("eyes-") and len(pieces) == 2:
-                # where to split a pair in two, and each eye's centre, in pixels of the image
-                l, r = pieces
-                split = (l["box"][2] + r["box"][0]) / 2 - box[0]
-                c = lambda b: ((b["box"][0] + b["box"][2]) / 2 - box[0], (b["box"][1] + b["box"][3]) / 2 - box[1])
-                eyes[name] = (split, *c(l), *c(r))
             if preview:
                 img.save(os.path.join(preview, name + ".png"))
 
@@ -187,10 +227,10 @@ def main():
     for name, (w, h, _, _) in sizes.items():
         lines.append(f'        "{name}": CGSize(width: {w}, height: {h}),')
     lines += ["    ]", "",
-              "    /// Eye pairs: where the image splits between the eyes, and each eye's centre.",
-              "    static let eyeSplit: [String: (split: CGFloat, left: CGPoint, right: CGPoint)] = ["]
-    for name, (sp, lx, ly, rx, ry) in eyes.items():
-        lines.append(f'        "{name}": ({sp:.0f}, CGPoint(x: {lx:.0f}, y: {ly:.0f}), CGPoint(x: {rx:.0f}, y: {ry:.0f})),')
+              "    /// Each eye half: where the eye's centre is in its image.",
+              "    static let eyeCenter: [String: CGPoint] = ["]
+    for name, (cx, cy) in eyes.items():
+        lines.append(f'        "{name}": CGPoint(x: {cx:.0f}, y: {cy:.0f}),')
     lines += ["    ]", "", "    static func px(_ name: String) -> CGSize { size[name] ?? CGSize(width: 1, height: 1) }", "}", ""]
     with open(SWIFT, "w") as f:
         f.write("\n".join(lines))

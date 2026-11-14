@@ -57,57 +57,25 @@ struct LanviMotion {
         // Held-mood face and stance (soft change-over for the motion parts).
         applyHeld(&f)
 
-        // --- Idle loops (all on the one clock, each its own length, none on a beat) ---
+        // --- Idle: calm. Only breathing, one slow tail sway, blinks and the odd ear
+        // flick; between those the head and body are completely still. Every value is
+        // a smooth function of the clock (no randomness per frame, no state writes).
         if !reduceMotion {
-            // Breathing: in a little quicker than out, the rhythm drifting slightly.
-            let breathPeriod = sleepy ? 4.5 : 3.6
-            let breathAmp = sleepy ? 0.018 : 0.012
-            let breath = { (x: Double) -> Double in
-                let phase = (x + s) / breathPeriod + 0.05 * sin(2 * .pi * (x + s) / 23.0)
-                return Motion.breath(phase)
-            }
-            let b = breath(t)
-            f.bodySY += CGFloat(breathAmp * b)
-            f.bodySX += CGFloat(breathAmp * 0.45 * b)
-            // The head rides the chest a beat late.
-            f.headDY -= CGFloat(breathAmp * breath(t - 0.15)) * Self.bodyHeight * 0.85
-
-            // Tail: two swings of different lengths; the tip follows 0.25 s later.
-            let fast = held == .happy ? 0.68 : 1.0
-            let sway = { (x: Double) -> Double in
-                let y = x + s * 0.7
-                return 6 * sin(2 * .pi * y / (3.3 * fast)) + 3 * sin(2 * .pi * y / (5.7 * fast) + 1.1)
-            }
+            // Tail: one slow sway, 5 degrees, 4.5 s; the tip trails 0.25 s behind.
+            let tailPeriod = 4.5
+            let sway = { (x: Double) -> Double in 5 * sin(2 * .pi * (x + s) / tailPeriod) }
             f.tail += sway(t)
-            f.tailTip += 1.7 * (sway(t - 0.25) - sway(t))
+            f.tailTip += 1.2 * (sway(t - 0.25) - sway(t))
 
-            // Weight shifts: the whole fox leans a little, the head follows late.
-            let shift = { (x: Double) -> Double in
-                3.0 * sin(2 * .pi * (x + s) / 8.9) + 1.5 * sin(2 * .pi * (x + s * 1.9) / 13.3)
-            }
-            f.rootX += CGFloat(shift(t))
-            f.headDX += CGFloat(shift(t - 0.15) - shift(t)) * 1.5
-
-            // Small head tilts and drift, never repeating exactly.
-            let tiltA: Double = 1.8 * sin(2 * .pi * (t + s) / 7.3)
-            let tiltB: Double = 1.0 * sin(2 * .pi * (t + s * 1.3) / 11.9)
-            f.headTilt += tiltA + tiltB
-            let drift: Double = 2.5 * sin(2 * .pi * (t + s) / 9.7)
-            f.headDX += CGFloat(drift)
-
-            // Ear twitches: one ear, every 4 to 9 s.
-            let earSlot = 6.5
+            // One ear flick every 6 to 10 s (times fixed per slot), 250 ms, then still.
+            let earSlot = 8.0
             let k = Int(floor((t + s * 1.7) / earSlot))
-            let start = Double(k) * earSlot + 2.5 * Motion.rnd(k, seed &+ 11) - s * 1.7
-            let e = Motion.flick(t - start, duration: 0.12) * 7
-            if Motion.rnd(k, seed &+ 12) < 0.5 { f.earL += e; f.earLStretch -= CGFloat(e) * 0.004 }
-            else { f.earR += e; f.earRStretch -= CGFloat(e) * 0.004 }
-
-            // Glances: now and then the eyes look somewhere and come back.
-            applyGlance(&f, s: s)
-
-            // A fidget every 15 to 30 s.
-            applyFidget(&f, s: s)
+            let start = Double(k) * earSlot + 2.0 * Motion.rnd(k, seed &+ 11) - s * 1.7
+            let p = (t - start) / 0.25
+            if p > 0 && p < 1 {
+                let e = 6 * pow(sin(.pi * p), 2)
+                if Motion.rnd(k, seed &+ 12) < 0.5 { f.earL += e } else { f.earR += e }
+            }
         }
 
         // --- Look ---
@@ -118,8 +86,15 @@ struct LanviMotion {
         applyTap(&f, rt: t - tapAt)
         if !reduceMotion { hop(&f, t - hopAt, height: 120) }
 
-        // The head stays on the neck when the chest breathes or yawns.
-        f.headDY -= (f.bodySY - 1) * Self.bodyHeight * 0.85
+        // Breathing: chest 1.5 % over 4 s, a plain smooth sine (eases in and out).
+        // The head stays on the neck: it rides the chest (breath 0.15 s late) once.
+        let breath = { (x: Double) -> Double in
+            reduceMotion ? 0 : (sleepy ? 0.0095 : 0.0075) * sin(2 * .pi * (x + s) / (sleepy ? 4.8 : 4.0))
+        }
+        let other = f.bodySY - 1                     // yawns and reactions
+        f.bodySY += CGFloat(breath(t))
+        f.bodySX += CGFloat(breath(t) * 0.4)
+        f.headDY -= (other + CGFloat(breath(t - 0.15))) * Self.bodyHeight * 0.85
         return f
     }
 
@@ -187,55 +162,7 @@ struct LanviMotion {
         }
     }
 
-    // MARK: Glances
-
-    private func applyGlance(_ f: inout RigFrame, s: Double) {
-        guard look == nil, reaction == nil || t - reactionAt > 2.5, t - tapAt > 1.8 else { return }
-        let slot = 6.1
-        let k = Int(floor((t + s * 2.3) / slot))
-        guard Motion.rnd(k, seed &+ 41) < 0.55 else { return }
-        let start = Double(k) * slot + 2.0 * Motion.rnd(k, seed &+ 42) - s * 2.3
-        let length = 0.6 + 0.5 * Motion.rnd(k, seed &+ 43)
-        let gt = t - start
-        guard gt > 0, gt < length + 0.8 else { return }
-        let pick = Motion.rnd(k, seed &+ 44)
-        let (shape, dir): (EyeShape, Double) = pick < 0.4 ? (.right, 1) : (pick < 0.8 ? (.left, -1) : (.up, 0))
-        // Eyes lead; the head follows 0.1 s later with a spring, then both come back.
-        if gt < length, f.eyes == .open { f.eyes = shape }
-        let follow = Motion.hold(gt, start: 0.1, end: length + 0.05, response: 0.4, damping: 0.7)
-        f.headDX += CGFloat(5 * dir * follow)
-        f.headTilt += 2.5 * dir * follow
-        if dir == 0 { f.headDY -= CGFloat(4 * follow) }
-    }
-
-    // MARK: Fidgets
-
-    private func applyFidget(_ f: inout RigFrame, s: Double) {
-        let slot = 22.0
-        let k = Int(floor((t + s * 3.1) / slot))
-        let start = Double(k) * slot + 8 * Motion.rnd(k, seed &+ 21) - s * 3.1
-        let ft = t - start
-        guard ft > 0, ft < 2.6, reaction == nil || t - reactionAt > 2.5 else { return }
-        var kind = Int(Motion.rnd(k, seed &+ 22) * 4)
-        if held == .sleepy && Motion.rnd(k, seed &+ 23) < 0.6 { kind = 1 }   // sleepy: mostly yawns
-        switch kind {
-        case 0: // look around
-            if Motion.inside(ft, 0.2, 1.0) { f.eyes = .right }
-            else if Motion.inside(ft, 1.0, 1.8) { f.eyes = .left }
-            let side = Motion.hold(ft, start: 0.25, end: 1.0, response: 0.35) - Motion.hold(ft, start: 1.05, end: 1.8, response: 0.35)
-            f.headDX += CGFloat(10 * side)
-            f.headTilt += 4 * side
-        case 1: yawn(&f, yt: ft)
-        case 2: // a small happy bounce (paws stay planted)
-            hop(&f, ft - 0.05, height: 32, headLeads: true)
-            if Motion.inside(ft, 0.31, 1.0) { f.eyes = .happy }
-        default: // happy squint
-            if Motion.inside(ft, 0.1, 0.9) { f.eyes = .happy }
-            let p = Motion.hold(ft, start: 0.1, end: 0.9, response: 0.3)
-            f.earL += 4 * p; f.earR += 4 * p
-            f.headTilt += 3 * p
-        }
-    }
+    // MARK: Yawn (the sleepy reaction)
 
     private func yawn(_ f: inout RigFrame, yt: Double) {
         guard yt > 0, yt < 2.2 else { return }
@@ -381,17 +308,15 @@ struct LanviMotion {
         let len = sleepy ? 1.9 : 1.0   // slow blinks when sleepy
         var phase: Double? = freezeBlink
         if phase == nil {
-            let slot = 4.2
+            let slot = 4.5
             let k = Int(floor(t / slot))
-            let start = Double(k) * slot + 2.6 * Motion.rnd(k, seed &+ 31)
+            let start = Double(k) * slot + 1.5 * Motion.rnd(k, seed &+ 31)   // 3 to 6 s apart
             let bt = t - start
             if bt >= 0 && bt < 0.15 * len { phase = bt / len }
-            else if Motion.rnd(k, seed &+ 32) < 0.2, bt >= 0.27 * len, bt < 0.42 * len { phase = (bt - 0.27 * len) / len }   // the odd double blink
         }
         guard let p = phase, p >= 0, p < 0.15 else { return }
         // close 50 ms, shut 35 ms, open 65 ms: open, half closed, closed, half closed, open
         let o: Double = p < 0.05 ? 1 - Motion.easeIn(p / 0.05) : (p < 0.085 ? 0 : Motion.easeOut((p - 0.085) / 0.065))
-        if !reduceMotion { f.headDY += CGFloat(2.5 * (1 - o)) }
         switch f.eyes {
         case .happy, .closed: return
         case .half:
