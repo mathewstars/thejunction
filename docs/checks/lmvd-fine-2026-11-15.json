@@ -1,0 +1,81 @@
+{
+ "dataset": "LMVD landmarks through clinic_engine.mind.face_fine",
+ "videos_used": 1676,
+ "depression": 872,
+ "others": 804,
+ "quality": {
+  "good": 1066,
+  "partly": 607,
+  "noisy": 3
+ },
+ "median_noise_mm": 0.302,
+ "measures": {
+  "reach_mm": {
+   "expected_in_depression": "lower",
+   "median_depression": 4.247,
+   "median_others": 6.605,
+   "chance_depression_video_is_higher": 0.29,
+   "interval_95": [
+    0.263,
+    0.318
+   ],
+   "seen": "lower",
+   "as_expected": true
+  },
+  "speed_mm_s": {
+   "expected_in_depression": "lower",
+   "median_depression": 36.56,
+   "median_others": 45.07,
+   "chance_depression_video_is_higher": 0.347,
+   "interval_95": [
+    0.324,
+    0.374
+   ],
+   "seen": "lower",
+   "as_expected": true
+  },
+  "twitches_per_min": {
+   "expected_in_depression": "lower",
+   "median_depression": 281.6,
+   "median_others": 241.3,
+   "chance_depression_video_is_higher": 0.616,
+   "interval_95": [
+    0.592,
+    0.643
+   ],
+   "seen": "higher",
+   "as_expected": false
+  },
+  "mouth_corner_twitches_per_min": {
+   "expected_in_depression": "lower",
+   "median_depression": 37.89,
+   "median_others": 33.68,
+   "chance_depression_video_is_higher": 0.576,
+   "interval_95": [
+    0.545,
+    0.606
+   ],
+   "seen": "higher",
+   "as_expected": false
+  },
+  "mouth_asymmetry_abs": {
+   "expected_in_depression": "none",
+   "median_depression": 0.071,
+   "median_others": 0.069,
+   "chance_depression_video_is_higher": 0.499,
+   "interval_95": [
+    0.474,
+    0.526
+   ],
+   "seen": "no clear difference",
+   "as_expected": null
+  }
+ },
+ "score_on_unseen_videos": {
+  "fine_measures_only": 0.71,
+  "videos_with_both": 1676,
+  "action_unit_measures_only": 0.741,
+  "fine_only_same_videos": 0.71,
+  "both_together": 0.745
+ }
+}

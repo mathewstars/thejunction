@@ -139,3 +139,41 @@ Beside LifeSnaps this gives a second, lower false-alarm figure (about 4% of peop
 The score leans most on how little the face and the head move, then on blinking and the brows; the smile measures add little once movement is in. Published models on this dataset that read the raw frame sequences reach roughly 0.72 to 0.77 accuracy; ours, from a dozen summary numbers, gets 0.70 at the same cut.
 
 This score is not in the server and should not be: it was fitted on OpenFace numbers from video logs, the server computes its measures from ARKit during a game, and a weight fitted on one does not carry over to the other. It also learns whatever else separates the two groups of videos (topic, filming, platform). What it gives us is an order of magnitude for how much is in these measures on real faces, and which of them to look at first when our own recordings exist.
+
+### LMVD through our fine-movement code
+
+`lmvd_fine.py`, output `lmvd-fine-2026-11-15.json`. LMVD has no face mesh, but it has OpenFace's 68 face landmarks in every frame. The script lays each frame's landmarks over the video's own median face (using the eye corners and the bridge of the nose, which takes out where the head is and how far away), takes for nine regions how far the landmark sits from its own median place, turns pixels into millimetres by the distance between the outer eye corners, and hands that stream, unchanged, to `clinic_engine.mind.face_fine.summarize` (rules version 4): the same code that sums up the stream from the Face ID sensor. 1676 videos gave a summary (1066 good, 607 partly tracked); the noise the code measured from the streams has a median of 0.30 mm.
+
+What we expected was written into the script before it ran: with depression, less reach, lower top speed and fewer brief movements.
+
+| Measure | Expected in depression | Median, depression | Median, others | Chance the depression video is higher | Result |
+|---|---|---|---|---|---|
+| Reach (how far a region goes from rest), mm | lower | 4.247 | 6.605 | 0.29 (0.26 to 0.32) | as expected |
+| Top speed, mm a second | lower | 36.56 | 45.07 | 0.35 (0.32 to 0.37) | as expected |
+| Brief movements a minute, all regions | lower | 281.6 | 241.3 | 0.62 (0.59 to 0.64) | opposite |
+| Brief movements of the mouth corners a minute | lower | 37.89 | 33.68 | 0.58 (0.55 to 0.61) | opposite |
+| Left-right difference of the mouth | none | 0.071 | 0.069 | 0.50 (0.47 to 0.53) | no direction fixed |
+
+- **Reach and speed hold, and strongly.** A region of the face travels about 4 mm from rest in the depression group against 6.6 mm in the other, and moves more slowly. Reach is the clearest single difference of anything we measured on this dataset.
+- **Brief movements went the other way.** We expected fewer; there are more. The likely reason is in the rule, not in the faces: it counts a movement only if it is short, and in a face that moves less a syllable of speech is short and stands out, while in a livelier face the same moment is part of a longer expression and is not counted. So "brief movements per minute" does not mean what we hoped on people who are talking. It has to be tested on the game, where nobody speaks.
+- **Does the fine signal add to the action units?** A score from the five fine measures alone ranks unseen videos at 0.71; the ten action-unit measures alone at 0.74; both together at 0.74. So on this data the fine signal carries most of the same information and adds almost nothing on top, which is the outcome the research proposal named as possible ("the mesh may add nothing").
+
+Limits beyond those above: these are flat picture landmarks from compressed video, not a depth sensor; a head turned sideways leaks into the numbers; only the first 12,000 frames of a video are used; and the people are talking.
+
+## How repeatable are our own face measures? (the team's test sessions, 15 November)
+
+Not a public dataset: the sessions on the team's test profile, read on the server on the night of 15 November. Each session was cut in two halves and summed up twice with the server's own code. A measure is usable for following one person only if the two halves of one session agree better than two different sessions do.
+
+| Measure | Sessions | The two halves differ by (median) | Sessions differ by (spread over mean) | Do the halves rank the sessions alike? |
+|---|---|---|---|---|
+| Fine movement: reach | 9 | 34% | 76% | +0.70 |
+| Fine movement: top speed | 9 | 25% | 65% | +0.77 |
+| Fine movement: brief movements a minute | 9 | 50% | 52% | +0.68 |
+| Blend shapes: time smiling | 19 | 200% | 201% | +0.14 |
+| Blend shapes: overall facial movement | 19 | 22% | 30% | +0.43 |
+| Blend shapes: blink rate | 19 | 48% | 54% | +0.54 |
+| Blend shapes: head movement | 19 | 33% | 34% | +0.48 |
+
+Reach and top speed of the fine signal are the most repeatable numbers we have: sessions differ two to three times more than the halves of one session do. Brief movements are not (the halves differ as much as the sessions), which fits what the LMVD run showed about that rule. Of the blend-shape measures only overall facial movement is somewhat repeatable; time smiling is not, because in a game of a minute or so a smile is a rare event and falls in one half or the other.
+
+Limits: few sessions, one evening, halves of 15 to 30 seconds, and the profile has seven paired phones, so some of the difference between sessions is a difference between people and phones, which makes the sessions look easier to tell apart than one person's days will be.
