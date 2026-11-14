@@ -116,7 +116,7 @@ struct HomeView: View {
                 if let pop {
                     HomeXPPop(amount: pop.xpGained)
                         .id(pop.id)
-                        .position(x: L.foxCenter.x, y: L.foxTop + L.fox * 0.12)
+                        .position(x: min(L.foxCenter.x + L.fox * 0.40, L.size.width - 70), y: L.foxTop + L.fox * 0.30)
                         .allowsHitTesting(false)
                 }
 
