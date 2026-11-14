@@ -192,5 +192,47 @@ final class LanviEyesTests: XCTestCase {
         }
         assertOnlyQuickBlinks(make, from: 2.0, to: 7.6, "after petting")
     }
+
+    // MARK: Saying a line (`.lanviSays`)
+
+    func testSayingALineFollowsItsWords() {
+        for line in ["Hi! I kept a spot warm for you.", "That sounds like a long day. Want to break the ice with me?",
+                     "Okay. I'm here, whenever you are.", "Mmm, maybe."] {
+            let beats = LanviSpeech.beats(line)
+            let letters = Double(line.filter { $0.isLetter }.count)
+            let length = LanviSpeech.length(line)
+            XCTAssertGreaterThan(letters / length, 8, "too slow: \(line)")
+            XCTAssertLessThan(letters / length, 15, "too fast: \(line)")
+            // one beat after another, no gaps, never ending on a pause
+            for (a, b) in zip(beats, beats.dropFirst()) { XCTAssertEqual(a.end, b.at, accuracy: 1e-9, line) }
+            XCTAssertNotEqual(beats.last?.shape, .smile, line)
+            // a pause of at least 0.2 s after each comma or full stop inside the line
+            let stops = line.dropLast().filter { ",.!?".contains($0) }.count
+            XCTAssertEqual(beats.filter { $0.shape == .smile && $0.end - $0.at >= 0.2 }.count, stops, line)
+        }
+        // the lips meet on m, b and p
+        XCTAssertEqual(LanviSpeech.beats("Mmm, maybe.").first?.shape, .flat)
+    }
+
+    func testSayingALineEndsBackAtRest() {
+        let line = "That sounds like a long day. Want to break the ice with me?"
+        let end = LanviSpeech.length(line)
+        var said = motion([LookStep(at: -100, target: nil)], at: clock + end + 1)
+        said.speech = LanviSpeech.beats(line)
+        said.speechAt = clock
+        let rest = motion([LookStep(at: -100, target: nil)], at: clock + end + 1)
+        XCTAssertEqual(said.frame().pose.headY, rest.frame().pose.headY, accuracy: 1e-9)
+        XCTAssertEqual(said.frame().pose.dirX, rest.frame().pose.dirX, accuracy: 1e-9)
+        XCTAssertEqual(said.frame().face.mouth, rest.frame().face.mouth)
+        // and while saying it, the mouth moves: more than 10 changes of shape
+        var shapes: [MouthShape] = []
+        for i in 0..<Int(end * 60) {
+            var m = said
+            m.t = clock + Double(i) / 60
+            let mouth = m.frame().face.mouth
+            if shapes.last != mouth { shapes.append(mouth) }
+        }
+        XCTAssertGreaterThan(shapes.count, 10)
+    }
 }
 

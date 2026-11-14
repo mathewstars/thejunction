@@ -510,7 +510,8 @@ struct RevontuletEngine: Equatable {
     private mutating func plan(for f: RevontuletFlight, landing t: Double) -> RevontuletFlight.Planned {
         let hits = f.emberHitAt.compactMap { $0 }.count
         let breaking = f.foxOwn || round >= Self.rounds - 1 || t >= Self.breakOnImpactAfter
-        let pieces = f.foxOwn ? 2 : (f.hard ? 2 + hits : 1)
+        // Round one is thin ice: a quick, generous first win. Later rounds build to the burst.
+        let pieces = f.foxOwn ? 2 : (f.hard ? 2 + hits : 1) + (round == 0 ? 1 : 0)
         let ribbon = f.hard && hits == 2 && rng.next() < 0.6
         return .init(pieces: pieces, embersHit: hits, breaking: breaking, ribbon: ribbon)
     }

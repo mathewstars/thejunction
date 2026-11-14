@@ -89,6 +89,8 @@ struct LanviMotion {
     var mouthFrom: MouthShape? = nil     // the driven mouth before its last change
     var mouthTickAt: Double = -100       // when that mouth last changed
     var drivenSince: Double = -100       // when a bubble started or stopped driving it
+    var speech: [LanviSpeech.Beat] = []  // `.lanviSays`: the line being said, beat by beat
+    var speechAt: Double = -100          // when he started saying it
     var moment: LanviMoment? = nil       // a moment asked for by hand (the preview screen)
     var momentAt: Double = -100
     var momentSide: Double = 1
@@ -134,6 +136,9 @@ struct LanviMotion {
         let faces = [now.face] + past.prefix(3).map(\.face)
         f.eyes = Self.fade(faces.map(\.eyes))
         f.mouths = Self.fade(faces.map(\.mouth))
+        // A talking mouth changes shape many times a second: it swaps at once (the swaps
+        // fall where it is smallest), so it is never left half see-through between two.
+        if talkingMouth(t) { f.mouths = [(now.face.mouth, 1)] }
         if reduceMotion { return f }
 
         // Follow-through: each tip trails where its base was a moment ago, springs past
@@ -209,6 +214,7 @@ struct LanviMotion {
         idle(x, &p)
         lookLayer(x, &p, &face)
         momentLayer(x, &p, &face)
+        lifeLayer(x, &p)
         talkLayer(x, &p, &face)
         reactionLayer(x, &p, &face)
         touchLayer(x, &p, &face)
@@ -279,6 +285,63 @@ struct LanviMotion {
         // Where the head faces drifts a hair, so the face is never a frozen picture.
         p.dirX += 0.045 * sin(2 * .pi * (x + s) / 8.3) + 0.025 * sin(2 * .pi * (x + s) / 13.1 + 2)
         p.dirY += 0.03 * sin(2 * .pi * (x + s) / 10.7 + 0.5)
+    }
+
+    // MARK: Small signs of life between the moments
+
+    /// Between the performed moments he is never still: now and then the pupils shift a
+    /// little and hold (sometimes back to the middle), one ear twitches (sometimes twice),
+    /// or the tail tip flicks. Each on its own irregular clock, so they never line up into
+    /// a loop. They fade out under a moment, a reaction, a touch or a look at something
+    /// (never two things at once), and back in after it.
+    private func lifeLayer(_ x: Double, _ p: inout Pose) {
+        var w = 1 - busy(x)
+        if w > 0.001, let m = currentMoment(x) { w *= 1 - m.weight }
+        guard w > 0.001 else { return }
+        // Pupils: a new small resting place every 1.9 to 4.5 s; each change springs from
+        // where they were (0.12 s, no wobble). The changes before the last three have
+        // settled long ago.
+        let slot = 3.2, off = Double(seed % 89) * 0.37
+        let k = Int(floor((x + off) / slot))
+        func target(_ j: Int) -> (x: Double, y: Double) {
+            guard Motion.rnd(j, seed &+ 62) >= 0.3 else { return (0, 0) }
+            return ((Motion.rnd(j, seed &+ 63) * 2 - 1) * 2.4, (Motion.rnd(j, seed &+ 64) * 2 - 1) * 1.3)
+        }
+        var gaze = target(k - 3)
+        for j in (k - 2)...k {
+            let start = Double(j) * slot + 1.3 * Motion.rnd(j, seed &+ 61) - off
+            let e = Self.critical(x - start, response: 0.12)
+            let a = target(j - 1), b = target(j)
+            gaze.x += (b.x - a.x) * e
+            gaze.y += (b.y - a.y) * e
+        }
+        p.eyeX += gaze.x * w
+        p.eyeY += gaze.y * w
+
+        // One ear twitches (6 to 10 degrees, a quarter of a second), in about half of
+        // the 5.3 s slots.
+        let eslot = 5.3, eoff = Double(seed % 83) * 0.53
+        let ek = Int(floor((x + eoff) / eslot))
+        for j in [ek - 1, ek] where Motion.rnd(j, seed &+ 71) < 0.55 {
+            let start = Double(j) * eslot + 2.6 * Motion.rnd(j, seed &+ 72) - eoff
+            let lt = x - start
+            guard lt >= 0, lt < 1 else { continue }
+            var a = (6 + 4 * Motion.rnd(j, seed &+ 74)) * flick(lt, 0.12)
+            if Motion.rnd(j, seed &+ 75) < 0.3 { a += 5 * flick(lt - 0.42, 0.11) }
+            if Motion.rnd(j, seed &+ 73) < 0.5 { p.earL += a * w } else { p.earR += a * w }
+        }
+
+        // The tail tip flicks up and settles, in about half of the 7.7 s slots.
+        let tslot = 7.7, toff = Double(seed % 79) * 0.61
+        let tk = Int(floor((x + toff) / tslot))
+        for j in [tk - 1, tk] where Motion.rnd(j, seed &+ 81) < 0.5 {
+            let start = Double(j) * tslot + 3 * Motion.rnd(j, seed &+ 82) - toff
+            let lt = x - start
+            guard lt >= 0, lt < 1.6 else { continue }
+            let h = Motion.pulse(lt, start: 0, end: 0.35, response: 0.3, damping: 0.55, settle: 0.6)
+            p.tailCurl += 7 * h * w
+            p.tail += 2.5 * h * w
+        }
     }
 
     // MARK: Held moods
@@ -453,6 +516,7 @@ struct LanviMotion {
         b = max(b, busyMood(heldFrom) * (1 - w) + busyMood(held) * w)
         let talkW = Motion.smooth(talkingSince, talkingSince + 0.3, x)
         b = max(b, talking ? talkW : 1 - talkW)
+        if let end = speech.last?.end { b = max(b, window(speechAt, end, x)) }
         let drivenW = Motion.smooth(drivenSince, drivenSince + 0.3, x)
         b = max(b, mouthOverride != nil ? drivenW : 1 - drivenW)
         return b
@@ -638,6 +702,7 @@ struct LanviMotion {
     // MARK: Talking
 
     private func talkLayer(_ x: Double, _ p: inout Pose, _ face: inout Face) {
+        if sayLayer(x, &p, &face) { return }
         // A speech bubble drives the mouth shape (before its last change it was
         // `mouthFrom`, so each swap cross-fades). No head bob per change: a bubble may
         // flip the mouth many times a second, and the head must never vibrate.
@@ -676,6 +741,47 @@ struct LanviMotion {
         let drift = Motion.rnd(word - 1, seed &+ 53) + (Motion.rnd(word, seed &+ 53) - Motion.rnd(word - 1, seed &+ 53)) * wp
         p.dirX += 0.12 * (drift - 0.5) * on
         p.earL -= 2 * on; p.earR -= 2 * on
+    }
+
+    /// The mouth is talking at `x` (saying a line, talking, or a bubble driving it).
+    func talkingMouth(_ x: Double) -> Bool {
+        if let end = speech.last?.end, x >= speechAt, x < speechAt + end { return true }
+        if mouthOverride != nil { return true }
+        return talking ? x >= talkingSince : x < talkingSince && x >= talkStart
+    }
+
+    /// Saying a line (`.lanviSays`): the mouth follows its syllables (round on o and u,
+    /// open on the other vowels, the lips meet on m, b and p, closed in the pauses), the
+    /// head nods a little on the stressed syllables and drifts per word, then a smile.
+    /// True while it plays (a bubble's own mouth waits).
+    private func sayLayer(_ x: Double, _ p: inout Pose, _ face: inout Face) -> Bool {
+        guard let end = speech.last?.end else { return false }
+        let lt = x - speechAt
+        guard lt >= -0.05, lt < end + 0.45 else { return false }
+        let on = Motion.smooth(-0.05, 0.1, lt) * (1 - Motion.smooth(end, end + 0.45, lt))
+        if lt >= 0, lt < end, let i = speech.lastIndex(where: { $0.at <= lt }) {
+            let b = speech[i]
+            let ph = min(max((lt - b.at) / max(b.end - b.at, 0.01), 0), 1)
+            let open = sin(.pi * ph) * b.open
+            face.mouth = b.shape
+            switch b.shape {
+            case .o: p.mouthScale += -0.4 + 0.5 * open
+            case .happy: p.mouthScale += -0.5 + 0.4 * open
+            default: break
+            }
+        }
+        // a small nod on the stressed syllables, and the head drifts a touch per word
+        var bob = 0.0
+        for b in speech where b.stress && lt > b.at - 0.02 && lt < b.at + 0.3 {
+            bob += Motion.bump(lt, b.at - 0.02, b.at + 0.3)
+        }
+        p.headY += 1.8 * bob * on; p.dirY += 0.05 * bob * on
+        let word = Int(floor(max(lt, 0) / 0.9))
+        let wp = Motion.smooth(0, 0.35, max(lt, 0) - Double(word) * 0.9)
+        let drift = Motion.rnd(word - 1, seed &+ 53) + (Motion.rnd(word, seed &+ 53) - Motion.rnd(word - 1, seed &+ 53)) * wp
+        p.dirX += 0.12 * (drift - 0.5) * on
+        p.earL -= 2 * on; p.earR -= 2 * on
+        return true
     }
 
     // MARK: Reactions
@@ -863,3 +969,75 @@ struct LanviMotion {
         p.dirY += 0.015 * dip
     }
 }
+
+// MARK: - Saying a line
+
+/// A line of text as mouth beats, so the mouth moves with the words (no sound). About
+/// 13 letters a second: a syllable per vowel group, a short close between words, a
+/// pause at commas and a longer one at the end of a sentence.
+enum LanviSpeech {
+    struct Beat: Equatable {
+        var at: Double          // seconds after the start
+        var end: Double
+        var shape: MouthShape
+        var open: Double        // how wide (0...1)
+        var stress: Bool        // a small nod
+    }
+
+    private static let vowels: Set<Character> = Set("aeiouyáéíóúýäôěůàèìòùâêîûëïöü")
+
+    static func beats(_ text: String) -> [Beat] {
+        var out: [Beat] = []
+        var t = 0.0
+        let words = text.lowercased().split(whereSeparator: { $0.isWhitespace })
+        for (wi, raw) in words.enumerated() {
+            let word = Array(raw)
+            let letters = word.filter { $0.isLetter || $0.isNumber }
+            // split the letters into syllables: each vowel group with the consonants before it
+            var syllables: [[Character]] = []
+            var cur: [Character] = []
+            var sawVowel = false
+            for c in letters {
+                let v = vowels.contains(c)
+                if !v, sawVowel { syllables.append(cur); cur = []; sawVowel = false }
+                cur.append(c)
+                if v { sawVowel = true }
+            }
+            if !cur.isEmpty {
+                if sawVowel || syllables.isEmpty { syllables.append(cur) } else { syllables[syllables.count - 1] += cur }
+            }
+            for (si, syl) in syllables.enumerated() {
+                let len = min(max(0.06 + 0.032 * Double(syl.count), 0.12), 0.28)
+                // the lips meet first on m, b, p
+                if let first = syl.first, "mbp".contains(first) {
+                    out.append(Beat(at: t, end: t + 0.05, shape: .flat, open: 0, stress: false))
+                    t += 0.05
+                }
+                let vs = syl.filter { vowels.contains($0) }
+                let round = vs.contains { "oóôòöuúůùûü".contains($0) } && !vs.contains { "aáäàâ".contains($0) }
+                let wide = vs.contains { "aáäàâ".contains($0) } ? 1.0 : 0.75
+                let stress = si == 0 && (syllables.count > 1 || wi % 3 == 0)
+                out.append(Beat(at: t, end: t + len, shape: round ? .o : .happy, open: round ? 0.85 : wide, stress: stress))
+                t += len
+            }
+            // between words, a short close; at commas and sentence ends, a pause
+            let pause: Double
+            switch raw.last {
+            case ",", ";", ":": pause = 0.22
+            case ".", "!", "?", "…": pause = 0.38
+            default: pause = 0.05
+            }
+            if wi < words.count - 1 || pause > 0.05 {
+                out.append(Beat(at: t, end: t + pause, shape: .smile, open: 0, stress: false))
+                t += pause
+            }
+        }
+        // the last pause is not part of saying it
+        while let last = out.last, last.shape == .smile { out.removeLast() }
+        return out
+    }
+
+    /// How long Lanvi takes to say `text` (seconds).
+    static func length(_ text: String) -> Double { beats(text).last?.end ?? 0 }
+}
+
