@@ -87,7 +87,9 @@ struct HomeView: View {
     /// The mouth Lanvi shows while saying a new line (nil = the puppet decides).
     @State private var mouth: MouthShape?
     /// What the chat grows out of: the bubble or the round chat button.
-    @State private var chatFrom = "speech"
+    @State private var chatFrom: String? = "speech"
+    /// A screen to open once the sheet on top has gone.
+    @State private var pendingCover: Cover?
 
     var body: some View {
         #if DEBUG
@@ -107,7 +109,8 @@ struct HomeView: View {
                         .lanviMood(restingMood)
                         .lanviLookAt(look)
                         .lanviMouth(mouth)
-                        .onTapGesture { tapFox() }
+                        // Alongside the puppet's own tap reaction (a child's tap would otherwise win).
+                        .simultaneousGesture(TapGesture().onEnded { tapFox() })
                 }
                 .frame(width: L.fox * 2, height: L.fox * 2)
                 .position(x: L.foxCenter.x + entrance, y: L.foxCenter.y)
@@ -198,7 +201,14 @@ struct HomeView: View {
                 coverContent(c)
             }
         }
-        .sheet(item: $sheet) { s in
+        .sheet(item: $sheet, onDismiss: {
+            // A screen picked in a sheet opens only once the sheet has fully gone,
+            // so the two never fight.
+            if let next = pendingCover {
+                pendingCover = nil
+                cover = next
+            }
+        }) { s in
             switch s {
             case .more:
                 HomeMoreSheet { k in openAfterSheet(.activity(k)) }
@@ -351,11 +361,10 @@ struct HomeView: View {
 
     private var chatButton: some View {
         Button {
-            chatFrom = "chatbutton"
+            chatFrom = nil          // from the small button: a plain slide, no ballooning icon
             open(.chat)
         } label: { Image(systemName: "bubble.left.fill") }
             .buttonStyle(HomeQuietRoundStyle())
-            .homeZoomSource("chatbutton", in: zoom)
             .accessibilityLabel("Talk to Lanvi")
     }
 
@@ -466,11 +475,8 @@ struct HomeView: View {
     }
 
     private func openAfterSheet(_ c: Cover) {
+        pendingCover = c
         sheet = nil
-        Task {
-            try? await Task.sleep(for: .milliseconds(380))
-            cover = c
-        }
     }
 
     /// The resting pose for the state Lanvi is in and the time of day. Pose, mood and
@@ -498,11 +504,11 @@ struct HomeView: View {
     }
 
     /// Tapping Lanvi: a happy hop, then how it is growing.
+    /// Tapping Lanvi: the puppet reacts by itself; then how it is growing.
     private func tapFox() {
-        bounce &+= 1
         Task {
-            try? await Task.sleep(for: .milliseconds(350))
-            sheet = .growth
+            try? await Task.sleep(for: .milliseconds(450))
+            if cover == nil, sheet == nil { sheet = .growth }
         }
     }
 

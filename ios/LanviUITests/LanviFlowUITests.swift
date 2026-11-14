@@ -127,6 +127,39 @@ final class LanviFlowUITests: XCTestCase {
         pause(2.0)
     }
 
+    /// The whole first run and a short tour of Home at a natural pace (about 40 s),
+    /// for the flow recording.
+    func test3Flow() {
+        launch(["-firstRun"])
+        pause(2.2)
+        tap(app.buttons, "Get started", "flow.start")
+        pause(1.8)
+        tap(app.buttons, "Quiet", "flow.quiet")
+        pause(0.8)
+        tap(app.buttons, "Moving", "flow.moving")
+        pause(1.0)
+        tap(app.buttons, "That's it", "flow.continue")
+        pause(3.0)
+        tap(app.buttons, "Not now", "flow.health", wait: 6)
+        pause(3.0)
+        tap(app.buttons, "home.speech", "flow.bubble")
+        pause(2.2)
+        tap(app.buttons, "Close", "flow.chatclose")
+        pause(1.8)
+        tap(app.buttons, "More with Lanvi", "flow.more")
+        pause(2.0)
+        closeSheet("flow.moreclose")
+        pause(1.6)
+        tap(app.descendants(matching: .any), "home.fox", "flow.fox")
+        pause(2.2)
+        closeSheet("flow.growthclose")
+        pause(1.6)
+        tap(app.buttons, "Help", "flow.help")
+        pause(2.0)
+        tap(app.buttons, "Close", "flow.helpclose")
+        pause(2.5)
+    }
+
     func test2RealWorldAndDone() {
         launch(["-senseScreen", "none", "-demoSuggestion", "walk_10min"])
         pause(3.0)
