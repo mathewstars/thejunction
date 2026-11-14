@@ -57,8 +57,8 @@ enum LanviArt {
     /// Depth layers cut from a part (face markings, chest bib, bands of the tail and
     /// ears): where each sits in its part's picture, as shares (x, y, width, height).
     static let layer: [String: CGRect] = [
-        "face-patch-l": CGRect(x: 0.09594, y: 0.28571, width: 0.38253, height: 0.31375),
-        "face-patch-r": CGRect(x: 0.52276, y: 0.28571, width: 0.38007, height: 0.31375),
+        "face-patch-l": CGRect(x: 0.06150, y: 0.23899, width: 0.46740, height: 0.35247),
+        "face-patch-r": CGRect(x: 0.47355, y: 0.24032, width: 0.46617, height: 0.35113),
         "face-brow-l": CGRect(x: 0.28659, y: 0.20961, width: 0.11685, height: 0.08678),
         "face-brow-r": CGRect(x: 0.60886, y: 0.20961, width: 0.11439, height: 0.08812),
         "face-nose": CGRect(x: 0.42681, y: 0.50601, width: 0.14883, height: 0.12150),
