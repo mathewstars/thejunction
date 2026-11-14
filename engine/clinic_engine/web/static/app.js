@@ -1621,6 +1621,30 @@
         nweeks.length ? mini(nweeks, "Elina: the score stays low and flat, so there is nothing to follow.") : null,
         P("Elina stayed well. Her score hardly moved, so there was nothing for the phone’s numbers to follow, and the tool says so. In twelve weeks many people will stay well, like Elina. A tool that always finds something would be worthless."),
         elina ? el("p", { class: "bp-text" }, el("a", { href: "#/p/" + encodeURIComponent(elina) + "/research" }, "Open Elina’s research page")) : null)));
+    // 6b. how the research part was checked, and on what data. Kept exact: no human researcher has reviewed it.
+    const UL = (items) => el("ul", { class: "plain big" }, items.map((x) => el("li", null, x)));
+    wrap.appendChild(el("section", { class: "panel" }, el("h2", null, "How this was checked, and on what data"),
+      el("div", { class: "grid2" },
+        el("div", null,
+          el("h3", { class: "bp-h3" }, "The review"),
+          P("No human researcher has reviewed this work. That begins with the study we propose to Aalto."),
+          P("What we did in its place: each research page went through rounds of review by AI reviewers, each set up as an independent senior researcher (clinical research on depression, measures taken from phones, statistics with few observations). A reviewer got the live page and the code, not our conclusions. It ran our numbers again, checked what we say about published studies against the papers, and placed the page against a bar we had set. We fixed what it found and sent the page back to the same reviewer."),
+          P("The panel for the game went through twelve such rounds with two reviewers, and a patient’s Research page through four. Three things they caught that we would otherwise have shipped:"),
+          UL(["A sentence about a handwriting study that said more than the study’s own summary. It now says only what the summary says, and that we did not read the full paper.",
+            "A rule that called a game “as usual” at the lowest point of a slow slide, because the comparison moved along with the person. A fixed start now stands beside it.",
+            "A headline whose measure was chosen in part by a model’s answer. On the live page it had picked the time spent looking down, the measure most tied to how the phone is held. Code decides it now."]),
+          P("A reviewer of this kind can be wrong, and can be too kind. Where it placed a page is an opinion, not a measurement. What we keep from it is each defect it could show in our own code and numbers.")),
+        el("div", null,
+          el("h3", { class: "bp-h3" }, "The data"),
+          P("No patient data was used anywhere. Each generated set below is made by a script in the repository and can be made again."),
+          UL(["Generated people: Anna (twelve weeks, with a link written in), Elina (twelve weeks, a flat score) and Aino (twenty-four games, with a slide written in). Every page that shows them says they are generated.",
+            "Generated face sessions: fifty with smiles planted at known places, and twenty harder ones made after the instruction and the check were fixed, to see what the two readers find.",
+            "Generated series of daily numbers, for the reading of steps, sleep and walking speed.",
+            "Generated cases for the levels of attention: forty, read by the real models, 107 flags.",
+            "Generated series of games: 5,000 runs for each row of the table that says how often a comparison is wrong.",
+            "Real games: ten, from one team member’s own iPhone on one evening, with his Apple Health steps and walking speed. They set the speeds and the variation of the generated games. They are too few and too close together to compare, and the page says so.",
+            "Published studies: two on effort and reward (2009, 2012) and one on swipe speed in phone games (2025), checked against the papers’ text; one on handwriting (2025), against its summary only."]),
+          P("The scripts: seed_research, seed_revontulet, frames_reference, days_reference, triage_check and revontulet_check, each run as python -m clinic_engine.<name>.")))));
     // 7. limits, and who does what
     wrap.appendChild(panel("What this does not show", null, el("ul", { class: "plain big" },
       el("li", null, "Everything on this page is example data. Whether a phone can see this in real patients is not known."),
