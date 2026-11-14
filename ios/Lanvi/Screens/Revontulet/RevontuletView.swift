@@ -87,7 +87,11 @@ struct RevontuletView: View {
         var furFrom: CGPoint?
         var lastStrokeMove = 0.0
         var purring = false
+        var building = false
     }
+
+    /// The art, made off the main thread, handed over once.
+    private struct Handover: @unchecked Sendable { let art: RevontuletArt }
 
     /// `-revontuletFreezeRound N`: freeze the beat in round N (0, 1, 2) for stills of each round.
     private static let freezeRound: Int = {
@@ -142,8 +146,14 @@ struct RevontuletView: View {
             .ignoresSafeArea()
         }
         .task { await run() }
-        .onAppear { feel.start() }
-        .onDisappear { feel.stop() }
+        .onAppear {
+            feel.start()
+            RevontuletStallWatch.shared.start()
+        }
+        .onDisappear {
+            feel.stop()
+            RevontuletStallWatch.shared.stop()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { feel.start() } else { feel.stop() }
             // Leaving the app mid-game (home, a call, the lock button) ends it cleanly as
@@ -163,8 +173,11 @@ struct RevontuletView: View {
                 ZStack {
                     Canvas { ctx, size in
                         let t = CACurrentMediaTime()
-                        painter.sky(&ctx, size: size)
-                        painter.ice(&ctx, size: size)
+                        RevontuletStallWatch.shared.frame(beat: e.beat.rawValue, at: t)
+                        RevontuletStallWatch.shared.measure("draw sky and ice") {
+                            painter.sky(&ctx, size: size)
+                            painter.ice(&ctx, size: size)
+                        }
                         Trace.shared.frame(CACurrentMediaTime() - t)
                     }
                     // Lower-left and smaller while playing; at the burst it springs to the centre.
@@ -177,8 +190,10 @@ struct RevontuletView: View {
                         .animation(.spring(response: 0.35, dampingFraction: 0.75), value: Self.foxPlace(e))
                         .animation(.spring(response: 1.1, dampingFraction: 0.9), value: e.beat == .warmth)
                     Canvas { ctx, size in
-                        painter.front(&ctx, size: size)
-                        painter.coachLayer(&ctx, size: size)
+                        RevontuletStallWatch.shared.measure("draw front") {
+                            painter.front(&ctx, size: size)
+                            painter.coachLayer(&ctx, size: size)
+                        }
                     }
                 }
             }
@@ -324,9 +339,11 @@ struct RevontuletView: View {
     // MARK: Setting up
 
     private func setUp(_ L: RevontuletLayout) {
-        guard engine == nil, L.size.width > 10, L.size.height > 10 else { return }
-        let began = CACurrentMediaTime()
-        defer { print("revontulet: set up in \(Int((CACurrentMediaTime() - began) * 1000)) ms") }
+        RevontuletStallWatch.shared.measure("set up") { setUpBody(L) }
+    }
+
+    private func setUpBody(_ L: RevontuletLayout) {
+        guard engine == nil, !box.building, L.size.width > 10, L.size.height > 10 else { return }
         if ProcessInfo.processInfo.arguments.contains("-revontuletSelfTest") {
             let report = RevontuletSelfTest.run(layout: L)
             for f in report.failures.prefix(40) { print("revontulet selftest FAIL \(f)") }
@@ -337,8 +354,24 @@ struct RevontuletView: View {
             freeze(L, at: beat)
             return
         }
+        // The ice, its pieces and the frosted sky take a moment to make (most of a second on a
+        // simulator, far longer on a busy one): made off the main thread, so the screen never
+        // freezes while the game opens. The night painting shows meanwhile.
+        box.building = true
+        let began = CACurrentMediaTime()
+        let making = Task.detached(priority: .userInitiated) { Handover(art: RevontuletArt(layout: L)) }
+        Task { @MainActor in
+            let made = await making.value
+            box.building = false
+            print("revontulet: set up in \(Int((CACurrentMediaTime() - began) * 1000)) ms, off the main thread")
+            begin(L, art: made.art)
+        }
+    }
+
+    private func begin(_ L: RevontuletLayout, art made: RevontuletArt) {
+        guard engine == nil else { return }
         engine = RevontuletEngine(layout: L)
-        art = RevontuletArt(layout: L)
+        art = made
         box.auto = RevontuletAutoPlay.fromArguments().map {
             RevontuletAutoPlay(style: $0, coachPause: RevontuletCoachMemory.forced ? 2.2 : 0)
         }
@@ -414,6 +447,10 @@ struct RevontuletView: View {
     }
 
     private func step(_ now: Double) {
+        RevontuletStallWatch.shared.measure("step") { stepBody(now) }
+    }
+
+    private func stepBody(_ now: Double) {
         guard var e = engine, frozenAt == nil, !handedBack else { return }
         box.frame &+= 1
         var events: [RevontuletEvent] = []
@@ -451,6 +488,10 @@ struct RevontuletView: View {
 
     /// A real finger (from the touch surface) or the Start button.
     private func feed(_ input: RevontuletInput, at time: Double) {
+        RevontuletStallWatch.shared.measure("touch") { feedBody(input, at: time) }
+    }
+
+    private func feedBody(_ input: RevontuletInput, at time: Double) {
         guard var e = engine, frozenAt == nil, !handedBack else { return }
         if box.auto != nil, input != .start { return }
         let events = e.handle(input, at: time)
@@ -462,6 +503,12 @@ struct RevontuletView: View {
     // MARK: Reacting: haptics, moments, the fox, the words
 
     private func react(_ events: [RevontuletEvent], _ e: RevontuletEngine, now: Double) {
+        RevontuletStallWatch.shared.measure("react " + events.map { String(String(describing: $0).prefix { $0 != "(" }) }.joined(separator: ",")) {
+            reactBody(events, e, now: now)
+        }
+    }
+
+    private func reactBody(_ events: [RevontuletEvent], _ e: RevontuletEngine, now: Double) {
         for event in events {
             switch event {
             case .started:

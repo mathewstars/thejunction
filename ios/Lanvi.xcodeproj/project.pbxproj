@@ -12,6 +12,7 @@
 		09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB97273333C0DBAE7FC11418 /* FocusEngine.swift */; };
 		0CCBB65F07E504D7182EBF08 /* Harness.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; };
 		0CFF1ACB5D8BF4C22E1BCCBE /* GameMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B5C92796F5DE0B8D3DA00AF /* GameMoments.swift */; };
+		1096D63E5D2843364E3D4AA1 /* RevontuletStallWatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8A82D36AA4DCB7EA3032EF /* RevontuletStallWatch.swift */; };
 		13A58E149CD244B58980B9F3 /* HomeSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8082B9E5762CA3450E914CE /* HomeSpeech.swift */; };
 		14D52ABE9497798035286052 /* LanviArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B5136458E518ED70EBBEF0 /* LanviArt.swift */; };
 		151BF5444E01D40CF03FB960 /* ChatLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84158FA0F8C7B4E9A416B47C /* ChatLink.swift */; };
@@ -149,6 +150,7 @@
 		033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Black.ttf"; sourceTree = "<group>"; };
 		043F24BD4810CC96B85B74B4 /* LanviTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviTiming.swift; sourceTree = "<group>"; };
 		0A642E52DE3048D1D92DE79C /* RevontuletDirect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevontuletDirect.swift; sourceTree = "<group>"; };
+		0B8A82D36AA4DCB7EA3032EF /* RevontuletStallWatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevontuletStallWatch.swift; sourceTree = "<group>"; };
 		0E369E41135184A2334A61A6 /* FocusResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusResult.swift; sourceTree = "<group>"; };
 		11CA1C956F7514A490E2C77E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		14332D1FBE2937C010FE068A /* LanviEyesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviEyesTests.swift; sourceTree = "<group>"; };
@@ -513,6 +515,7 @@
 				F4F6CF2EF1D602B235A66678 /* RevontuletModel.swift */,
 				87C90F6628A3C4C92BF26F7B /* RevontuletPainter.swift */,
 				EDF2740C606A86FAAC112A3E /* RevontuletSelfTest.swift */,
+				0B8A82D36AA4DCB7EA3032EF /* RevontuletStallWatch.swift */,
 				30D65962C210BD7D97A7B255 /* RevontuletView.swift */,
 			);
 			path = Revontulet;
@@ -745,6 +748,7 @@
 				53DFDA41B96A5436FE6B9BD6 /* RevontuletModel.swift in Sources */,
 				F663114BD46241E2D55F4938 /* RevontuletPainter.swift in Sources */,
 				3C10F67A103CC5DEF15647CD /* RevontuletSelfTest.swift in Sources */,
+				1096D63E5D2843364E3D4AA1 /* RevontuletStallWatch.swift in Sources */,
 				BBAC5B88ECB37DA269B8DC96 /* RevontuletView.swift in Sources */,
 				1DCC6987446B4B58F5E32D82 /* SenseRoot.swift in Sources */,
 				DBE064B344FE5E0C63C77FB2 /* SenseViews.swift in Sources */,
