@@ -85,8 +85,8 @@ struct LanviPuppet: View {
         TimelineView(.animation) { context in
             let f = motion(at: context.date.timeIntervalSinceReferenceDate).frame()
             let _ = LanviFrameLog.shared?.record(date: context.date, f)
+            // (nothing is drawn under him: the captain wants the painted snow as it is)
             ZStack(alignment: .bottom) {
-                shadow(f.pose)
                 rig(f)
                     .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k)
                     .scaleEffect(x: 1 + f.pose.rootSX, y: 1 + f.pose.rootSY, anchor: Self.feet)
@@ -381,38 +381,6 @@ struct LanviPuppet: View {
     }
 
     // MARK: Drawing
-
-    /// A soft contact shadow: a wide soft pool and a tighter, darker core under the
-    /// haunches. It lightens and shrinks as the fox lifts, and tightens and darkens
-    /// when it lands (the feet spread). A faint one under the tail.
-    private func shadow(_ p: Pose) -> some View {
-        let lift = min(max(-p.rootY / 70, 0), 1)
-        let squash = max(-p.rootSY, 0) * 10 + p.spread * 2      // landing
-        let breath = p.bodySX
-        let ink = Theme.ink
-        return ZStack {
-            Ellipse()
-                .fill(RadialGradient(colors: [ink.opacity(0.16), ink.opacity(0.07), ink.opacity(0)],
-                                     center: .center, startRadius: 0, endRadius: size * 0.33))
-                .frame(width: size * 0.66, height: size * 0.1)
-                .scaleEffect(x: (1 - 0.18 * lift) * (1 + 0.08 * squash + breath * 0.6), y: 1 - 0.15 * lift)
-                .opacity(1 - 0.45 * lift)
-            Ellipse()
-                .fill(RadialGradient(colors: [ink.opacity(0.24), ink.opacity(0.1), ink.opacity(0)],
-                                     center: .center, startRadius: 0, endRadius: size * 0.22))
-                .frame(width: size * 0.44, height: size * 0.045)
-                .scaleEffect(x: (1 - 0.32 * lift) * (1 + 0.12 * squash + breath * 0.5), y: 1 - 0.2 * lift)
-                .opacity(min(1, (1 - 0.85 * lift) * (1 + 0.6 * squash)))
-            Ellipse()
-                .fill(RadialGradient(colors: [ink.opacity(0.12), ink.opacity(0)],
-                                     center: .center, startRadius: 0, endRadius: size * 0.12))
-                .frame(width: size * 0.24, height: size * 0.04)
-                .offset(x: (Rig.tail.center.x - Rig.centerX) * k * 0.92)
-                .opacity(1 - 0.6 * lift)
-        }
-        .offset(y: size * 0.012)
-        .allowsHitTesting(false)
-    }
 
     private func rig(_ f: RigFrame) -> some View {
         ZStack(alignment: .topLeading) {
