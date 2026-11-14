@@ -269,7 +269,155 @@ class S3Store(Store):
         return sorted(out)
 
 
+class PackedStore(Store):
+    """Keeps a patient's small records together, in front of a store that costs a
+    round trip per object. Callers still read and write one record per key; this
+    class files them into packs:
+
+    - days, activities, rounds, suggestions, feedback, notes, attention, ratings,
+      rejected: one object per folder (`<folder>.pack.json`)
+    - audit, trace: one object per folder and day (`<folder>/<yyyymmdd>.pack.json`),
+      because they only grow
+
+    Nothing is held between calls: every read fetches the pack again, so two
+    processes on the same store see each other's writes. A pack, once it exists,
+    holds everything for its folder (or day). Records written before packs existed
+    are taken into the pack the first time it is touched.
+    """
+
+    WHOLE = ("days", "activities", "rounds", "suggestions", "feedback", "notes", "attention",
+             "ratings", "rejected")
+    DAILY = ("audit", "trace")
+    _KEY = re.compile(r"^(clinics/[^/]+/patients/[^/]+/(%s))/([^/]+\.json)$"
+                      % "|".join(WHOLE + DAILY))
+    _FOLDER = re.compile(r"^(clinics/[^/]+/patients/[^/]+/(%s))/([^/]*)$"
+                         % "|".join(WHOLE + DAILY))
+    _SUFFIX = ".pack.json"
+
+    def __init__(self, inner: Store) -> None:
+        self.inner = inner
+        self._lock = threading.RLock()
+
+    # ---- where a record lives ------------------------------------------------------
+    def _route(self, key: str) -> tuple[str, str, str] | None:
+        """(pack key, prefix of the single objects this pack replaces, record name)."""
+        m = self._KEY.match(key)
+        if not m or key.endswith(self._SUFFIX):
+            return None
+        folder, kind, name = m.group(1), m.group(2), m.group(3)
+        if kind in self.WHOLE:
+            return folder + self._SUFFIX, folder + "/", name
+        day = name[:8] if name[:8].isdigit() else "other"
+        return f"{folder}/{day}{self._SUFFIX}", f"{folder}/{day}" if day != "other" else "", name
+
+    def _load(self, pack_key: str, singles_prefix: str, seen: dict | None = None) -> dict:
+        """The pack's records by name. Creates the pack from single objects on first touch."""
+        if seen is not None and pack_key in seen:
+            return seen[pack_key]
+        doc = self.inner.get(pack_key)
+        if doc is not None:
+            docs = doc.get("docs", {})
+        else:
+            docs = {}
+            old = [k for k in self.inner.list(singles_prefix)
+                   if not k.endswith(self._SUFFIX)] if singles_prefix else []
+            if singles_prefix.endswith("/"):  # a whole folder: direct children only
+                old = [k for k in old if "/" not in k[len(singles_prefix):]]
+            for k, d in zip(old, self.inner.get_many(old)):
+                if d is not None:
+                    docs[k.rsplit("/", 1)[1]] = d
+            self.inner.put(pack_key, {"pack": 1, "docs": docs})
+            for k in old:
+                self.inner.delete(k)
+        if seen is not None:
+            seen[pack_key] = docs
+        return docs
+
+    # ---- the Store interface ---------------------------------------------------------
+    def get(self, key: str) -> dict | None:
+        r = self._route(key)
+        if r is None:
+            return self.inner.get(key)
+        with self._lock:
+            return self._load(r[0], r[1]).get(r[2])
+
+    def get_many(self, keys: list[str]) -> list[dict | None]:
+        seen: dict = {}
+        out = []
+        with self._lock:
+            for k in keys:
+                r = self._route(k)
+                out.append(self.inner.get(k) if r is None else self._load(r[0], r[1], seen).get(r[2]))
+        # each caller gets its own copy, also when two keys share a pack
+        return [None if d is None else json.loads(json.dumps(d)) for d in out]
+
+    def put(self, key: str, doc: dict) -> None:
+        r = self._route(key)
+        if r is None:
+            return self.inner.put(key, doc)
+        with self._lock:
+            docs = self._load(r[0], r[1])
+            docs[r[2]] = doc
+            self.inner.put(r[0], {"pack": 1, "docs": docs})
+
+    def delete(self, key: str) -> None:
+        r = self._route(key)
+        if r is None:
+            return self.inner.delete(key)
+        with self._lock:
+            docs = self._load(r[0], r[1])
+            if r[2] in docs:
+                del docs[r[2]]
+                self.inner.put(r[0], {"pack": 1, "docs": docs})
+
+    def _members(self, pack_key: str) -> list[str]:
+        folder = pack_key[:-len(self._SUFFIX)]
+        if folder.rsplit("/", 1)[1] in self.WHOLE:  # <folder>.pack.json
+            return [f"{folder}/{n}" for n in self._load(pack_key, folder + "/")]
+        base, day = folder.rsplit("/", 1)  # <folder>/<day>.pack.json
+        return [f"{base}/{n}" for n in self._load(pack_key, f"{base}/{day}" if day != "other" else "")]
+
+    def _is_pack(self, key: str) -> bool:
+        if not key.endswith(self._SUFFIX):
+            return False
+        return bool(self._KEY.match(key[:-len(self._SUFFIX)] + "/x.json")
+                    or self._KEY.match(key.rsplit("/", 1)[0] + "/x.json"))
+
+    def list(self, prefix: str) -> list[str]:
+        with self._lock:
+            m = self._FOLDER.match(prefix)
+            if m and m.group(2) in self.WHOLE:
+                names = self._load(m.group(1) + self._SUFFIX, m.group(1) + "/")
+                return sorted(f"{m.group(1)}/{n}" for n in names if n.startswith(m.group(3)))
+            out: set[str] = set()
+            for k in self.inner.list(prefix if not m else m.group(1) + "/"):
+                if self._is_pack(k):
+                    out.update(self._members(k))
+                elif self._route(k) is not None:  # a record from before packs: take it in
+                    r = self._route(k)
+                    out.update(f"{k.rsplit('/', 1)[0]}/{n}" for n in self._load(r[0], r[1]))
+                else:
+                    out.add(k)
+            return sorted(k for k in out if k.startswith(prefix))
+
+    def delete_prefix(self, prefix: str) -> int:
+        m = self._FOLDER.match(prefix)
+        if m and m.group(2) in self.WHOLE and m.group(3) == "":
+            with self._lock:
+                n = len(self._load(m.group(1) + self._SUFFIX, m.group(1) + "/"))
+                self.inner.put(m.group(1) + self._SUFFIX, {"pack": 1, "docs": {}})
+                return n
+        return super().delete_prefix(prefix)
+
+
 def make_store(settings: Settings) -> Store:
+    store = _make_store(settings)
+    if settings.store == "s3" and getattr(settings, "store_packed", True):
+        return PackedStore(store)
+    return store
+
+
+def _make_store(settings: Settings) -> Store:
     kind = settings.store
     if kind == "memory":
         return MemoryStore()

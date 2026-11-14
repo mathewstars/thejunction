@@ -40,6 +40,7 @@ class Settings:
     # Storage: memory | dir | s3
     store: str = "dir"
     store_dir: str = "./data"
+    store_packed: bool = True  # S3 only: keep a patient's small records together (see PackedStore)
     s3_endpoint_url: str = ""
     s3_bucket: str = ""
     s3_access_key: str = ""
@@ -102,6 +103,7 @@ class Settings:
             product_name=_env("PRODUCT_NAME", "Angel"),
             store=_env("STORE", "dir").lower(),
             store_dir=_env("STORE_DIR", "./data"),
+            store_packed=_env("STORE_PACKED", "true").lower() in ("1", "true", "yes"),
             s3_endpoint_url=_env("S3_ENDPOINT_URL"),
             s3_bucket=_env("S3_BUCKET"),
             s3_access_key=_env("S3_ACCESS_KEY"),

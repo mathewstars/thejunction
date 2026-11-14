@@ -3,10 +3,11 @@
     python -m clinic_engine.seed_research
 
 Creates (or regenerates) one example patient in the demo clinic with 84 days of
-daily data, one or two sessions a day and a weekly PHQ-9. Every value is drawn
-from a hidden symptom course plus noise, so the measures are related to the
-ratings BY CONSTRUCTION. It shows that the pipeline finds a relation that is
-there; it is not evidence about any real person. Everything is marked example.
+daily data, one or two sessions a day and a weekly PHQ-9, all drawn from a
+hidden symptom course plus noise. This person's course is flat, so the page
+has to say "nothing to conclude". `--extend-demo` gives the demo patient
+earlier weeks with a real rise and fall, where the measures follow the ratings
+BY CONSTRUCTION. Neither is evidence about any real person. All marked example.
 """
 
 from __future__ import annotations
@@ -22,8 +23,10 @@ from .store import Store, make_store
 LABEL = "Example R-001"
 NAME = "Elina Peltonen"
 DAYS = 84
-# The hidden course, as (day index, symptom level 0..1): settles, worsens, recovers, worsens.
-COURSE = ((0, 0.45), (14, 0.2), (28, 0.2), (45, 0.7), (60, 0.3), (72, 0.3), (83, 0.75))
+# The hidden course, as (day index, symptom level 0..1). This person stays well: the level
+# hardly moves, so the ratings hardly move, and the honest answer is "nothing to conclude".
+# The page must show that as clearly as it shows a relation (the demo patient has one).
+COURSE = ((0, 0.22), (30, 0.16), (60, 0.24), (83, 0.18))
 
 
 def level(k: int) -> float:
