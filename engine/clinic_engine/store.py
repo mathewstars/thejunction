@@ -43,13 +43,13 @@ class Store(ABC):
     def list(self, prefix: str) -> list[str]:
         """Return all keys that start with prefix, sorted."""
 
+    def get_many(self, keys: list[str]) -> list[dict | None]:
+        """One result per key, in the same order. Stores that pay per request
+        override this to fetch side by side."""
+        return [self.get(k) for k in keys]
+
     def list_docs(self, prefix: str) -> list[dict]:
-        out = []
-        for k in self.list(prefix):
-            d = self.get(k)
-            if d is not None:
-                out.append(d)
-        return out
+        return [d for d in self.get_many(self.list(prefix)) if d is not None]
 
     def delete_prefix(self, prefix: str) -> int:
         keys = self.list(prefix)
@@ -145,9 +145,21 @@ class S3Store(Store):
                 aws_secret_access_key=secret_key or None,
                 region_name=region,
                 config=Config(s3={"addressing_style": "path"}, retries={"max_attempts": 3},
-                              connect_timeout=5, read_timeout=10),
+                              connect_timeout=5, read_timeout=10,
+                              max_pool_connections=self.PARALLEL * 2),
             )
         self.client = client
+        self._pool = None
+
+    PARALLEL = 16  # objects fetched side by side; each is one HTTP request
+
+    def get_many(self, keys: list[str]) -> list[dict | None]:
+        if len(keys) < 4:
+            return [self.get(k) for k in keys]
+        if self._pool is None:
+            from concurrent.futures import ThreadPoolExecutor
+            self._pool = ThreadPoolExecutor(max_workers=self.PARALLEL, thread_name_prefix="s3get")
+        return list(self._pool.map(self.get, keys))  # map keeps the order of keys
 
     def get(self, key: str) -> dict | None:
         try:

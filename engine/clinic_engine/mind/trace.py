@@ -253,12 +253,8 @@ def trigger_detail(repo, kind: str, data: dict) -> dict:
 # ---- reading the trace back ----------------------------------------------------------------
 
 def load_entries(store: Store, clinic_id: str, patient_id: str, limit: int = _KEEP) -> list[dict]:
-    out = []
-    for k in store.list(prefix(clinic_id, patient_id))[-limit:]:
-        e = store.get(k)
-        if e:
-            out.append(e)
-    return out
+    keys = store.list(prefix(clinic_id, patient_id))[-limit:]
+    return [e for e in store.get_many(keys) if e]
 
 
 # ---- one row per chain: a headline (at most 6 words) and an outcome enum -----------
