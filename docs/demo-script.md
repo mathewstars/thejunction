@@ -32,6 +32,8 @@ If step 2 or 3 was skipped, the Timeline and Conversation tabs are nearly empty.
 
 ## The run
 
+There are two orders. The table below is the plain one. The story order, which opens with the person and holds the clinic pages for the proof, is in `docs/pitch.md` under "The story cut"; its screens are the same, in this order: phone (Lanvi, the welcome-back line), laptop (Anna's Overview), phone (the note), second phone (the alert), laptop (Anna's Research, then Elina's Research), phone (Lanvi).
+
 Times are for the two-minute version. Lines in quotes are short cues; the full wording is in `docs/pitch.md`.
 
 | # | Time | Screen | Do | Say |
