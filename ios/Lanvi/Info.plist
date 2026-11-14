@@ -27,5 +27,9 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Only if you say yes: during two games Lanvi watches your face and keeps a few numbers, like how often you smiled. Never a picture.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Lanvi reads how much you move and sleep: steps, walking speed, heart-rate variability and hours asleep. Never your messages, photos or location.</string>
 </dict>
 </plist>
