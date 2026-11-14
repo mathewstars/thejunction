@@ -42,7 +42,7 @@ struct BreatheView: View {
             let hill = max(h * 0.58, h - safeBottom - 215).rounded()
             let fox = min(236, (h * 0.27).rounded())
             let foxY = hill + 16 - fox / 2
-            let bloom = fox * 2.3
+            let bloom = fox * 3.55
             let snowTop = hill + 30
             let snowHeight = h - snowTop - safeBottom - 14
 
@@ -53,7 +53,7 @@ struct BreatheView: View {
                     .frame(width: w, height: hill * 0.62)
 
                 BreathBloom(breath: breath, flare: flare)
-                    .frame(width: bloom, height: bloom)
+                    .frame(width: w, height: bloom)
                     .position(x: w / 2, y: foxY - fox * 0.04)
 
                 LanviView(pose: pose, size: fox, bounceTrigger: bounce)
