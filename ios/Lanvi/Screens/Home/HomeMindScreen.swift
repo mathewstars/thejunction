@@ -10,6 +10,7 @@ struct HomeMindScreen: View {
     @State private var pose: LanviPose = .curious
     @State private var say = "Here is what I've noticed so far. Tell me if I got something wrong."
     @State private var busy: String?
+    @State private var closing = false
 
     var body: some View {
         GeometryReader { geo in
@@ -26,6 +27,7 @@ struct HomeMindScreen: View {
                     ZStack {
                         LanviView(pose: pose, size: fox)
                             .lanviHops(false)
+                            .showsAfterRise(closing: closing)
                     }
                     .frame(width: fox, height: fox)
                 }
@@ -44,7 +46,7 @@ struct HomeMindScreen: View {
                 .padding(.top, hill + 14)
 
                 HStack {
-                    HomeCloseButton(action: onClose)
+                    HomeCloseButton { closing = true; onClose() }
                     Spacer()
                 }
                 .padding(.horizontal, 20)
