@@ -370,6 +370,17 @@ span[data-step] { display: block; }
 .returnphone .appv { transition: opacity 1.6s ease 0.4s; }
 .close-scene[data-at="0"] .returnphone .appv { opacity: 0; }
 
+/* ---------- fifth pass ---------- */
+.door-scene .bgv { left: 20%; }
+.door-scene .shade { background: linear-gradient(90deg, rgba(6, 11, 22, 1) 0%, rgba(6, 11, 22, 0.96) 38%, rgba(6, 11, 22, 0.35) 58%, rgba(6, 11, 22, 0) 80%); }
+.door-scene .col { width: 820px; }
+.night-scene .bgv { transition: opacity 2.2s ease; }
+.night-scene[data-at="3"] .bgv, .night-scene[data-at="4"] .bgv, .night-scene[data-at="5"] .bgv { opacity: 0.1; }
+.typedbig { font-style: normal; font-weight: 600; }
+.typedbig::before { content: none; }
+.typedbig::after { content: ""; display: inline-block; width: 5px; height: 96px; background: var(--aurora); vertical-align: -14px; margin-left: 10px; animation: blink 1s steps(1) infinite; }
+.then.s { margin-top: 14px; }
+
 @keyframes draw { to { stroke-dashoffset: 0; } }
 @keyframes appear { to { opacity: 1; } }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
