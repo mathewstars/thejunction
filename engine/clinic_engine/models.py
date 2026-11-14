@@ -740,6 +740,8 @@ class ClinicMeOut(BaseModel):
     product_name: str
     clinic_name: str
     demo: ClinicDemo
+    read_only: bool = Field(False, description="True for a visitor of the open demo: the page "
+                            "shows generated example patients only and offers nothing that changes data.")
 
 
 ActivityOut.model_rebuild()
