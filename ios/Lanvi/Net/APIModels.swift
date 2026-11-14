@@ -171,7 +171,9 @@ enum API {
         // breathing
         var timePlayedS: Double?
         var breathsCompleted: Int?
-        // focus and breathing
+        // focus and breathing: raw frames (the server computes the face measures),
+        // or the older phone-made summary; never both
+        var faceRaw: FaceRawIn?
         var face: FaceSummary?
         // checkin
         var goodThings: [CheckinItem]?
@@ -180,6 +182,15 @@ enum API {
 
         /// A fresh id the server accepts (8 to 64 of A-Z a-z 0-9 _ -).
         static func newId() -> String { UUID().uuidString.lowercased() }
+    }
+
+    /// `FaceRawIn`: the raw ARKit numbers per frame (see docs/face-raw.md).
+    struct FaceRawIn: Codable, Equatable {
+        var rateHz: Double
+        var channels: [String]
+        var samples: [[Double]]
+        var tracked: [Int]?
+        var momentsMs: [Int]?
     }
 
     struct FaceSummary: Codable, Equatable {

@@ -112,7 +112,8 @@ struct HomeView: View {
                 if let pop {
                     HomeXPPop(amount: pop.xpGained)
                         .id(pop.id)
-                        .position(x: min(L.foxCenter.x + L.fox * 0.40, L.size.width - 70), y: L.foxTop + L.fox * 0.30)
+                        // Floats up from the top of the head to sit centred above it.
+                        .position(x: L.foxCenter.x, y: L.foxTop + 16)
                         .allowsHitTesting(false)
                 }
 
@@ -223,7 +224,9 @@ struct HomeView: View {
     private func speech(_ L: Layout) -> some View {
         let top: CGFloat = L.compact ? 64 : 80
         // Clear air above the ear tips (and the little marks) in every pose.
-        let bottom = max(away ? L.foxCenter.y - L.fox / 2 - 14 : L.foxTop - 14, top + 90)
+        // During the reward the bubble lifts a little to make room for "+10 XP".
+        let lift: CGFloat = pop != nil ? 58 : 0
+        let bottom = max(away ? L.foxCenter.y - L.fox / 2 - 14 : L.foxTop - 14 - lift, top + 90)
         return VStack {
             Spacer(minLength: 0)
             Button { open(.chat) } label: {
