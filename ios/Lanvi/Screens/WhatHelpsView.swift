@@ -34,7 +34,7 @@ struct WhatHelpsView: View {
             let hill = geo.size.height * (compact ? 0.54 : 0.60)
             let fox: CGFloat = compact ? 150 : 190
             ZStack(alignment: .top) {
-                SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: hill)
+                PaintedWorld(scene: store.worldScene)
 
                 ZStack {
                     HomeTailGlow(pose: pose, glow: 0.35 + 0.15 * Double(chosen.count), foxSize: fox)

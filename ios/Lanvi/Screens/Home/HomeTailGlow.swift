@@ -1,10 +1,9 @@
 import SwiftUI
 
-/// The northern-lights glow behind Lanvi's tail ("fox fires"). `glow` 0...1
-/// from the server sets how big and bright it is; it never goes dark, a low
-/// glow is a small warm ember. Drawn in one Canvas: soft layered gradients,
-/// additive light and small motes drifting up. `burst` sends a ring of motes
-/// out for the XP moment.
+/// The light on Lanvi's tail tip ("fox fires"): mint into violet, growing
+/// with `glow` (0...1) from the server, with a faint colour cast on the snow
+/// beside the tail. It never goes dark; a low glow is a small ember. `burst`
+/// opens one soft ring of light for the XP moment.
 ///
 /// The view is twice the fox's size and centred on the fox, so place it in the
 /// same spot as `LanviView` and behind it.
@@ -13,17 +12,17 @@ struct HomeTailGlow: View, Animatable {
     var glow: Double
     var foxSize: CGFloat
     var burst: Date? = nil
+    /// Which part to draw: `.back` goes behind Lanvi (snow cast, halo), `.front`
+    /// on top (the light on the tail tip, the XP ring), `.all` both at once.
+    var layer: Layer = .all
+
+    enum Layer { case back, front, all }
 
     var animatableData: Double {
         get { glow }
         set { glow = newValue }
     }
 
-    // Saturated enough to read as coloured light on white snow too.
-    private static let green = Color(hex: 0x3EE6A8)
-    private static let cyan = Color(hex: 0x5CCBFF)
-    private static let violet = Color(hex: 0x9B7BFF)
-    private static let pink = Color(hex: 0xFF7FD0)
 
     var body: some View {
         TimelineView(.animation) { context in
@@ -39,89 +38,56 @@ struct HomeTailGlow: View, Animatable {
     private func draw(_ ctx: inout GraphicsContext, size: CGSize, t: TimeInterval, now: Date) {
         let g = min(max(glow, 0), 1)
         let tail = tailPoint(in: size)
-        let reach = foxSize * (0.28 + 0.82 * g)          // how far the light spreads
-        let strength = 0.45 + 0.55 * g                     // how bright it is
-        let breathe = 1 + 0.06 * sin(t * 2 * .pi / 3.2)
+        let breathe = 1 + 0.05 * sin(t * 2 * .pi / 3.4)
+        let mint = Color(hex: 0x7CF5C4)
+        let violet = Color(hex: 0xA98BFF)
 
-        // 1. Wide soft halo: green into cyan into nothing.
-        var halo = ctx
-        halo.addFilter(.blur(radius: foxSize * 0.08))
-        let r0 = reach * 1.15 * breathe
-        halo.fill(Path(ellipseIn: CGRect(x: tail.x - r0, y: tail.y - r0 * 0.85, width: r0 * 2, height: r0 * 1.7)),
-                  with: .radialGradient(Gradient(colors: [Self.green.opacity(0.68 * strength),
-                                                          Self.cyan.opacity(0.28 * strength),
-                                                          .clear]),
-                                        center: tail, startRadius: 0, endRadius: r0))
+        let back = layer != .front
+        let front = layer != .back
 
-        // 2. Three slow aurora ribbons turning around the tail, added as light.
-        var ribbons = ctx
-        ribbons.addFilter(.blur(radius: foxSize * 0.05))
-        let ribbonColors = [Self.green, Self.violet, Self.pink]
-        for (i, color) in ribbonColors.enumerated() {
-            let phase = t * (0.22 + 0.07 * Double(i)) + Double(i) * 2.1
-            let len = reach * (1.05 - 0.15 * Double(i))
-            let w = len * 0.42
-            var layer = ribbons
-            layer.translateBy(x: tail.x, y: tail.y)
-            layer.rotate(by: .radians(-0.9 + 0.55 * sin(phase)))
-            let rect = CGRect(x: -len * 0.15, y: -w / 2 - len * 0.35, width: len, height: w)
-            layer.fill(Path(ellipseIn: rect),
-                       with: .radialGradient(Gradient(colors: [color.opacity(0.6 * strength), color.opacity(0)]),
-                                             center: CGPoint(x: rect.midX, y: rect.midY),
-                                             startRadius: 0, endRadius: len * 0.5))
+        // 1. A faint colour cast on the snow right beside the tail.
+        let castW = foxSize * (0.30 + 0.35 * g)
+        let castH = castW * 0.28
+        let castCenter = CGPoint(x: tail.x, y: tail.y + foxSize * 0.13)
+        var cast = ctx
+        if !back { cast.opacity = 0 }
+        cast.addFilter(.blur(radius: foxSize * 0.03))
+        cast.fill(Path(ellipseIn: CGRect(x: castCenter.x - castW / 2, y: castCenter.y - castH / 2, width: castW, height: castH)),
+                  with: .radialGradient(Gradient(colors: [mint.opacity(0.30 * (0.35 + 0.65 * g)), violet.opacity(0.12 * g), .clear]),
+                                        center: castCenter, startRadius: 0, endRadius: castW / 2))
+
+        // 2. The light on the tail tip: white heart, mint, then violet, as light.
+        var light = ctx
+        light.blendMode = .plusLighter
+        let r = foxSize * (0.07 + 0.13 * g) * breathe
+        if back {
+            light.fill(Path(ellipseIn: CGRect(x: tail.x - r * 1.8, y: tail.y - r * 1.8, width: r * 3.6, height: r * 3.6)),
+                       with: .radialGradient(Gradient(colors: [violet.opacity(0.22 * (0.4 + 0.6 * g)), .clear]),
+                                             center: tail, startRadius: r * 0.6, endRadius: r * 1.8))
         }
+        guard front else { return }
+        light.fill(Path(ellipseIn: CGRect(x: tail.x - r, y: tail.y - r, width: r * 2, height: r * 2)),
+                   with: .radialGradient(Gradient(stops: [
+                       .init(color: .white.opacity(0.75 * (0.5 + 0.5 * g)), location: 0),
+                       .init(color: mint.opacity(0.55 * (0.5 + 0.5 * g)), location: 0.35),
+                       .init(color: violet.opacity(0.0), location: 1),
+                   ]), center: tail, startRadius: 0, endRadius: r))
 
-        // 3. A bright core right at the tail.
-        var core = ctx
-        core.blendMode = .plusLighter
-        let rc = foxSize * (0.10 + 0.12 * g) * breathe
-        core.fill(Path(ellipseIn: CGRect(x: tail.x - rc, y: tail.y - rc, width: rc * 2, height: rc * 2)),
-                  with: .radialGradient(Gradient(colors: [.white.opacity(0.85 * strength),
-                                                          Self.cyan.opacity(0.5 * strength), .clear]),
-                                        center: tail, startRadius: 0, endRadius: rc))
-
-        // 4. Motes: a few soft sparks lifting off the tail tip; a few more with more glow.
-        var motes = ctx
-        motes.blendMode = .plusLighter
-        let count = 3 + Int(7 * g)
-        for i in 0..<count {
-            let seed = Double(i) * 12.9898
-            let speed = 0.10 + 0.06 * frac(sin(seed) * 43758.5)
-            let life = frac(t * speed + frac(sin(seed * 1.7) * 9631.1))
-            let spread = reach * (0.10 + 0.30 * frac(sin(seed * 3.1) * 1531.7))
-            let side = frac(sin(seed * 5.3) * 7123.3) - 0.5
-            let x = tail.x + side * spread + 5 * sin(t * 1.1 + seed)
-            let y = tail.y - life * reach * 0.9
-            let fade = sin(life * .pi) * 0.7
-            let r = foxSize * (0.008 + 0.010 * frac(sin(seed * 7.7) * 3141.5))
-            drawMote(&motes, at: CGPoint(x: x, y: y), radius: r, alpha: fade * strength,
-                     color: ribbonColors[i % 3])
-        }
-
-        // 5. The XP moment: a ring of motes bursting out and up.
+        // 3. The XP moment: one soft ring of light opening from the tail.
         if let burst {
             let age = now.timeIntervalSince(burst)
-            if age >= 0 && age < 1.6 {
-                let p = age / 1.6
-                for i in 0..<18 {
-                    let a = Double(i) / 18 * 2 * .pi
-                    let d = foxSize * (0.15 + 0.75 * easeOut(p))
-                    let pt = CGPoint(x: tail.x + cos(a) * d, y: tail.y + sin(a) * d * 0.7 - p * foxSize * 0.3)
-                    drawMote(&motes, at: pt, radius: foxSize * 0.03 * (1 - p * 0.5), alpha: 1 - p,
-                             color: ribbonColors[i % 3])
-                }
+            if age >= 0 && age < 1.2 {
+                let p = age / 1.2
+                let rr = foxSize * (0.08 + 0.45 * (1 - pow(1 - p, 3)))
+                let a = (1 - p) * 0.6
+                light.fill(Path(ellipseIn: CGRect(x: tail.x - rr, y: tail.y - rr, width: rr * 2, height: rr * 2)),
+                           with: .radialGradient(Gradient(stops: [
+                               .init(color: .clear, location: 0.55),
+                               .init(color: mint.opacity(a), location: 0.85),
+                               .init(color: .clear, location: 1),
+                           ]), center: tail, startRadius: 0, endRadius: rr))
             }
         }
-    }
-
-    private func drawMote(_ ctx: inout GraphicsContext, at p: CGPoint, radius r: CGFloat, alpha: Double, color: Color) {
-        let outer = r * 3.2
-        ctx.fill(Path(ellipseIn: CGRect(x: p.x - outer, y: p.y - outer, width: outer * 2, height: outer * 2)),
-                 with: .radialGradient(Gradient(colors: [color.opacity(0.55 * alpha), .clear]),
-                                       center: p, startRadius: 0, endRadius: outer))
-        ctx.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)),
-                 with: .radialGradient(Gradient(colors: [.white.opacity(alpha), .white.opacity(0)]),
-                                       center: p, startRadius: 0, endRadius: r))
     }
 
     private func tailPoint(in canvas: CGSize) -> CGPoint {
@@ -149,6 +115,4 @@ struct HomeTailGlow: View, Animatable {
         return CGPoint(x: x0 + fx * rw - s / 2, y: y0 + fy * rh - s / 2)
     }
 
-    private func frac(_ v: Double) -> Double { v - floor(v) }
-    private func easeOut(_ p: Double) -> Double { 1 - pow(1 - p, 3) }
 }

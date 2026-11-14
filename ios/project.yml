@@ -18,6 +18,11 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LanviServerURL: $(LANVI_SERVER_URL)
         LanviPairingCode: $(LANVI_PAIRING_CODE)
+        UIAppFonts:
+          - Nunito-SemiBold.ttf
+          - Nunito-Bold.ttf
+          - Nunito-ExtraBold.ttf
+          - Nunito-Black.ttf
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
     settings:

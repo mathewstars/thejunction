@@ -8,6 +8,8 @@ struct HomeHelpScreen: View {
     var crisis: API.CrisisBlock
     var onClose: () -> Void
 
+    @Environment(AppStore.self) private var store
+
     @State private var bounce = 0
 
     var body: some View {
@@ -16,7 +18,7 @@ struct HomeHelpScreen: View {
             let hill = geo.size.height * (compact ? 0.55 : 0.62)
             let fox: CGFloat = compact ? 160 : 220
             ZStack(alignment: .top) {
-                SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: hill)
+                PaintedWorld(scene: store.worldScene)
 
                 HomeTailGlow(pose: .love, glow: 0.55, foxSize: fox)
                     .position(x: geo.size.width / 2, y: hill - fox / 2 + 12)
@@ -92,6 +94,8 @@ struct HomeStoryScreen: View {
     var onAnswer: (String) async -> Bool
     var onClose: () -> Void
 
+    @Environment(AppStore.self) private var store
+
     @State private var pose: LanviPose = .run
     @State private var runX: CGFloat = -500
     @State private var arrived = false
@@ -106,7 +110,7 @@ struct HomeStoryScreen: View {
             let hill = geo.size.height * (compact ? 0.53 : 0.60)
             let fox: CGFloat = compact ? 150 : 210
             ZStack(alignment: .top) {
-                SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: hill)
+                PaintedWorld(scene: store.worldScene)
 
                 ZStack {
                     HomeTailGlow(pose: pose, glow: 0.8, foxSize: fox)

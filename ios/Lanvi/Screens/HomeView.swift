@@ -41,17 +41,23 @@ struct HomeView: View {
         var buttonY: CGFloat      // centre of the primary button
         var foxCenter: CGPoint
 
-        init(size: CGSize, away: Bool) {
+        init(size: CGSize, insets: EdgeInsets, away: Bool) {
             self.size = size
             compact = size.height < 700
             let bottomGap: CGFloat = compact ? 16 : 8
             buttonY = size.height - bottomGap - 30
+            // Where the painting's hollow lands on this screen: Lanvi sits in it.
+            let screen = CGSize(width: size.width, height: size.height + insets.top + insets.bottom)
+            let world = WorldFrame(screen: screen)
+            let hollow = world.point(WorldFrame.hollow.x, WorldFrame.hollow.y)
             let big = min(size.height * 0.46, size.width * 0.86)
-            fox = away ? big * 0.34 : big
-            feetY = buttonY - 30 - 32
-            hill = feetY - big * 0.34
+            fox = away ? big * 0.30 : big
+            feetY = min(hollow.y - insets.top + big * 0.03, buttonY - 30 - 24)
+            hill = world.point(0.5, 0.56).y - insets.top
             if away {
-                foxCenter = CGPoint(x: size.width * 0.76, y: hill - fox / 2 + 4)
+                // Off in the distance, by the pines on the right.
+                let far = world.point(0.80, 0.60)
+                foxCenter = CGPoint(x: far.x, y: far.y - insets.top - fox / 2)
             } else {
                 foxCenter = CGPoint(x: size.width / 2, y: feetY - fox / 2)
             }
@@ -71,6 +77,7 @@ struct HomeView: View {
     @State private var helpBlock: API.CrisisBlock?
     @State private var stream: (from: CGPoint, to: CGPoint, start: Date)?
     @State private var size: CGSize = .zero
+    @State private var insets = EdgeInsets()
     @State private var entrance: CGFloat = 0
     @State private var haptic = 0
     @State private var storyAutoAnswer: String?
@@ -79,35 +86,24 @@ struct HomeView: View {
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
-            let L = Layout(size: geo.size, away: away)
+            let L = Layout(size: geo.size, insets: geo.safeAreaInsets, away: away)
 
             ZStack(alignment: .top) {
-                // The sky's own gradient, with a stop at the horizon so dawn stays clean.
-                LinearGradient(stops: [
-                    .init(color: sky.top, location: 0),
-                    .init(color: sky.mid, location: max(0.05, L.hill / max(L.size.height, 1) * 0.55)),
-                    .init(color: sky.horizon, location: L.hill / max(L.size.height, 1)),
-                    .init(color: sky.horizon, location: 1),
-                ], startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-                SkyScene(top: .clear, bottom: .clear, hillTop: L.hill)
-                if sky.aurora > 0 {
-                    HomeAuroraBoost(strength: sky.aurora, height: L.hill)
-                        .allowsHitTesting(false)
-                }
+                PaintedWorld(scene: store.worldScene)
 
                 // Lanvi, large on the snow, with the fox fire behind the tail.
                 ZStack {
-                    HomeTailGlow(pose: pose, glow: store.glow, foxSize: L.fox, burst: burst)
+                    HomeTailGlow(pose: pose, glow: store.glow, foxSize: L.fox, burst: burst, layer: .back)
                     LanviView(pose: pose, size: L.fox, bounceTrigger: bounce)
                         .onTapGesture { tapFox() }
+                    HomeTailGlow(pose: pose, glow: store.glow, foxSize: L.fox, burst: burst, layer: .front)
                 }
                 .frame(width: L.fox * 2, height: L.fox * 2)
                 .position(x: L.foxCenter.x + entrance, y: L.foxCenter.y)
                 .accessibilityLabel("Lanvi")
                 .accessibilityHint("Shows how Lanvi is growing")
 
-                // What Lanvi says: one line of large type on the sky. Tap to talk.
+                // What Lanvi says, in one soft bubble above it. Tap to talk.
                 speech(L)
 
                 if let pop {
@@ -120,7 +116,7 @@ struct HomeView: View {
                 // Top corners: Help, and the day pill.
                 HStack {
                     Button { open(.help) } label: { Image(systemName: "lifepreserver.fill") }
-                        .buttonStyle(HomeSkyRoundStyle())
+                        .buttonStyle(HomeCornerRoundStyle())
                         .homeZoomSource("help", in: zoom)
                         .accessibilityLabel("Help")
                     if store.mode == .live, store.link == .offline {
@@ -168,8 +164,8 @@ struct HomeView: View {
             }
             .animation(.spring(response: 0.7, dampingFraction: 0.8), value: away)
             .animation(.spring(response: 0.55, dampingFraction: 0.8), value: store.todayThing)
-            .onAppear { size = geo.size }
-            .onChange(of: geo.size) { _, s in size = s }
+            .onAppear { size = geo.size; insets = geo.safeAreaInsets }
+            .onChange(of: geo.size) { _, s in size = s; insets = geo.safeAreaInsets }
         }
         .sensoryFeedback(.success, trigger: haptic)
         .fullScreenCover(item: $cover) { c in
@@ -228,21 +224,11 @@ struct HomeView: View {
     private func speech(_ L: Layout) -> some View {
         let top: CGFloat = L.compact ? 64 : 80
         // Clear air above the ear tips (and the little marks) in every pose.
-        let bottom = max(away ? L.hill - 70 : L.foxTop - 28, top + 90)
+        let bottom = max(away ? L.foxCenter.y - L.fox / 2 - 14 : L.foxTop - 14, top + 90)
         return VStack {
             Spacer(minLength: 0)
             Button { open(.chat) } label: {
-                Text(bubbleText)
-                    .font(Theme.rounded(L.compact ? 24 : 26, .heavy))
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(4)
-                    .minimumScaleFactor(0.85)
-                    .shadow(color: Theme.nightTop.opacity(0.45), radius: 10, y: 2)
-                    .frame(maxWidth: .infinity)
-                    .id(bubbleText)
-                    .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: 10)),
-                                            removal: .opacity))
+                HomeSpeechBubble(text: bubbleText, pointAt: away ? 0.78 : 0.5, size: L.compact ? 20 : 21)
             }
             .buttonStyle(SpeechPressStyle())
             .homeZoomSource("speech", in: zoom)
@@ -255,21 +241,20 @@ struct HomeView: View {
         .opacity(arrived ? 1 : 0)
     }
 
+    /// Solid white pill, navy type: reads on the pale dawn and the deep night alike.
     private var dayPill: some View {
         HStack(spacing: 6) {
             Image(systemName: "sparkle")
                 .font(.system(size: 14, weight: .black))
-                .foregroundStyle(Color(hex: 0xB9FFE4))
-                .shadow(color: Color(hex: 0x7CF5C4).opacity(0.5 + 0.5 * store.glow), radius: 4 + 6 * store.glow)
+                .foregroundStyle(Theme.brand)
             Text("Day \(store.daysTogether)")
                 .font(Theme.rounded(17, .heavy))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.ink)
                 .contentTransition(.numericText(value: Double(store.daysTogether)))
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 16)
         .frame(height: 44)
-        .background(Capsule().fill(.white.opacity(0.18)))
-        .overlay(Capsule().stroke(.white.opacity(0.35), lineWidth: 1))
+        .background(Capsule().fill(Color(hex: 0xFFFEFB)).shadow(color: Theme.ink.opacity(0.12), radius: 8, y: 3))
         .animation(.spring(response: 0.5, dampingFraction: 0.7), value: store.daysTogether)
     }
 
@@ -386,17 +371,6 @@ struct HomeView: View {
         }
     }
 
-    /// Sky colours and extra aurora for the time of day; the evening aurora follows the glow.
-    private var sky: (top: Color, mid: Color, horizon: Color, aurora: Double) {
-        switch store.dayPart {
-        // A clean, luminous dawn: soft blue into a little warm peach at the horizon.
-        case .morning: return (Color(hex: 0x4F87EC), Color(hex: 0x8DB8F8), Color(hex: 0xFFDCC8), 0)
-        case .day: return (Color(hex: 0x2C5FDB), Color(hex: 0x5E8FEE), Color(hex: 0xB4D2FF), 0)
-        case .evening: return (Theme.nightTop, Color(hex: 0x2B47A8), Theme.nightBottom, 0.45 + 0.45 * store.glow)
-        case .night: return (Color(hex: 0x0D1B52), Color(hex: 0x1B2F7A), Color(hex: 0x33519E), 0.55 + 0.45 * store.glow)
-        }
-    }
-
     /// Lanvi's one line. When today's thing is done, it says so.
     private var bubbleText: String {
         if store.wandering?.state == .away, !celebrating {
@@ -489,7 +463,7 @@ struct HomeView: View {
 
     private func celebrate(_ c: HomeCelebration) {
         celebrating = true
-        let L = Layout(size: size, away: false)
+        let L = Layout(size: size, insets: insets, away: false)
         let tail = HomeTailGlow.tailOffset(pose: .cheer, foxSize: L.fox)
         let to = CGPoint(x: L.foxCenter.x + tail.x, y: L.foxCenter.y + tail.y)
         withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .surprised }

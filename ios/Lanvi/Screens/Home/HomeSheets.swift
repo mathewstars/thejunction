@@ -77,19 +77,17 @@ struct HomePrimaryStyle: ButtonStyle {
 
 // MARK: - Small round buttons
 
-/// A small round frosted button for the sky (Help, top left).
-struct HomeSkyRoundStyle: ButtonStyle {
-    var diameter: CGFloat = 44
+/// The small round Help button in the corner: solid white, navy icon, so it
+/// reads on every sky.
+struct HomeCornerRoundStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         let pressed = configuration.isPressed
         configuration.label
             .font(.system(size: 18, weight: .bold))
-            .foregroundStyle(.white)
-            .frame(width: diameter, height: diameter)
-            .background(Circle().fill(.white.opacity(0.18)))
-            .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
-            .offset(y: pressed ? 3 : 0)
-            .background(Circle().fill(Theme.nightTop.opacity(0.4)).offset(y: 3))
+            .foregroundStyle(Theme.ink)
+            .frame(width: 44, height: 44)
+            .background(Circle().fill(Color(hex: 0xFFFEFB)).shadow(color: Theme.ink.opacity(0.12), radius: 8, y: 3))
+            .scaleEffect(pressed ? 0.94 : 1)
             .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
             .sensoryFeedback(.impact(weight: .light), trigger: pressed)
     }

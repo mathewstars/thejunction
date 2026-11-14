@@ -18,7 +18,7 @@ struct HomeMindScreen: View {
             let hill = geo.size.height * (compact ? 0.34 : 0.36)
             let fox: CGFloat = compact ? 110 : 132
             ZStack(alignment: .top) {
-                SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: hill)
+                PaintedWorld(scene: store.worldScene)
 
                 HStack(alignment: .bottom, spacing: 4) {
                     HomeSpeechBubble(text: say, pointAt: 0.92)

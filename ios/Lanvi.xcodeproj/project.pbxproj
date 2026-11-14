@@ -13,6 +13,7 @@
 		151BF5444E01D40CF03FB960 /* ChatLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84158FA0F8C7B4E9A416B47C /* ChatLink.swift */; };
 		1D2F0537C7AAB50875AA6F3B /* ActivityRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F685787902006429E41D5A7 /* ActivityRouter.swift */; };
 		20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CA1C956F7514A490E2C77E /* Theme.swift */; };
+		2A64688C8640CBD20F6751CE /* Nunito-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */; };
 		378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */; };
 		43A13FE2077F94FD6D0B88E8 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 856CB611495D91BE8B81E2D4 /* WelcomeView.swift */; };
 		45C0A7261327E95CF788718C /* FocusResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E369E41135184A2334A61A6 /* FocusResult.swift */; };
@@ -28,6 +29,7 @@
 		942A29C36871C91B6C4230BA /* BreathePieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29013F2F7831D454F4237DF1 /* BreathePieces.swift */; };
 		966709A0031A479E6D292413 /* HomeMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */; };
 		A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */; };
+		A99C233C3D469D27695CFD77 /* Nunito-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 264F14E3AC63B96BC18A9088 /* Nunito-Bold.ttf */; };
 		B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA73738285D12F12C9ADB24B /* Chunky.swift */; };
 		B366EDE9B773EEA90854B56A /* HomeChatScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */; };
 		B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B8C888729DE19EB41449A4 /* HomeOverlays.swift */; };
@@ -35,16 +37,21 @@
 		B6A861C26917D5B2F511CE9C /* BreatheResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B1F65C7973CFFB5D41825 /* BreatheResult.swift */; };
 		C8EBD236C0121CE58A89C106 /* DemoBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575A49BAC44D679FBA763541 /* DemoBackend.swift */; };
 		D8C2589303E6EFD2CBBF8440 /* FocusArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 974C2744C4CA94D5857C75A3 /* FocusArt.swift */; };
+		DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8451A836E61C66138838EE /* PaintedWorld.swift */; };
 		DD756509C515F4C1509219AD /* HomeMindScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252A074008D2696F20B23913 /* HomeMindScreen.swift */; };
 		DDD5D6ED52809D10373598F9 /* SkyScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A53ADD818B703E6EC089EFE /* SkyScene.swift */; };
 		E2EA7F75523F7FE49830A106 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */; };
 		EDAB3E53B21FBF2A45578C8D /* LanviClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */; };
 		EEDB19C869011580DA5780AC /* BreatheView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E9EB5764D665F8A8B7399B /* BreatheView.swift */; };
+		EF19B31CB4510B47533E7D06 /* Nunito-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B4817EE878DEB9396B0E72CB /* Nunito-ExtraBold.ttf */; };
+		F290EE901462103738396F40 /* Nunito-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */; };
 		F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */; };
 		F735D4D61BE5160191678CB8 /* ActivityOutbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A2759DCEF87679E894DADAF /* ActivityOutbox.swift */; };
+		F969A651BB389BD4688E0C75 /* Nunito-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D3C73568A4E2AF330F3A6A0E /* Nunito-SemiBold.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Black.ttf"; sourceTree = "<group>"; };
 		0E369E41135184A2334A61A6 /* FocusResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusResult.swift; sourceTree = "<group>"; };
 		11CA1C956F7514A490E2C77E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		15B8C888729DE19EB41449A4 /* HomeOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOverlays.swift; sourceTree = "<group>"; };
@@ -52,6 +59,7 @@
 		1C049B0C402500302F08D494 /* CheckinModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinModels.swift; sourceTree = "<group>"; };
 		248059A5DA624F501FEE521B /* Lanvi.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lanvi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		252A074008D2696F20B23913 /* HomeMindScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMindScreen.swift; sourceTree = "<group>"; };
+		264F14E3AC63B96BC18A9088 /* Nunito-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Bold.ttf"; sourceTree = "<group>"; };
 		29013F2F7831D454F4237DF1 /* BreathePieces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreathePieces.swift; sourceTree = "<group>"; };
 		455B1F65C7973CFFB5D41825 /* BreatheResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheResult.swift; sourceTree = "<group>"; };
 		4A2759DCEF87679E894DADAF /* ActivityOutbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityOutbox.swift; sourceTree = "<group>"; };
@@ -60,6 +68,7 @@
 		575A49BAC44D679FBA763541 /* DemoBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoBackend.swift; sourceTree = "<group>"; };
 		590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviApp.swift; sourceTree = "<group>"; };
 		5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviClient.swift; sourceTree = "<group>"; };
+		60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Nunito-OFL.txt"; sourceTree = "<group>"; };
 		607DA0BDB68AC9211EAADA43 /* HomeParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeParts.swift; sourceTree = "<group>"; };
 		752F0D6EA04E94F9779AC997 /* HomeTailGlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeTailGlow.swift; sourceTree = "<group>"; };
 		7726B251A5F3DA944BA275A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -73,10 +82,13 @@
 		974C2744C4CA94D5857C75A3 /* FocusArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusArt.swift; sourceTree = "<group>"; };
 		98E9EB5764D665F8A8B7399B /* BreatheView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheView.swift; sourceTree = "<group>"; };
 		9A53ADD818B703E6EC089EFE /* SkyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyScene.swift; sourceTree = "<group>"; };
+		B4817EE878DEB9396B0E72CB /* Nunito-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraBold.ttf"; sourceTree = "<group>"; };
 		BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviView.swift; sourceTree = "<group>"; };
 		CA73738285D12F12C9ADB24B /* Chunky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chunky.swift; sourceTree = "<group>"; };
 		CB97273333C0DBAE7FC11418 /* FocusEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusEngine.swift; sourceTree = "<group>"; };
 		CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinParts.swift; sourceTree = "<group>"; };
+		CD8451A836E61C66138838EE /* PaintedWorld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaintedWorld.swift; sourceTree = "<group>"; };
+		D3C73568A4E2AF330F3A6A0E /* Nunito-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-SemiBold.ttf"; sourceTree = "<group>"; };
 		DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMoments.swift; sourceTree = "<group>"; };
 		E4534A11EF57C9E6ACC5030B /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		E77620D747F3E1491FF87DCE /* CheckinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinView.swift; sourceTree = "<group>"; };
@@ -135,6 +147,7 @@
 				7726B251A5F3DA944BA275A6 /* Info.plist */,
 				4F606C670065BC511016C9E0 /* App */,
 				36B552B215523292A0F4EB76 /* Design */,
+				BAEB71A27059AB4B724A6A48 /* Fonts */,
 				34E5733CDBCA97363404C909 /* Mascot */,
 				3117C03181DB791606EFF3AD /* Net */,
 				F0A030A22324AB7E17D462AE /* Screens */,
@@ -177,6 +190,18 @@
 			path = .;
 			sourceTree = "<group>";
 		};
+		BAEB71A27059AB4B724A6A48 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */,
+				264F14E3AC63B96BC18A9088 /* Nunito-Bold.ttf */,
+				B4817EE878DEB9396B0E72CB /* Nunito-ExtraBold.ttf */,
+				60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */,
+				D3C73568A4E2AF330F3A6A0E /* Nunito-SemiBold.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 		D1A262F183C53F9B7602400F /* Checkin */ = {
 			isa = PBXGroup;
 			children = (
@@ -216,6 +241,7 @@
 				607DA0BDB68AC9211EAADA43 /* HomeParts.swift */,
 				166A2EF8FECA301AACE53B2A /* HomeSheets.swift */,
 				752F0D6EA04E94F9779AC997 /* HomeTailGlow.swift */,
+				CD8451A836E61C66138838EE /* PaintedWorld.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
@@ -292,6 +318,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				E2EA7F75523F7FE49830A106 /* Assets.xcassets in Resources */,
+				F290EE901462103738396F40 /* Nunito-Black.ttf in Resources */,
+				A99C233C3D469D27695CFD77 /* Nunito-Bold.ttf in Resources */,
+				EF19B31CB4510B47533E7D06 /* Nunito-ExtraBold.ttf in Resources */,
+				2A64688C8640CBD20F6751CE /* Nunito-OFL.txt in Resources */,
+				F969A651BB389BD4688E0C75 /* Nunito-SemiBold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -330,6 +361,7 @@
 				A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */,
 				EDAB3E53B21FBF2A45578C8D /* LanviClient.swift in Sources */,
 				F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */,
+				DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */,
 				378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */,
 				DDD5D6ED52809D10373598F9 /* SkyScene.swift in Sources */,
 				20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */,

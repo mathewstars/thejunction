@@ -138,6 +138,9 @@ final class AppStore {
         }
     }
 
+    /// Which painted scene Lanvi is in right now.
+    var worldScene: WorldScene { .at(hour: Calendar.current.component(.hour, from: now)) }
+
     var daysTogether: Int { max(days.dates.count, 1) }   // today counts as day one
 
     /// Today's one thing. A waiting story comes first; then what is done stays

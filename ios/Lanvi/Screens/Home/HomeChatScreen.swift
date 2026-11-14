@@ -19,10 +19,12 @@ struct HomeChatScreen: View {
 
     private let limit = 280
 
+    /// Type on the sky: navy on dawn and day, white at night.
+    private var onSky: Color { store.worldScene == .night ? .white : Theme.ink }
+
     var body: some View {
         ZStack(alignment: .top) {
-            SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: 2000)
-                .ignoresSafeArea()
+            PaintedWorld(scene: store.worldScene)
 
             VStack(spacing: 0) {
                 header
@@ -60,14 +62,14 @@ struct HomeChatScreen: View {
                 .frame(width: 96, height: 80)
                 Text("Lanvi")
                     .font(Theme.rounded(17, .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(onSky)
                 Text("A little fox who listens")
                     .font(Theme.rounded(12, .bold))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(onSky.opacity(0.75))
             }
             Spacer()
             Button(action: onHelp) { Image(systemName: "lifepreserver.fill") }
-                .buttonStyle(HomeSkyRoundStyle())
+                .buttonStyle(HomeCornerRoundStyle())
                 .accessibilityLabel("Help")
         }
         .padding(.horizontal, 20)
@@ -167,7 +169,7 @@ struct HomeChatScreen: View {
                             Text("Lanvi couldn't hear this yet. Tap to try again.")
                         }
                         .font(Theme.rounded(13, .bold))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(onSky.opacity(0.85))
                     }
                     .buttonStyle(.plain)
                 }
@@ -229,7 +231,7 @@ struct HomeChatScreen: View {
             if left <= 40 {
                 Text("\(max(left, 0)) left")
                     .font(Theme.rounded(12, .bold))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(Theme.inkSecondary)
                     .padding(.trailing, 70)
                     .transition(.opacity)
             }
@@ -260,7 +262,7 @@ struct HomeChatScreen: View {
         .padding(.top, 10)
         .padding(.bottom, 8)
         .background(
-            LinearGradient(colors: [Theme.nightBottom.opacity(0), Theme.nightBottom.opacity(0.9)],
+            LinearGradient(colors: [Color.white.opacity(0), Color.white.opacity(0.75)],
                            startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
         )
