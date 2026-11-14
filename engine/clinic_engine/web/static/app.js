@@ -1573,14 +1573,14 @@
       }
     });
     wrap.appendChild(el("section", { class: "panel" }, el("figure", { class: "bp-fig" }, s,
-      el("figcaption", { class: "bp-cap" }, "The amber box is the two models; the others are plain code. The models never start anything: they are asked only after the fixed rules have opened a flag, and again when the picture changes. "))));
+      el("figcaption", { class: "bp-cap" }, "The amber box is the two models; the others are plain code. The models never start anything: they are asked only after the fixed rules have opened a flag, and again when the picture changes. A flag the fixed rules put at “needs review today” is reported at once, before any model is asked; messages go out in clinic hours, where the clinic has switched them on."))));
 
     const cellRow = (r) => el("tr", null, r.map((v) => el("td", null, v)));
     wrap.appendChild(panel("Who may do what", null, table(["Layer", "Decides", "Cannot"], [
       ["Fixed rules (the watchers)", "Which flags exist, and each flag's own level, which is always kept and shown. A flag closes when the change is gone or a clinician acknowledges it; a request for help closes only by a clinician.", "Be overruled downwards from “needs review today” by a model."],
       ["The local model (on this server it runs on our own machine; in a clinic, on the clinic's hardware)", "The level of every open flag: watch, attention, or needs review today, with one of ten fixed reasons. It reads the clinic's own rules for this person and says which flag a rule applies to.", "Open or close a flag, write any text, change a request for help, or by itself go below the two floors."],
       ["Gemini, outside, only when the patient's record allows it", "Agree, raise or lower each level by one step.", "See a name, a date or any words; move a level that follows a clinic rule; change a request for help; go below the floors."],
-      ["Guarding code", "What each model is sent, the form of its answer, the two floors, and what happens when no model answers for the current picture: the fixed rules' level applies at the next pass, within five minutes, up or down. A flag the fixed rules put at “needs review today” is reported at once, before any model is asked; messages go out in clinic hours, where the clinic has switched them on.", "Be argued with: an answer outside the form is refused and written to the log."]
+      ["Guarding code", "What each model is sent, the form of its answer, the two floors, and what happens when no model answers for the current picture: the fixed rules' level applies at the next pass, within five minutes, up or down.", "Be argued with: an answer outside the form is refused and written to the log."]
     ].map(cellRow), "bp-table", { plain: true })));
 
     // What the two models decided for the example patient, read live from the server.
@@ -1596,7 +1596,7 @@
         el("td", null, t.level1 ? LV[t.level1] + " (" + (RS[t.reason1] || t.reason1) + ")" : "no answer"),
         el("td", null, t.verdict2 ? ({ agree: "agrees", raise: "raises", lower: "lowers" }[t.verdict2]) + (t.reason2 && t.reason2 !== t.reason1 ? " (" + (RS[t.reason2] || t.reason2) + ")" : "") : "not asked"),
         el("td", null, t.level !== t.rules_level ? el("b", null, LV[t.level] + " ≠ rules") : LV[t.level], t.fixed_by_rule ? " (fixed by rule)" : t.held_by_floor ? " (held by the floor)" : "")); }), "bp-table", { plain: true }),
-      el("p", null, "Read from the server as this page loaded; example data. Both models are shown the fixed rules' level, and Gemini is shown the local model's answer, so agreement here is expected and is not evidence that the levels are right. Across all example patients on 14 November 2026 the models set 1 of 13 flags differently from the fixed rules (a movement drop raised to needs review today); one more was lowered by a clinic rule."))
+      el("p", null, "Read from the server as this page loaded; example data. Both models are shown the fixed rules' level, and Gemini is shown the local model's answer, so agreement here is expected and is not evidence that the levels are right. Across all example patients on the evening of 14 November 2026 there were 15 such flags: the models set 1 differently from the fixed rules (a movement drop raised to needs review today), and 1 more was lowered by a clinic rule."))
       : el("p", { class: "muted small" }, tri.mode === "models" ? "No open flags on the example patient right now." : "On this server the levels are set by the fixed rules alone (model triage is switched off).");
     wrap.appendChild(panel("How the two models weigh a flag", null, el("div", { class: "bp-say wide" },
       el("p", null, "Both models get the same picture of one person: every open flag (its kind, the days it has been held, the level the fixed rules give it, and the flag's own numbers), the last 14 days of movement against own normal, and three counts. Numbers and fixed codes only."),
@@ -1771,10 +1771,10 @@
         "only objections, each one of three codes: weak evidence, contradicts recent days, too broad.",
         "does not add that lesson in this run. This is the one place where Gemini's answer is acted on without code testing it against numbers, and all it can do is hold a lesson back. It cannot add or change one.",
         [go2(anna, "mind", "Anna Korhonen → Learned"), ", “How it learns”, and the Blueprint section of the same name."]),
-      job("5", "Weighs each flag for the clinic, as the second of two readers", "not measured yet",
+      job("5", "Weighs each flag for the clinic, as the second of two readers", "agreed with the local model on 370 of 372 generated flag readings: so far a second signature, not a second opinion",
         "the open flags of one person (kind, days held, the rules' level, the flag's own numbers), the last 14 days of movement against own normal, and what the local model answered. No name, date or text. A request for help is part of that picture, without the person's words; its own level is urgent by rule.",
         "for every flag: agree, raise or lower, with one of ten fixed reasons.",
-        "applies it: the flag's level moves by one step from the local model's level. This is a decision by the models, not checked against numbers. What code keeps is the list of flags, the level of a request for help (always urgent, whatever a model answers), and the fixed rules' own level, which is shown beside it and stands whenever no model answers.",
+        "applies it within two floors: the flag's level moves by one step from the local model's level, but no model can lower a flag the fixed rules hold at needs review today, or put any flag more than one step below the fixed rules. This is a decision by the models, not checked against numbers. What code keeps is the list of flags, the level of a request for help (always urgent, whatever a model answers), and the fixed rules' own level, which is shown beside it and applies whenever no model answers. The check and its results are in the Blueprint section “The mind”.",
         [go2(anna, "overview", "Anna Korhonen → Overview"), ", the list “Needs attention”: under each flag, what each model said and what the rules alone would say."])),
       el("p", { class: "small" }, "Still switched on in the server, from an earlier design: a reading of a movement round, which sends the path of the phone in metres and two small drawings of that path seen from above (no photo). The app no longer sends rounds.")));
 
