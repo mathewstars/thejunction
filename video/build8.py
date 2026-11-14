@@ -4,7 +4,7 @@ from PIL import Image, ImageDraw, ImageFont
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 OLD = ".."; F = "/System/Library/Fonts/Helvetica.ttc"; BGHEX = "0x0b131e"
 V = "-c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p -r 24 -an".split()
-os.system("rm -rf seg7"); os.makedirs("seg7")
+os.system("rm -rf seg8"); os.makedirs("seg8")
 def run(a): subprocess.run(["ffmpeg", "-loglevel", "error", "-nostdin", "-y"] + a, check=True)
 def dur_of(p): return float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", p], capture_output=True, text=True).stdout)
 def text_png(name, lines, bg=None, size=(1280, 720)):
@@ -20,9 +20,9 @@ im_ = Image.new("RGBA", (1280, 720), (0, 0, 0, 0)); g_ = ImageDraw.Draw(im_); g_
 text_png("tag_none.png", [])
 _t = Image.open(f"{OLD}/tag_gen.png").convert("RGBA"); _g = ImageDraw.Draw(_t); _f = ImageFont.truetype(F, 34); _s = "The next morning, her clinic calls."
 _w = _g.textlength(_s, font=_f); _g.text(((1280 - _w) / 2 + 2, 602), _s, font=_f, fill=(0, 0, 0, 220)); _g.text(((1280 - _w) / 2, 600), _s, font=_f, fill=(255, 255, 255, 255)); _t.save("tag_morning.png")
-text_png("c_yes.png", [("She said yes to one more thing.", 50, 292, INK), ("While she cares for him, the phone keeps count.", 30, 372, GLOW)])
+text_png("c_yes.png", [("She said yes.", 56, 286, INK), ("While she cares for him, the phone keeps count.", 30, 372, GLOW)])
 text_png("c_num.png", [("Numbers only. Never pictures.", 60, 286, INK), ("How far each part of the face moved, thirty times a second. No photo or video leaves the phone.", 22, 378, GLOW)], bg=(11, 19, 30, 150))
-text_png("c_gem.png", [("Gemini reads the raw numbers. Code checks its work.", 40, 150, INK),
+text_png("c_gem.png", [("Gemini reads them. Code checks its work.", 44, 146, INK),
     ("One real run on our server, 14 November", 22, 214, MUT),
     ("Smiles Gemini reported", 26, 300, MUT), ("3", 86, 336, INK),
     ("confirmed by code:  2          dropped by code:  1  (timing off by a second)", 26, 452, GLOW),
@@ -80,8 +80,20 @@ def windows(src, d, wins, ss=0.0, tag=None, dim=-0.10, fin=0.0, fout=0.0):
     fades = (f",fade=t=in:d={fin}" if fin else "") + (f",fade=t=out:st={d - fout:.3f}:d={fout}" if fout else "")
     ins += ["-i", tag or f"{OLD}/tag_gen.png"]; vf += f"{cur}[{len(wins)+1}:v]overlay=0:0{fades}[v]"
     run(ins + ["-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
+AURORA = "0x8CF0C8"
+def into_phone(src, d, fx=0.42, fy=0.74):
+    """Our own version of the reveal: the camera dives into the glowing phone and the picture floods with aurora light."""
+    o = out(); N = int(round(d * 24))
+    vf = (f"[0:v]scale=3840:2160:force_original_aspect_ratio=increase,crop=3840:2160,"
+          f"zoompan=z='1+pow(on/{N},2.2)*5.0':x='(iw-iw/zoom)*{fx}':y='(ih-ih/zoom)*{fy}':d={N}:s=1280x720:fps=24,"
+          f"fade=t=out:st={d - 0.75:.3f}:d=0.75:color={AURORA}[v];[v][1:v]overlay=0:0[w]")
+    run(["-loop", "1", "-i", src, "-i", f"{OLD}/tag_gen.png", "-filter_complex", vf, "-map", "[w]", "-frames:v", str(N)] + V + [o]); check(o, N / 24)
+def from_light(fn_out, d, fin=0.7):
+    """The next shot comes up out of the same light."""
+    tmp = fn_out; o2 = tmp.replace(".mp4", "_f.mp4")
+    run(["-i", tmp, "-vf", f"fade=t=in:d={fin}:color={AURORA}", "-t", str(d)] + V + [o2]); os.replace(o2, tmp)
 n = [0]
-def out(): n[0] += 1; return f"seg7/{n[0]:03d}.mp4"
+def out(): n[0] += 1; return f"seg8/{n[0]:03d}.mp4"
 def check(o, d):
     got = dur_of(o); assert abs(got - d) < 0.09, (o, d, got)
 def clip(src, d, ss=0.0, speed=1.0, zoom=1.0, fx=0.5, fy=0.5, tag="tag_gen.png", cap=None):
@@ -102,11 +114,11 @@ def card(src, d, fade=0.3):
     o = out(); run(["-loop", "1", "-i", src, "-vf", f"fps=24,fade=t=in:d={fade}", "-t", str(d)] + V + [o]); check(o, d)
 def chart(src, d):
     o = out(); run(["-i", src, "-i", f"{OLD}/tag_ex.png", "-filter_complex", "[0:v]fps=24,tpad=stop_mode=clone:stop_duration=9[v];[v][1:v]overlay=0:0", "-t", str(d)] + V + [o]); check(o, d)
-def phone(src, d, ss=1.0, cap="cap_app.png"):
+def phone(src, d, ss=1.0):
     """The app's own screen, upright in the middle of a dark frame."""
     o = out()
     vf = f"[0:v]fps=24,scale=-2:680,pad=1280:720:(ow-iw)/2:20:color={BGHEX}[v];[v][1:v]overlay=0:0[w]"
-    run(["-ss", str(ss), "-i", src, "-i", cap, "-filter_complex", vf, "-map", "[w]", "-t", str(d)] + V + [o]); check(o, d)
+    run(["-ss", str(ss), "-i", src, "-i", "cap_app.png", "-filter_complex", vf, "-map", "[w]", "-t", str(d)] + V + [o]); check(o, d)
 def split(left, right, d, ss=1.0, app=True):
     """Left: the moment with the fox. Right: the line that moment feeds."""
     o = out()
@@ -116,46 +128,53 @@ def split(left, right, d, ss=1.0, app=True):
 G = lambda k: f"{OLD}/clips/{k}.mp4"; K = lambda k: f"clips/{k}.mp4"; S = lambda k: f"stills/{k}.png"; A = lambda k: f"app/{k}.mov"
 T = []
 def at(t, fn): T.append((t, fn))
-# Times are those of the take itself: nothing in the sound is cut, joined or sped up.
-# 1 the door closes
-at(0.0,  lambda d: clip(G("g1"), d))
-at(3.2,  lambda d: clip(G("g2"), d, ss=0.6))
-at(6.9,  lambda d: clip(G("g3"), d, ss=0.8))
-at(9.6,  lambda d: clip(G("g6"), d))
+# v8: new, brighter footage; one untouched Suno take (v8/track8.m4a); the same data on screen as v6.
+C = lambda k: f"v8/clips/{k}.mp4"; N8 = lambda k: f"v8/stills/{k}.png"
+def have(k): return os.path.exists(C(k))
+# 1 the clinic door, the six weeks
+at(0.0,  lambda d: clip(C("door"), d, zoom=1.12, fx=0.6, fy=1.0))
+at(4.3,  lambda d: clip(C("door"), d, ss=2.4, zoom=1.12, fx=0.7, fy=1.0))
 # 2 she finds him
-at(11.8, lambda d: clip(G("g6"), d, ss=2.6, zoom=1.25, fy=0.6))
-at(13.4, lambda d: clip(K("k1"), d))
-at(15.6, lambda d: clip(K("k1"), d, ss=2.9, zoom=1.35, fx=0.5, fy=0.2))
-at(18.1, lambda d: clip(K("k2"), d, ss=1.6))
-at(19.6, lambda d: clip(K("k6"), d))
-at(20.7, lambda d: phone(A("home"), d, ss=1.0))                       # "He lives in her phone now."
-# 3 one small thing a day: the real app shows which things
-at(24.5, lambda d: phone(A("focus"), d, ss=2.0))
-at(25.8, lambda d: phone(A("breathe"), d, ss=2.0))
-at(27.0, lambda d: phone(A("checkin"), d, ss=2.0))
-at(28.3, lambda d: clip(G("g4"), d, ss=0.2))                          # "Some days, she would stay in bed."
-at(31.5, lambda d: still(S("s5"), d, z0=1.0, z1=1.14, fx=0.4, fy=0.7))   # "For him, she gets up."
+at(9.6,  lambda d: clip(C("cub"), d))
+at(12.4, lambda d: clip(C("cub"), d, ss=2.9))
+at(15.0, lambda d: clip(C("hold"), d, ss=1.0))
+# the wow: he turns to light and goes into her phone; the next thing we see is the real app
+def reveal(d):
+    if have("reveal"):
+        clip(C("reveal"), d, ss=1.35); o = f"seg8/{n[0]:03d}.mp4"
+        run(["-i", o, "-vf", f"fade=t=out:st={d - 0.45:.3f}:d=0.45:color={AURORA}", "-t", str(d)] + V + [o.replace(".mp4", "_f.mp4")]); os.replace(o.replace(".mp4", "_f.mp4"), o)
+    else: into_phone(N8("n04"), d)
+def app_from_light(d):
+    phone(A("home"), d, ss=1.0); from_light(f"seg8/{n[0]:03d}.mp4", d)
+at(17.0, reveal)
+at(20.6, app_from_light)
+at(22.4, lambda d: clip(C("sofa"), d, ss=0.8))
+# 3 for him, she gets up
+at(24.3, lambda d: clip(C("grey"), d, ss=0.2))
+at(26.8, lambda d: clip(C("curtains"), d, ss=0.6) if have("curtains") else still(N8("n06"), d, z0=1.0, z1=1.12, fx=0.6, fy=0.4))
 # 4 she said yes; every moment with him is a number
-at(35.4, lambda d: over(K("k6"), "c_yes.png", d, speed=0.6))
-at(42.5, lambda d: split(A("focus"), "single1.mp4", d, ss=3.5))
-at(45.6, lambda d: split(A("breathe"), "single0.mp4", d, ss=3.5))
-at(49.2, lambda d: split(G("g6"), "single2.mp4", d, ss=0.5, app=False))
-at(51.1, lambda d: card_wall("c_num.png", d))
-at(55.2, lambda d: card_wall("c_gem.png", d))
+at(30.7, lambda d: over(C("sofa"), "c_yes.png", d, ss=1.5, speed=0.5))
+at(37.0, lambda d: split(A("focus"), "v8/single1.mp4", d, ss=3.5))
+at(39.4, lambda d: split(A("breathe"), "v8/single0.mp4", d, ss=3.5))
+at(43.0, lambda d: split(C("walk"), "v8/single2.mp4", d, ss=1.0, app=False))
+at(44.3, lambda d: card_wall("c_num.png", d))
+at(46.5, lambda d: card_wall("c_gem.png", d))
 # 5 the questionnaire beside the lines
-at(60.8, lambda d: chart("chart_a.mp4", d))
-at(64.6, lambda d: chart("chart_b.mp4", d))
+at(53.2, lambda d: chart("v8/chart_a.mp4", d))
+at(55.8, lambda d: chart("v8/chart_b.mp4", d))
 # 6 November
-at(75.5, lambda d: still("chart_end.png", d, z0=1.0, z1=1.07, fx=1.0, fy=0.5, tag="tag_ex.png"))
-at(77.1, lambda d: clip(K("k5"), d, ss=0.2, zoom=1.9, fx=0.12, fy=0.8))                                   # the boots alone
-at(78.6, lambda d: clip(K("k4"), d, ss=0.2, cap=("cap_help.png", 2.3)))                                   # "At one a.m. she writes: I need help."
-at(83.5, lambda d: windows(K("k7"), d, [("w_tg.png", 0.3, d + 0.3)], ss=0.4))                             # "Her words go straight to her clinic": the real alert
-at(87.1, lambda d: windows(K("k8"), d, [("w_anna.png", 0.5, 4.6)], dim=0.0, fout=0.9))       # the nurse calls; her profile on the clinician page comes up over the morning
-# 7 the name and the motto: spoken, and on screen
-at(98.6, lambda d: card("c_brand6.png", d, fade=0.8))
-END = 108.6
-FIXED = {0.0, 83.5, 87.1, 98.6}
-B = json.load(open("beats6.json"))
+at(61.1, lambda d: clip(C("grey"), d, ss=2.2, zoom=1.15, fx=0.7, fy=0.6))
+at(64.5, lambda d: clip(C("night"), d, ss=0.2, cap=("cap_help.png", 2.8)))
+at(70.2, lambda d: windows(C("nurse"), d, [("w_tg.png", 0.3, d + 0.3)], ss=0.2))                      # the clinic: the nurse reads the real alert
+at(73.5, lambda d: windows(C("nurse"), d, [("w_anna.png", 0.3, d - 0.05)], ss=2.6))                   # she opens Anna's page and picks up the phone
+at(77.6, lambda d: clip(C("call"), d, speed=0.72))                                                    # "I read your note. I'm here."
+# 7 this time
+at(84.5, lambda d: clip(C("return"), d, ss=0.3))
+# 8 the name and the motto
+at(89.1, lambda d: card("c_brand6.png", d, fade=0.8))
+END = 99.4
+FIXED = {0.0, 17.0, 20.6, 89.1}
+B = json.load(open("v8/beats8.json"))
 def snap(t, prev):
     best, bs = t, -9
     for b, st in zip(B["beats"], B["strength"]):
@@ -169,35 +188,29 @@ for i in range(1, len(T)):
 for i, (t, fn) in enumerate(T):
     nxt = T[i + 1][0] if i + 1 < len(T) else END
     fn(round(round((nxt - t) * 24) / 24, 4))
-open("list7.txt", "w").write("".join(f"file 'seg7/{i:03d}.mp4'\n" for i in range(1, n[0] + 1)))
-run(["-f", "concat", "-safe", "0", "-i", "list7.txt", "-c", "copy", "silent7.mp4"])
+open("list8.txt", "w").write("".join(f"file 'seg8/{i:03d}.mp4'\n" for i in range(1, n[0] + 1)))
+run(["-f", "concat", "-safe", "0", "-i", "list8.txt", "-c", "copy", "silent8.mp4"])
 FOX, BRAND = T[5][0], T[-1][0]
 # Subtitles: every spoken line, at the times of the take itself. Lines that a card already shows in full, the big
 # "I need help." caption and the closing frame (which carries the motto) are not doubled.
 SUBS = [
- (0.6, 2.9, "The clinic door closes behind Anna."), (3.2, 6.0, "Her treatment for depression is over."), (6.9, 9.9, "The next appointment is six weeks away."),
- (11.8, 14.4, "On the way home, she finds him."), (14.4, 17.2, "A fox cub, alone in the snow."), (18.1, 20.0, "She takes him home."), (20.7, 23.0, "He lives in her phone now."),
- (24.5, 27.6, "Every day she does one small thing for him."), (28.3, 31.1, "Some days, she would stay in bed."), (31.5, 33.9, "For him, she gets up."),
- (42.5, 44.9, "Her reactions in his game."), (45.6, 48.9, "How her face moves when she breathes with him."), (49.2, 50.6, "Her steps."),
- (60.8, 64.2, "Every week, the clinic\u2019s questionnaire."), (64.6, 70.8, "In this example, when her score climbs, the other lines fall."), (71.4, 74.4, "That is the pattern we would look for."),
- (75.5, 77.4, "Then, November."), (78.3, 80.6, "At one a.m. she writes:"), (83.5, 86.4, "Her words go straight to her clinic."),
- (87.1, 91.0, "The next morning, her nurse calls."), (91.7, 93.5, "\u201cAnna, I read your note.\u201d"), (94.2, 95.9, "\u201cI\u2019m here.\u201d"),
+ (1.2, 3.8, "Anna\u2019s treatment for depression is over."), (4.5, 7.4, "The next appointment is six weeks away."),
+ (9.8, 14.2, "On the way home, she finds a fox cub, alone in the snow."), (15.2, 16.9, "She picks him up."), (17.2, 19.4, "And he steps into her phone."),
+ (20.8, 23.5, "Every day she does one small thing for him."), (24.3, 26.7, "Some days, she would stay in bed."), (26.9, 29.6, "For him, she gets up."),
+ (37.1, 39.3, "Her reactions in his game."), (39.5, 42.1, "Her face as they breathe."), (43.1, 44.2, "Her steps."),
+ (53.4, 60.0, "In this example, when her weekly clinic score climbs, the other lines fall."),
+ (61.3, 64.1, "In November, hard days return."), (64.7, 67.0, "At one a.m. she writes:"),
+ (70.3, 72.2, "Her words reach her clinic."), (73.6, 76.6, "Next morning, her nurse calls."), (77.8, 79.6, "\u201cAnna, I read your note.\u201d"), (79.8, 81.4, "\u201cI\u2019m here.\u201d"),
+ (84.7, 87.8, "This time, she doesn\u2019t wait six weeks."),
 ]
-os.makedirs("subs", exist_ok=True); SF = ImageFont.truetype(F, 30)
-ins = ["-i", "silent7.mp4", "-loop", "1", "-t", str(END), "-i", "logo_corner.png", "-i", "track6.m4a"]
+os.makedirs("subs8", exist_ok=True); SF = ImageFont.truetype(F, 30)
+ins = ["-i", "silent8.mp4", "-loop", "1", "-t", str(END), "-i", "logo_corner.png", "-i", "v8/track8.m4a"]
 fc = (f"[1:v]format=rgba,fade=t=in:st={FOX}:d=0.6:alpha=1,fade=t=out:st={BRAND - 0.6}:d=0.6:alpha=1[lg];[0:v][lg]overlay=0:0:shortest=0[s0];")
 for i, (a, b, txt) in enumerate(SUBS):
     im = Image.new("RGBA", (1280, 720), (0, 0, 0, 0)); g = ImageDraw.Draw(im); w = g.textlength(txt, font=SF); x = (1280 - w) / 2
-    g.rounded_rectangle((x - 18, 664, x + w + 18, 710), 10, fill=(6, 10, 16, 215)); g.text((x, 670), txt, font=SF, fill=(255, 255, 255, 255)); im.save(f"subs/{i:02d}.png")
-    ins += ["-loop", "1", "-t", str(END), "-i", f"subs/{i:02d}.png"]
+    g.rounded_rectangle((x - 18, 664, x + w + 18, 710), 10, fill=(6, 10, 16, 215)); g.text((x, 670), txt, font=SF, fill=(255, 255, 255, 255)); im.save(f"subs8/{i:02d}.png")
+    ins += ["-loop", "1", "-t", str(END), "-i", f"subs8/{i:02d}.png"]
     fc += f"[s{i}][{i+3}:v]overlay=0:0:enable='between(t,{a},{b})'[s{i+1}];"
-# The turn, as words on the picture: after "I'm here." it comes up, stays while the morning fades to black, and the logo frame answers it.
-TURN = "She thought she was rescuing a fox."
-im = Image.new("RGBA", (1280, 720), (0, 0, 0, 0)); g = ImageDraw.Draw(im); TF = ImageFont.truetype(F, 52); w = g.textlength(TURN, font=TF)
-g.text(((1280 - w) / 2 + 2, 322), TURN, font=TF, fill=(0, 0, 0, 220)); g.text(((1280 - w) / 2, 320), TURN, font=TF, fill=(255, 255, 255, 255)); im.save("turn.png")
-ins += ["-loop", "1", "-t", str(END), "-i", "turn.png"]; k = len(SUBS)
-fc += (f"[{k+3}:v]format=rgba,fade=t=in:st=96.1:d=0.5:alpha=1,fade=t=out:st=98.45:d=0.4:alpha=1[tn];"
-       f"[s{k}][tn]overlay=0:0:enable='between(t,96.1,98.85)'[s{k+1}];")
-fc += f"[s{len(SUBS)+1}]fade=t=out:st={END - 1.2}:d=1.2[v];[2:a]afade=t=out:st={END - 1.2}:d=1.2,apad=whole_dur={END}[a]"
-run(ins + ["-filter_complex", fc, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-t", str(END), "film7.mp4"])
-print(round(dur_of("film7.mp4"), 2), "s,", n[0], "shots, picture", round(dur_of("silent7.mp4"), 2))
+fc += f"[s{len(SUBS)}]fade=t=out:st={END - 1.2}:d=1.2[v];[2:a]afade=t=out:st={END - 1.2}:d=1.2,apad=whole_dur={END}[a]"
+run(ins + ["-filter_complex", fc, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-t", str(END), "film8.mp4"])
+print(round(dur_of("film8.mp4"), 2), "s,", n[0], "shots, picture", round(dur_of("silent8.mp4"), 2))
