@@ -125,4 +125,72 @@ final class LanviEyesTests: XCTestCase {
         XCTAssertEqual(after.eyeY, rest.eyeY, accuracy: 1e-4)
         XCTAssertEqual(after.headTilt, rest.headTilt, accuracy: 1e-3)
     }
+
+    // MARK: Eyes while a finger is dragged (the captain's "eyes fade in and out and close
+    // and open while tracking")
+
+    /// A finger path over and around the fox, a new place every 1/60 s.
+    private func dragSteps(from start: Double, seconds: Double) -> [LookStep] {
+        var steps = [LookStep(at: -100, target: nil)]
+        for i in 0...Int(seconds * 60) {
+            let t = Double(i) / 60
+            let a = 2 * Double.pi * t / 3
+            steps.append(LookStep(at: start + t, target: CGPoint(x: 1085 + 1400 * sin(a), y: 700 + 900 * sin(2 * a))))
+        }
+        return steps
+    }
+
+    /// Checks frames from `from` to `to` s: the eye is never see-through, the lid only
+    /// comes down for single quick blinks, 2.5 s or more apart; no idle moment starts.
+    private func assertOnlyQuickBlinks(_ make: (Double) -> LanviMotion, from: Double, to: Double, _ what: String,
+                                       file: StaticString = #filePath, line: UInt = #line) {
+        var closings: [Double] = []
+        var downSince: Double?
+        var t = from
+        while t <= to {
+            let m = make(t)
+            let lid = m.frame().lid
+            XCTAssertEqual(lid.weight, 1, accuracy: 1e-9, "\(what): eye picture swapped at \(t) s", file: file, line: line)
+            if lid.down > 0.01 {
+                if downSince == nil { downSince = t; closings.append(t) }
+                XCTAssertLessThan(t - downSince!, 0.2, "\(what): lid down longer than a quick blink at \(t) s", file: file, line: line)
+            } else {
+                downSince = nil
+            }
+            XCTAssertNil(m.currentMoment(m.t), "\(what): an idle moment during the drag at \(t) s", file: file, line: line)
+            t += 1.0 / 60
+        }
+        for (a, b) in zip(closings, closings.dropFirst()) {
+            XCTAssertGreaterThan(b - a, 2.5, "\(what): two blinks close together at \(a) and \(b) s", file: file, line: line)
+        }
+    }
+
+    func testADraggedFingerGetsOnlySingleQuickBlinks() {
+        for seed in [0, 123, 380, 555, 909] {
+            let steps = dragSteps(from: clock, seconds: 8)
+            assertOnlyQuickBlinks({ t in
+                var m = self.motion(Array(steps.prefix { $0.at <= self.clock + t }), at: self.clock + t)
+                m.seed = seed
+                m.appearAt = self.clock - 100          // idle moments on: none may start
+                return m
+            }, from: 0.4, to: 8, "seed \(seed)")
+        }
+    }
+
+    func testDraggingAfterPettingOpensTheEyesAtOnce() {
+        // the finger rests 1.1 s (petting from 0.5 s, the happy squint), then drags 6 s
+        let steps = dragSteps(from: clock + 1.6, seconds: 6)
+        let make: (Double) -> LanviMotion = { t in
+            var m = self.motion(Array(steps.prefix { $0.at <= self.clock + t }), at: self.clock + t)
+            m.seed = 909
+            m.appearAt = self.clock - 100
+            m.petting = t >= 0.5 && t < 1.6
+            m.pettingFrom = t >= 0.5 ? self.clock + 0.5 : -100
+            m.pettingSince = t < 0.5 ? -100 : self.clock + (t < 1.6 ? 0.5 : 1.6)
+            m.pettingEndedByDrag = t >= 1.6
+            return m
+        }
+        assertOnlyQuickBlinks(make, from: 2.0, to: 7.6, "after petting")
+    }
 }
+
