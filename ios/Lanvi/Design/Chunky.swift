@@ -5,6 +5,8 @@ struct ChunkyButtonStyle: ButtonStyle {
     var fill: Color = Theme.brand
     var edge: Color = Theme.brandEdge
     var text: Color = .white
+    /// A rim drawn on the face, so it moves down with the press (white buttons).
+    var outline: Color? = nil
 
     func makeBody(configuration: Configuration) -> some View {
         let pressed = configuration.isPressed
@@ -16,6 +18,11 @@ struct ChunkyButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity)
             .frame(height: 54)
             .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(fill))
+            .overlay {
+                if let outline {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(outline, lineWidth: 2)
+                }
+            }
             .offset(y: pressed ? 5 : 0)
             .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(edge).offset(y: 5))
             .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
