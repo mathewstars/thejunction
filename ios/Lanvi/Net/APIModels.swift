@@ -189,6 +189,16 @@ enum API {
         var blinkRatePerMin: Double?
         var lookDownShare: Double?
         var headTiltDeg: Double?
+        var smileTimeShare: Double?
+        var eyeSmileShare: Double?
+        var smileResponseShare: Double?
+        var smileResponseLatencyS: Double?
+        var browDownShare: Double?
+        var innerBrowUpShare: Double?
+        var blinkDurationMs: Double?
+        var headPitchDeg: Double?
+        var headMovement: Double?
+        var smileAsymmetry: Double?
         var trackingQuality: Double
     }
 
