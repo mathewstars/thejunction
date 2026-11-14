@@ -7,15 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0116F0E1B24259172512F2E3 /* fox-nod.mov in Resources */ = {isa = PBXBuildFile; fileRef = 43CF85AFD348789CCF2F2B9E /* fox-nod.mov */; };
 		0288D785F813107D48C46B3A /* HarnessHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BCE1C4E2E05E409BD2EB754 /* HarnessHealth.swift */; };
 		053EBA860422BF2F170DD9E5 /* APIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D93B9957583CC3DB996A3C8 /* APIModels.swift */; };
 		09BCAD971846CCE186509B5D /* FocusEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB97273333C0DBAE7FC11418 /* FocusEngine.swift */; };
 		0CCBB65F07E504D7182EBF08 /* Harness.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; };
 		0CFF1ACB5D8BF4C22E1BCCBE /* GameMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B5C92796F5DE0B8D3DA00AF /* GameMoments.swift */; };
+		0DBE9E6B7D7551FF7AB58CAE /* fox-sleepy.mov in Resources */ = {isa = PBXBuildFile; fileRef = E1E96E03BA83F2C3F2866C3E /* fox-sleepy.mov */; };
 		13A58E149CD244B58980B9F3 /* HomeSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8082B9E5762CA3450E914CE /* HomeSpeech.swift */; };
 		14D52ABE9497798035286052 /* LanviArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B5136458E518ED70EBBEF0 /* LanviArt.swift */; };
 		151BF5444E01D40CF03FB960 /* ChatLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84158FA0F8C7B4E9A416B47C /* ChatLink.swift */; };
 		1D2F0537C7AAB50875AA6F3B /* ActivityRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F685787902006429E41D5A7 /* ActivityRouter.swift */; };
+		1D9EA9203BFC995055D77005 /* fox-listen.mov in Resources */ = {isa = PBXBuildFile; fileRef = 087E78E302CF1F2DE239A4F1 /* fox-listen.mov */; };
 		1DCC6987446B4B58F5E32D82 /* SenseRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66066ACFCC6856BAFA1A7DED /* SenseRoot.swift */; };
 		20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CA1C956F7514A490E2C77E /* Theme.swift */; };
 		246F5298B66DEE487E49BD3E /* Harness.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; };
@@ -59,6 +62,7 @@
 		A99C233C3D469D27695CFD77 /* Nunito-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 264F14E3AC63B96BC18A9088 /* Nunito-Bold.ttf */; };
 		AD463101603D7159662FCF61 /* LanviFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D60D7109047F207FBF71FBE2 /* LanviFlowUITests.swift */; };
 		AF042D25043E7247AD53A177 /* LanviRig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 743C0B865552B2E8824FA20B /* LanviRig.swift */; };
+		B2B903BA46A247B25B894F9F /* fox-pet.mov in Resources */ = {isa = PBXBuildFile; fileRef = A4D8377E2A4C33431265B6A9 /* fox-pet.mov */; };
 		B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA73738285D12F12C9ADB24B /* Chunky.swift */; };
 		B366EDE9B773EEA90854B56A /* HomeChatScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */; };
 		B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B8C888729DE19EB41449A4 /* HomeOverlays.swift */; };
@@ -66,6 +70,7 @@
 		B6A861C26917D5B2F511CE9C /* BreatheResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B1F65C7973CFFB5D41825 /* BreatheResult.swift */; };
 		BC1B1DE3FDB56F877CB09FE4 /* LanviTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 043F24BD4810CC96B85B74B4 /* LanviTiming.swift */; };
 		BED78E7017B94186F183E51E /* LocalStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85FD261A32144F8643C6EE7E /* LocalStatistics.swift */; };
+		C6E587231E38217A2AA80289 /* fox-talk.mov in Resources */ = {isa = PBXBuildFile; fileRef = 0EF8A06F166402124E448DFA /* fox-talk.mov */; };
 		C8EBD236C0121CE58A89C106 /* DemoBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575A49BAC44D679FBA763541 /* DemoBackend.swift */; };
 		C987BE8A3FD45A82FEE5AEA4 /* PairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FC960D3BC722A75C660CCC /* PairView.swift */; };
 		CF120166C3B2436312B64F79 /* Harness.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -78,6 +83,7 @@
 		E044BA2BBFDCB474374856BB /* HealthTypeCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1CB7C86C24141AF8D7F012 /* HealthTypeCatalog.swift */; };
 		E2E8D980A111E7995312B471 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5278EF530C0374EA70D2B2B /* HealthKitManager.swift */; };
 		E2EA7F75523F7FE49830A106 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EC98B8671CE4DD3D2D885A3E /* Assets.xcassets */; };
+		E9C4BDF8486038CF556ADDA7 /* fox-giggle.mov in Resources */ = {isa = PBXBuildFile; fileRef = C9FF0B5564872C9807E90D17 /* fox-giggle.mov */; };
 		EC579C3478D378C5BFB7C6E5 /* HealthSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63DA8488EFBF26C7B0DF5DCB /* HealthSync.swift */; };
 		EDAB3E53B21FBF2A45578C8D /* LanviClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */; };
 		EEDB19C869011580DA5780AC /* BreatheView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E9EB5764D665F8A8B7399B /* BreatheView.swift */; };
@@ -138,7 +144,9 @@
 /* Begin PBXFileReference section */
 		033FFE5BC5E4900B0D04AFC3 /* Nunito-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-Black.ttf"; sourceTree = "<group>"; };
 		043F24BD4810CC96B85B74B4 /* LanviTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviTiming.swift; sourceTree = "<group>"; };
+		087E78E302CF1F2DE239A4F1 /* fox-listen.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = "fox-listen.mov"; sourceTree = "<group>"; };
 		0E369E41135184A2334A61A6 /* FocusResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusResult.swift; sourceTree = "<group>"; };
+		0EF8A06F166402124E448DFA /* fox-talk.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = "fox-talk.mov"; sourceTree = "<group>"; };
 		11CA1C956F7514A490E2C77E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		15B8C888729DE19EB41449A4 /* HomeOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOverlays.swift; sourceTree = "<group>"; };
 		166A2EF8FECA301AACE53B2A /* HomeSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSheets.swift; sourceTree = "<group>"; };
@@ -154,6 +162,7 @@
 		3630CD76447F82E1AE6DE650 /* FoxClip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoxClip.swift; sourceTree = "<group>"; };
 		39D140086C7FF38F31C3EE8E /* HealthSummaryBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSummaryBuilder.swift; sourceTree = "<group>"; };
 		3DC8906D0A14B8C2D8D0EE0D /* LanviClipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviClipView.swift; sourceTree = "<group>"; };
+		43CF85AFD348789CCF2F2B9E /* fox-nod.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = "fox-nod.mov"; sourceTree = "<group>"; };
 		455B1F65C7973CFFB5D41825 /* BreatheResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheResult.swift; sourceTree = "<group>"; };
 		47EB2CBCF8B846132146AC4C /* Harness.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Harness.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A2759DCEF87679E894DADAF /* ActivityOutbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityOutbox.swift; sourceTree = "<group>"; };
@@ -193,6 +202,7 @@
 		9BE5BB327EC6AAE2BE8CF146 /* HealthDays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthDays.swift; sourceTree = "<group>"; };
 		9D1CB7C86C24141AF8D7F012 /* HealthTypeCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthTypeCatalog.swift; sourceTree = "<group>"; };
 		A2FC960D3BC722A75C660CCC /* PairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairView.swift; sourceTree = "<group>"; };
+		A4D8377E2A4C33431265B6A9 /* fox-pet.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = "fox-pet.mov"; sourceTree = "<group>"; };
 		A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameMeter.swift; sourceTree = "<group>"; };
 		B0FB8AE15346D15FAA5BA3AF /* FaceSense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceSense.swift; sourceTree = "<group>"; };
 		B2CF64DD8486227CA2F2DC5B /* LanviMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviMotion.swift; sourceTree = "<group>"; };
@@ -200,6 +210,7 @@
 		BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviView.swift; sourceTree = "<group>"; };
 		C3595C8C9C83D14C2B300184 /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
 		C8082B9E5762CA3450E914CE /* HomeSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSpeech.swift; sourceTree = "<group>"; };
+		C9FF0B5564872C9807E90D17 /* fox-giggle.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = "fox-giggle.mov"; sourceTree = "<group>"; };
 		CA73738285D12F12C9ADB24B /* Chunky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chunky.swift; sourceTree = "<group>"; };
 		CB97273333C0DBAE7FC11418 /* FocusEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusEngine.swift; sourceTree = "<group>"; };
 		CC334EE89ADCF793E4BC0D9B /* SharedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
@@ -209,6 +220,7 @@
 		D3C73568A4E2AF330F3A6A0E /* Nunito-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-SemiBold.ttf"; sourceTree = "<group>"; };
 		D60D7109047F207FBF71FBE2 /* LanviFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviFlowUITests.swift; sourceTree = "<group>"; };
 		DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMoments.swift; sourceTree = "<group>"; };
+		E1E96E03BA83F2C3F2866C3E /* fox-sleepy.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = "fox-sleepy.mov"; sourceTree = "<group>"; };
 		E4534A11EF57C9E6ACC5030B /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		E77620D747F3E1491FF87DCE /* CheckinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinView.swift; sourceTree = "<group>"; };
 		E96038024D45EFD23EA3C437 /* LanviClipPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviClipPreview.swift; sourceTree = "<group>"; };
@@ -426,9 +438,15 @@
 		CAB6CDB98A982C64007F9B49 /* Media */ = {
 			isa = PBXGroup;
 			children = (
+				C9FF0B5564872C9807E90D17 /* fox-giggle.mov */,
 				725F4BCC9AB351DF23429E11 /* fox-happy.mov */,
 				7B328106B159B46D1C747F55 /* fox-idle.mov */,
+				087E78E302CF1F2DE239A4F1 /* fox-listen.mov */,
 				EF414236FA35E80AFC8D38A3 /* fox-look.mov */,
+				43CF85AFD348789CCF2F2B9E /* fox-nod.mov */,
+				A4D8377E2A4C33431265B6A9 /* fox-pet.mov */,
+				E1E96E03BA83F2C3F2866C3E /* fox-sleepy.mov */,
+				0EF8A06F166402124E448DFA /* fox-talk.mov */,
 			);
 			path = Media;
 			sourceTree = "<group>";
@@ -630,9 +648,15 @@
 				EF19B31CB4510B47533E7D06 /* Nunito-ExtraBold.ttf in Resources */,
 				2A64688C8640CBD20F6751CE /* Nunito-OFL.txt in Resources */,
 				F969A651BB389BD4688E0C75 /* Nunito-SemiBold.ttf in Resources */,
+				E9C4BDF8486038CF556ADDA7 /* fox-giggle.mov in Resources */,
 				DF75B7FF7E5041F6EDBB9A94 /* fox-happy.mov in Resources */,
 				6ECA2ED8B79067B680AC2FFD /* fox-idle.mov in Resources */,
+				1D9EA9203BFC995055D77005 /* fox-listen.mov in Resources */,
 				4696588ABF5B1A769D9B3F20 /* fox-look.mov in Resources */,
+				0116F0E1B24259172512F2E3 /* fox-nod.mov in Resources */,
+				B2B903BA46A247B25B894F9F /* fox-pet.mov in Resources */,
+				0DBE9E6B7D7551FF7AB58CAE /* fox-sleepy.mov in Resources */,
+				C6E587231E38217A2AA80289 /* fox-talk.mov in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
