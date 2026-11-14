@@ -13,6 +13,7 @@ from ..audit import list_audit
 from ..help import help_block
 from .notes import lexicon_reviewed
 from . import lanvi_config, lines, xp
+from .activities import played_to_the_end
 from .catalog import ACTIONS, ACTIVITY_ACTION, plain_name
 from .repo import PatientRepo
 from .round_configs import ROUND_DURATION_S
@@ -501,7 +502,7 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
             f = a.get("features") or {}
             s = {"id": a["id"], "started_at": a["started_at"],
                  "date": datetime.fromisoformat(a["started_at"]).astimezone(tz).date().isoformat(),
-                 "completed": bool(a["completed"]), "ended_by": a["ended_by"],
+                 "completed": bool(f.get("completed", a["completed"])), "ended_by": a["ended_by"],
                  "after_suggestion": bool(a.get("suggestion_id")), "example": bool(a.get("example")),
                  "values": {k: f.get(k) for k in HEADLINE[t]},
                  "z": {k: (a.get("z") or {}).get(k) for k in HEADLINE[t]}}
@@ -551,7 +552,7 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
             out[t] = {"offered": len(offered),
                       "played_when_offered": sum(1 for s in offered if s["id"] in played_for),
                       "played": len(done),
-                      "finished": sum(1 for a in done if a["ended_by"] == "finished")}
+                      "finished": sum(1 for a in done if played_to_the_end(a))}
         return out
 
     # The two readers over every session the model has read: sums, the two

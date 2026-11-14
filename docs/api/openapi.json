@@ -5837,14 +5837,14 @@
             "maximum": 1000.0,
             "minimum": 0.0,
             "title": "Wrong Taps",
-            "description": "Tapped a snowflake."
+            "description": "Always 0 in Revontulet: there is nothing wrong to tap."
           },
           "misses": {
             "type": "integer",
             "maximum": 1000.0,
             "minimum": 0.0,
             "title": "Misses",
-            "description": "Sparks that faded untapped."
+            "description": "Embers that flashed and were not tapped."
           },
           "reaction_ms": {
             "items": {
@@ -5905,7 +5905,7 @@
           "misses"
         ],
         "title": "FocusActivityIn",
-        "description": "Sparks and snow (about 45 seconds), or Revontulet (about 90 seconds,\nwith `revontulet`)."
+        "description": "Revontulet (up to about 90 seconds). The app sends its measures in\n`revontulet`; a record without them is still taken and read from the taps alone."
       },
       "HTTPValidationError": {
         "properties": {
@@ -6950,7 +6950,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "RevontuletIn",
-        "description": "What Revontulet measures beyond the focus record's taps and reaction\ntimes (docs/revontulet-measures.md). Numbers only: no touch paths, no\npositions, nothing that identifies a person. Stored with the activity and\nshown to the clinician; not yet used to judge a day, pick suggestions,\ncount XP or build the person's own normal.",
+        "description": "What Revontulet measures beyond the focus record's taps and reaction\ntimes (docs/revontulet-measures.md). Numbers only: no touch paths, no\npositions, nothing that identifies a person. A record with this object is\nread as a Revontulet game and compared only with the person's earlier\nRevontulet games: reaction times need two ember taps, the error rate is\nembers missed over embers shown, and a game where the wall burst counts as\nplayed to the end even when the person left during the strokes.",
         "examples": [
           {
             "broke_through_s": 52.4,
@@ -7030,7 +7030,7 @@
               }
             ],
             "title": "Trace Start Ms",
-            "description": "The half-circle appearing to the first touch on it."
+            "description": "The half-circle appearing to the first touch on it. Null on a traced round means the first-time coach showed the move: that round is left out of the time to choose and the tracing speed."
           },
           "trace_ms": {
             "anyOf": [

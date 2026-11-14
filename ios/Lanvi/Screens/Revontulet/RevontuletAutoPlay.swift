@@ -69,7 +69,9 @@ struct RevontuletAutoPlay {
             for i in f.emberU.indices where hitsEmber(i, round: e.round) && !emberTapped.contains(i) && f.emberShownAt[i] != nil {
                 let seen = emberSeen[i] ?? now
                 emberSeen[i] = seen
-                let wait = e.slowSince != nil && coachPause > 0 ? 1.2 : (0.22 + 0.12 * Double(i)) * pace
+                // A person: lifts off the sling, finds the ember, taps (about half a second
+                // or more after the flash).
+                let wait = e.slowSince != nil && coachPause > 0 ? 1.2 : (0.45 + 0.12 * Double(i) + 0.15 * rng.next()) * pace
                 if now - seen >= wait {
                     emberTapped.insert(i)
                     let p = f.emberPoint(i)
@@ -200,10 +202,9 @@ struct RevontuletAutoPlay {
         case .burst where style == .close:
             return [Step(at: e.beatStart + 0.5, input: .close)]
 
-        case .sleep where style == .mixed || style == .hard:
-            // A tap anywhere on the goodnight ends it at once.
-            let p = CGPoint(x: L.size.width * 0.5, y: L.size.height * 0.4)
-            return tap(p, at: t0 + 1.1)
+        case .sleep:
+            // Presses Continue a moment after it appears.
+            return [Step(at: e.beatStart + RevontuletEngine.asleepAfter + 1.6, input: .finish)]
 
         default:
             return []

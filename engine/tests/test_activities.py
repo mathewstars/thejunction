@@ -279,7 +279,7 @@ def test_activity_lesson_from_how_sessions_went(env):
     lessons = [x for x in env.repo().lessons_doc()["lessons"] if x["status"] == "active"]
     les = next(x for x in lessons if x["rationale_code"] == "activity_stopped_early")
     assert les["action"] == "focus_game" and les["context"] == "morning"
-    assert "Sparks and snow in the morning" in les["text"]
+    assert "Revontulet in the morning" in les["text"]
     # The fence: activity lessons only re-rank.
     from clinic_engine.mind.catalog import ACTIONS
     from clinic_engine.mind.respond import rank_actions

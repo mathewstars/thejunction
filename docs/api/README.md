@@ -101,13 +101,13 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
      | `plan_to_ask` | yesterday's plan to ask about tonight (`plan_id` is null when it was typed), or null |
 
    - `crisis` is **always** present. While `reviewed_by_clinician` is false, show it as draft wording.
-   - XP rules (design values in `engine/clinic_engine/mind/lanvi_config.py`): Sparks and snow played 10, Breathe with Lanvi 10, evening check-in 10, yesterday's plan done 15, a day walked or slept around own normal 5. Same XP whatever the score; stopped early still counts. Each record counts once, and per day at most 2 focus, 2 breathing and 1 check-in award. No streaks.
+   - XP rules (design values in `engine/clinic_engine/mind/lanvi_config.py`): Revontulet played 10, Breathe with Lanvi 10, evening check-in 10, yesterday's plan done 15, a day walked or slept around own normal 5. Same XP whatever the score; stopped early still counts. Each record counts once, and per day at most 2 focus, 2 breathing and 1 check-in award. No streaks.
 
 5. **After an activity, send it.** One record per activity, idempotent by your `id`.
    ```sh
    curl -X POST $B/v1/activities -H "Authorization: Bearer $DT" -H 'Content-Type: application/json' -d @activity.json
    # {"id":"...","type":"focus","xp_gained":10,"xp_total":350,"stage":"grown_fox","next_stage_at":null,"glow":0.9,
-   #  "wandering":"home","line":{"template_id":"focus_done","text":"Thanks for playing with me. The sparks liked that."},
+   #  "wandering":"home","line":{"template_id":"focus_done","text":"Thanks for playing with me. The fox fires liked that."},
    #  "crisis":false,"crisis_block":null,"reading":"off"}
    ```
    Two rules the models do not show: `duration_s` above 1800 is refused (422 `implausible_activity`), and an activity shorter than 5 seconds is stored but earns no XP.
@@ -124,7 +124,7 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
    | `ended_by` | `finished`, `user_stopped`, `interrupted` |
    | `suggestion_id` | optional: the suggestion it was played from |
 
-   `focus` (Sparks and snow): `correct_taps`, `wrong_taps` (tapped a snowflake), `misses` (whole numbers), `reaction_ms` (list of whole milliseconds, at most 200; the server computes the statistics), optional `face_raw` (or, from older clients, `face`).
+   `focus` (Revontulet; the app sends its measures in the `revontulet` object below, and a record without it is still taken and read from the taps alone): `correct_taps` (launches and embers tapped), `wrong_taps` (always 0), `misses` (embers not tapped; whole numbers), `reaction_ms` (list of whole milliseconds, at most 200; the server computes the statistics), optional `face_raw` (or, from older clients, `face`).
 
    `revontulet` (optional, only on `focus`, only from the Revontulet game): what that game measures beyond taps and reaction times. Leave it out (or send null) and the record means exactly what it did before; a record without it hashes as before. Numbers only, no touch paths or positions; every object refuses unknown fields (422 `invalid_request`). What each measure is and the study idea behind it: [`docs/revontulet-measures.md`](../revontulet-measures.md).
 

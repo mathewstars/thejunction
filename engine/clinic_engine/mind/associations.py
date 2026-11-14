@@ -367,7 +367,7 @@ def build_dataset(days: dict[str, dict], series: list[dict], activities: list[di
         d = _local_day(a["started_at"], tz)
         f = a.get("features") or {}
         if a["type"] in ("focus", "breathing"):
-            add("activity.completed_share", d, 1.0 if a.get("completed") else 0.0)
+            add("activity.completed_share", d, 1.0 if f.get("completed", a.get("completed")) else 0.0)
             usable["activity.completed_share"][0] += 1
             usable["activity.completed_share"][1] += 1
             face = a.get("face") or {}

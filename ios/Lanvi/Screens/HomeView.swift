@@ -70,6 +70,8 @@ struct HomeView: View {
         ZStack {
             home
                 .ignoresSafeArea(.keyboard)
+                // While anything is presented over Home, Home takes no touches at all.
+                .allowsHitTesting(cover == nil && sheet == nil)
             // ONE way to present anything over Home: it rises from the bottom on one
             // spring, over one scrim, and goes back down the same way. Home underneath
             // never changes, scales, blurs or snapshots while it moves.

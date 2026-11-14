@@ -1,11 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// The fox on the snow, acting through `LanviView` as it is (never drawn, tinted or lit here).
-///
-/// Swap points for clips: when `LanviClipView` lands on main, `.celebrating` can show the
-/// play-bow clip and `.sleeping` the curled-up sleeping clip, by replacing the matching line
-/// in `body` below. Everything else (the moments, the timing) stays as it is.
+/// The fox on the snow, acting through `LanviView` as it is (never drawn, tinted or lit
+/// here). The puppet is the only fox.
 struct RevontuletFox: View, Equatable {
     enum Act: Equatable { case playing, celebrating, sleeping }
 
@@ -18,9 +15,7 @@ struct RevontuletFox: View, Equatable {
     var petTick: Int
 
     var body: some View {
-        // Swap points (one line each), e.g.:
-        //   if act == .celebrating { LanviClipView(.playBow) } else if act == .sleeping { LanviClipView(.sleeping) } else { puppet }
-        // Until then one puppet plays every act, so the fox never jumps between them.
+        // One puppet plays every act, so the fox never jumps between them.
         puppet
     }
 

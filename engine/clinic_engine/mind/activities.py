@@ -37,7 +37,7 @@ Z_FEATURES = {
     "checkin": ("good_things",),
 }
 # Revontulet's own measures, compared with the person's earlier Revontulet
-# games only (never with Sparks and snow). Kept apart from Z_FEATURES on
+# games only (never with a game sent without the measures). Kept apart from Z_FEATURES on
 # purpose: nothing here reaches the watchers or changes how a day is judged.
 REVONTULET_FEATURES = ("hard_share", "choice_ms", "trace_speed_cm_s", "stroke_speed_cm_s")
 
@@ -92,19 +92,29 @@ def _iqr(vals: list[float]) -> float | None:
 
 def features(a: dict, th: Thresholds = T) -> dict:
     t = a["type"]
-    f: dict = {"completed": bool(a["completed"]), "ended_by": a["ended_by"]}
+    f: dict = {"completed": bool(a["completed"]) or played_to_the_end(a),
+               "ended_by": a["ended_by"]}
     if t == "focus":
         rts = [r for r in a["reaction_ms"] if r >= th.reaction_min_ms]
-        # A Revontulet game has at most six ember taps (its reaction_ms), Sparks and
-        # snow about seventeen: each needs the number its game can give.
-        need = th.revontulet_min_reactions if a.get("revontulet") is not None \
-            else th.activity_min_reactions
-        enough = len(rts) >= need
-        total = a["correct_taps"] + a["wrong_taps"] + a["misses"]
+        rv = a.get("revontulet")
+        if rv:
+            # Revontulet: the only taps with a reaction time are the embers (two
+            # on a harder shot, six a game at most), so fewer are needed; and
+            # the only thing that can be missed is an ember, so the error rate
+            # is embers missed over embers shown (none when no ember flashed).
+            # The launches are not counted: they cannot go wrong.
+            shown = sum(r.get("embers_shown") or 0 for r in rv.get("rounds") or [])
+            hit = sum(r.get("embers_hit") or 0 for r in rv.get("rounds") or [])
+            error_rate = round((shown - hit) / shown, 3) if shown else None
+        else:
+            # A game sent without its measures (an app build that does not send
+            # them, or the app's fallback): the taps are all there is to go on.
+            total = a["correct_taps"] + a["wrong_taps"] + a["misses"]
+            error_rate = round((a["wrong_taps"] + a["misses"]) / total, 3) if total else None
+        enough = len(rts) >= th.revontulet_min_reactions
         f.update(median_reaction_ms=float(median(rts)) if enough else None,
                  reaction_spread_ms=_iqr(rts) if enough else None,
-                 error_rate=round((a["wrong_taps"] + a["misses"]) / total, 3) if total else None,
-                 reactions_used=len(rts))
+                 error_rate=error_rate, reactions_used=len(rts))
     elif t == "breathing":
         f.update(time_played_s=float(a["time_played_s"]),
                  breaths_completed=a.get("breaths_completed"))
@@ -115,26 +125,56 @@ def features(a: dict, th: Thresholds = T) -> dict:
     return f
 
 
-def revontulet_features(a: dict) -> dict | None:
+def game_kind(a: dict) -> str:
+    """Which records a record is compared with, for its own normal: a focus
+    record with the `revontulet` object, or its type. A focus record sent
+    without the object has only taps (its error rate cannot be counted over the
+    embers), so the two are never compared with each other."""
+    return "revontulet" if a.get("revontulet") else a["type"]
+
+
+def played_to_the_end(a: dict) -> bool:
+    """Finished, for everything that asks whether a session was. A Revontulet
+    game is over once the wall has burst: what follows is the quiet stroking of
+    the fox, and in the real games of 14 November the person usually left
+    there (`user_stopped` with all three rounds played and the wall broken).
+    That is not giving up on the game, so it is not counted as stopping early."""
+    if a["ended_by"] == "finished":
+        return True
+    rv = a.get("revontulet") or {}
+    return rv.get("broke_through_s") is not None and len(rv.get("rounds") or []) >= 3
+
+
+def coached_round(r: dict) -> bool:
+    """A round where the first-time coach showed the move: the app sends a
+    traced round without `trace_start_ms` (ios/REVONTULET.md)."""
+    return r.get("trace_start_ms") is None and r.get("trace_ms") is not None
+
+
+def revontulet_features(a: dict, th: Thresholds = T) -> dict | None:
     """Four numbers from a game's `revontulet` object, or None without one:
     the share of rounds where the harder crack was picked (only for a game with
     all three rounds: one or two choices are too few to compare), the median
     time to choose, and the mean tracing and stroking speeds in cm per second
-    (None when the phone did not send its points per centimetre)."""
+    (None when the phone did not send its points per centimetre). Rounds the
+    coach walked the person through are left out of the time to choose and the
+    tracing speed, and a touch too short to be a stroke is not one."""
     rv = a.get("revontulet")
     if not rv:
         return None
-    rounds, strokes, per_cm = rv.get("rounds") or [], rv.get("strokes") or [], rv.get("pt_per_cm")
+    rounds, per_cm = rv.get("rounds") or [], rv.get("pt_per_cm")
+    strokes = [s for s in rv.get("strokes") or [] if s.get("ms", 0) >= th.revontulet_min_stroke_ms]
+    free = [r for r in rounds if not coached_round(r)]
 
     def speed(items: list[dict], key: str) -> float | None:
         vals = [i[key] for i in items if i.get(key) is not None]
         return round(sum(vals) / len(vals) / per_cm, 3) if vals and per_cm else None
 
-    choose = [r["choice_ms"] for r in rounds if r.get("choice_ms") is not None]
+    choose = [r["choice_ms"] for r in free if r.get("choice_ms") is not None]
     return {"hard_share": round(sum(r.get("effort") == "hard" for r in rounds) / len(rounds), 3)
             if len(rounds) >= 3 else None,
             "choice_ms": float(median(choose)) if choose else None,
-            "trace_speed_cm_s": speed(rounds, "trace_mean_speed_pt_s"),
+            "trace_speed_cm_s": speed(free, "trace_mean_speed_pt_s"),
             # one stroke is too little to compare: the stroke speed needs two
             "stroke_speed_cm_s": speed(strokes, "mean_speed_pt_s") if len(strokes) >= 2 else None,
             "pt_per_cm": per_cm}
@@ -149,22 +189,24 @@ def face_quality(a: dict, th: Thresholds = T) -> str:
 
 # ---- 4. own normal ---------------------------------------------------------------------------
 
-def _stats(vals: list[float], name: str, th: Thresholds) -> dict:
+def _stats(vals: list[float], name: str, th: Thresholds, kind: str = "") -> dict:
     med = median(vals)
     mad = median(abs(v - med) for v in vals)
-    return {"median": med, "scale": max(mad * th.mad_to_sigma, ACTIVITY_MIN_SCALE.get(name, 0.01)),
-            "n": len(vals)}
+    floor = ACTIVITY_MIN_SCALE.get(f"{kind}.{name}", ACTIVITY_MIN_SCALE.get(name, 0.01))
+    return {"median": med, "scale": max(mad * th.mad_to_sigma, floor), "n": len(vals)}
 
 
-def baseline(previous: list[dict], typ: str, th: Thresholds = T) -> dict:
-    """Own normal per feature over earlier sessions of the same type.
-    Face features use only earlier sessions whose face quality was good."""
-    same = [p for p in previous if p["type"] == typ][-th.activity_baseline_max:]
+def baseline(previous: list[dict], typ: str, th: Thresholds = T, kind: str | None = None) -> dict:
+    """Own normal per feature over earlier sessions of the same game
+    (`game_kind`: a focus game with the measures and one sent without them
+    are kept apart). Face features use only earlier sessions whose face quality was good."""
+    kind = kind or typ
+    same = [p for p in previous if game_kind(p) == kind][-th.activity_baseline_max:]
     out: dict = {}
     for name in Z_FEATURES.get(typ, ()):
         vals = [p["features"][name] for p in same if p["features"].get(name) is not None]
         if len(vals) >= th.activity_baseline_min:
-            out[name] = _stats(vals, name, th)
+            out[name] = _stats(vals, name, th, kind)
     good_face = [p for p in same if p.get("face_quality") == "good"]
     for name in FACE_FIELDS:
         vals = [p["face"][name] for p in good_face if p["face"].get(name) is not None]
@@ -183,7 +225,8 @@ def process_activity(a: dict, previous: list[dict], th: Thresholds = T) -> dict:
     """The stored form: input + features, face quality, z against own normal."""
     f = features(a, th)
     fq = face_quality(a, th)
-    base = baseline(previous, a["type"], th)
+    kind = game_kind(a)
+    base = baseline(previous, a["type"], th, kind)
     z = {name: _z(f.get(name), base.get(name)) for name in Z_FEATURES.get(a["type"], ())}
     face_z = {}
     if fq == "good":
@@ -191,8 +234,8 @@ def process_activity(a: dict, previous: list[dict], th: Thresholds = T) -> dict:
     usual = {k: {"median": round(v["median"], 3), "scale": round(v["scale"], 3), "n": v["n"]}
              for k, v in base.items()}
     out = {**a, "features": f, "face_quality": fq, "z": z, "face_z": face_z, "usual": usual,
-           "baseline_sessions": sum(1 for p in previous if p["type"] == a["type"])}
-    rvf = revontulet_features(a)
+           "baseline_sessions": sum(1 for p in previous if game_kind(p) == kind)}
+    rvf = revontulet_features(a, th)
     if rvf is not None:
         # Own normal over the earlier Revontulet games only. A record without
         # the object gets none of these keys and is stored as it always was.
