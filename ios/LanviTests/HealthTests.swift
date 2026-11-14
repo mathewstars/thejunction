@@ -1,4 +1,5 @@
 import XCTest
+import Harness
 @testable import Lanvi
 
 final class HealthTests: XCTestCase {
@@ -76,5 +77,53 @@ final class HealthTests: XCTestCase {
         let second = try await up.upload(more)
         XCTAssertEqual(second.status, "within")
         XCTAssertEqual(second.accepted.count, 30)
+    }
+
+    // MARK: Peter's HealthKitManager output to the server's days
+
+    private func sample(_ id: String, _ start: Date, _ end: Date, value: Double? = nil, category: Int? = nil,
+                        source: String = "Watch") -> HealthSample {
+        HealthSample(id: UUID().uuidString, kind: category == nil ? .quantity : .category, typeIdentifier: id,
+                     displayName: id, startDate: start, endDate: end, value: value, categoryValue: category,
+                     sourceName: source, origin: .healthKit)
+    }
+
+    func testPetersSamplesBecomeTheServersDays() throws {
+        let cal = HealthCalendar.calendar
+        let d1 = try XCTUnwrap(cal.date(from: DateComponents(year: 2026, month: 11, day: 12)))
+        let d2 = HealthCalendar.addDays(1, to: d1)
+        let end = HealthCalendar.addDays(1, to: d2)
+        func at(_ day: Date, _ h: Double) -> Date { day.addingTimeInterval(h * 3600) }
+
+        // fetchDailyStatistics: one merged total per day; only day 2 also has a watch.
+        let steps = [sample(LanviHealthTypes.stepsID, d1, d2, value: 6400.4),
+                     sample(LanviHealthTypes.stepsID, d2, end, value: 8123)]
+        let means = [sample(LanviHealthTypes.walkingSpeedID, at(d1, 9), at(d1, 9.1), value: 1.2),
+                     sample(LanviHealthTypes.walkingSpeedID, at(d1, 17), at(d1, 17.1), value: 1.3),
+                     sample(LanviHealthTypes.walkingSpeedID, at(d2, 9), at(d2, 9.1), value: 1.27),
+                     sample(LanviHealthTypes.hrvID, at(d2, 3), at(d2, 3.01), value: 40),
+                     sample(LanviHealthTypes.hrvID, at(d2, 7), at(d2, 7.01), value: 45)]
+        // A watch night in stage pieces: 22:30 to 23:50 core (before midnight), then
+        // 23:50 to 02:00 deep, 02:00 to 02:10 awake, 02:10 to 06:40 REM/core.
+        let sleep = [sample(LanviHealthTypes.sleepID, at(d2, -1.5), at(d2, -1 / 6.0), category: 3),
+                     sample(LanviHealthTypes.sleepID, at(d2, -1 / 6.0), at(d2, 2), category: 4),
+                     sample(LanviHealthTypes.sleepID, at(d2, 2), at(d2, 2 + 1 / 6.0), category: 2),
+                     sample(LanviHealthTypes.sleepID, at(d2, 2 + 1 / 6.0), at(d2, 6 + 2 / 3.0), category: 5),
+                     sample(LanviHealthTypes.sleepID, at(d2, -2), at(d2, 7), category: 0)]   // in bed: not sleep
+        let summary = HealthSummaryBuilder(range: DateRange(start: d1, end: end), calendar: cal).build(samples: means)
+
+        let days = HealthDayAdapter.days(steps: steps, summary: summary, sleep: sleep, from: d1, to: end)
+        XCTAssertEqual(days.map(\.date), ["2026-11-12", "2026-11-13"])
+        XCTAssertEqual(days[0], HealthDay(date: "2026-11-12", steps: 6400, walkingSpeedMS: 1.25))
+        XCTAssertEqual(days[1].steps, 8123)
+        XCTAssertEqual(days[1].walkingSpeedMS, 1.27)
+        XCTAssertEqual(days[1].hrvMs, 42.5)
+        // 22:30 to 06:40 is 8 h 10 min, minus 10 min awake: 8 hours, all on the morning's day.
+        XCTAssertEqual(days[1].sleepH ?? 0, 8.0, accuracy: 0.01)
+    }
+
+    func testLanviAsksForFourHealthTypesOnly() {
+        XCTAssertEqual(LanviHealthTypes.all.map(\.rawIdentifier),
+                       [LanviHealthTypes.stepsID, LanviHealthTypes.walkingSpeedID, LanviHealthTypes.hrvID, LanviHealthTypes.sleepID])
     }
 }

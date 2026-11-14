@@ -1,7 +1,4 @@
 import Foundation
-#if canImport(HealthKit)
-import HealthKit
-#endif
 
 /// One day for `POST /v1/daily`, field for field as `DayIn` in `docs/api/openapi.json`:
 /// `date` (yyyy-MM-dd), `steps` (whole steps, required), `walking_speed_m_s` (m/s),
@@ -63,99 +60,7 @@ enum HealthCalendar {
     }
 }
 
-// MARK: - Apple Health
-
-#if canImport(HealthKit)
-/// Reads Apple Health: steps per day (sum), walking speed (day average), heart-rate
-/// variability SDNN (day average) and hours asleep (the night that ended that morning).
-/// Nothing else is asked for: no workouts, heart rate, location, or anything written.
-final class HealthKitSource: HealthSource, @unchecked Sendable {
-    private let store = HKHealthStore()
-
-    static var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
-
-    private var readTypes: Set<HKObjectType> {
-        var s: Set<HKObjectType> = [
-            HKQuantityType(.stepCount),
-            HKQuantityType(.walkingSpeed),
-            HKQuantityType(.heartRateVariabilitySDNN),
-        ]
-        s.insert(HKCategoryType(.sleepAnalysis))
-        return s
-    }
-
-    func requestAccess() async -> Bool {
-        guard Self.isAvailable else { return false }
-        do {
-            try await store.requestAuthorization(toShare: [], read: readTypes)
-            return true
-        } catch {
-            return false
-        }
-    }
-
-    func days(from first: Date, through last: Date) async -> [HealthDay] {
-        guard Self.isAvailable else { return [] }
-        let start = HealthCalendar.startOfDay(first)
-        let end = HealthCalendar.addDays(1, to: HealthCalendar.startOfDay(last))
-        async let steps = daily(.stepCount, .cumulativeSum, unit: .count(), start: start, end: end)
-        async let speed = daily(.walkingSpeed, .discreteAverage,
-                                unit: HKUnit.meter().unitDivided(by: .second()), start: start, end: end)
-        async let hrv = daily(.heartRateVariabilitySDNN, .discreteAverage,
-                              unit: .secondUnit(with: .milli), start: start, end: end)
-        async let sleep = sleepHours(start: start, end: end)
-        let (st, sp, hv, sl) = await (steps, speed, hrv, sleep)
-
-        var out: [HealthDay] = []
-        var d = start
-        while d < end {
-            let k = HealthCalendar.key(d)
-            if let s = st[k], s >= 0 {
-                out.append(HealthDay(date: k, steps: Int(s.rounded()),
-                                     walkingSpeedMS: sp[k].map { ($0 * 100).rounded() / 100 },
-                                     hrvMs: hv[k].map { ($0 * 10).rounded() / 10 },
-                                     sleepH: sl[k].map { ($0 * 100).rounded() / 100 }))
-            }
-            d = HealthCalendar.addDays(1, to: d)
-        }
-        return out
-    }
-
-    /// One value per calendar day (local midnight to midnight). A type that was not
-    /// allowed or has no data simply gives no values.
-    private func daily(_ id: HKQuantityTypeIdentifier, _ option: HKStatisticsOptions, unit: HKUnit,
-                       start: Date, end: Date) async -> [String: Double] {
-        let type = HKQuantityType(id)
-        let range = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
-        let query = HKStatisticsCollectionQueryDescriptor(
-            predicate: HKSamplePredicate.quantitySample(type: type, predicate: range),
-            options: option, anchorDate: start, intervalComponents: DateComponents(day: 1))
-        guard let collection = try? await query.result(for: store) else { return [:] }
-        var out: [String: Double] = [:]
-        collection.enumerateStatistics(from: start, to: end) { stats, _ in
-            let q = option == .cumulativeSum ? stats.sumQuantity() : stats.averageQuantity()
-            if let q { out[HealthCalendar.key(stats.startDate)] = q.doubleValue(for: unit) }
-        }
-        return out
-    }
-
-    /// Hours asleep per day: every "asleep" stretch (core, deep, REM or unspecified),
-    /// overlaps from several sources merged so nothing counts twice, credited to the
-    /// day on which it ended (last night's sleep belongs to this morning).
-    private func sleepHours(start: Date, end: Date) async -> [String: Double] {
-        let type = HKCategoryType(.sleepAnalysis)
-        // Nights that end on the first day began the evening before.
-        let range = HKQuery.predicateForSamples(withStart: start.addingTimeInterval(-18 * 3600), end: end, options: [])
-        let query = HKSampleQueryDescriptor(
-            predicates: [.categorySample(type: type, predicate: range)],
-            sortDescriptors: [SortDescriptor(\.startDate)])
-        guard let samples = try? await query.result(for: store) else { return [:] }
-        let asleep = HKCategoryValueSleepAnalysis.allAsleepValues.map(\.rawValue)
-        let spans = samples.filter { asleep.contains($0.value) }.map { ($0.startDate, $0.endDate) }
-        return SleepMath.hoursPerDay(spans, from: start, to: end)
-    }
-}
-#endif
+// Apple Health itself is read through Peter's `HealthKitManager`: see `HarnessHealth.swift`.
 
 /// Sleep arithmetic, kept apart so it can be tested without HealthKit.
 enum SleepMath {

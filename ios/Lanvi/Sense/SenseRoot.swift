@@ -100,6 +100,6 @@ struct LanviSense: ViewModifier {
 }
 
 extension View {
-    /// Apple Health and the face summary: see `ios/Lanvi/Sense/`.
+    /// Apple Health and the raw face frames: see `ios/SENSORS.md`.
     func lanviSense(_ store: AppStore) -> some View { modifier(LanviSense(store: store)) }
 }

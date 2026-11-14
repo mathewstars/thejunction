@@ -172,7 +172,7 @@ enum API {
         var timePlayedS: Double?
         var breathsCompleted: Int?
         // focus and breathing
-        var face: FaceSummary?
+        var faceRaw: FaceRaw?
         // checkin
         var goodThings: [CheckinItem]?
         var plan: CheckinItem?
@@ -182,24 +182,13 @@ enum API {
         static func newId() -> String { UUID().uuidString.lowercased() }
     }
 
-    struct FaceSummary: Codable, Equatable {
-        var smileRatePerMin: Double?
-        var smileIntensity: Double?
-        var facialActivity: Double?
-        var blinkRatePerMin: Double?
-        var lookDownShare: Double?
-        var headTiltDeg: Double?
-        var smileTimeShare: Double?
-        var eyeSmileShare: Double?
-        var smileResponseShare: Double?
-        var smileResponseLatencyS: Double?
-        var browDownShare: Double?
-        var innerBrowUpShare: Double?
-        var blinkDurationMs: Double?
-        var headPitchDeg: Double?
-        var headMovement: Double?
-        var smileAsymmetry: Double?
-        var trackingQuality: Double
+    /// Raw face frames (`docs/face-raw.md`): the server computes every face measure.
+    struct FaceRaw: Codable, Equatable {
+        var rateHz: Int
+        var channels: [String]
+        var samples: [[Double]]
+        var tracked: [Int]?
+        var momentsMs: [Int]?
     }
 
     /// Either a catalog id or a few typed words, never both.

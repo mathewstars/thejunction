@@ -22,24 +22,23 @@ struct SenseScene<Actions: View>: View {
             let buttonY = h - (compact ? 16 : 8) - 30
             let actionsHeight: CGFloat = 60 + 44            // the button and a quiet line under it
             let fox = min(h * (compact ? 0.36 : 0.40), w * 0.80)
-            let feet = buttonY - actionsHeight + 12 - 24
-            let hill = feet - fox * 0.30
+            // Lanvi sits in the painting's hollow, as on Home, but always clear of the actions.
+            let insets = geo.safeAreaInsets
+            let world = WorldFrame(screen: CGSize(width: w, height: h + insets.top + insets.bottom))
+            let hollow = world.point(WorldFrame.hollow.x, WorldFrame.hollow.y)
+            let actionsTop = buttonY + 30 - actionsHeight
+            let feet = min(hollow.y - insets.top + fox * 0.03, actionsTop - 16)
             let foxCenter = CGPoint(x: w / 2, y: feet - fox / 2)
             let top: CGFloat = compact ? 56 : 76
 
             ZStack(alignment: .top) {
-                SkyScene(top: night ? Theme.nightTop : Color(hex: 0x2C5FDB),
-                         bottom: night ? Theme.nightBottom : Color(hex: 0x8DB8F8),
-                         hillTop: hill + geo.safeAreaInsets.top)
+                PaintedWorld(scene: night ? .night : .at(hour: Calendar.current.component(.hour, from: Date())))
 
-                ZStack {
-                    HomeTailGlow(pose: pose, glow: 0.55, foxSize: fox)
-                    LanviView(pose: pose, size: fox, bounceTrigger: bounce)
-                }
-                .frame(width: fox * 2, height: fox * 2)
-                .position(foxCenter)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+                LanviView(pose: pose, size: fox, bounceTrigger: bounce)
+                    .frame(width: fox * 2, height: fox * 2)
+                    .position(foxCenter)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
 
                 VStack {
                     Spacer(minLength: 0)
@@ -178,7 +177,7 @@ struct FaceIndicator: View {
         .background(Capsule().fill(.black.opacity(0.18)))
         .padding(.top, 14)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Lanvi is watching your face for this game. Only a few numbers are kept.")
+        .accessibilityLabel("Lanvi is watching your face for this game. Only numbers, never a picture.")
     }
 }
 

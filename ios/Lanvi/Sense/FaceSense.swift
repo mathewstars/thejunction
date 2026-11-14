@@ -8,7 +8,8 @@ import SwiftUI
 /// - Asked once, kindly, before the first game; "Not now" is an equal answer.
 /// - Only with a yes, only during those two games, only with a TrueDepth camera.
 /// - The answer can be changed any time from the Help screen.
-/// - Numbers only reach the activity record (`face`); nothing else is kept.
+/// - Numbers only reach the activity record (`face_raw`, see `docs/face-raw.md`):
+///   no picture, video or face mesh is ever kept or sent.
 ///
 /// Launch arguments for screenshots and tests: `-faceAsk` asks even where face
 /// tracking cannot run (the simulator), `-faceReset` forgets the answer.
@@ -83,18 +84,17 @@ final class FaceSense {
         shared.tracker?.mark()
     }
 
-    /// The game ended with a record: stop and attach the summary, if there is a good one.
+    /// The game ended with a record: stop and attach the raw frames, if any were tracked.
     func attach(to record: API.ActivityIn) -> API.ActivityIn {
         guard let t = tracker else { return record }
         tracker = nil
         isOn = false
         var r = record
-        guard r.type == .focus || r.type == .breathing, let face = t.finish() else { return r }
-        r.face = face
+        guard r.type == .focus || r.type == .breathing,
+              let raw = t.finish(seconds: r.durationS) else { return r }
+        r.faceRaw = raw
         #if DEBUG
-        if let data = try? API.encoder.encode(face), let s = String(data: data, encoding: .utf8) {
-            print("lanvi-sense: face \(s)")
-        }
+        print("lanvi-sense: face_raw \(raw.samples.count) frames at \(raw.rateHz) Hz, \(raw.tracked?.filter { $0 == 1 }.count ?? raw.samples.count) tracked, \(raw.momentsMs?.count ?? 0) moments")
         #endif
         return r
     }

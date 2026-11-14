@@ -120,7 +120,7 @@ final class HealthSync {
 
     private var hasSource: Bool {
         #if canImport(HealthKit)
-        return Self.useSamples || HealthKitSource.isAvailable
+        return Self.useSamples || HarnessHealthSource.isAvailable
         #else
         return true
         #endif
@@ -137,7 +137,7 @@ final class HealthSync {
     private func source() -> (any HealthSource)? {
         if Self.useSamples { return SampleHealthSource() }
         #if canImport(HealthKit)
-        return HealthKitSource.isAvailable ? HealthKitSource() : nil
+        return HarnessHealthSource.isAvailable ? HarnessHealthSource() : nil
         #else
         return nil
         #endif
