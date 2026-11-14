@@ -142,12 +142,7 @@ struct WhatHelpsView: View {
         // Never wait for the server: Lanvi answers at once, the choice is sent in the
         // background (and again on the next open if it does not get through).
         store.sendPreferences(chosen)
-        say = "Got it. Thank you for telling me."
-        proud = true
-        Task {
-            try? await Task.sleep(for: .seconds(demo ? 2.0 : 1.1))
-            onDone()
-        }
+        onDone()
     }
 
     private func react(_ mood: LanviMood) {
