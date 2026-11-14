@@ -80,20 +80,20 @@ struct HomeTailGlow: View, Animatable {
                                                           Self.cyan.opacity(0.5 * strength), .clear]),
                                         center: tail, startRadius: 0, endRadius: rc))
 
-        // 4. Motes: small sparks drifting up from the tail; more with more glow.
+        // 4. Motes: a few soft sparks lifting off the tail tip; a few more with more glow.
         var motes = ctx
         motes.blendMode = .plusLighter
-        let count = 5 + Int(16 * g)
+        let count = 3 + Int(7 * g)
         for i in 0..<count {
             let seed = Double(i) * 12.9898
-            let speed = 0.12 + 0.10 * frac(sin(seed) * 43758.5)
+            let speed = 0.10 + 0.06 * frac(sin(seed) * 43758.5)
             let life = frac(t * speed + frac(sin(seed * 1.7) * 9631.1))
-            let spread = reach * (0.35 + 0.8 * frac(sin(seed * 3.1) * 1531.7))
+            let spread = reach * (0.10 + 0.30 * frac(sin(seed * 3.1) * 1531.7))
             let side = frac(sin(seed * 5.3) * 7123.3) - 0.5
-            let x = tail.x + side * spread + 8 * sin(t * 1.3 + seed)
-            let y = tail.y - life * reach * 1.6
-            let fade = sin(life * .pi)
-            let r = foxSize * (0.012 + 0.018 * frac(sin(seed * 7.7) * 3141.5))
+            let x = tail.x + side * spread + 5 * sin(t * 1.1 + seed)
+            let y = tail.y - life * reach * 0.9
+            let fade = sin(life * .pi) * 0.7
+            let r = foxSize * (0.008 + 0.010 * frac(sin(seed * 7.7) * 3141.5))
             drawMote(&motes, at: CGPoint(x: x, y: y), radius: r, alpha: fade * strength,
                      color: ribbonColors[i % 3])
         }
@@ -134,14 +134,14 @@ struct HomeTailGlow: View, Animatable {
     static func tailOffset(pose: LanviPose, foxSize s: CGFloat) -> CGPoint {
         let (fx, fy, aspect): (CGFloat, CGFloat, CGFloat) = {
             switch pose {
-            case .cheer: return (0.14, 0.78, 322.0 / 373)
-            case .curious: return (0.82, 0.76, 305.0 / 363)
-            case .love: return (0.84, 0.74, 383.0 / 387)
-            case .surprised: return (0.16, 0.76, 296.0 / 396)
-            case .meh: return (0.82, 0.84, 277.0 / 334)
-            case .run: return (0.18, 0.32, 399.0 / 315)
-            case .grumpy: return (0.76, 0.28, 339.0 / 334)
-            case .peek: return (0.50, 0.86, 308.0 / 194)
+            case .cheer: return (0.13, 0.80, 953.0 / 1000)
+            case .curious: return (0.85, 0.78, 828.0 / 1000)
+            case .love: return (0.86, 0.76, 975.0 / 1000)
+            case .surprised: return (0.14, 0.78, 740.0 / 1000)
+            case .meh: return (0.84, 0.86, 827.0 / 1000)
+            case .run: return (0.14, 0.30, 1000.0 / 860)
+            case .grumpy: return (0.78, 0.26, 1000.0 / 960)
+            case .peek: return (0.50, 0.88, 1000.0 / 603)
             }
         }()
         let (rw, rh) = aspect < 1 ? (s * aspect, s) : (s, s / aspect)

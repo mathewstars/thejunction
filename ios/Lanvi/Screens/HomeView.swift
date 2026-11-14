@@ -81,7 +81,15 @@ struct HomeView: View {
             let L = Layout(size: geo.size, away: away)
 
             ZStack(alignment: .top) {
-                SkyScene(top: sky.top, bottom: sky.bottom, hillTop: L.hill)
+                // The sky's own gradient, with a stop at the horizon so dawn stays clean.
+                LinearGradient(stops: [
+                    .init(color: sky.top, location: 0),
+                    .init(color: sky.mid, location: max(0.05, L.hill / max(L.size.height, 1) * 0.55)),
+                    .init(color: sky.horizon, location: L.hill / max(L.size.height, 1)),
+                    .init(color: sky.horizon, location: 1),
+                ], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+                SkyScene(top: .clear, bottom: .clear, hillTop: L.hill)
                 if sky.aurora > 0 {
                     HomeAuroraBoost(strength: sky.aurora, height: L.hill)
                         .allowsHitTesting(false)
@@ -137,8 +145,11 @@ struct HomeView: View {
                 }
 
                 // One action, pinned above the home bar.
+                // The zoom source is the whole action area, which is always there:
+                // closing a screen must never zoom back into a button that is gone.
                 actions
                     .frame(width: w - 48)
+                    .homeZoomSource("today", in: zoom)
                     .position(x: w / 2, y: L.buttonY)
                     .opacity(arrived && !showGrowth ? 1 : 0)
                     .offset(y: arrived ? 0 : 24)
@@ -215,7 +226,8 @@ struct HomeView: View {
 
     private func speech(_ L: Layout) -> some View {
         let top: CGFloat = L.compact ? 64 : 80
-        let bottom = max(away ? L.hill - 70 : L.foxTop - 12, top + 90)
+        // Clear air above the ear tips (and the little marks) in every pose.
+        let bottom = max(away ? L.hill - 70 : L.foxTop - 28, top + 90)
         return VStack {
             Spacer(minLength: 0)
             Button { open(.chat) } label: {
@@ -288,7 +300,6 @@ struct HomeView: View {
                 moreButton
                 Button(TodayCopy.button(k)) { open(.activity(k)) }
                     .buttonStyle(HomePrimaryStyle())
-                    .homeZoomSource("today", in: zoom)
                 chatButton
             }
         case .story:
@@ -296,7 +307,6 @@ struct HomeView: View {
                 moreButton
                 Button("Hear my story") { open(.story) }
                     .buttonStyle(HomePrimaryStyle())
-                    .homeZoomSource("today", in: zoom)
                 chatButton
             }
         case .realWorld(let s):
@@ -379,12 +389,13 @@ struct HomeView: View {
     }
 
     /// Sky colours and extra aurora for the time of day; the evening aurora follows the glow.
-    private var sky: (top: Color, bottom: Color, aurora: Double) {
+    private var sky: (top: Color, mid: Color, horizon: Color, aurora: Double) {
         switch store.dayPart {
-        case .morning: return (Color(hex: 0x4B67CF), Color(hex: 0xF6C9CF), 0)
-        case .day: return (Color(hex: 0x2C5FDB), Color(hex: 0x9EC4FF), 0)
-        case .evening: return (Theme.nightTop, Theme.nightBottom, 0.45 + 0.45 * store.glow)
-        case .night: return (Color(hex: 0x0D1B52), Color(hex: 0x33519E), 0.55 + 0.45 * store.glow)
+        // A clean, luminous dawn: soft blue into a little warm peach at the horizon.
+        case .morning: return (Color(hex: 0x4F87EC), Color(hex: 0x8DB8F8), Color(hex: 0xFFDCC8), 0)
+        case .day: return (Color(hex: 0x2C5FDB), Color(hex: 0x5E8FEE), Color(hex: 0xB4D2FF), 0)
+        case .evening: return (Theme.nightTop, Color(hex: 0x2B47A8), Theme.nightBottom, 0.45 + 0.45 * store.glow)
+        case .night: return (Color(hex: 0x0D1B52), Color(hex: 0x1B2F7A), Color(hex: 0x33519E), 0.55 + 0.45 * store.glow)
         }
     }
 
@@ -405,6 +416,9 @@ struct HomeView: View {
     // MARK: Moments
 
     private func open(_ c: Cover) {
+        #if DEBUG
+        if demo { print("lanvi-demo: open \(c.id), cover now \(cover?.id ?? "none")") }
+        #endif
         cover = c
     }
 
