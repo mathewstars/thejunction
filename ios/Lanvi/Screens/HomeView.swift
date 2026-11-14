@@ -9,6 +9,7 @@ struct HomeView: View {
 
     @Environment(AppStore.self) private var store
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Cover: Identifiable {
         case activity(ActivityKind), help, mind, chat
@@ -51,6 +52,21 @@ struct HomeView: View {
     /// When the reward last played: the sky flares with it.
     @State private var skyFlare: Date?
     @State private var celebrating = false
+    // The reward's level strip: what it shows while the XP counts up.
+    /// The XP the reward shows while it counts up (nil: the store's XP).
+    @State private var shownXP: Int?
+    @State private var barLevel = 1
+    @State private var barProgress: Double = 0
+    @State private var barFlash = false
+    /// "20 XP to level 7", once the bar has filled.
+    @State private var nextLine: String?
+    @State private var sparks: SparkFlight?
+    @State private var sparkPop: SparkPop?
+    /// "Level 7" over the snow, during a level up.
+    @State private var levelTitle: Int?
+    /// One light tick per step of the bar; one stronger one for a level up.
+    @State private var tick = 0
+    @State private var levelHaptic = 0
     @State private var showGrowth = false
     @State private var helpBlock: API.CrisisBlock?
     @State private var size: CGSize = .zero
@@ -146,6 +162,17 @@ struct HomeView: View {
                         .allowsHitTesting(false)
                 }
 
+                // The reward's sparks, and "Level 7" where "+10 XP" was.
+                HomeSparks(flight: sparks, pop: sparkPop)
+                    .frame(width: w, height: geo.size.height)
+                if let levelTitle {
+                    HomeLevelTitle(level: levelTitle, night: store.worldScene == .night)
+                        .id(levelTitle)
+                        .position(x: L.foxCenter.x, y: L.foxTop - 30)
+                        .transition(.opacity)
+                        .allowsHitTesting(false)
+                }
+
                 // Top corners: Help, and the day pill.
                 HStack {
                     Button { open(.help) } label: { Image(systemName: "lifepreserver.fill") }
@@ -159,6 +186,10 @@ struct HomeView: View {
                             .accessibilityLabel("Offline. Your activities are saved and sent later.")
                     }
                     Spacer()
+                    Button { sheet = .growth } label: { HomeLevelChip(level: LanviLevel(xp: shownXP ?? store.xp)) }
+                        .buttonStyle(SpeechPressStyle())
+                        .accessibilityIdentifier("home.level")
+                        .accessibilityLabel("Level \(LanviLevel(xp: store.xp).level). Shows how Lanvi is growing.")
                     Button { sheet = .growth } label: { dayPill }
                         .buttonStyle(SpeechPressStyle())
                         .accessibilityIdentifier("home.day")
@@ -170,7 +201,7 @@ struct HomeView: View {
                 // The XP moment: growth shows itself, then steps back.
                 if showGrowth {
                     growthStrip
-                        .position(x: w / 2, y: L.buttonY - 64)
+                        .position(x: w / 2, y: L.buttonY - 52)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
 
@@ -189,7 +220,8 @@ struct HomeView: View {
                     .offset(y: arrived ? 0 : 24)
 
 
-                if let stage = store.grewUp {
+                // Growing up plays after a level up's title, never on top of it.
+                if let stage = store.grewUp, levelTitle == nil {
                     HomeGrowUpMoment(stage: stage) { store.grewUp = nil }
                         .transition(.opacity)
                         .zIndex(10)
@@ -199,6 +231,8 @@ struct HomeView: View {
             .onChange(of: geo.size) { _, s in size = s; insets = geo.safeAreaInsets }
         }
         .sensoryFeedback(.success, trigger: haptic)
+        .sensoryFeedback(.impact(weight: .light), trigger: tick)
+        .sensoryFeedback(.impact(weight: .heavy), trigger: levelHaptic)
         .onChange(of: store.celebration) { _, c in
             if let c { celebrate(c) }
         }
@@ -255,7 +289,7 @@ struct HomeView: View {
     /// tail pointing down to the face. During the reward it lifts a little to make
     /// room for "+10 XP" (an offset, so nothing is laid out again while it moves).
     private func speech(_ L: Layout) -> some View {
-        let lift: CGFloat = pop != nil ? 58 : 0
+        let lift: CGFloat = pop != nil || levelTitle != nil ? 58 : 0
         let target = away
             ? CGPoint(x: L.foxCenter.x - L.fox * 0.1, y: L.foxCenter.y - L.fox * 0.55)
             : L.stage.speechTarget
@@ -283,25 +317,11 @@ struct HomeView: View {
         .animation(.spring(response: 0.5, dampingFraction: 0.7), value: store.daysTogether)
     }
 
-    /// Stage and XP, shown only in the XP moment: type and one bar on the snow, no box.
+    /// Level, stage and XP, shown only in the XP moment: type and one bar on the snow, no box.
     private var growthStrip: some View {
-        let range = store.stageRange
-        let progress: Double = {
-            guard let next = range.next, next > range.start else { return 1 }
-            return min(max(Double(store.xp - range.start) / Double(next - range.start), 0), 1)
-        }()
-        return VStack(spacing: 8) {
-            HStack {
-                Text(TodayCopy.stageName(store.stage))
-                Spacer()
-                Text(range.next.map { "\(store.xp) / \($0) XP" } ?? "\(store.xp) XP")
-                    .contentTransition(.numericText(value: Double(store.xp)))
-            }
-            .font(Theme.rounded(17, .heavy))
-            .foregroundStyle(Theme.ink)
-            HomeProgressBar(progress: progress, height: 12)
-        }
-        .frame(width: max(size.width - 48, 200))
+        HomeLevelStrip(level: barLevel, stage: store.stage, xp: shownXP ?? store.xp,
+                       progress: barProgress, flash: barFlash, nextLine: nextLine)
+            .frame(width: max(size.width - 48, 200))
     }
 
     @ViewBuilder private var actions: some View {
@@ -458,7 +478,8 @@ struct HomeView: View {
                 openAfterSheet(.activity(k))
             }
         case .growth:
-            HomeGrowthSheet(stage: store.stage, xp: store.xp, stageStart: store.stageRange.start,
+            HomeGrowthSheet(stage: store.stage, xp: store.xp, level: LanviLevel(xp: store.xp),
+                            stageStart: store.stageRange.start,
                             nextStageAt: store.stageRange.next, daysTogether: store.daysTogether) {
                 openAfterSheet(.mind)
             }
@@ -495,17 +516,37 @@ struct HomeView: View {
         }
     }
 
-    /// The reward: the growth bar slides up, Lanvi hops for joy, "+10 XP" pops,
-    /// the bar fills and the day count ticks. No light effects on the fox.
+    /// The reward: the level strip slides up, Lanvi hops for joy, "+10 XP" pops and
+    /// a handful of sparks bursts out of it and flies into Lanvi; the bar fills one
+    /// tick as they land while the XP counts up, then "20 XP to level 7" shows.
+    /// On a level up: the bar fills, flashes and starts again, "Level 7" rises,
+    /// a bigger burst and the sky flares. Nothing here waits for the network.
     private func celebrate(_ c: HomeCelebration) {
         #if DEBUG
         FrameMeter.mark("reward start")
         #endif
         celebrating = true
+        let start = Date()
+        let from = store.xp
+        let plan = RewardPlan(from: from, gained: c.xpGained)
         if c.xpGained > 0 {
+            let now = LanviLevel(xp: from)
+            shownXP = from
+            barLevel = now.level
+            barProgress = now.progress
+            barFlash = false
+            nextLine = nil
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { showGrowth = true }
-            // What they did lights up Lanvi's sky.
-            skyFlare = Date()
+            // What they did lights up Lanvi's sky: at once, or with the new level.
+            skyFlare = start.addingTimeInterval(plan.levelStep.map { plan.stepTime($0) } ?? 0)
+            if !reduceMotion {
+                let L = Layout(size: size, insets: insets, away: away)
+                sparks = SparkFlight(start: start,
+                                     origin: CGPoint(x: L.foxCenter.x, y: L.foxTop - 30),
+                                     target: CGPoint(x: L.foxCenter.x, y: L.foxCenter.y + L.fox * 0.12),
+                                     spread: L.fox * 0.45,
+                                     plan: RewardPlanTimes(plan))
+            }
         }
         Task {
             try? await Task.sleep(for: .milliseconds(c.xpGained > 0 ? 350 : 150))
@@ -516,22 +557,82 @@ struct HomeView: View {
             haptic &+= 1
             if c.xpGained > 0 {
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) { pop = c }
+                await countUp(c, plan: plan, start: start)
             }
-            try? await Task.sleep(for: .seconds(2.8))
+            // The strip stays a little longer than the old "+10 XP" did, then steps back.
+            await wait(until: start, plus: c.xpGained > 0 ? 4.65 + plan.pause : 3.15)
             #if DEBUG
             FrameMeter.mark("pop away")
             #endif
-            withAnimation(.easeOut(duration: 0.3)) { pop = nil }
+            withAnimation(.easeOut(duration: 0.3)) { pop = nil; levelTitle = nil }
             withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { showGrowth = false }
+            sparks = nil
+            sparkPop = nil
             try? await Task.sleep(for: .seconds(0.8))
             while store.grewUp != nil { try? await Task.sleep(for: .milliseconds(200)) }
             #if DEBUG
             FrameMeter.mark("settle")
             #endif
             celebrating = false
+            shownXP = nil
+            nextLine = nil
             store.celebration = nil
             settle()
         }
+    }
+
+    /// The bar's ticks, each when its spark lands (the same times under Reduce
+    /// Motion, without the sparks).
+    private func countUp(_ c: HomeCelebration, plan: RewardPlan, start: Date) async {
+        for (i, value) in plan.values.enumerated() {
+            let k = i + 1
+            await wait(until: start, plus: plan.stepTime(k))
+            guard store.celebration?.id == c.id else { return }
+            let level = LanviLevel(xp: value)
+            if k == plan.levelStep {
+                #if DEBUG
+                FrameMeter.mark("level up")
+                #endif
+                // Full, a flash, the title and a bigger burst; one stronger tick.
+                withAnimation(.easeOut(duration: 0.18)) { barProgress = 1; shownXP = value }
+                withAnimation(.easeOut(duration: 0.12)) { barFlash = true }
+                levelHaptic &+= 1
+                withAnimation(.easeOut(duration: 0.2)) { pop = nil }
+                levelTitle = level.level
+                if !reduceMotion, size != .zero {
+                    let L = Layout(size: size, insets: insets, away: away)
+                    sparkPop = SparkPop(start: Date(), center: CGPoint(x: L.foxCenter.x, y: L.foxTop - 30),
+                                        radius: L.fox * 0.6)
+                }
+                try? await Task.sleep(for: .milliseconds(300))
+                withAnimation(.easeOut(duration: 0.25)) { barFlash = false }
+                var reset = Transaction()
+                reset.disablesAnimations = true
+                withTransaction(reset) { barLevel = level.level; barProgress = 0 }
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { barProgress = level.progress }
+            } else {
+                withAnimation(.spring(response: 0.22, dampingFraction: 0.8)) {
+                    shownXP = value
+                    barLevel = level.level
+                    barProgress = level.progress
+                }
+                tick &+= 1
+            }
+        }
+        guard store.celebration?.id == c.id, let last = plan.values.last else { return }
+        let level = LanviLevel(xp: last)
+        withAnimation(LanviTiming.pop) { nextLine = "\(level.toNext) XP to level \(level.level + 1)" }
+        // "Level 7" stays a moment, then makes way (for growing up, if that is next).
+        if let k = plan.levelStep {
+            await wait(until: start, plus: plan.stepTime(k) + 1.7)
+            withAnimation(.easeOut(duration: 0.3)) { levelTitle = nil }
+        }
+    }
+
+    /// Sleeps until `seconds` after `start` (at once if that has passed).
+    private func wait(until start: Date, plus seconds: Double) async {
+        let left = seconds - Date().timeIntervalSince(start)
+        if left > 0 { try? await Task.sleep(for: .seconds(left)) }
     }
 
     // MARK: Demo and screenshots
@@ -569,6 +670,12 @@ struct HomeView: View {
             // `-demoDelay 6`: a few seconds of idle life first (for recordings).
             try? await Task.sleep(for: .seconds(value("-demoDelay").flatMap(Double.init) ?? 0.9))
             await store.finish(Self.sample(kind), kind: kind)
+        }
+        // `-demoLevelUp`: the demo starts 5 XP short of a new level (see LanviApp), and
+        // one activity is sent, so a level up plays on demand.
+        if args.contains("-demoLevelUp"), store.mode == .demo, value("-demoPlay") == nil {
+            try? await Task.sleep(for: .seconds(value("-demoDelay").flatMap(Double.init) ?? 1.4))
+            await store.finish(Self.sample(.focus), kind: .focus)
         }
         if args.contains("-flow") { await runFlow(); return }
         if args.contains("-feel") { await runFeel(); return }
