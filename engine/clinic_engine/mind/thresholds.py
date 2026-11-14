@@ -115,8 +115,6 @@ class Thresholds:
     look_down_min: float = 0.3  # mean(eyeLookDownLeft, eyeLookDownRight)
     brow_down_min: float = 0.3  # mean(browDownLeft, browDownRight)
     inner_brow_up_min: float = 0.3  # browInnerUp
-    lip_down_min: float = 0.3  # mean(mouthFrownLeft, mouthFrownRight): lip corners pulled down
-    lip_press_min: float = 0.3  # mean(mouthPressLeft, mouthPressRight): lips pressed together
     # Movement is measured on short blocks of frames (about 0.1 s, never shorter
     # than one frame) so that the frame rate does not change the result.
     face_motion_block_s: float = 0.1
@@ -312,7 +310,7 @@ ACTIVITY_MIN_SCALE = {
     "smile_time_share": 0.03, "eye_smile_share": 0.05, "smile_response_share": 0.1,
     "smile_response_latency_s": 0.3, "brow_down_share": 0.03, "inner_brow_up_share": 0.03,
     "blink_duration_ms": 15.0, "head_pitch_deg": 2.0, "head_movement": 0.05,
-    "smile_asymmetry": 0.03, "lip_down_share": 0.03, "lip_press_share": 0.03,
+    "smile_asymmetry": 0.03,
 }
 
 METRICS = ("steps", "walking_speed_m_s", "hrv_ms", "sleep_h")

@@ -121,8 +121,6 @@ General rules:
 | `look_down_share` | Share of tracked frames where the mean of `eyeLookDownLeft` and `eyeLookDownRight` is at or above the threshold. | 0.3 |
 | `brow_down_share` | Same with the mean of `browDownLeft` and `browDownRight`. | 0.3 |
 | `inner_brow_up_share` | Same with `browInnerUp`. | 0.3 |
-| `lip_down_share` | Same with the mean of `mouthFrownLeft` and `mouthFrownRight` (lip corners pulled down). | 0.3 |
-| `lip_press_share` | Same with the mean of `mouthPressLeft` and `mouthPressRight` (lips pressed together). | 0.3 |
 | `facial_activity` | Mean change per second of every blend shape except the two blink channels, between neighbouring 0.1 s blocks, divided by 0.5 and clipped to 0 to 1. A still face (ARKit jitter, about 0.05 per second) gives about 0.1; a lively face (talking, smiling, about 0.3 per second) about 0.6. Estimated, not yet calibrated on recordings. | full scale 0.5 per second |
 | `head_pitch_deg` | Mean `headPitch` (looking down is higher). | - |
 | `head_tilt_deg` | Mean of \|`headRoll`\|. | - |

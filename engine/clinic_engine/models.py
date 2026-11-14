@@ -248,12 +248,6 @@ class FaceSummary(Strict):
     smile_asymmetry: Optional[float] = Field(None, ge=0, le=1,
                                              description="Left-right difference of smiles, "
                                                          "0 (even) to 1.")
-    lip_down_share: Optional[float] = Field(None, ge=0, le=1,
-                                            description="Share of the time with the lip "
-                                                        "corners pulled down, 0 to 1.")
-    lip_press_share: Optional[float] = Field(None, ge=0, le=1,
-                                             description="Share of the time with the lips "
-                                                         "pressed together, 0 to 1.")
     tracking_quality: float = Field(ge=0, le=1, description="0 to 1. Below 0.6 the summary is "
                                     "kept but never used for the person's own normal.")
 
