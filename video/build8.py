@@ -71,7 +71,7 @@ def windows(src, d, wins, ss=0.0, tag=None, dim=-0.10, fin=0.0, fout=0.0):
         ins = ["-loop", "1", "-t", str(d), "-i", src]; vf = f"[0:v]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,fps=24,eq=brightness={dim}[b0];"
     else:
         L = dur_of(src) - 0.1; speed = min(1.0, (L - ss) / d); ins = ["-ss", str(ss), "-i", src]
-        slow = ",minterpolate=fps=24:mi_mode=blend" if speed < 0.7 else ""
+        slow = ",minterpolate=fps=24:mi_mode=mci:mc_mode=aobmc:vsbmc=1" if speed < 0.985 else ""
         vf = f"[0:v]setpts=PTS/{speed}{slow},scale=1280:720,fps=24,eq=brightness={dim}[b0];"
     cur = "[b0]"
     for i, (png, a, b) in enumerate(wins):
@@ -92,6 +92,19 @@ def from_light(fn_out, d, fin=0.7):
     """The next shot comes up out of the same light."""
     tmp = fn_out; o2 = tmp.replace(".mp4", "_f.mp4")
     run(["-i", tmp, "-vf", f"fade=t=in:d={fin}:color={AURORA}", "-t", str(d)] + V + [o2]); os.replace(o2, tmp)
+def measure_screen(app_src, panel, d, ss=1.0):
+    """One calm screen for the three measures: the app on the left, the three lines arriving on the right."""
+    o = out()
+    vf = f"[0:v]fps=24,scale=-2:680,pad=640:720:(ow-iw)/2:20:color={BGHEX}[l];[1:v]fps=24,tpad=stop_mode=clone:stop_duration=9[r];[l][r]hstack[v]"
+    run(["-stream_loop", "3", "-ss", str(ss), "-i", app_src, "-i", panel, "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
+def two_step_card(first, second, d, at2):
+    """One card over the scrolling numbers: the first statement, then the second joins it."""
+    o = out(); H = Image.open("wall.png").size[1]
+    vf = (f"[0:v]fps=24,crop=1280:720:0:'min({H - 720},t*40)'[w];[1:v]format=rgba[a];[2:v]format=rgba,fade=t=in:st={at2}:d=0.5:alpha=1[b];"
+          f"[w][a]overlay=0:0[x];[x][b]overlay=0:0:enable='gte(t,{at2})',fade=t=in:d=0.3[v]")
+    run(["-loop", "1", "-i", "wall.png", "-loop", "1", "-i", first, "-loop", "1", "-t", str(d), "-i", second, "-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
+text_png("c8_num.png", [("Numbers only. Never pictures.", 56, 150, INK), ("How far each part of the face moved, thirty times a second. No photo or video leaves the phone.", 21, 232, GLOW)], bg=(11, 19, 30, 165))
+text_png("c8_gem.png", [("Gemini reads them. Code checks its work.", 40, 372, INK), ("One real run on our server:  3 smiles reported   \u00b7   2 confirmed by code   \u00b7   1 dropped", 24, 440, GLOW), ("Only confirmed items reach the clinician.", 21, 492, MUT)])
 n = [0]
 def out(): n[0] += 1; return f"seg8/{n[0]:03d}.mp4"
 def check(o, d):
@@ -101,7 +114,8 @@ def clip(src, d, ss=0.0, speed=1.0, zoom=1.0, fx=0.5, fy=0.5, tag="tag_gen.png",
     if ss + d * speed > L: ss = max(0.0, L - d * speed)
     if ss + d * speed > L: speed = (L - ss) / d
     tagp = tag if os.path.exists(tag) else f"{OLD}/{tag}"
-    vf = f"[0:v]setpts=PTS/{speed},scale=1280:720,crop={cw:.0f}:{ch:.0f}:{(1280-cw)*fx:.0f}:{(720-ch)*fy:.0f},scale=1280:720,fps=24[v];[v][1:v]overlay=0:0[w]"
+    slow = ",minterpolate=fps=24:mi_mode=mci:mc_mode=aobmc:vsbmc=1" if speed < 0.985 else ""
+    vf = f"[0:v]setpts=PTS/{speed}{slow},scale=1280:720,crop={cw:.0f}:{ch:.0f}:{(1280-cw)*fx:.0f}:{(720-ch)*fy:.0f},scale=1280:720,fps=24[v];[v][1:v]overlay=0:0[w]"
     ins = ["-ss", str(ss), "-i", src, "-i", tagp]; last = "[w]"
     if cap: ins += ["-i", cap[0]]; vf += f";[w][2:v]overlay=0:0:enable='gte(t,{cap[1]})'[x]"; last = "[x]"
     run(ins + ["-filter_complex", vf, "-map", last, "-t", str(d)] + V + [o]); check(o, d)
@@ -131,12 +145,12 @@ def at(t, fn): T.append((t, fn))
 # v8: new, brighter footage; one untouched Suno take (v8/track8.m4a); the same data on screen as v6.
 C = lambda k: f"v8/clips/{k}.mp4"; N8 = lambda k: f"v8/stills/{k}.png"
 def have(k): return os.path.exists(C(k))
-# 1 the clinic door, the six weeks
-at(0.0,  lambda d: clip(C("door"), d, zoom=1.12, fx=0.6, fy=1.0))
-at(4.3,  lambda d: clip(C("door"), d, ss=2.4, zoom=1.12, fx=0.7, fy=1.0))
+# 1 she leaves the clinic; the next appointment
+at(0.0,  lambda d: clip(C("exit"), d, ss=0.2) if have("exit") else clip(C("door"), d, zoom=1.12, fx=0.6, fy=1.0))
+at(4.3,  lambda d: clip(C("card"), d, ss=0.4) if have("card") else clip(C("door"), d, ss=2.4))
 # 2 she finds him
-at(9.6,  lambda d: clip(C("cub"), d))
-at(12.4, lambda d: clip(C("cub"), d, ss=2.9))
+at(8.0,  lambda d: clip(C("cub"), d))
+at(12.6, lambda d: clip(C("cub"), d, ss=3.0, zoom=1.2, fx=0.5, fy=0.3))
 at(15.0, lambda d: clip(C("hold"), d, ss=1.0))
 # the wow: he turns to light and goes into her phone; the next thing we see is the real app
 def reveal(d):
@@ -154,14 +168,10 @@ at(24.3, lambda d: clip(C("grey"), d, ss=0.2))
 at(26.8, lambda d: clip(C("curtains"), d, ss=0.6) if have("curtains") else still(N8("n06"), d, z0=1.0, z1=1.12, fx=0.6, fy=0.4))
 # 4 she said yes; every moment with him is a number
 at(30.7, lambda d: over(C("sofa"), "c_yes.png", d, ss=1.5, speed=0.5))
-at(37.0, lambda d: split(A("focus"), "v8/single1.mp4", d, ss=3.5))
-at(39.4, lambda d: split(A("breathe"), "v8/single0.mp4", d, ss=3.5))
-at(43.0, lambda d: split(C("walk"), "v8/single2.mp4", d, ss=1.0, app=False))
-at(44.3, lambda d: card_wall("c_num.png", d))
-at(46.5, lambda d: card_wall("c_gem.png", d))
-# 5 the questionnaire beside the lines
-at(53.2, lambda d: chart("v8/chart_a.mp4", d))
-at(55.8, lambda d: chart("v8/chart_b.mp4", d))
+at(37.0, lambda d: measure_screen(A("home"), "v8/triple.mp4", d))                 # one screen: the app, and the three lines arriving
+at(44.3, lambda d: two_step_card("c8_num.png", "c8_gem.png", d, at2=2.2))            # one card: numbers only; then Gemini and the check
+# 5 the questionnaire beside the lines, one continuous shot
+at(53.2, lambda d: chart("v8/chart_full.mp4", d))
 # 6 November
 at(61.1, lambda d: clip(C("grey"), d, ss=2.2, zoom=1.15, fx=0.7, fy=0.6))
 at(64.5, lambda d: clip(C("night"), d, ss=0.2, cap=("cap_help.png", 2.8)))
@@ -173,7 +183,7 @@ at(84.5, lambda d: clip(C("return"), d, ss=0.3))
 # 8 the name and the motto
 at(89.1, lambda d: card("c_brand6.png", d, fade=0.8))
 END = 99.4
-FIXED = {0.0, 17.0, 20.6, 89.1}
+FIXED = {0.0, 8.0, 17.0, 20.6, 37.0, 44.3, 53.2, 89.1}
 B = json.load(open("v8/beats8.json"))
 def snap(t, prev):
     best, bs = t, -9
