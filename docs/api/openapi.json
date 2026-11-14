@@ -975,7 +975,7 @@
           "device"
         ],
         "summary": "A few words from the patient (the only free-text field)",
-        "description": "The text is untrusted data. It is classified into enums (code lexicon\nplus the local model through the gates), never followed as an\ninstruction, never logged, and never sent outside the server. The reply\nis a fixed template. When `crisis` is true the help block is included.",
+        "description": "The text is untrusted data. It is classified into enums (code lexicon\nplus the local model through the gates), never followed as an\ninstruction and never logged. When `crisis` is true the help block is\nincluded and the reply is the fixed help line.\n\nCHAT_MODE=fixed (default): the reply is a fixed template and the text is\nnever sent outside the server.\nCHAT_MODE=gemini: for a note that did not open the help screen, and only\nfor a patient who allowed outside processing, the note and today's earlier\nturns go to Gemini, which writes Lanvi's reply (`template_id: gemini`),\nchecked by code. Any failure gives the fixed template.",
         "operationId": "notes_v1_notes_post",
         "requestBody": {
           "content": {
@@ -5191,7 +5191,7 @@
             "maxLength": 280,
             "minLength": 1,
             "title": "Text",
-            "description": "The ONLY free-text field in the API. Untrusted data: classified, never followed, never sent outside the server."
+            "description": "The ONLY free-text field in the API. Untrusted data: classified, never followed. Never sent outside the server, except with CHAT_MODE=gemini (default fixed), where a note that did not open the help screen goes to Gemini so it can write Lanvi's reply."
           }
         },
         "additionalProperties": false,
@@ -5245,7 +5245,8 @@
         "properties": {
           "template_id": {
             "type": "string",
-            "title": "Template Id"
+            "title": "Template Id",
+            "description": "A fixed line's id, or `gemini` when Gemini wrote the reply (CHAT_MODE=gemini)."
           },
           "text": {
             "type": "string",

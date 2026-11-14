@@ -34,7 +34,7 @@ The app never diagnoses. It says "you have moved less than your usual this week"
 | **Today** | Most days: "all as usual" and nothing else. On a change: one sentence about what the app noticed and one suggestion. | The app is quiet by default. No streaks, no guilt about a skipped day. |
 | **The round** | The room through the camera with lights floating in it. Time left, lights caught, pause, "sit down instead". | See "The AR round" below. |
 | **After the round** | "Done." Three answers to the suggestion: I did it, not today, something else. One optional tap: rough, ok, good. | Answers are buttons, not text. |
-| **A few words** | A short text box, about 280 characters. The app answers with one short, warm line. | The answer is picked from a fixed set by the server. It is not a chat. If the note suggests the person needs help, the help screen opens at once. |
+| **A few words** | A short text box, about 280 characters. The app answers with one short, warm line. | The answer is picked from a fixed set by the server, or, when the server's chat mode is on, written by Gemini and checked by the server (see Rules below). If the note suggests the person needs help, the help screen opens at once. |
 | **What works for you** | What the app has learned, in plain words, each with a "not true" button. The person's own rules. At most three questions from the app, answered yes, no or not sure. | The person can always correct the app. Their rules always win. |
 | **Help** | The app is not an emergency service, and where to get help now. | Reachable from every screen. The text comes from the server so the clinic can set it. Wording to be agreed with the Aalto mentors. |
 
@@ -77,7 +77,7 @@ This table is the draft the server is being built against. The exact fields will
 - Never clinical words. Never a diagnosis.
 - Most days the app says nothing.
 - "Not today" is a fine answer and is never argued with.
-- Everything the person typed stays on the clinic's server. It is never sent to an outside model.
+- Everything the person typed stays on the clinic's server and is never sent to an outside model, unless the server's chat mode is switched on (`CHAT_MODE=gemini`, default off): then a note that does not ask for help goes to Gemini so it can write Lanvi's reply. Details in `docs/api/README.md`, "Free text".
 - The help screen is always one tap away.
 
 ## What the clinician sees
