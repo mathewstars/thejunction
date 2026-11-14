@@ -1611,6 +1611,26 @@
         el("li", null, "A rule changes levels, and with them the order of the list and whether a message is sent. One exception, on the safe side: if the fixed rules later raise a rule-lowered flag to “needs review today”, the message goes out once before the rule is applied again. A rule cannot open or close a flag, cannot lower a request for help, and nothing of it reaches the patient."),
         el("li", null, "It is written on the patient's Overview page, under “The clinic's rules for this person”.")))));
 
+    wrap.appendChild(panel("What we checked", null, el("div", { class: "bp-say wide" },
+      el("p", null, "A check on 40 generated pictures, read by the real models on 14 November 2026. Each picture was read as it is, read a second time, and read strictly worse: the same flags, the movement drop deeper and longer, more low notes. 107 flags in all. No patient data; the pictures have the form the server sends and carry the level the fixed rules would give."),
+      table(["Question", "Result"], [
+        ["Does worse ever mean lower?", "No: 0 of 107 flags ended lower in the worse picture, as the models asked and after the floors."],
+        ["Do the models respond to severity, or repeat the level they are shown?", "They respond, unevenly. For 88 flags the fixed rules give the same level in both pictures: the models set 38 higher and none lower. 25 of those end above the fixed rules' level (15 movement drops, 10 unusual days); 13 only return to the fixed rules' level after the models had lowered them. Offers unanswered never rose (0 of 13) and low notes once (1 of 14), although more low notes was part of “worse”. For the other 19 the fixed rules themselves rise; the models went up with 17."],
+        ["How do the models differ from the fixed rules?", "In the pictures as they are, on 18 of 107 flags: 5 raised (3 movement drops, 2 unusual days), 13 lowered by one step (9 weak sessions, 2 less facial movement, 1 low notes, 1 slower reactions). Lowering a supporting signal while a movement drop is held is the opposite of what the fixed rules do. We do not know which is right."],
+        ["Does the second reader change anything?", "Almost never: across all 372 flag readings in the check Gemini agreed 370 times and raised twice, both on a repeat read. On these pictures it is a second signature, not a second opinion."],
+        ["Is the same picture read the same way twice?", "Mostly: 6 of 107 flags got a different level on the second read, each by one step, in 5 of 40 pictures. Four came from the local model, although it runs at temperature 0, and two from Gemini raising. In 2 pictures the movement drop moved between attention and needs review today, so one read decided whether a message would go out. The server reads each picture once and keeps that answer."],
+        ["Is a clinic rule followed, and only where it applies?", "One rule about the movement drop, on 20 pictures: the local model named it on the movement drop 20 times, set that flag to watch 20 times, and never named it on another flag. Of 31 other flags, 4 changed level (2 up, 2 down). Repeat reads alone move about 6 in 100, so 4 of 31 is more than we can call noise and less than we can call an effect."]
+      ].map((r) => el("tr", null, r.map((v) => el("td", null, v)))), "bp-table", { plain: true }),
+      el("h3", { class: "fr-h" }, "Also checked"),
+      el("ul", { class: "plain" },
+        el("li", null, "The script is clinic_engine/triage_check.py; every reading is in docs/checks/triage-check-2026-11-14.json in the repository."),
+        el("li", null, "The automatic tests cover the guard: the form of every answer, the request for help staying urgent whatever a model or a rule says, the two floors, the fixed rules' level coming back when no model answers, a rule ending by itself, and the clinician's words never leaving the server."),
+        el("li", null, "By hand on this server, 14 November 2026, not kept as a script: a rule in English and the same rule in Slovak each lowered one flag for one example patient; a rule about something she does not have changed nothing; removing it restored the level.")))));
+    wrap.appendChild(panel("What we did not check", null, el("div", { class: "bp-say wide" }, el("ul", { class: "plain" },
+      el("li", null, "Whether the levels the models set are the ones a clinician would set. Nobody has compared them; that needs clinicians and is part of the proposed study."),
+      el("li", null, "Whether a model reads every rule the way its author meant it. One rule on generated pictures and three on one example patient is not a test of that."),
+      el("li", null, "Whether Gemini as second reader ever disagrees usefully. In the check it agreed on 370 of 372 flag readings, and on the example patients every time."),
+      el("li", null, "A rule that is wrong or written to silence someone. The system limits it (14 days, a mark in the list, never a request for help) and shows it; it does not judge it.")))));
     wrap.appendChild(panel("What the fixed rules notice", null, el("div", { class: "bp-say" },
       el("p", null, "Seventeen kinds of flag, grouped below, each opened and closed by code. Everything is compared with the person's own normal: the median and usual spread of their last 28 days, leaving out the newest five so that a drop does not move the yardstick it is measured with. Three of them (slowing down, slower reactions, less facial movement) also count a model's reading of a recording once code has confirmed it in the numbers."),
       table(["Flag", "Opens when"], [
@@ -1627,25 +1647,6 @@
         [kind("model_noticed"), "Gemini found a slow decline or fading smiles that the rules above missed, and code confirmed it in the numbers"]
       ].map(cellRow), "bp-table", { plain: true }))));
 
-    wrap.appendChild(panel("What we checked", null, el("div", { class: "bp-say wide" },
-      el("p", null, "A check on 40 generated pictures, read by the real models on 14 November 2026. Each picture was read as it is, read a second time, and read strictly worse: the same flags, the movement drop deeper and longer, more low notes. 107 flags in all. No patient data; the pictures have the form the server sends and carry the level the fixed rules would give."),
-      table(["Question", "Result"], [
-        ["Does worse ever mean lower?", "No: 0 of 107 flags ended lower in the worse picture, as the models asked and after the floors."],
-        ["Do the models respond to severity, or repeat the level they are shown?", "They respond. For 88 flags the fixed rules give the same level in both pictures, so the models decide alone: they set 38 of them higher in the worse picture and none lower. For the other 19 the fixed rules themselves rise; the models went up with 17."],
-        ["How do the models differ from the fixed rules?", "In the pictures as they are, on 18 of 107 flags: 5 raised (3 movement drops, 2 unusual days), 13 lowered by one step (9 weak sessions, 2 less facial movement, 1 low notes, 1 slower reactions). Lowering a supporting signal while a movement drop is held is the opposite of what the fixed rules do. We do not know which is right."],
-        ["Does the second reader change anything?", "Not here: Gemini agreed with the local model on all 107 flags. On these pictures it is a second signature, not a second opinion."],
-        ["Is the same picture read the same way twice?", "Mostly: 6 of 107 flags got a different level on the second read, each by one step, although the local model runs at temperature 0."],
-        ["Is a clinic rule followed, and only where it applies?", "One rule about the movement drop, on 20 pictures: the local model named it on the movement drop 20 times, set that flag to watch 20 times, and never named it on another flag. Of 31 other flags, 4 changed level (2 up, 2 down). Repeat reads alone move about 6 in 100, so 4 of 31 is more than we can call noise and less than we can call an effect."]
-      ].map((r) => el("tr", null, r.map((v) => el("td", null, v)))), "bp-table", { plain: true }),
-      el("ul", { class: "plain" },
-        el("li", null, "The script is clinic_engine/triage_check.py; every reading is in docs/checks/triage-check-2026-11-14.json in the repository."),
-        el("li", null, "The automatic tests cover the guard: the form of every answer, the request for help staying urgent whatever a model or a rule says, the two floors, the fixed rules' level coming back when no model answers, a rule ending by itself, and the clinician's words never leaving the server."),
-        el("li", null, "By hand on this server, 14 November 2026, not kept as a script: a rule in English and the same rule in Slovak each lowered one flag for one example patient; a rule about something she does not have changed nothing; removing it restored the level.")))));
-    wrap.appendChild(panel("What we did not check", null, el("div", { class: "bp-say wide" }, el("ul", { class: "plain" },
-      el("li", null, "Whether the levels the models set are the ones a clinician would set. Nobody has compared them; that needs clinicians and is part of the proposed study."),
-      el("li", null, "Whether a model reads every rule the way its author meant it. One rule on generated pictures and three on one example patient is not a test of that."),
-      el("li", null, "Whether Gemini as second reader ever disagrees usefully. On 107 generated flags and on the example patients it agreed every time."),
-      el("li", null, "A rule that is wrong or written to silence someone. The system limits it (14 days, a mark in the list, never a request for help) and shows it; it does not judge it.")))));
     wrap.appendChild(panel("See it", null, el("p", null, "Open a patient: under “Needs attention” each flag shows what the local model said, what Gemini said, and what the fixed rules alone would say. The Timeline shows each call to a model with what was sent and what came back. One setting on the server puts all levels back on the fixed rules alone.")));
   }
 
