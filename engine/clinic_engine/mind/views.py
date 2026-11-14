@@ -530,8 +530,12 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                                  "noise_mm": fs.get("noise_mm"), "values": fh,
                                  "usual": FF.usual(fine_before), "earlier": len(fine_before),
                                  "needed": FF.OWN_MIN_SESSIONS, "per_region": fs.get("regions"),
-                                 "asymmetry": fs.get("asymmetry")}
-                    if fh and fs.get("quality") in ("good", "partly"):
+                                 "asymmetry": fs.get("asymmetry"),
+                                 # Only a well tracked, quiet session counts toward the own
+                                 # usual: on the first real games the partly tracked ones
+                                 # gave several times the reach of the fully tracked ones.
+                                 "counts": bool(fh) and fs.get("quality") == "good"}
+                    if s["fine"]["counts"]:
                         fine_before.append(fh)
                 if t == "focus":
                     # Revontulet's own measures, as sent (numbers only), or null.
