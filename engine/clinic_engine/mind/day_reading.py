@@ -19,8 +19,10 @@ The parts that are pure code:
 - verify(): every item the model returned, compared with code_view().
 - aggregate(): not needed here; one reading covers the whole window.
 
-Clinician-only. Nothing here reaches the patient, opens or closes attention,
-changes what is offered or feeds the learning review.
+Clinician-only. Nothing here reaches the patient, changes what is offered or
+feeds the learning review. One thing follows from it: when the model finds
+something the fixed rules did not flag and code confirms it, the mind opens a
+low-level flag for the clinic (watchers.watch_model_noticed).
 """
 
 from __future__ import annotations

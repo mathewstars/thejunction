@@ -74,7 +74,7 @@
     ignored: "Offers unanswered", asked_for_help: "Asked for help", low_notes: "Low notes",
     weak_rounds: "Weak sessions", round_mismatch: "Signals disagree", fading: "Slowing down",
     stopped_early: "Stops early", not_played: "Offers not played", slow_reactions: "Slower reactions",
-    flat_face: "Less facial movement", face_flat: "Less facial movement", slower_reactions: "Slower reactions", checkins_stopped: "Check-ins stopped", plans_not_done: "Plans not done",
+    flat_face: "Less facial movement", face_flat: "Less facial movement", model_noticed: "Noticed by the model, confirmed by code", slower_reactions: "Slower reactions", checkins_stopped: "Check-ins stopped", plans_not_done: "Plans not done",
   };
   const ACTION = {
     ar_round: "Light round", ar_round_seated: "Seated light round", walk_10min: "Short walk",
@@ -695,6 +695,12 @@
       if (i.kind === "deviation") return "movement below own normal, " + x.low_days + " low days";
       if (i.kind === "slower_reactions") return "slower than usual in " + x.slower_sessions + " of the last " + x.of_last + " focus games";
       if (i.kind === "face_flat") return "less facial movement in " + x.flat_sessions + " of the last " + x.of_last + " sessions";
+      if (i.kind === "model_noticed") {
+        const parts = [];
+        if (x.daily_channel) parts.push((x.daily_shape === "gradual" ? "a slow decline" : "a lower stretch") + " in " + ({ steps: "steps", walk_speed: "walking speed", sleep_h: "sleep", hrv: "heart-rate variability" }[x.daily_channel] || x.daily_channel) + " over " + x.daily_days + " days that the fixed rule did not flag");
+        if (x.faint_sessions) parts.push("smiles have become faint: in the last " + x.faint_sessions + " sessions the fixed rule counts none and the model found " + x.faint_smiles);
+        return "the model found " + parts.join("; and ") + ". Code confirmed it in the numbers";
+      }
       if (i.kind === "plans_not_done") return x.in_a_row + " plans in a row not carried out";
       if (i.kind === "low_notes") return x.low_notes + " notes labelled low";
       if (i.kind === "weak_rounds") return x.rounds + " weak sessions in a row";
@@ -1334,7 +1340,7 @@
     ["Gemini, as reported", "8 of 8", "8 of 8", "2 of 18"],
     ["Gemini, after code's check (3 correct ones dropped)", "8 of 8", "5 of 8", "1 of 14"]];
   function bpGemini(wrap) {
-    wrap.appendChild(el("p", { class: "lead" }, "Gemini is the second reader. It reads numbers that plain code has already read with fixed rules. In the three reading jobs code checks every item it reports, and the result is shown only to the clinician. In the fourth job it may stop a lesson that code accepted; it cannot add one. It gets no name, no date, no photo or video of the person and, unless the clinic turns on the chat mode, none of the person's words."));
+    wrap.appendChild(el("p", { class: "lead" }, "Gemini is the second reader. It reads numbers that plain code has already read with fixed rules, and code checks every item it reports. When Gemini finds something the fixed rules missed and code confirms it in the numbers, the system raises a low-level flag for the clinic: noticed by the model, confirmed by code. It can also stop a lesson that code accepted; it cannot add one. It gets no name, no date, no photo or video of the person and, unless the clinic turns on the chat mode, none of the person's words."));
     const W = 960, H = 150, BW = 176, BH = 96, GAP = 19;
     const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "bp", role: "img",
       "aria-label": "How a Gemini reading is made: numbers only, an input gate in code, Gemini, an output gate in code, then code checks each item before the clinician sees it." });
@@ -1413,12 +1419,12 @@
       job("1", "Reads how a face moved during one short game", "measured above",
         "about 225 rows, five per second, each with a time and up to 14 numbers (smile, cheeks, blink, brows, gaze, head angle). The phone sent numbers only; a picture never existed on the server.",
         "every smile with its start and end, a blink count, longer stretches such as looking down, and whether a smile followed each pleasant moment.",
-        "compares each smile with its own detection on the full 30 rows per second. Our fixed rule only counts a smile above one fixed level. Gemini judges against this person's own resting level, so it also finds faint smiles. Code keeps such a smile only when the rise is really in the numbers, and shows it apart. A smile that is not in the numbers is dropped.",
-        [go2(leo, "activity", "Leo Virtanen (generated example) → Activity → Focus game"), ", the panel “Two readers on one session”. In his last session the fixed rule counts no smile and Gemini finds three faint ones."]),
+        "compares each smile with its own detection on the full 30 rows per second. Our fixed rule only counts a smile above one fixed level. Gemini judges against this person's own resting level, so it also finds faint smiles. Code keeps such a smile only when the rise is really in the numbers, and shows it apart. A smile that is not in the numbers is dropped. When the last two sessions have only such faint smiles and earlier ones had clear smiles, the system opens a low-level flag for the clinic.",
+        [go2(leo, "activity", "Leo Virtanen (generated example) → Activity → Focus game"), ", the panel “Two readers on one session”. In his last session the fixed rule counts no smile and Gemini finds three faint ones; his Overview shows the flag “Noticed by the model, confirmed by code”."]),
       job("2", "Reads the daily numbers from Apple Health", "measured above",
         "up to 84 days, one row per day with a day number and the weekday instead of a date: steps, walking speed, sleep, heart-rate variability, and more when a watch sends it.",
         "the stretches where something changed against the weeks before, sudden or as a slow slide, and the person's weekly rhythm (for example always fewer steps on Sundays).",
-        "tests each stretch against the same numbers. Our fixed rule flags a day only when it is far outside the person's normal, so it sees sudden drops and mostly misses slow slides. A stretch only Gemini names is kept when the change is in the numbers.",
+        "tests each stretch against the same numbers. Our fixed rule flags a day only when it is far outside the person's normal, so it sees sudden drops and mostly misses slow slides. A stretch only Gemini names is kept when the change is in the numbers. If such a stretch is lower and still going on, the system opens a low-level flag for the clinic.",
         [go2(anna, "overview", "Anna Korhonen (example) → Overview"), ", the panel “Two readers on the daily numbers” at the bottom."]),
       job("3", "Compares one session with the same person's earlier ones", "not measured yet",
         "the session's numbers (reaction time, errors, the face summary) and the person's own usual values, with no identity.",

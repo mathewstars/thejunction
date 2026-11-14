@@ -228,7 +228,7 @@ final class LanviFlowUITests: XCTestCase {
         pause(3.5)
         tap(app.buttons, "Do something more", "done.more")
         pause(1.6)
-        tap(app.buttons, "Breathe with me", "more.breathe")
+        tap(app.buttons, "Sit with me a minute", "more.breathe")
         pause(1.8)
         tap(app.buttons, "Not now", "face.notnow2", wait: 2)
         pause(1.0)

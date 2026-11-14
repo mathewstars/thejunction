@@ -147,7 +147,7 @@ struct HomeView: View {
                     if store.mode == .live, store.link == .offline {
                         Image(systemName: "icloud.slash.fill")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.8))
+                            .foregroundStyle(Theme.inkSecondary)
                             .padding(.leading, 8)
                             .accessibilityLabel("Offline. Your activities are saved and sent later.")
                     }
@@ -417,7 +417,9 @@ struct HomeView: View {
     @ViewBuilder private func sheetContent(_ s: Sheet) -> some View {
         switch s {
         case .more:
-            HomeMoreSheet { k in openAfterSheet(.activity(k)) }
+            HomeMoreSheet(onButton: { if case .game(let k) = store.todayThing { return k } else { return nil } }()) { k in
+                openAfterSheet(.activity(k))
+            }
         case .growth:
             HomeGrowthSheet(stage: store.stage, xp: store.xp, stageStart: store.stageRange.start,
                             nextStageAt: store.stageRange.next, daysTogether: store.daysTogether) {
@@ -527,11 +529,11 @@ struct HomeView: View {
         guard demo else { return }
 
         try? await Task.sleep(for: .seconds(3))
-        open(.activity(.breathing))
+        open(.activity(.focus))
         try? await Task.sleep(for: .seconds(6))
         cover = nil
         try? await Task.sleep(for: .milliseconds(700))
-        await store.finish(Self.sample(.breathing), kind: .breathing)
+        await store.finish(Self.sample(.focus), kind: .focus)
         // XP, glow, growing up, done for today.
         while celebrating || store.celebration != nil { try? await Task.sleep(for: .milliseconds(200)) }
         try? await Task.sleep(for: .seconds(3))

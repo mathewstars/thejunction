@@ -144,13 +144,14 @@ REASON_SHORT = {
     "fading": "Slowing within rounds", "stopped_early": "Rounds stopped early",
     "not_played": "Activities offered, not played", "slower_reactions": "Slower reactions",
     "face_flat": "Less facial movement", "checkins_stopped": "Check-ins stopped",
-    "plans_not_done": "Plans not done",
+    "plans_not_done": "Plans not done", "model_noticed": "Noticed by the model, confirmed",
     "within": "Within own normal", "no_baseline": "Learning own normal",
     "no_data": "No data {n} days", "no_data_never": "No data yet", "outside": "Movement down {n} days",
 }
 # Which held kind names the row first, at the same level.
 _KIND_ORDER = ("asked_for_help", "deviation", "silence", "novelty", "slower_reactions", "face_flat",
-               "checkins_stopped", "plans_not_done", "not_played", "ignored", "low_notes",
+               "checkins_stopped", "plans_not_done", "model_noticed", "not_played", "ignored",
+               "low_notes",
                "oddity", "weak_rounds", "round_mismatch", "fading", "stopped_early")
 
 

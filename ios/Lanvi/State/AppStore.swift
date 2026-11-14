@@ -145,17 +145,19 @@ final class AppStore {
 
     var daysTogether: Int { max(days.dates.count, 1) }   // today counts as day one
 
-    /// Today's one thing. What is done stays done; then the server's suggestion;
-    /// then the clock (morning breathing, afternoon Sparks and snow, evening the check-in).
+    /// Today's one thing (the captain, Saturday 15:50). What is done stays done;
+    /// a real-world suggestion gets its own buttons; the evening check-in after 18:00
+    /// if not done today; otherwise Revontulet. Breathe is never on the button: when
+    /// the server suggests a breath, Lanvi's line offers it and the button stays
+    /// Revontulet, with Breathe one tap away in More.
     var todayThing: TodayThing {
         if let d = days.done, days.today == DaysTogether.key(Date()) { return .done(d) }
         if let s = suggestion {
-            if let k = suggestedKind { return .game(k) }
+            if let k = suggestedKind, k != .breathing { return .game(k) }
             if Self.realWorldActions.contains(s.action) { return .realWorld(s) }
         }
         switch dayPart {
-        case .morning: return .game(.breathing)
-        case .day: return .game(.focus)
+        case .morning, .day: return .game(.focus)
         case .evening, .night:
             if days.kindsToday.contains(ActivityKind.checkin.rawValue) {
                 return .done(DoneToday(kind: "checkin", log: Self.log(.checkin, seconds: 60)))
@@ -171,7 +173,7 @@ final class AppStore {
         let time = seconds >= 50 ? "\(max(1, Int((seconds / 60).rounded()))) min" : "\(Int(seconds)) sec"
         switch kind {
         case .breathing: return "Breathed together, \(time)"
-        case .focus: return "Caught sparks together, \(time)"
+        case .focus: return "Broke the ice together"
         case .checkin: return "Shared good things from today"
         }
     }
@@ -346,12 +348,14 @@ final class AppStore {
         days.roll(to: Date())
         await flushOutbox()
         await flushFeedback()
+        await flushPreferences()
         await refresh()
     }
 
     private func load() async {
         await flushOutbox()
         await flushFeedback()
+        await flushPreferences()
         await refresh()
         if checkinOptions == nil { checkinOptions = try? await backend.checkinOptions() }
     }
@@ -512,6 +516,20 @@ final class AppStore {
     @discardableResult
     func setPreferences(_ helps: [String]) async -> String? {
         try? await backend.setPreferences(helps).line.text
+    }
+
+    /// First run: remember what helps and send it in the background, never blocking
+    /// the person. If it does not get through, it is sent again on the next open.
+    func sendPreferences(_ helps: [String]) {
+        UserDefaults.standard.set(helps, forKey: "lanvi.pendingHelps")
+        Task { await flushPreferences() }
+    }
+
+    private func flushPreferences() async {
+        guard let helps = UserDefaults.standard.stringArray(forKey: "lanvi.pendingHelps") else { return }
+        if (try? await backend.setPreferences(helps)) != nil {
+            UserDefaults.standard.removeObject(forKey: "lanvi.pendingHelps")
+        }
     }
 
     // MARK: Demo helpers

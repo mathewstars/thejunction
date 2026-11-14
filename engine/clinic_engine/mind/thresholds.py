@@ -135,7 +135,7 @@ class Thresholds:
     # The frame reading (mind/frame_reading.py, data/frames_prompt.txt): the
     # level-2 model reads a reduced stream of the raw frames; code checks every
     # item on the full-rate frames. Clinician-only: none of these values
-    # touches attention, suggestions or lessons.
+    # touches suggestions or lessons (a confirmed finding may open a watch flag).
     frames_rate_hz: float = 5.0  # rows per second sent (blocks of frames averaged)
     frames_max_frames: int = 400  # longer recordings get a lower rate to fit
     # A reported smile is the same smile as one code found when the two spans
@@ -234,6 +234,12 @@ class Thresholds:
     dayr_gap_min: int = 2  # days in a row without steps
     dayr_overall_z: float = 1.0  # the last seven days' median for "lower" or "higher"
     dayr_min_hours_between: float = 6.0  # a new reading at most this often per person
+    # A flag from what the model found and code confirmed (watchers.model_noticed):
+    # a daily reading counts while it is this fresh and its stretch reaches within
+    # this many days of the window's end; the face rule looks at this many readings.
+    model_notice_max_age_days: int = 3
+    model_notice_recent_days: int = 3
+    model_notice_face_window: int = 6
 
     # Responder.
     suggestion_cooldown_hours: float = 6.0
