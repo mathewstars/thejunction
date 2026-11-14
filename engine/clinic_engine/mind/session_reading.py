@@ -33,8 +33,7 @@ VALUE_FIELDS = ("median_reaction_ms", "reaction_spread_ms", "error_rate", "time_
 
 # What the patient may see: one neutral line per type. Never a mood, a face or a score.
 PATIENT_LINES = {
-    "focus": "Thanks for playing Sparks and snow with me.",
-    "revontulet": "Thanks for playing Revontulet with me.",
+    "focus": "Thanks for playing Revontulet with me.",
     "breathing": "Thanks for breathing with me.",
 }
 
@@ -67,7 +66,7 @@ def session_values(rec: dict) -> dict:
 
 
 def earlier_sessions(rec: dict, previous: list[dict]) -> list[dict]:
-    # the same game only: a Revontulet game is never set beside Sparks and snow games
+    # like with like: a game with its measures is never set beside one sent without them
     same = [p for p in previous if game_kind(p) == game_kind(rec)
             and p["started_at"] < rec["started_at"] and p.get("face_quality") == "good"]
     return same[-EARLIER_MAX:]

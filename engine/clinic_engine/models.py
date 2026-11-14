@@ -422,14 +422,13 @@ class RevontuletIn(Strict):
 
 
 class FocusActivityIn(_ActivityBase, _FaceOneWay):
-    """Revontulet (up to about 90 seconds, with `revontulet`), the game the
-    app plays; or the earlier Sparks and snow (about 45 seconds, without)."""
+    """Revontulet (up to about 90 seconds). The app sends its measures in
+    `revontulet`; a record without them is still taken and read from the taps alone."""
     type: Literal["focus"]
     correct_taps: int = Field(ge=0, le=1000)
-    wrong_taps: int = Field(ge=0, le=1000, description="Sparks and snow: tapped a snowflake. "
-                            "Revontulet: always 0.")
-    misses: int = Field(ge=0, le=1000, description="Sparks that faded untapped. "
-                        "Revontulet: embers that flashed and were not tapped.")
+    wrong_taps: int = Field(ge=0, le=1000, description="Always 0 in Revontulet: there is "
+                            "nothing wrong to tap.")
+    misses: int = Field(ge=0, le=1000, description="Embers that flashed and were not tapped.")
     reaction_ms: list[Annotated[int, Field(ge=0, le=10000)]] = Field(
         default_factory=list, max_length=200,
         description="Reaction time per tap in whole milliseconds. The server computes its own "

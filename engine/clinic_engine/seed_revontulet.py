@@ -36,23 +36,31 @@ PHQ9 = (5, 4, 5, 6, 8, 11, 13, 15)
 # slide, and how much it moves each number) is still made up.
 PT_PER_CM = 60.4
 TRACE_CM_S, STROKE_CM_S = 13.5, 19.5
+# How much a whole game's speed varies from one game to the next, as a share of
+# the speed: from the same real games (tracing: six games; strokes: five). Ten
+# minutes of play by one team member, so a first look and not a norm.
+TRACE_VARIES, STROKE_VARIES = 0.13, 0.29
 
 
 def _game(rng: random.Random, slide: float, spread: float = 1.0,
           hard: float | None = None, hit: float | None = None) -> dict:
     """One game's `revontulet` object (the shape of models.RevontuletIn).
-    `spread` widens how much the two speeds vary from game to game (1.0: the
-    example's 10% either way), for revontulet_check. `hard` and `hit` set the
+    `spread` scales how much the two speeds vary from game to game (1.0: as in
+    the first real games), for revontulet_check. `hard` and `hit` set the
     chance of the harder crack and of tapping an ember, for the other example
     people (seed.revontulet_game); left out, both follow the slide."""
     p_hard = 0.8 - 0.7 * slide if hard is None else hard
     p_hit = 0.9 - 0.3 * slide if hit is None else hit
-    wob = lambda: rng.uniform(1 - 0.1 * spread, 1 + 0.1 * spread)  # noqa: E731
+    # One draw per game and speed: a good or a slow game moves all its rounds
+    # together. Within the game each round or stroke wobbles 10% either way.
+    trace_lvl = max(0.3, rng.gauss(1.0, TRACE_VARIES * spread))
+    stroke_lvl = max(0.3, rng.gauss(1.0, STROKE_VARIES * spread))
+    wob = lambda: rng.uniform(0.9, 1.1)  # noqa: E731
     rounds = []
     for _ in range(3):
         hard = rng.random() < p_hard
         shown = 2 if hard else 0
-        speed = PT_PER_CM * TRACE_CM_S * (1 - 0.37 * slide) * wob()
+        speed = PT_PER_CM * TRACE_CM_S * (1 - 0.37 * slide) * trace_lvl * wob()
         ms = int(rng.uniform(320, 1000) * (1 + 0.6 * slide))
         rounds.append({
             "effort": "hard" if hard else "easy",
@@ -70,7 +78,7 @@ def _game(rng: random.Random, slide: float, spread: float = 1.0,
     strokes = []
     for _ in range(rng.randint(1, 3)):
         ms, drift = int(rng.uniform(500, 5000)), rng.uniform(0.95, 1.05)
-        speed = PT_PER_CM * STROKE_CM_S * (1 - 0.3 * slide) * wob()
+        speed = PT_PER_CM * STROKE_CM_S * (1 - 0.3 * slide) * stroke_lvl * wob()
         strokes.append({"ms": ms, "length_pt": round(min(20000.0, speed * ms / 1000 * drift), 1),
                         "mean_speed_pt_s": round(speed, 1)})
     fox = rng.random() < 0.6 * slide
@@ -81,7 +89,15 @@ def _game(rng: random.Random, slide: float, spread: float = 1.0,
             "touch_radius_var": round(rng.uniform(5, 40), 1)}
 
 
-def create(store: Store, clinic_id: str, tz_name: str, now: datetime, seed: int = 47) -> str:
+# The example's draw. Chosen so the page shows the common case: on generated runs
+# like this one the last three games read "slower than the start" in about 9 of
+# 10 (revontulet_check); in the others the line reads "not clearly different".
+# The page says so in the example's first lines.
+EXAMPLE_SEED = 43
+
+
+def create(store: Store, clinic_id: str, tz_name: str, now: datetime,
+           seed: int = EXAMPLE_SEED) -> str:
     """Create the example person, or write their games and ratings again in place."""
     from .mind.activities import process_activity
     pid = None

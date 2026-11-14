@@ -61,18 +61,15 @@ class Thresholds:
     activity_baseline_max: int = 20
     # Revontulet's own normal (shown to the clinician only). Stricter than the
     # other games because a game gives few numbers: 8 earlier games before any
-    # comparison, and 2.5 either way before the page calls a game unusual. Set
-    # with revontulet_check on generated games, at up to three times the
-    # example's game-to-game spread: with 2.5 an unchanged person gets a label on
-    # 0 to 10% of games against one reference, 0 to 13% against either (it was
-    # 15 to 17% against one at 2.0 once games vary twice as much,
-    # and 37% with 5 games, 1.5 and a label on time to choose as well).
+    # comparison, and 2.5 either way before the page calls a game unusual. How
+    # often that is wrong is measured by revontulet_check on generated games set
+    # from the first real ones (docs/revontulet-measures.md): about 11% of
+    # unchanged games get a label per reference, whatever the game-to-game spread.
     revontulet_baseline_min: int = 8
     revontulet_unusual_z: float = 2.5
     # The fixed reference: the person's start, games 3 to 12 (the first two are practice).
     revontulet_start_from: int = 2
     revontulet_start_to: int = 12
-    activity_min_reactions: int = 5  # a focus session needs this many reaction times
     # Revontulet gives few: three rounds, two embers on a hard round, so at most six
     # ember taps a game, and none on an easy-only game. One hard round with both
     # embers lit is enough for a median; the spread still needs four.
@@ -334,9 +331,9 @@ ACTIVITY_MIN_SCALE = {
     "median_reaction_ms": 40.0, "reaction_spread_ms": 25.0, "error_rate": 0.05,
     "time_played_s": 5.0, "good_things": 0.5,
     # Revontulet has few embers a game (four in a real game on 14 November), so
-    # its floors are wider than Sparks and snow's: one ember missed of four is a
+    # its floors are wide: one ember missed of four is a
     # quarter and stays inside the usual range, and a middle reaction time from
-    # two to six taps moves more than one from sixteen.
+    # two to six taps moves a good deal from game to game.
     "revontulet.error_rate": 0.25, "revontulet.median_reaction_ms": 60.0,
     # Revontulet: with three rounds one choice is a third; the floor keeps a single
     # different choice inside the usual range (0.33 / 0.25 = 1.3) and two outside it.

@@ -37,7 +37,7 @@ Z_FEATURES = {
     "checkin": ("good_things",),
 }
 # Revontulet's own measures, compared with the person's earlier Revontulet
-# games only (never with Sparks and snow). Kept apart from Z_FEATURES on
+# games only (never with a game sent without the measures). Kept apart from Z_FEATURES on
 # purpose: nothing here reaches the watchers or changes how a day is judged.
 REVONTULET_FEATURES = ("hard_share", "choice_ms", "trace_speed_cm_s", "stroke_speed_cm_s")
 
@@ -103,14 +103,15 @@ def features(a: dict, th: Thresholds = T) -> dict:
             # the only thing that can be missed is an ember, so the error rate
             # is embers missed over embers shown (none when no ember flashed).
             # The launches are not counted: they cannot go wrong.
-            enough = len(rts) >= th.revontulet_min_reactions
             shown = sum(r.get("embers_shown") or 0 for r in rv.get("rounds") or [])
             hit = sum(r.get("embers_hit") or 0 for r in rv.get("rounds") or [])
             error_rate = round((shown - hit) / shown, 3) if shown else None
         else:
-            enough = len(rts) >= th.activity_min_reactions
+            # A game sent without its measures (an app build that does not send
+            # them, or the app's fallback): the taps are all there is to go on.
             total = a["correct_taps"] + a["wrong_taps"] + a["misses"]
             error_rate = round((a["wrong_taps"] + a["misses"]) / total, 3) if total else None
+        enough = len(rts) >= th.revontulet_min_reactions
         f.update(median_reaction_ms=float(median(rts)) if enough else None,
                  reaction_spread_ms=_iqr(rts) if enough else None,
                  error_rate=error_rate, reactions_used=len(rts))
@@ -125,10 +126,10 @@ def features(a: dict, th: Thresholds = T) -> dict:
 
 
 def game_kind(a: dict) -> str:
-    """Which game a record is, for its own normal: a focus record with the
-    `revontulet` object is Revontulet, any other record is its type. The two
-    focus games measure different things under the same field names, so they
-    are never compared with each other."""
+    """Which records a record is compared with, for its own normal: a focus
+    record with the `revontulet` object, or its type. A focus record sent
+    without the object has only taps (its error rate cannot be counted over the
+    embers), so the two are never compared with each other."""
     return "revontulet" if a.get("revontulet") else a["type"]
 
 
@@ -197,8 +198,8 @@ def _stats(vals: list[float], name: str, th: Thresholds, kind: str = "") -> dict
 
 def baseline(previous: list[dict], typ: str, th: Thresholds = T, kind: str | None = None) -> dict:
     """Own normal per feature over earlier sessions of the same game
-    (`game_kind`: Revontulet and Sparks and snow are both `focus` and are kept
-    apart). Face features use only earlier sessions whose face quality was good."""
+    (`game_kind`: a focus game with the measures and one sent without them
+    are kept apart). Face features use only earlier sessions whose face quality was good."""
     kind = kind or typ
     same = [p for p in previous if game_kind(p) == kind][-th.activity_baseline_max:]
     out: dict = {}

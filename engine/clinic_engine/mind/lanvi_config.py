@@ -11,7 +11,7 @@ from __future__ import annotations
 
 # XP per thing the person did.
 XP = {
-    "focus": 10,  # Revontulet (or Sparks and snow) played, finished or not
+    "focus": 10,  # Revontulet played, finished or not
     "breathing": 10,  # Breathe with Lanvi done (finished or not)
     "checkin": 10,  # evening check-in done
     "plan_done": 15,  # yesterday's plan done (the person said yes)
