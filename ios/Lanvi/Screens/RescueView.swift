@@ -90,7 +90,7 @@ struct RescueView: View {
 
                 // Asleep: the narrator's words, white on the dark night sky.
                 VStack(spacing: 10) {
-                    if say == nil {
+                    if say == nil && !awake {
                         if showLine {
                             Text("Someone has been left out here.")
                                 .font(Theme.rounded(24, .heavy))
