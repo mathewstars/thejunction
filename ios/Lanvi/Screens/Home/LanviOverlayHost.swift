@@ -18,6 +18,16 @@ struct LanviOverlayHost: View {
     @State private var drag: CGFloat = 0
 
     var body: some View {
+        GeometryReader { geo in
+            // Slide by the whole screen plus its safe areas, so nothing of a closing
+            // screen is left at the bottom edge when the move ends.
+            let away = geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom + 40
+            stack(away: away)
+        }
+        .ignoresSafeArea(.keyboard)
+    }
+
+    private func stack(away: CGFloat) -> some View {
         ZStack(alignment: .bottom) {
             if screenID != nil || panelID != nil {
                 Color.black.opacity(screenID != nil ? 0.22 : 0.28)
@@ -30,13 +40,13 @@ struct LanviOverlayHost: View {
             if let panel, let panelID {
                 PanelChrome(drag: $drag, onClose: onClosePanel) { panel }
                     .id(panelID)
-                    .transition(.move(edge: .bottom))
+                    .transition(.offset(y: away))
                     .zIndex(1)
             }
             if let screen, let screenID {
                 screen
                     .id(screenID)
-                    .transition(.move(edge: .bottom))
+                    .transition(.offset(y: away))
                     .zIndex(2)
             }
         }

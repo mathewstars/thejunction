@@ -15,7 +15,6 @@ struct HomeChatScreen: View {
     @State private var draft = ""
     @FocusState private var focused: Bool
     @State private var pose: LanviPose = .curious
-    @State private var bounce = 0
 
     private let limit = 280
 
@@ -57,7 +56,8 @@ struct HomeChatScreen: View {
             Spacer()
             VStack(spacing: 2) {
                 ZStack {
-                    LanviView(pose: pose, size: 74, bounceTrigger: bounce)
+                    LanviView(pose: pose, size: 74)
+                        .lanviHops(false)
                         .lanviMood(draft.isEmpty ? nil : .listening)
                 }
                 .frame(width: 96, height: 80)

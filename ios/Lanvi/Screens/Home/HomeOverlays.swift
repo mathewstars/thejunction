@@ -10,7 +10,6 @@ struct HomeHelpScreen: View {
 
     @Environment(AppStore.self) private var store
 
-    @State private var bounce = 0
 
     var body: some View {
         GeometryReader { geo in
@@ -20,7 +19,8 @@ struct HomeHelpScreen: View {
             ZStack(alignment: .top) {
                 PaintedWorld(scene: store.worldScene)
 
-                LanviView(pose: .love, size: fox, bounceTrigger: bounce)
+                LanviView(pose: .love, size: fox)
+                    .lanviHops(false)
                     .position(x: geo.size.width / 2, y: hill - fox / 2 + 12)
 
                 ScrollView {
@@ -75,10 +75,6 @@ struct HomeHelpScreen: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 6)
             }
-        }
-        .task {
-            try? await Task.sleep(for: .milliseconds(350))
-            bounce += 1
         }
     }
 }
