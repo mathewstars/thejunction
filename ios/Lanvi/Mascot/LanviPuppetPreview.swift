@@ -4,7 +4,7 @@ import SwiftUI
 /// every idle moment, reaction and held mood. Launch with `-screen puppet`.
 ///
 /// - `-plain YES`: the fox alone on flat pure green (for measuring: track the pupils).
-/// - `-puppetDemo idle|reactions|moments|touch|follow`: plays a fixed script with a caption and no
+/// - `-puppetDemo idle|reactions|moments|touch|touch4|follow`: plays a fixed script with a caption and no
 ///   buttons, for recordings. `reactions` plays each reaction once, `moments` each idle
 ///   moment once, `idle` nothing (the idle picks its own moments). `-puppetDemo YES`
 ///   is the old script: idle, then happy, then surprised.
@@ -285,6 +285,21 @@ struct LanviPuppetPreview: View {
             }
             await at(17.8)
             caption = "Let go: a slow blink"
+        case "touch4":
+            // The four reactions that are not a hop: a nod, a shy look away, a curious
+            // tilt, a happy wiggle (each place takes its turns, so the order matters).
+            let script: [(Double, LanviTouchZone, String)] = [
+                (1.0, .head, "Pet his head"), (4.2, .head, "Pat his head again: a nod"),
+                (6.4, .cheek, "Touch a cheek: a giggle"), (8.6, .cheek, "Again: shy, he looks away"),
+                (11.2, .near, "Tap beside him: a curious tilt"), (13.4, .head, "Pet his head"),
+                (15.0, .head, "Pet again: a happy wiggle"),
+            ]
+            for (at_, zone, label) in script {
+                await at(at_)
+                touchIt(zone, label)
+            }
+            await at(17.5)
+            caption = ""
         default:
             let wait = UserDefaults.standard.double(forKey: "puppetDemoDelay")
             await at(wait > 0 ? wait : 7)

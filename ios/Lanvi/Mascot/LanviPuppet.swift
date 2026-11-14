@@ -412,7 +412,8 @@ struct LanviPuppet: View {
         }
         // The eyes go to the finger, unless the reaction aims them itself.
         let aims: Set<LanviTouchAct> = [.boop, .boopGiggle, .boopSniff, .earFlick, .earTickle, .earDouble,
-                                        .tailLook, .tailSwish, .tailCurlLook, .pawLift, .pawPat, .pawHold]
+                                        .tailLook, .tailSwish, .tailCurlLook, .pawLift, .pawPat, .pawHold,
+                                        .nod, .giggleShy]
         if act == nil || !aims.contains(act!) {
             lookAtFinger(p, back: max(1.1, (act?.duration ?? 1.2) - 0.5))
         }
