@@ -545,10 +545,12 @@ struct LanviPuppet: View {
         let q = f.pose
         let hx = q.dirX, hy = q.dirY
         let near = max(left ? hx : -hx, 0), far = max(left ? -hx : hx, 0)
-        let dx = hx * (near > 0 ? 12 : 3)
-        let dy = 5 * far + 4 * abs(hy)
-        let sx = (1 + 0.08 * near - 0.04 * far) * (1 - 0.14 * far)
-        let sy = (1 + 0.08 * near - 0.04 * far) * (1 - 0.07 * abs(hy)) * (1 + (left ? q.earLS : q.earRS))
+        // (the perspective turn of the whole head does most of it; this is the ear's own
+        // turn on top: the far ear swings round behind the skull)
+        let dx = hx * (near > 0 ? 5 : 2)
+        let dy = 4 * far + 3 * abs(hy)
+        let sx = (1 + 0.04 * near - 0.02 * far) * (1 - 0.1 * far)
+        let sy = (1 + 0.04 * near - 0.02 * far) * (1 - 0.05 * abs(hy)) * (1 + (left ? q.earLS : q.earRS))
         let angle = left ? -q.earL : q.earR
         return banded(p, left ? "ear-left" : "ear-right", count: 10, bend: left ? f.earLBend : f.earRBend)
             .scaleEffect(x: sx, y: sy, anchor: p.pivot)
@@ -592,8 +594,16 @@ struct LanviPuppet: View {
     /// eyes and mouth in front) gets the same tilt around the neck, shift and settle.
     private func headTurn<Content: View>(_ f: RigFrame, @ViewBuilder _ content: () -> Content) -> some View {
         let neck = UnitPoint(x: Rig.neck.x / Rig.canvas.width, y: Rig.neck.y / Rig.canvas.height)
+        let centre = UnitPoint(x: Rig.head.local.x / Rig.canvas.width, y: Rig.head.local.y / Rig.canvas.height)
         return ZStack(alignment: .topLeading) { content() }
             .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k, alignment: .topLeading)
+            // The whole head turns in perspective around its centre (the face, eyes,
+            // muzzle and ears as one piece, so nothing slides off it): the near side
+            // grows, the far side shrinks and tucks in.
+            .rotation3DEffect(.degrees(Rig.turnYaw * f.pose.dirX), axis: (x: 0, y: 1, z: 0),
+                              anchor: centre, perspective: Rig.turnPerspective)
+            .rotation3DEffect(.degrees(-Rig.turnPitch * f.pose.dirY), axis: (x: 1, y: 0, z: 0),
+                              anchor: centre, perspective: Rig.turnPerspective)
             .scaleEffect(x: f.headSX, y: f.headSY, anchor: neck)
             .rotationEffect(.degrees(f.pose.headTilt), anchor: neck)
             .transformEffect(CGAffineTransform(translationX: f.pose.headX * mu, y: f.pose.headY * mu))
@@ -605,14 +615,15 @@ struct LanviPuppet: View {
     private func head(_ f: RigFrame) -> some View {
         let p = Rig.head, q = f.pose
         return ZStack(alignment: .topLeading) {
-            // The head in two halves: the far cheek tucks in behind the head and the near
-            // one comes forward (each half scales from the middle line).
+            // The head in two halves: the far cheek tucks in a little more than the
+            // perspective turn alone gives, and the near one comes forward (each half
+            // scales from the middle line).
             ForEach(["head-base-l", "head-base-r"], id: \.self) { name in
                 let c = layerCentre(name, p)
                 let isFar = (name == "head-base-r") == (q.dirX > 0)
                 let a = abs(q.dirX)
                 layerImage(name, p)
-                    .scaleEffect(x: isFar ? 1 - 0.06 * a : 1 + 0.025 * a, y: 1,
+                    .scaleEffect(x: isFar ? 1 - Rig.farCheekTuck * a : 1 + Rig.nearCheekGrow * a, y: 1,
                                  anchor: anchor(UnitPoint(x: 0.5, y: 0.5), in: name))
                     .position(x: c.x, y: c.y)
             }
