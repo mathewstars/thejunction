@@ -71,7 +71,7 @@ struct WhatHelpsView: View {
                         .disabled(sending)
                         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: chosen.isEmpty)
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 24)   // the same margins as Welcome, so the button never moves
                 .padding(.top, hill + (compact ? 26 : 36))
                 .padding(.bottom, 12)
             }

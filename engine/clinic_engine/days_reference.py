@@ -104,6 +104,33 @@ def score(spans: list[tuple[int, int]], truth: list[dict]) -> dict:
     return out
 
 
+def trend_scan(payload: dict) -> list[tuple[int, int]]:
+    """A second code reader, not in the product: slide windows of 10 to 28 days
+    over the steps and keep those that pass code's own test for a slow decline
+    or a sustained dip (day_reading.check_stretch); windows that touch are
+    joined. Written to answer "could code find the slow declines alone?" with a
+    number, as the rest-relative rule does for the face numbers."""
+    view = dr.code_view(payload)
+    n = payload["days"]
+    hits: list[tuple[int, int]] = []
+    for length in (10, 14, 21, 28):
+        for a in range(0, n - length + 1):
+            for shape in ("gradual", "sustained"):
+                ok, _why = dr.check_stretch(view, {"start_d": a, "end_d": a + length - 1,
+                                                   "channel": "steps", "direction": "lower",
+                                                   "shape": shape})
+                if ok is not None:
+                    hits.append((a, a + length - 1))
+                    break
+    spans: list[list[int]] = []
+    for a, b in sorted(hits):
+        if spans and a <= spans[-1][1] + 1:
+            spans[-1][1] = max(spans[-1][1], b)
+        else:
+            spans.append([a, b])
+    return [(a, b) for a, b in spans]
+
+
 def _lower_steps(items: list[dict]) -> list[tuple[int, int]]:
     return [(s["start_d"], s["end_d"]) for s in items
             if s["channel"] == "steps" and s["direction"] == "lower"]
@@ -114,7 +141,9 @@ def _add(total: dict, part: dict) -> None:
         total[k] = total.get(k, 0) + v
 
 
-async def run(with_model: bool, series: int = len(KINDS)) -> dict:
+async def run(with_model: bool, series: int = len(KINDS), seed: int = 3000) -> dict:
+    """seed: the first seed; another value makes a set nobody looked at while
+    the instruction and the check were written."""
     outreach = None
     if with_model:
         from .config import Settings
@@ -122,20 +151,22 @@ async def run(with_model: bool, series: int = len(KINDS)) -> dict:
         outreach = Outreach(Settings.from_env())
         if not outreach.gemini_on:
             raise SystemExit("level 2 is not configured (OUTREACH_MODE, GEMINI_API_KEY, GEMINI_MODEL)")
-    out: dict = {"series": 0, "days_each": DAYS, "code_vs_truth": {}, "model_vs_truth": {},
+    out: dict = {"series": 0, "days_each": DAYS, "code_vs_truth": {}, "trend_scan_vs_truth": {},
+                 "model_vs_truth": {},
                  "model_after_check_vs_truth": {}, "weekday": {"planted": 0, "code": 0, "model": 0,
                                                               "model_wrong": 0},
                  "read": 0, "failed": 0, "agreement": {}}
     if outreach is not None:
         out["model"] = outreach.level2_model
     for k, kind in enumerate(KINDS[:series]):
-        days, truth = make_series(3000 + k, kind)
+        days, truth = make_series(seed + k, kind)
         out["series"] += 1
         payload = dr.reduce(days, {})
         view = dr.code_view(payload)
         _add(out["code_vs_truth"], score(_lower_steps(view["stretches"]), truth))
+        _add(out["trend_scan_vs_truth"], score(trend_scan(payload), truth))
         # The weekly rhythm: weekdays on which the generator made this person walk less.
-        rng = random.Random(3000 + k)
+        rng = random.Random(seed + k)
         rng.uniform(0, 1), rng.uniform(0, 1)
         low_days = set(rng.sample(range(1, 8), rng.choice([1, 2])))
         out["weekday"]["planted"] += len(low_days)
@@ -177,7 +208,8 @@ def _line(name: str, t: dict) -> str:
 
 def table(out: dict) -> str:
     rows = ["| Reader | Sustained dips found | Slow declines found | Reported with nothing planted |",
-            "|---|---|---|---|", _line("Code, fixed rule", out["code_vs_truth"])]
+            "|---|---|---|---|", _line("Code, fixed rule", out["code_vs_truth"]),
+            _line("Code, trend scan (not in the product)", out["trend_scan_vs_truth"])]
     if out.get("model_vs_truth"):
         rows.append(_line(f"Model ({out['model']}), as reported", out["model_vs_truth"]))
         rows.append(_line("Model, after code's check", out["model_after_check_vs_truth"]))
@@ -188,9 +220,10 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--model", action="store_true", help="also send every series to level 2")
     ap.add_argument("--series", type=int, default=len(KINDS))
+    ap.add_argument("--seed", type=int, default=3000, help="first seed of the set")
     ap.add_argument("--out", help="write the result as JSON to this file")
     args = ap.parse_args()
-    out = asyncio.run(run(args.model, args.series))
+    out = asyncio.run(run(args.model, args.series, args.seed))
     if args.out:
         with open(args.out, "w", encoding="utf-8") as f:
             json.dump(out, f, indent=1)
