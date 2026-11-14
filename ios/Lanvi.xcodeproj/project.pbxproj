@@ -26,6 +26,7 @@
 		942A29C36871C91B6C4230BA /* BreathePieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29013F2F7831D454F4237DF1 /* BreathePieces.swift */; };
 		966709A0031A479E6D292413 /* HomeMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */; };
 		A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */; };
+		A969C737AD9639B403D5FDCE /* HomeTodayCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E23A0B45188373AB4F40627 /* HomeTodayCard.swift */; };
 		B321A8B904D9315E11ED19DE /* Chunky.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA73738285D12F12C9ADB24B /* Chunky.swift */; };
 		B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B8C888729DE19EB41449A4 /* HomeOverlays.swift */; };
 		B50D10905664FAEB774A40AE /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 883989149D83098DC4D7155A /* AppStore.swift */; };
@@ -68,6 +69,7 @@
 		974C2744C4CA94D5857C75A3 /* FocusArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusArt.swift; sourceTree = "<group>"; };
 		98E9EB5764D665F8A8B7399B /* BreatheView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheView.swift; sourceTree = "<group>"; };
 		9A53ADD818B703E6EC089EFE /* SkyScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyScene.swift; sourceTree = "<group>"; };
+		9E23A0B45188373AB4F40627 /* HomeTodayCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeTodayCard.swift; sourceTree = "<group>"; };
 		BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviView.swift; sourceTree = "<group>"; };
 		CA73738285D12F12C9ADB24B /* Chunky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chunky.swift; sourceTree = "<group>"; };
 		CB97273333C0DBAE7FC11418 /* FocusEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusEngine.swift; sourceTree = "<group>"; };
@@ -207,6 +209,7 @@
 				15B8C888729DE19EB41449A4 /* HomeOverlays.swift */,
 				607DA0BDB68AC9211EAADA43 /* HomeParts.swift */,
 				752F0D6EA04E94F9779AC997 /* HomeTailGlow.swift */,
+				9E23A0B45188373AB4F40627 /* HomeTodayCard.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
@@ -314,6 +317,7 @@
 				B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */,
 				922984AB73EB11C13340245F /* HomeParts.swift in Sources */,
 				0BEDEA33963AF45C85B22E0B /* HomeTailGlow.swift in Sources */,
+				A969C737AD9639B403D5FDCE /* HomeTodayCard.swift in Sources */,
 				471B65B5C13A868F9AA2A565 /* HomeView.swift in Sources */,
 				A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */,
 				EDAB3E53B21FBF2A45578C8D /* LanviClient.swift in Sources */,

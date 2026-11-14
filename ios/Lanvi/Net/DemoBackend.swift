@@ -43,7 +43,7 @@ actor DemoBackend: LanviBackend {
         line = API.LineOut(templateId: "hello.2", text: "Good to see you. My tail is a little brighter now.")
         wandering = API.WanderingOut(state: .home, id: nil, returnsAt: nil, story: nil)
 
-        if let action = value("-demoSuggestion") {
+        if let action = value("-demoSuggestion") ?? (walkthrough ? "breathing" : nil) {
             suggestion = Self.suggestion(for: action)
             if let s = suggestion { line = API.LineOut(templateId: "\(action).1", text: s.text) }
         }
@@ -164,6 +164,13 @@ actor DemoBackend: LanviBackend {
     func mind() async throws -> API.MindOut {
         try await Task.sleep(for: .milliseconds(250))
         return API.MindOut(rules: [], lessons: lessons, questions: questions)
+    }
+
+    func feedback(_ f: API.FeedbackIn) async throws -> API.FeedbackOut {
+        try await Task.sleep(for: .milliseconds(300))
+        guard suggestion?.id == f.suggestionId else { throw APIError.notFound }
+        suggestion = nil
+        return API.FeedbackOut(ok: true)
     }
 
     func rejectLesson(id: String) async throws -> API.StatusOut {

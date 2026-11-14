@@ -17,6 +17,17 @@ enum ActivityKind: String, Identifiable, CaseIterable {
     }
 }
 
+/// Time of day, for the sky and Lanvi's resting pose.
+enum DayPart { case morning, day, evening, night }
+
+/// What the big "For today" card on Home shows.
+enum TodayThing: Equatable {
+    case story                          // a wandering story waits: always first
+    case game(ActivityKind)             // one of the three activities
+    case realWorld(API.SuggestionOut)   // walk, daylight, call someone: "I did it" / "Not today"
+    case done(DoneToday)                // today's one thing is done
+}
+
 /// The moment after an activity: what Home animates.
 struct HomeCelebration: Equatable, Identifiable {
     let id = UUID()
@@ -36,6 +47,15 @@ final class AppStore {
     let mode: Mode
     private let backend: any LanviBackend
     private var outbox = ActivityOutbox()
+    private var feedbackOutbox = FeedbackOutbox()
+
+    // The day, kept on the phone
+    /// `-hour 20` shows the app as at that hour (sky, pose and today's pick).
+    private let forcedHour: Int?
+    private(set) var days: DaysTogether
+    private let daysFile: String?
+    /// Changes when Lanvi should give a small cheer on Home (a real-world "I did it").
+    private(set) var cheerTick = 0
 
     // Today
     private(set) var today: API.TodayOut?
@@ -56,16 +76,152 @@ final class AppStore {
     private var suggestionsPlayed: Set<String> = []
 
     init(arguments: [String] = ProcessInfo.processInfo.arguments) {
+        func value(_ key: String) -> String? {
+            guard let i = arguments.firstIndex(of: key), i + 1 < arguments.count else { return nil }
+            return arguments[i + 1]
+        }
+        forcedHour = value("-hour").flatMap(Int.init).map { min(max($0, 0), 23) }
+            ?? (arguments.contains("-demo") ? 20 : nil)
         let config = ServerConfig.current
         // The -demo walk-through always uses the offline demo, so the video is the same every time.
         if config.isLive, !arguments.contains("-demo"), let url = config.serverURL {
             mode = .live
             backend = LanviClient(base: url, pairingCode: config.pairingCode)
+            daysFile = "days.json"
+            days = DaysTogether.load("days.json")
             // Last known state, so an offline start still shows Lanvi as it was.
             if let cached = LanviDisk.load(API.TodayOut.self, "today.json") { apply(cached) }
         } else {
             mode = .demo
             backend = DemoBackend(arguments: arguments)
+            // The demo never writes the real days to disk; it starts from sample days.
+            daysFile = nil
+            var d = DaysTogether()
+            let past = value("-demoDays").flatMap(Int.init) ?? 11
+            for i in stride(from: past, to: 0, by: -1) {
+                d.dates.append(DaysTogether.key(Date().addingTimeInterval(Double(-i) * 86_400)))
+            }
+            d.roll(to: Date())
+            if let k = value("-demoDone").flatMap(ActivityKind.init(rawValue:)) {
+                d.markTogether(Date())
+                d.kindsToday = [k.rawValue]
+                d.done = DoneToday(kind: k.rawValue, log: Self.log(k, seconds: k == .focus ? 45 : 60))
+            }
+            days = d
+        }
+        days.roll(to: Date())
+    }
+
+    // MARK: The day
+
+    /// Now, or the forced hour today.
+    var now: Date {
+        guard let h = forcedHour else { return Date() }
+        return Calendar.current.date(bySettingHour: h, minute: 10, second: 0, of: Date()) ?? Date()
+    }
+
+    var dayPart: DayPart {
+        switch Calendar.current.component(.hour, from: now) {
+        case 5..<12: return .morning
+        case 12..<18: return .day
+        case 18..<21: return .evening
+        default: return .night
+        }
+    }
+
+    var daysTogether: Int { max(days.dates.count, 0) }
+
+    /// Today's one thing. A waiting story comes first; then what is done stays
+    /// done; then the server's suggestion; then the clock (morning breathing,
+    /// afternoon Sparks and snow, evening the check-in).
+    var todayThing: TodayThing {
+        if wandering?.state == .back, wandering?.story != nil { return .story }
+        if let d = days.done, days.today == DaysTogether.key(Date()) { return .done(d) }
+        if let s = suggestion {
+            if let k = suggestedKind { return .game(k) }
+            if Self.realWorldActions.contains(s.action) { return .realWorld(s) }
+        }
+        switch dayPart {
+        case .morning: return .game(.breathing)
+        case .day: return .game(.focus)
+        case .evening, .night:
+            if days.kindsToday.contains(ActivityKind.checkin.rawValue) {
+                return .done(DoneToday(kind: "checkin", log: Self.log(.checkin, seconds: 60)))
+            }
+            return .game(.checkin)
+        }
+    }
+
+    static let realWorldActions: Set<String> = ["walk_10min", "daylight_10min", "call_someone"]
+
+    /// The tiny log line for something done together.
+    static func log(_ kind: ActivityKind, seconds: Double) -> String {
+        let time = seconds >= 50 ? "\(max(1, Int((seconds / 60).rounded()))) min" : "\(Int(seconds)) sec"
+        switch kind {
+        case .breathing: return "Breathed together, \(time)"
+        case .focus: return "Caught sparks together, \(time)"
+        case .checkin: return "Shared good things from today"
+        }
+    }
+
+    static func realWorldLog(_ action: String) -> String {
+        switch action {
+        case "walk_10min": return "Went for a short walk"
+        case "daylight_10min": return "Found some daylight"
+        default: return "Reached out to someone"
+        }
+    }
+
+    private func saveDays() {
+        if let daysFile { days.save(daysFile) }
+    }
+
+    /// Something was done together today: the day counts, and when it was
+    /// today's one thing, the card turns calm.
+    private func markDone(_ kind: ActivityKind, seconds: Double, thing: TodayThing) {
+        days.markTogether(Date())
+        days.kindsToday.append(kind.rawValue)
+        if case .game(let k) = thing, k == kind, days.done == nil {
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.8)) {
+                days.done = DoneToday(kind: kind.rawValue, log: Self.log(kind, seconds: seconds))
+            }
+        }
+        saveDays()
+    }
+
+    /// "I did it" or "Not today" on a real-world suggestion. Both are fine, both
+    /// get a warm line, and "Not today" is never argued with.
+    func answerSuggestion(_ s: API.SuggestionOut, didIt: Bool) async {
+        let f = API.FeedbackIn(id: API.ActivityIn.newId(), suggestionId: s.id, answer: didIt ? "did_it" : "not_today")
+        feedbackOutbox.add(f)
+        suggestionsPlayed.insert(s.id)
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.8)) {
+            line = didIt ? "You did it. That makes my tail glow." : "That is okay. Tomorrow has room for small things too."
+            if didIt { days.markTogether(Date()) } else { days.roll(to: Date()) }
+            days.done = DoneToday(kind: s.action, log: didIt ? Self.realWorldLog(s.action) : "", restful: !didIt)
+        }
+        if didIt { cheerTick += 1 }
+        saveDays()
+        do {
+            _ = try await backend.feedback(f)
+            feedbackOutbox.remove(id: f.id)
+        } catch let e as APIError where e.isTemporary {
+            link = .offline
+        } catch {
+            feedbackOutbox.remove(id: f.id)
+        }
+    }
+
+    private func flushFeedback() async {
+        for item in feedbackOutbox.items {
+            do {
+                _ = try await backend.feedback(item)
+                feedbackOutbox.remove(id: item.id)
+            } catch let e as APIError where e.isTemporary {
+                return
+            } catch {
+                feedbackOutbox.remove(id: item.id)
+            }
         }
     }
 
@@ -114,12 +270,15 @@ final class AppStore {
     /// Back in the foreground: send what waited, then ask for today again.
     func resume() async {
         guard startTask != nil else { return }
+        days.roll(to: Date())
         await flushOutbox()
+        await flushFeedback()
         await refresh()
     }
 
     private func load() async {
         await flushOutbox()
+        await flushFeedback()
         await refresh()
         if checkinOptions == nil { checkinOptions = try? await backend.checkinOptions() }
     }
@@ -153,6 +312,7 @@ final class AppStore {
         if record.suggestionId == nil, let s = suggestion, s.action == kind.suggestionAction {
             record.suggestionId = s.id
         }
+        let thing = todayThing
         if let sid = record.suggestionId { suggestionsPlayed.insert(sid) }
         outbox.add(record)
 
@@ -161,14 +321,17 @@ final class AppStore {
             outbox.remove(id: record.id)
             link = .online
             await celebrate(out, kind: kind)
+            markDone(kind, seconds: record.durationS, thing: thing)
             if out.wandering != wandering?.state { await refresh() }
         } catch let e as APIError where e.isTemporary {
             link = .offline
             celebrateOffline(kind: kind)
+            markDone(kind, seconds: record.durationS, thing: thing)
         } catch {
             // Refused for good (shape, plausibility, reused id): drop it, still thank them.
             outbox.remove(id: record.id)
             celebrateOffline(kind: kind)
+            markDone(kind, seconds: record.durationS, thing: thing)
         }
     }
 

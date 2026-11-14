@@ -190,6 +190,50 @@ struct HomeGrowUpMoment: View {
     private func frac(_ v: Double) -> Double { v - floor(v) }
 }
 
+// MARK: - Evening aurora
+
+/// Curtains of northern light above the hills in the evening: thin vertical
+/// strokes of green fading up into violet, swaying slowly, added as light.
+struct HomeAuroraBoost: View {
+    var strength: Double
+    var height: CGFloat
+
+    var body: some View {
+        TimelineView(.animation) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            Canvas { ctx, size in
+                var g = ctx
+                g.blendMode = .plusLighter
+                g.addFilter(.blur(radius: 7))
+                let a = min(max(strength, 0), 1)
+                let base = height * 0.42
+                let step: CGFloat = 5
+                var x: CGFloat = -10
+                while x < size.width + 10 {
+                    let wave = sin(Double(x) * 0.011 + t * 0.22) * 34 + sin(Double(x) * 0.027 - t * 0.35) * 14
+                    let tall = 70 + 45 * (0.5 + 0.5 * sin(Double(x) * 0.019 + t * 0.4))
+                    let y0 = base + CGFloat(wave)
+                    let rect = CGRect(x: x, y: y0 - CGFloat(tall), width: step + 1, height: CGFloat(tall))
+                    let flicker = 0.75 + 0.25 * sin(Double(x) * 0.08 + t * 1.3)
+                    g.fill(Path(rect), with: .linearGradient(
+                        Gradient(stops: [
+                            .init(color: Color(hex: 0x3EE6A8).opacity(0.0), location: 0),
+                            .init(color: Color(hex: 0x9B7BFF).opacity(0.22 * a * flicker), location: 0.25),
+                            .init(color: Color(hex: 0x3EE6A8).opacity(0.5 * a * flicker), location: 0.85),
+                            .init(color: Color(hex: 0xB9FFE4).opacity(0.65 * a * flicker), location: 1),
+                        ]),
+                        startPoint: CGPoint(x: rect.midX, y: rect.minY),
+                        endPoint: CGPoint(x: rect.midX, y: rect.maxY)))
+                    x += step
+                }
+            }
+        }
+        .frame(height: height)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .ignoresSafeArea()
+    }
+}
+
 // MARK: - Zoom from the tapped card (iOS 18 and later; a normal slide on 17)
 
 extension View {

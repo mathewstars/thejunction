@@ -144,8 +144,11 @@ struct HomeGrowthCard: View {
     var stageStart: Int
     var nextStageAt: Int?
     var shine: Int   // change to run a light sweep along the bar
+    /// Days with something done together; only ever goes up.
+    var daysTogether: Int = 0
 
     @State private var sweep: CGFloat = -0.3
+    @State private var daySparkle = 0
 
     private var progress: Double {
         guard let next = nextStageAt, next > stageStart else { return 1 }
@@ -206,11 +209,23 @@ struct HomeGrowthCard: View {
                     }
                 }
                 .frame(height: 16)
-                Text(caption)
-                    .font(Theme.rounded(13, .bold))
-                    .foregroundStyle(Theme.inkSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                HStack(spacing: 5) {
+                    Image(systemName: "sparkle")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundStyle(Color(hex: 0x2FB98A))
+                        .scaleEffect(daySparkle > 0 ? 1 : 0.9)
+                        .keyframeAnimator(initialValue: CGFloat(1), trigger: daySparkle) { v, k in
+                            v.scaleEffect(k).rotationEffect(.degrees(Double(k - 1) * 90))
+                        } keyframes: { _ in
+                            SpringKeyframe(1.9, duration: 0.25, spring: .snappy)
+                            SpringKeyframe(1, duration: 0.5, spring: .bouncy)
+                        }
+                    Text("Days together: \(daysTogether)")
+                        .contentTransition(.numericText(value: Double(daysTogether)))
+                }
+                .font(Theme.rounded(13, .bold))
+                .foregroundStyle(Theme.inkSecondary)
+                .lineLimit(1)
             }
             Image(systemName: "chevron.right")
                 .font(.system(size: 14, weight: .black))
@@ -221,17 +236,14 @@ struct HomeGrowthCard: View {
         .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(.white))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Theme.line, lineWidth: 2))
         .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.line).offset(y: 4))
+        .onChange(of: daysTogether) { old, new in
+            if new > old { daySparkle += 1 }
+        }
         .onChange(of: shine) {
             sweep = -0.3
             withAnimation(.easeInOut(duration: 1.1).delay(0.5)) { sweep = 1.2 }
         }
         .accessibilityElement(children: .combine)
-    }
-
-    private var caption: String {
-        guard let next = nextStageAt else { return "Fully grown. Every visit still adds light." }
-        let left = max(next - xp, 0)
-        return "\(left) XP until \(Self.name(stage == .kit ? .youngFox : .grownFox).lowercased())"
     }
 
     static func name(_ s: API.Stage) -> String {
@@ -240,124 +252,6 @@ struct HomeGrowthCard: View {
         case .youngFox: return "Young fox"
         case .grownFox: return "Grown fox"
         }
-    }
-}
-
-// MARK: - Activity cards
-
-struct HomeActivityCard: View {
-    var kind: ActivityKind
-    var highlighted: Bool
-    var action: () -> Void
-
-    @State private var pulse = false
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(highlighted
-                              ? AnyShapeStyle(RadialGradient(colors: [.white.opacity(0.35), .white.opacity(0.08)],
-                                                             center: .topLeading, startRadius: 2, endRadius: 46))
-                              : AnyShapeStyle(LinearGradient(colors: [Theme.tint, Color(hex: 0xD6E2FF)],
-                                                             startPoint: .top, endPoint: .bottom)))
-                    Circle().stroke(.white.opacity(highlighted ? 0.45 : 1), lineWidth: 2).padding(2)
-                    Image(systemName: icon)
-                        .font(.system(size: 22, weight: .bold))
-                        .symbolRenderingMode(.palette)
-                        .foregroundStyle(highlighted ? AnyShapeStyle(.white) : AnyShapeStyle(Theme.brand),
-                                         highlighted ? AnyShapeStyle(Color(hex: 0xB9FFE4)) : AnyShapeStyle(Color(hex: 0x8FA8FF)))
-                }
-                .frame(width: 50, height: 50)
-
-                Text(title)
-                    .font(Theme.rounded(15, .heavy))
-                    .foregroundStyle(highlighted ? .white : Theme.ink)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.85)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(caption)
-                    .font(Theme.rounded(12, .bold))
-                    .foregroundStyle(highlighted ? .white.opacity(0.8) : Theme.inkSecondary)
-            }
-            .padding(.top, 16)
-            .padding(.bottom, 12)
-            .padding(.horizontal, 6)
-            .frame(maxWidth: .infinity, minHeight: 128)
-        }
-        .buttonStyle(HomeCardPressStyle(highlighted: highlighted))
-        .overlay(alignment: .top) {
-            if highlighted {
-                Text("For you")
-                    .font(Theme.rounded(11, .black))
-                    .textCase(.uppercase)
-                    .tracking(0.6)
-                    .foregroundStyle(Theme.brand)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(.white))
-                    .overlay(Capsule().stroke(Theme.brand.opacity(0.25), lineWidth: 1.5))
-                    .offset(y: -10)
-                    .transition(.scale.combined(with: .opacity))
-            }
-        }
-        .background {
-            if highlighted {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color(hex: 0x7CF5C4).opacity(pulse ? 0.55 : 0.2))
-                    .blur(radius: pulse ? 16 : 10)
-                    .scaleEffect(pulse ? 1.06 : 0.98)
-                    .onAppear {
-                        withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { pulse = true }
-                    }
-            }
-        }
-        .accessibilityLabel(highlighted ? "\(title), suggested" : title)
-    }
-
-    var icon: String {
-        switch kind {
-        case .focus: return "sparkles"
-        case .breathing: return "wind"
-        case .checkin: return "moon.stars.fill"
-        }
-    }
-
-    var title: String {
-        switch kind {
-        case .focus: return "Sparks and snow"
-        case .breathing: return "Breathe with Lanvi"
-        case .checkin: return "Evening check-in"
-        }
-    }
-
-    var caption: String {
-        switch kind {
-        case .focus: return "45 seconds"
-        case .breathing: return "1 minute"
-        case .checkin: return "1 minute"
-        }
-    }
-}
-
-/// Chunky press for a card; the suggested one is blue on a dark edge.
-private struct HomeCardPressStyle: ButtonStyle {
-    var highlighted: Bool
-    func makeBody(configuration: Configuration) -> some View {
-        let pressed = configuration.isPressed
-        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
-        configuration.label
-            .background(shape.fill(highlighted
-                                   ? AnyShapeStyle(LinearGradient(colors: [Color(hex: 0x5A7CF0), Theme.brand],
-                                                                  startPoint: .top, endPoint: .bottom))
-                                   : AnyShapeStyle(Color.white)))
-            .overlay(shape.stroke(highlighted ? .white.opacity(0.25) : Theme.line, lineWidth: 2))
-            .offset(y: pressed ? 5 : 0)
-            .background(shape.fill(highlighted ? Theme.brandEdge : Theme.line).offset(y: 5))
-            .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: pressed)
     }
 }
 

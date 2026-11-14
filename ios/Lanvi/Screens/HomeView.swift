@@ -32,28 +32,25 @@ struct HomeView: View {
         var cardsTop: CGFloat
         var compact: Bool
 
-        init(size: CGSize, extraRow: Bool, away: Bool) {
+        init(size: CGSize, away: Bool) {
             self.size = size
             compact = size.height < 700
-            hill = size.height * (compact ? (extraRow ? 0.47 : 0.545) : (extraRow ? 0.535 : 0.60))
+            // The horizon sits as low as the card, the chips and the growth bar allow.
+            hill = size.height * (compact ? 0.45 : 0.515)
             if away {
-                fox = compact ? 84 : 100
+                fox = compact ? 80 : 96
                 foxCenter = CGPoint(x: size.width * 0.78, y: hill - fox / 2 - 6)
             } else {
-                fox = compact ? 168 : 212
+                fox = compact ? 140 : 196
                 foxCenter = CGPoint(x: size.width / 2, y: hill - fox / 2 + 14)
             }
-            let extra: CGFloat = extraRow ? (compact ? 12 + 58 : 16 + 62) : 0
-            cardsTop = hill + (compact ? 22 : 30) + extra
+            cardsTop = hill + (compact ? 18 : 26)
         }
 
         var foxTop: CGFloat { foxCenter.y - fox / 2 }
 
-        func cardCenter(_ kind: ActivityKind) -> CGPoint {
-            let i = CGFloat(ActivityKind.allCases.firstIndex(of: kind) ?? 0)
-            let w = (size.width - 40 - 20) / 3
-            return CGPoint(x: 20 + w / 2 + i * (w + 10), y: cardsTop + 50)
-        }
+        /// Where the light starts after an activity: the middle of today's card.
+        var cardCenter: CGPoint { CGPoint(x: size.width / 2, y: cardsTop + 70) }
     }
 
     @State private var cover: Cover?
@@ -76,10 +73,15 @@ struct HomeView: View {
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
-            let L = Layout(size: geo.size, extraRow: extraRow, away: away)
+            let L = Layout(size: geo.size, away: away)
 
             ZStack(alignment: .top) {
-                SkyScene(top: Theme.nightTop, bottom: Theme.nightBottom, hillTop: L.hill)
+                SkyScene(top: sky.top, bottom: sky.bottom, hillTop: L.hill)
+                    .animation(.easeInOut(duration: 1.2), value: store.dayPart)
+                if sky.aurora > 0 {
+                    HomeAuroraBoost(strength: sky.aurora, height: L.hill)
+                        .allowsHitTesting(false)
+                }
 
                 // Lanvi, with the fox fire behind the tail.
                 ZStack {
@@ -132,32 +134,29 @@ struct HomeView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 6)
 
-                // On the snow: the story, the activities, how Lanvi is growing.
+                // On the snow: today's one thing, a little more, and how Lanvi is growing.
                 VStack(spacing: L.compact ? 12 : 16) {
-                    if storyWaiting {
-                        storyBanner
-                    } else if let s = store.suggestion, s.text != bubbleText {
-                        suggestionLine(s.text)
-                    }
-                    HStack(alignment: .top, spacing: 10) {
-                        ForEach(ActivityKind.allCases) { kind in
-                            HomeActivityCard(kind: kind, highlighted: store.suggestedKind == kind) {
-                                open(.activity(kind))
-                            }
-                            .homeZoomSource("activity-\(kind.rawValue)", in: zoom)
-                        }
-                    }
+                    HomeTodayCard(thing: store.todayThing, compact: L.compact,
+                                  onGo: { open(.activity($0)) },
+                                  onStory: { open(.story) },
+                                  onAnswer: { didIt in
+                                      guard case .realWorld(let s) = store.todayThing else { return }
+                                      Task { await store.answerSuggestion(s, didIt: didIt) }
+                                  })
+                        .homeZoomSource("today", in: zoom)
+                        .animation(.spring(response: 0.55, dampingFraction: 0.8), value: store.todayThing)
+                    HomeMoreChips(exclude: chipsExclude, done: isDoneToday, zoom: zoom) { open(.activity($0)) }
                     Button { open(.mind) } label: {
                         HomeGrowthCard(stage: store.stage, xp: store.xp, stageStart: store.stageRange.start,
-                                       nextStageAt: store.stageRange.next, shine: shine)
+                                       nextStageAt: store.stageRange.next, shine: shine,
+                                       daysTogether: store.daysTogether)
                     }
                     .buttonStyle(GrowthPressStyle())
                     .homeZoomSource("mind", in: zoom)
                     .accessibilityHint("Shows what Lanvi has noticed")
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, L.hill + (L.compact ? 22 : 30))
-                .animation(.spring(response: 0.5, dampingFraction: 0.85), value: extraRow)
+                .padding(.top, L.cardsTop)
 
                 if let stream {
                     HomeLightStream(from: stream.from, to: stream.to, start: stream.start)
@@ -177,7 +176,7 @@ struct HomeView: View {
         .sensoryFeedback(.success, trigger: haptic)
         .fullScreenCover(item: $cover) { c in
             coverContent(c)
-                .homeZoomTarget(c.id, in: zoom)
+                .homeZoomTarget(zoomSource(for: c), in: zoom)
         }
         .onChange(of: store.celebration) { _, c in
             if let c { celebrate(c) }
@@ -194,6 +193,17 @@ struct HomeView: View {
         .onChange(of: store.wandering?.state) { old, new in
             if new == .back, old != .back { runIn() } else if !celebrating { settle() }
         }
+        .onChange(of: store.cheerTick) { _, _ in
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .cheer }
+            bounce &+= 1
+            burst = Date()
+            haptic &+= 1
+            Task {
+                try? await Task.sleep(for: .seconds(2.2))
+                if !celebrating { settle() }
+            }
+        }
+        .onChange(of: isDoneToday) { _, _ in if !celebrating { settle() } }
         .onChange(of: scenePhase) { old, phase in
             if phase == .active, old == .background { welcomeBack() }
         }
@@ -233,8 +243,28 @@ struct HomeView: View {
 
     private var away: Bool { store.wandering?.state == .away && !celebrating }
     private var storyWaiting: Bool { store.wandering?.state == .back && store.wandering?.story != nil }
-    private var extraRow: Bool {
-        storyWaiting || (store.suggestion != nil && store.suggestion?.text != bubbleText)
+    private var isDoneToday: Bool { if case .done = store.todayThing { return true } else { return false } }
+
+    /// The chips leave out the activity the card already offers.
+    private var chipsExclude: ActivityKind? { if case .game(let k) = store.todayThing { return k } else { return nil } }
+
+    private func zoomSource(for c: Cover) -> String {
+        switch c {
+        case .activity(let k): return chipsExclude == k ? "today" : "chip-\(k.rawValue)"
+        case .story: return "today"
+        case .help: return "help"
+        case .mind: return "mind"
+        }
+    }
+
+    /// Sky colours and extra aurora for the time of day; the evening aurora follows the glow.
+    private var sky: (top: Color, bottom: Color, aurora: Double) {
+        switch store.dayPart {
+        case .morning: return (Color(hex: 0x4B67CF), Color(hex: 0xF6C9CF), 0)
+        case .day: return (Color(hex: 0x2C5FDB), Color(hex: 0x9EC4FF), 0)
+        case .evening: return (Theme.nightTop, Theme.nightBottom, 0.45 + 0.45 * store.glow)
+        case .night: return (Color(hex: 0x0D1B52), Color(hex: 0x33519E), 0.55 + 0.45 * store.glow)
+        }
     }
 
     private var bubbleText: String {
@@ -245,49 +275,6 @@ struct HomeView: View {
             return "I'm off wandering across Lapland. Back soon."
         }
         return store.line.isEmpty ? " " : store.line
-    }
-
-    private var storyBanner: some View {
-        Button { open(.story) } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle().fill(RadialGradient(colors: [Color(hex: 0x3EE6A8).opacity(0.7), .clear],
-                                                 center: .center, startRadius: 0, endRadius: 22))
-                    LanviView(pose: .love, size: 40)
-                }
-                .frame(width: 44, height: 44)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Lanvi brought a story")
-                        .font(Theme.rounded(17, .heavy))
-                    Text("Tap to hear it")
-                        .font(Theme.rounded(13, .bold))
-                        .opacity(0.8)
-                }
-                .foregroundStyle(.white)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.white.opacity(0.85))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(StoryBannerStyle())
-        .homeZoomSource("story", in: zoom)
-        .transition(.scale(scale: 0.9).combined(with: .opacity))
-    }
-
-    private func suggestionLine(_ text: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "sparkles")
-                .foregroundStyle(Color(hex: 0x3FD9A0))
-            Text(text)
-                .font(Theme.rounded(16, .heavy))
-                .foregroundStyle(Theme.ink)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: Moments
@@ -302,7 +289,15 @@ struct HomeView: View {
         switch store.wandering?.state {
         case .away: next = .run
         case .back: next = .surprised
-        default: next = .curious
+        default:
+            if isDoneToday { next = .love }
+            else {
+                switch store.dayPart {
+                case .morning: next = .cheer        // a morning stretch
+                case .day, .evening: next = .curious
+                case .night: next = .love           // curled up and cosy
+                }
+            }
         }
         if next != pose {
             withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = next }
@@ -342,12 +337,12 @@ struct HomeView: View {
 
     private func celebrate(_ c: HomeCelebration) {
         celebrating = true
-        let L = Layout(size: size, extraRow: extraRow, away: false)
+        let L = Layout(size: size, away: false)
         let tail = HomeTailGlow.tailOffset(pose: .cheer, foxSize: L.fox)
         let to = CGPoint(x: L.foxCenter.x + tail.x, y: L.foxCenter.y + tail.y)
         withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .surprised }
         if c.xpGained > 0 {
-            stream = (L.cardCenter(c.kind), to, Date())
+            stream = (L.cardCenter, to, Date())
         }
         Task {
             if c.xpGained > 0 { try? await Task.sleep(for: .seconds(HomeLightStream.duration - 0.1)) }

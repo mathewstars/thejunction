@@ -249,6 +249,21 @@ enum API {
         var wandering: WanderingOut?
     }
 
+    // MARK: Answer a suggestion (POST /v1/feedback)
+
+    /// `FeedbackIn`. Idempotent by `id` (8 to 64 of A-Z a-z 0-9 _ -).
+    struct FeedbackIn: Codable, Equatable {
+        var id: String
+        var suggestionId: String
+        var answer: String          // did_it, not_today, something_else
+        var felt: String? = nil     // rough, ok, good
+    }
+
+    /// The contract leaves this body open; the engine sends `{"ok": true}`.
+    struct FeedbackOut: Codable, Equatable {
+        var ok: Bool?
+    }
+
     // MARK: What Lanvi has learned (GET /v1/mind and its answers)
     // The contract leaves these bodies open; the shapes below are what the engine sends
     // (`engine/clinic_engine/mind/views.py`, `mind_view`).
