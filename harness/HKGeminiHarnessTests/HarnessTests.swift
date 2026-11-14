@@ -387,4 +387,94 @@ final class HarnessTests: XCTestCase {
         XCTAssertTrue(text.contains("session_level_features"))
         XCTAssertTrue(payload["sessions"]![0]!["windows"]!["60s"] != nil)
     }
+
+    // MARK: Engine adapters
+
+    func testFaceRawBuilderMapsNamesResamplesAndMarksUntracked() throws {
+        let importer = ARKitDatasetImporter()
+        var s = try importer.importARKitCSV(file: makeCSV())
+        importer.attach(manifest: try importer.importSessionJSON(file: makeManifest()), fileName: "session.json", to: &s)
+        let (raw, report) = try FaceRawBuilder().build(session: s)
+        XCTAssertEqual(raw.rateHz, 30)
+        XCTAssertEqual(Array(raw.channels.suffix(3)), ["headPitch", "headYaw", "headRoll"])
+        XCTAssertTrue(raw.channels.contains("eyeBlinkLeft") && raw.channels.contains("mouthSmileRight"))
+        XCTAssertFalse(raw.channels.contains("eyeBlink_L"), "engine spelling, not ARKit raw identifiers")
+        XCTAssertEqual(raw.channels.count, 6 + 3)
+        XCTAssertEqual(raw.samples.count, 300, "10 s at 30 Hz: 299 intervals + 1 grid point")
+        XCTAssertEqual(raw.samples[0].count, raw.channels.count)
+        let tracked = raw.tracked!
+        XCTAssertEqual(tracked.prefix(15).reduce(0, +), 0, "first half second untracked")
+        XCTAssertEqual(tracked.suffix(100).reduce(0, +), 100)
+        XCTAssertEqual(raw.samples[0], [Double](repeating: 0, count: 9), "untracked rows are zeros")
+        let yawIndex = raw.channels.firstIndex(of: "headYaw")!
+        XCTAssertEqual(raw.samples[45][yawIndex], 0.1 * sin(2 * Double.pi * 0.5 * 1.5) * 180 / .pi, accuracy: 0.6, "t = 1.5 s: yaw ≈ −5.7°")
+        XCTAssertTrue(report.headAngleSource.contains("head_world"), "fixture has no head_view columns")
+        XCTAssertEqual(report.trackedFraction, 285.0 / 300, accuracy: 0.01)
+        XCTAssertTrue(raw.samples.allSatisfy { row in row.prefix(6).allSatisfy { $0 >= 0 && $0 <= 1 } })
+    }
+
+    func testFaceRawBuilderLowersRateToFitSampleLimit() throws {
+        // 500 s at 30 Hz would be 15 001 samples; the builder must drop the rate.
+        var header = ["timestamp_s", "face_tracked", "bs_eyeBlink_L", "bs_eyeBlink_R", "bs_mouthSmile_L", "bs_mouthSmile_R"]
+        for r in 0..<4 { for c in 0..<4 { header.append("head_world_m\(r)\(c)") } }
+        var lines = [header.joined(separator: ",")]
+        for i in 0..<15000 {
+            lines.append(["\(1000 + Double(i) / 30)", "1", "0.05", "0.05", "0.1", "0.1", "1", "0", "0", "0", "0", "1", "0", "0", "0", "0", "1", "-0.4", "0", "0", "0", "1"].joined(separator: ","))
+        }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("long-\(UUID().uuidString).csv")
+        try (lines.joined(separator: "\n") + "\n").write(to: url, atomically: true, encoding: .utf8)
+        let s = try ARKitDatasetImporter().importARKitCSV(file: url)
+        let (raw, report) = try FaceRawBuilder().build(session: s)
+        XCTAssertLessThanOrEqual(raw.samples.count, EngineFaceRaw.maxSamples)
+        XCTAssertLessThan(raw.rateHz, 30)
+        XCTAssertGreaterThanOrEqual(raw.rateHz, 5)
+        XCTAssertTrue(report.warnings.contains { $0.contains("lowered") })
+        XCTAssertNil(raw.tracked, "all frames tracked: tracked omitted")
+    }
+
+    func testEngineActivityBuilderAndClientID() throws {
+        let importer = ARKitDatasetImporter()
+        var s = try importer.importARKitCSV(file: makeCSV())
+        importer.attach(manifest: try importer.importSessionJSON(file: makeManifest()), fileName: "session.json", to: &s)
+        let (raw, _) = try FaceRawBuilder().build(session: s)
+        let a = try EngineActivityBuilder.activity(for: s, faceRaw: raw, kind: .breathing)
+        XCTAssertEqual(a.type, "breathing")
+        XCTAssertEqual(a.id, "fm-20261114-101640-abc123")
+        XCTAssertEqual(a.startedAt, "2026-11-13T20:00:00Z", "manifest createdAt 1_794_600_000")
+        XCTAssertEqual(a.durationS, 10.0, accuracy: 0.11)
+        XCTAssertNotNil(a.timePlayedS); XCTAssertNil(a.correctTaps)
+        let data = try JSONValue.encoder(pretty: false).encode(a)
+        let json = try JSONValue.decoder().decode(JSONValue.self, from: data)
+        XCTAssertNil(json["correct_taps"], "nil optionals must not be encoded (engine forbids extra keys)")
+        XCTAssertNil(json["suggestion_id"])
+        XCTAssertNotNil(json["face_raw"]?["samples"])
+        XCTAssertEqual(EngineActivity.clientID(from: "fm/20261114 101640.abc"), "fm-20261114-101640-abc")
+        XCTAssertEqual(EngineActivity.clientID(from: "ab").count, 8)
+        var unaligned = try importer.importARKitCSV(file: makeCSV())
+        unaligned.alignment = nil
+        XCTAssertThrowsError(try EngineActivityBuilder.activity(for: unaligned, faceRaw: raw, kind: .breathing))
+    }
+
+    func testDailyRecordBuilderRequiresSteps() {
+        let cal = Calendar.current
+        let day = cal.startOfDay(for: Date(timeIntervalSince1970: 1_794_528_000))
+        func q(_ id: String, _ v: Double, _ offset: Int, unit: String) -> HealthSample {
+            let d = day.addingTimeInterval(Double(offset) * 86400 + 3600 * 12)
+            return HealthSample(id: UUID().uuidString, kind: .quantity, typeIdentifier: id, displayName: id, startDate: d, endDate: d, value: v, unit: unit, sourceName: "W", origin: .healthKit)
+        }
+        let samples = [q("HKQuantityTypeIdentifierStepCount", 8000, 0, unit: "count"), q("HKQuantityTypeIdentifierHeartRateVariabilitySDNN", 41.26, 0, unit: "ms"),
+                       q("HKQuantityTypeIdentifierHeartRateVariabilitySDNN", 50, 1, unit: "ms")]
+        let range = DateRange(start: day, end: day.addingTimeInterval(2 * 86400))
+        let summary = HealthSummaryBuilder(range: range, calendar: cal).build(samples: samples)
+        let r = DailyRecordBuilder.build(from: summary)
+        XCTAssertEqual(r.days.count, 1)
+        XCTAssertEqual(r.days[0].steps, 8000)
+        XCTAssertEqual(r.days[0].hrvMs, 41.3)
+        XCTAssertNil(r.days[0].sleepH)
+        XCTAssertEqual(r.skippedDays.count, 1, "the HRV-only day has no steps and is skipped")
+        let data = try! JSONValue.encoder(pretty: false).encode(EngineDailyIn(days: r.days))
+        let text = String(decoding: data, as: UTF8.self)
+        XCTAssertTrue(text.contains("\"hrv_ms\":41.3") && text.contains("\"steps\":8000"))
+        XCTAssertFalse(text.contains("sleep_h"), "nil optionals omitted")
+    }
 }

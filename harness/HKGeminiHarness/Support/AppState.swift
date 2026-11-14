@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 
 /// Everything the four screens share. Owns the managers and the in-memory data; nothing is persisted
 /// between launches except settings (UserDefaults) and the proxy token (Keychain).
@@ -9,6 +10,7 @@ final class AppState: ObservableObject {
     let health = HealthKitManager()
     let gemini = GeminiAnalyzer()
     let importer = ARKitDatasetImporter()
+    let engine = EngineClient()
     let calendar = Calendar.current
 
     // HealthKit
@@ -38,10 +40,28 @@ final class AppState: ObservableObject {
     @Published var lastExport: URL?
     @Published var pendingRequest: GeminiAnalysisRequest?
 
+    // Engine (Mathew's server: the server-side Gemini integration)
+    @Published var engineDailyPreview: DailyRecordBuilder.Result?
+    @Published var engineDailyResult: EngineDailyOut?
+    @Published var engineFaceRawReport: FaceRawBuildReport?
+    @Published var engineActivityResults: [String: EngineActivityOut] = [:]
+    @Published var engineReadings: [String: EngineReadingOut] = [:]
+    @Published var engineTodayResult: JSONValue?
+    @Published var enginePatientDetail: JSONValue?
+    @Published var engineModelExchanges: JSONValue?
+    @Published var pendingEngineSend: EnginePendingSend?
+    private var pendingActivity: EngineActivity?
+
+    private var cancellables = Set<AnyCancellable>()
+
     init() {
         let end = Date()
         let start = Calendar.current.date(byAdding: .day, value: -90, to: end) ?? end
         healthRange = DateRange(start: start, end: end)
+        // Views observe AppState only; forward the managers' changes so their published state refreshes the screens.
+        for publisher in [engine.objectWillChange.eraseToAnyPublisher(), gemini.objectWillChange.eraseToAnyPublisher(), health.objectWillChange.eraseToAnyPublisher()] {
+            publisher.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
+        }
     }
 
     // MARK: HealthKit
@@ -238,6 +258,101 @@ final class AppState: ObservableObject {
         }
     }
 
+    // MARK: Engine
+
+    func enginePair(code: String) async {
+        await perform("Pairing with the engine") { _ = try await self.engine.pair(code: code.trimmingCharacters(in: .whitespacesAndNewlines)) }
+    }
+
+    func engineToday() async {
+        await perform("GET /v1/today") { self.engineTodayResult = try await self.engine.today() }
+    }
+
+    func engineBuildDailyPreview() {
+        guard let hs = healthSummary else { lastError = "Fetch or import Health data first."; return }
+        engineDailyPreview = DailyRecordBuilder.build(from: hs)
+        engineDailyResult = nil
+    }
+
+    func engineAskToSendDaily() {
+        guard let r = engineDailyPreview, !r.days.isEmpty else { return }
+        let first = r.days.first!.date, last = r.days.last!.date
+        pendingEngineSend = EnginePendingSend(
+            title: "Daily Apple Health values", path: "/v1/daily",
+            facts: ["\(r.days.count) day records, \(first) to \(last)",
+                    "Per day: steps, and where present walking speed (m/s), HRV (ms), hours asleep",
+                    "\(r.skippedDays.count) day(s) without a step total are not sent"],
+            preview: (try? JSONValue.from(EngineDailyIn(days: r.days))) ?? .null, kind: .daily)
+    }
+
+    func engineBuildActivityPreview(sessionID: String, kind: EngineActivityBuilder.ActivityKind, rateHz: Double, markersAsMoments: Bool) {
+        guard let s = arKitSessions.first(where: { $0.id == sessionID }) else { return }
+        do {
+            var b = FaceRawBuilder()
+            b.rateHz = rateHz
+            if markersAsMoments { b.momentMarkerLabels = Array(Set(s.manifest?.markers?.map { $0.label } ?? [])) }
+            let (raw, report) = try b.build(session: s)
+            pendingActivity = try EngineActivityBuilder.activity(for: s, faceRaw: raw, kind: kind)
+            engineFaceRawReport = report
+        } catch { lastError = error.localizedDescription; pendingActivity = nil; engineFaceRawReport = nil }
+    }
+
+    func engineAskToSendActivity() {
+        guard let a = pendingActivity, let r = engineFaceRawReport else { return }
+        var preview = (try? JSONValue.from(a)) ?? .null
+        // Show the shape with the first three frames; the full body is what gets sent.
+        if var o = preview.objectValue, var fr = o["face_raw"]?.objectValue, let samples = fr["samples"]?.arrayValue {
+            fr["samples"] = .array(Array(samples.prefix(3)) + [.string("… \(max(0, samples.count - 3)) more rows")])
+            if let t = fr["tracked"]?.arrayValue { fr["tracked"] = .array(Array(t.prefix(3)) + [.string("… \(max(0, t.count - 3)) more")]) }
+            o["face_raw"] = .object(fr); preview = .object(o)
+        }
+        pendingEngineSend = EnginePendingSend(
+            title: "Recording \(r.sessionID) as a \(a.type) activity with raw face frames", path: "/v1/activities",
+            facts: ["\(r.sampleCount) frames at \(r.rateHz) Hz, \(r.channelCount) channels (\(r.blendShapeChannels) blend shapes + 3 head angles)",
+                    "Tracked \(Int(r.trackedFraction * 100))% of frames; \(Fmt.bytes(r.approximateBytes)) of numbers",
+                    "started_at \(a.startedAt), duration \(a.durationS) s",
+                    "The engine computes every face measure and keeps the frames per session (docs/face-raw.md)"],
+            preview: preview, kind: .activity)
+    }
+
+    func engineSendPending() async {
+        guard let send = pendingEngineSend else { return }
+        pendingEngineSend = nil
+        switch send.kind {
+        case .daily:
+            guard let r = engineDailyPreview else { return }
+            await perform("POST /v1/daily") { self.engineDailyResult = try await self.engine.sendDaily(r.days) }
+        case .activity:
+            guard let a = pendingActivity else { return }
+            await perform("POST /v1/activities") {
+                let out = try await self.engine.sendActivity(a)
+                self.engineActivityResults[a.id] = out
+                if out.reading == "pending" {
+                    self.busy = "Waiting for the session reading"
+                    self.engineReadings[a.id] = try await self.engine.waitForReading(activityID: a.id, maxSeconds: 90)
+                } else {
+                    self.engineReadings[a.id] = EngineReadingOut(status: out.reading, line: nil)
+                }
+            }
+        }
+    }
+
+    func enginePollReading(_ id: String) async {
+        await perform("GET reading") { self.engineReadings[id] = try await self.engine.reading(activityID: id) }
+    }
+
+    func engineClinicLogin(user: String, pass: String) async {
+        await perform("Clinician login") { try await self.engine.clinicLogin(username: user, password: pass) }
+    }
+
+    func engineFetchPatientDetail(_ patientID: String?) async {
+        await perform("GET patient detail") { self.enginePatientDetail = try await self.engine.patientDetail(patientID: patientID) }
+    }
+
+    func engineFetchExchanges(_ patientID: String?) async {
+        await perform("GET model exchanges") { self.engineModelExchanges = try await self.engine.modelExchanges(patientID: patientID) }
+    }
+
     // MARK: Helpers
 
     enum AppError: LocalizedError {
@@ -250,4 +365,15 @@ final class AppState: ObservableObject {
         defer { busy = nil }
         do { try await work() } catch { lastError = error.localizedDescription }
     }
+}
+
+/// A send to the engine waiting for the person's consent.
+struct EnginePendingSend: Identifiable {
+    enum Kind { case daily, activity }
+    let id = UUID()
+    var title: String
+    var path: String
+    var facts: [String]
+    var preview: JSONValue
+    var kind: Kind
 }
