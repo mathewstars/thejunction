@@ -78,7 +78,9 @@ final class LanviFlowUITests: XCTestCase {
         pause(2.0)
 
         // Home
-        tap(app.descendants(matching: .any), "home.fox", "home.fox", wait: 6)
+        tap(app.descendants(matching: .any), "home.fox", "home.fox", wait: 6)   // the puppet reacts; nothing opens
+        pause(1.6)
+        tap(app.buttons, "home.day", "home.day.growth")
         pause(1.8)
         closeSheet("growth.close")
         pause(1.5)
@@ -150,7 +152,7 @@ final class LanviFlowUITests: XCTestCase {
         pause(2.0)
         closeSheet("flow.moreclose")
         pause(1.6)
-        tap(app.descendants(matching: .any), "home.fox", "flow.fox")
+        tap(app.buttons, "home.day", "flow.growth")
         pause(2.2)
         closeSheet("flow.growthclose")
         pause(1.6)

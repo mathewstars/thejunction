@@ -4,37 +4,53 @@ import SwiftUI
 //
 //   LanviView(pose: .curious, size: 200, bounceTrigger: bounce)   // same as always
 //       .lanviMood(.sleepy)                       // held while set (nil = from the pose)
-//       .lanviReaction(.happy, trigger: xp)       // plays once each time `xp` changes
+//       .lanviReaction(.proud, trigger: xp)       // plays once each time `xp` changes
 //       .lanviLookAt(UnitPoint(x: 0.9, y: -0.3))  // eyes, then head, turn to a point
+//       .lanviTalking(isSpeaking)                 // mouth and head talk while true
+//       .lanviMouth(.o)                           // or drive the mouth shape yourself
 //
-// - The fox is a paper puppet: tail, body, paws, head, ears, eyes and mouth are separate
-//   pictures. At rest it is calm: breathing, one slow tail sway, a blink every 3 to 6 s
-//   and an ear flick every 6 to 10 s; between those it is completely still. Nothing to
-//   call: every `LanviView` is alive.
-// - The fox ignores the screen's withAnimation/.animation for its own parts (its clock
-//   is their only driver), so a spring on the screen never makes it stutter.
-// - Debug: `-puppetLog YES` writes every frame's part transforms to tmp/puppet-frames.csv;
-//   `-screen puppet -plain YES` shows the fox alone on flat green for measuring.
-// - Moods (`LanviMood`): calm, happy, curious, surprised, sleepy, listening.
-//   `.lanviMood` holds one (sleepy for the evening, listening while the person types).
-//   `.lanviReaction` plays one once on top of the idle, which never stops:
-//     happy     a joyful hop (head leads, nods on landing, ears flop), happy eyes,
-//               big smile, fast shrinking tail wag, a little wiggle; paws stay planted
-//     curious   head tilt, eyes look up toward a point
-//     surprised ears perk, wide eyes, small "o"
-//     sleepy    a yawn
-//     listening ears up, a small nod
+// - The fox is a paper puppet with depth: tail, body, paws, head, ears, eyes and mouth
+//   are separate pictures. When the head turns, the painted face slides around it in
+//   space (the near ear comes forward, the far ear tucks back), the chest swells with
+//   each breath, and the tail and ears bend along their length with follow-through.
+// - At rest: a slow breath (4.5 s), a slow tail drift, soft blinks (sometimes slow or
+//   double), and every 6 to 10 s one small performed moment (`LanviMoment`): a glance
+//   to the side or up, a curious tilt, ear flicks, a tail curl, a sniff, a contented
+//   slow blink, a look down at the button and back up at you; yawns in the evening.
+//   Never two at once, never the same twice in a row. Nothing to call.
+// - Moods (`LanviMood`), held with `.lanviMood` or played once with `.lanviReaction`:
+//     happy      a joyful hop: big breath, head leads, ears flop, tail wags, wiggle
+//     proud      after XP: chest out, chin up, happy eyes, tail high
+//     okay       for "Not today": soft eyes, a small nod. Never sad.
+//     greeting   hello: ears up, bright eyes, a small bounce, a happy look
+//   `.lanviHops(false)` keeps him on the snow (no hop, no bounce; faces still react).
+//     listening  while the person types: head tilted, ears forward, eyes down, nods
+//     thinking   while waiting for a reply: eyes up to the side, a slow tail swish
+//     curious    head tilt, eyes look up
+//     surprised  a jolt: ears shoot up, wide eyes, small "o", tail puffs
+//     sleepy     a yawn, then droopy eyes (held: half-closed eyes, slow breath)
+//   Reactions play on top of the idle, which never stops, and return exactly to rest.
 // - `.lanviLookAt` takes a point in the fox's own square (0,0 top-left, 1,1 bottom-
 //   right; it can be outside, e.g. y: -0.4 is above his head). nil = straight ahead.
+// - The fox ignores the screen's withAnimation/.animation for its own parts (its clock
+//   is their only driver), so a spring on the screen never makes it stutter.
 // - Layout: the square is centred on the fox's head and body; the tail hangs out
 //   past the left edge, so centre the view and the fox looks centred.
-// - Tapping the fox: eyes jump to the finger, head tilts toward it, happy squint, ear
-//   flick, a small hop. Works next to the screen's own `.onTapGesture`.
+// - Touching the fox depends on where (`LanviTouch.swift`): pet the head (he leans
+//   in), boop the nose (wide cross eyes, two blinks, a smile), an ear (it flicks, he
+//   looks up at it), cheeks (a giggle), belly (a wriggle and a laugh), tail (he looks
+//   back at it), a paw (he lifts it a few points). Never the same twice running, never
+//   a hop. Quick taps build up, then he calms. Long press = petting; a slow drag is
+//   followed by the eyes, then the head. A screen's own tap on the fox also fires, so
+//   do not open anything from a tap on him.
 // - Poses: curious, cheer, love and surprised are the puppet (cheer = happy face and
 //   a happy reaction, love = soft happy eyes, surprised = surprised face). Changing
 //   the pose or `bounceTrigger` makes it hop. run, peek, grumpy and meh are still the
 //   old single pictures.
 // - Reduce Motion: only blinks and face changes, no movement.
+// - Debug: `-puppetLog YES` writes every frame's part transforms to tmp/puppet-frames.csv;
+//   `-screen puppet` has a button for every moment and reaction; `-screen puppet -plain
+//   YES` shows the fox alone on flat green for measuring.
 // - The fox fire: `LanviView.puppetTailTip(foxSize:)` is the tail tip's offset from
 //   the centre of the fox's square, like `HomeTailGlow.tailOffset`.
 
@@ -106,12 +122,16 @@ struct LanviDebugFreeze: Equatable {
     var reaction: LanviMood?
     var at: Double
     var blink: Double?
+    var moment: LanviMoment? = nil
+    /// Hold the eyes and head on a point (head-turn stills).
+    var look: UnitPoint? = nil
 }
 
 private struct MoodKey: EnvironmentKey { static let defaultValue: LanviMood? = nil }
 private struct ReactionKey: EnvironmentKey { static let defaultValue: LanviReactionRequest? = nil }
 private struct LookKey: EnvironmentKey { static let defaultValue: UnitPoint? = nil }
 private struct MouthKey: EnvironmentKey { static let defaultValue: MouthShape? = nil }
+private struct HopsKey: EnvironmentKey { static let defaultValue = true }
 private struct FreezeKey: EnvironmentKey { static let defaultValue: LanviDebugFreeze? = nil }
 
 extension EnvironmentValues {
@@ -122,6 +142,10 @@ extension EnvironmentValues {
     var lanviReactionRequest: LanviReactionRequest? {
         get { self[ReactionKey.self] }
         set { self[ReactionKey.self] = newValue }
+    }
+    var lanviHops: Bool {
+        get { self[HopsKey.self] }
+        set { self[HopsKey.self] = newValue }
     }
     var lanviMouth: MouthShape? {
         get { self[MouthKey.self] }
@@ -148,6 +172,13 @@ extension View {
         environment(\.lanviReactionRequest, LanviReactionRequest(mood: mood, token: AnyHashable(trigger)))
     }
 
+    /// False: Lanvi never leaves the snow (no hop on pose changes, taps or the happy
+    /// reaction; faces, ears and tail still react). Home and first run use this and
+    /// allow the hop only for the reward after an activity.
+    func lanviHops(_ on: Bool) -> some View {
+        environment(\.lanviHops, on)
+    }
+
     /// Show one of the existing mouth shapes while set (talking); nil = the puppet decides.
     func lanviMouth(_ mouth: MouthShape?) -> some View {
         environment(\.lanviMouth, mouth)
@@ -156,6 +187,63 @@ extension View {
     /// Make Lanvi look at a point in his own square (can be outside 0...1). nil = ahead.
     func lanviLookAt(_ point: UnitPoint?) -> some View {
         environment(\.lanviLook, point)
+    }
+}
+
+// MARK: - Talking and idle moments
+
+struct LanviMomentRequest: Equatable {
+    var moment: LanviMoment
+    var token: AnyHashable
+    static func == (a: Self, b: Self) -> Bool { a.token == b.token }
+}
+
+/// A touch asked for by code (the preview's buttons, demos): a tap on a place, or a
+/// hold (petting) for `hold` seconds.
+struct LanviTouchRequest: Equatable {
+    var zone: LanviTouchZone
+    var side: Double = 1
+    var hold: Double? = nil
+    var token: AnyHashable
+    static func == (a: Self, b: Self) -> Bool { a.token == b.token }
+}
+
+private struct TalkingKey: EnvironmentKey { static let defaultValue = false }
+private struct TouchKey: EnvironmentKey { static let defaultValue: LanviTouchRequest? = nil }
+private struct MomentKey: EnvironmentKey { static let defaultValue: LanviMomentRequest? = nil }
+
+extension EnvironmentValues {
+    var lanviTalking: Bool {
+        get { self[TalkingKey.self] }
+        set { self[TalkingKey.self] = newValue }
+    }
+    var lanviMomentRequest: LanviMomentRequest? {
+        get { self[MomentKey.self] }
+        set { self[MomentKey.self] = newValue }
+    }
+    var lanviTouchRequest: LanviTouchRequest? {
+        get { self[TouchKey.self] }
+        set { self[TouchKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// While true, Lanvi talks: the mouth opens and closes in syllables with small head
+    /// bobs on the words. Set it while a speech bubble's words arrive.
+    func lanviTalking(_ talking: Bool) -> some View {
+        environment(\.lanviTalking, talking)
+    }
+
+    /// Play one idle moment now (each time `trigger` changes), instead of waiting for
+    /// the next one. The idle plays them by itself every 6 to 10 seconds.
+    func lanviMoment<T: Hashable>(_ moment: LanviMoment, trigger: T) -> some View {
+        environment(\.lanviMomentRequest, LanviMomentRequest(moment: moment, token: AnyHashable(trigger)))
+    }
+
+    /// Touch Lanvi from code (each time `trigger` changes) as if a finger tapped `zone`
+    /// (or rested on it for `hold` seconds). Real fingers work by themselves.
+    func lanviTouch<T: Hashable>(_ zone: LanviTouchZone, side: Double = 1, hold: Double? = nil, trigger: T) -> some View {
+        environment(\.lanviTouchRequest, LanviTouchRequest(zone: zone, side: side, hold: hold, token: AnyHashable(trigger)))
     }
 }
 

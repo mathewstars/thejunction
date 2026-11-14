@@ -6,7 +6,8 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - iOS project is generated: edit `ios/project.yml`, run `xcodegen generate` in `ios/`, commit the regenerated `Lanvi.xcodeproj`. On a project-file merge conflict take one side and regenerate; never hand-merge it.
 - iOS server address and pairing code live only in git-ignored `ios/Config.xcconfig` (template `ios/Config.example.xcconfig`); without it the app runs an offline demo. Public repo: never commit keys, tokens, codes or server addresses.
 - Sensors (Apple Health, raw face frames): `ios/SENSORS.md`. Peter's harness files live unchanged in `ios/Lanvi/Sense/Peter/`, built as the separate `Harness` framework target; change them only in step with his `harness/`.
-- iOS screenshots headless: `xcodebuild ... -derivedDataPath build/dd`, then `xcrun simctl launch <device> app.lanvi.Lanvi -screen <name>` and `xcrun simctl io <device> screenshot`; launch arguments are listed in `ios/README.md`.
+- iOS screenshots headless: `xcodebuild ... -derivedDataPath build/dd`, then `xcrun simctl launch <device> app.lanvi.Lanvi -screen <name> -senseScreen off` (without it the Apple Health ask covers the screen) and `xcrun simctl io <device> screenshot`; launch arguments are listed in `ios/README.md`.
+- No `.metal` files: Xcode here has no Metal Toolchain, so a shader breaks every teammate's build. The fox (`ios/Lanvi/Mascot/`) gets its depth from layers cut by `ios/tools/cut_puppet_parts.py` and moves only with transforms; `ios/tools/motion_check/` measures its motion without a simulator.
 
 ## Maintaining this file
 

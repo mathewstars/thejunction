@@ -2,26 +2,27 @@
 
 A short second video that explains only the research idea: can a phone notice when someone is getting worse again? It is for the research track and for anyone who has never heard of a PHQ-9. The main two-minute pitch video is a different piece and is not covered here.
 
-Status on Saturday 14 November, evening: the plan below was built once (two versions) and judged too slow. The current cut is **the rescue film**, described in the next section; the older plan is kept below it for the shot prompts and the wording rules, which still hold.
+Status on Sunday 15 November, early morning: there is ONE film now, the submission video (`lanvi-film-v5`, 1:57). The story of Anna and the fox carries it, and the real product sits inside the story. The older plan is kept below for its prompts and wording rules.
 
-## The rescue film (current cut)
+## The submission film (v5)
 
-One story, under two minutes, cut fast: the clinic door closes behind Anna; on the way home she finds an abandoned Arctic fox kit and takes him in; every day she does one small thing for him; what she does not know is that he keeps watch over her (steps, smiles, reactions, numbers only, beside the clinic's weekly score); in November the lines turn and at one at night she writes "I need help"; her clinician's phone lights up; the honest close (Anna is an example, nobody knows yet, the study we want to run); last line: "She thought she was saving a fox. He kept the light on for her."
+| # | Voice | Picture |
+|---|---|---|
+| 1 | The clinic door closes behind Anna. Her treatment for depression is over. The next appointment is six weeks away. | Door, waiting room, calendar (generated) |
+| 2 | On the way home, she finds him. A fox cub, alone in the snow. She kneels. She takes him home. He lives in her phone now. | The cub, the rescue, the cub asleep (generated), then the real app |
+| 3 | Every day she does one small thing for him. A game. A minute of breathing. Three good things at night. Some days, she would stay in bed. For him, she gets up. | The real app after each activity; an unmade bed; the walk |
+| 4 | And she said yes to one more thing: while she cares for him, the phone keeps count. His game times her reactions. Breathing with him, it notes how her face moves. Numbers only, never pictures. All day, her steps. Gemini reads the numbers. Code checks its work. | Split screens: the app on the left, the line that moment feeds on the right; a card with one real Gemini run (3 smiles reported, 2 confirmed, 1 dropped by code) |
+| 5 | Every week, the clinic's questionnaire. Higher means worse. In this example, when her score climbs, the other lines fall. That is the pattern we would look for. | The chart drawing itself from the example data |
+| 6 | Then, November. Her boots stay by the door. At one a.m. she writes: I need help. Her words go straight to her clinic. | The boots alone; the night; a phone lighting up |
+| 6b | A woman's voice on the phone: "Anna? I read your note. I'm here." | Morning; she strokes the fox |
+| 7 | Anna is invented. Whether a phone can follow this after treatment is not yet shown. That is the study we want to run. | Anna's and Elina's research pages; the study card |
+| 8 | Lanvi. The fox you rescue keeps the light on for you. | The fox logo, then black |
 
-How it is made, so anyone can rebuild it (`video/`):
+Why it reads this way: seven reviewers went through the scenario before it was built (`video/scenario_v5.md` is what they read). All five who judged the feeling named the same gap, that nobody answered her, so the nurse's call was added. The two who judged the research asked for five changes, all made: she agrees to the counting; the chart is "in this example" and "the pattern we would look for"; her own words raise the alert, not the lines; the score is a questionnaire where higher means worse; steps are all-day steps and the face measure is movement, not emotion. The motto was chosen in three rounds by three reviewers.
 
-| File | Does |
-|---|---|
-| `video/build.py` | The shot list, keyed to times on the soundtrack. Uses a generated clip where one exists and otherwise the still with a slow move, moves every cut onto a beat, checks each shot's length, and joins picture and sound. |
-| `video/beats.py` | Finds the beats of the soundtrack (`beats.json`). |
-| `video/chart.py` | Draws the chart that builds itself, from the example patient's series as the server returns it (`anna.json`). |
-| `video/track.json` | The narration with the time of each sentence. |
+How it is built (`video/`): `audio5.py` joins the narrator takes, the nurse's line and a phone buzz into one soundtrack; `build5.py` holds the shot list keyed to that soundtrack, moves cuts onto beats, adds the corner logo and the fade; `chart.py` draws the chart and the three single lines from the example patient's series (`anna.json`); `beats.py` finds the beats. Not in the repository: the generated stills and clips (Higgsfield), the voice takes (Suno Speech, its own mix; its stem separation garbles the voice and is not used), and the simulator recordings of the app (`xcrun simctl io <device> recordVideo` with the launch arguments from `ios/README.md`).
 
-Not in the repository, because they are large or generated: the stills and clips (Higgsfield: stills first, then each still turned into a 5-second clip, 720p), and the soundtrack (Suno Speech, one take with voice and music; long pauses shortened and the whole take played 1.3 times faster). `build.py` expects them beside it in `stills/`, `clips/` and `track.m4a`, and the earlier clips and overlays one folder up.
-
-Rules kept from the first plan: generated footage only tells the story and is labelled "Illustrative footage, generated"; every chart and screen is real and labelled "Example data"; no claim that the phone detects or predicts anything. In the app the fox is rescued once and never suffers because of the person (`docs/game-design-rescue.md`).
-
-Open before it is final: someone has to listen to the soundtrack (the joins where pauses were shortened, and whether "Anna" is said clearly), and the clips can be rendered again at a higher quality once the cut is approved.
+Still generated where a real recording would be better: the clinician's phone lighting up. The real Telegram alert and the clinician page with Anna on top would replace it.
 
 ## What it must do
 

@@ -29,10 +29,12 @@ struct LanviApp: App {
 /// Launch arguments:
 /// - `-demo`: the whole story by itself for the pitch video (under a minute):
 ///   Welcome, Home with today's one thing, Breathe with Lanvi, the XP and glow
-///   moment, growing up, done for today, a wandering and its story, a word with
-///   Lanvi. Always uses the offline demo data.
+///   moment, growing up, done for today, a word with Lanvi. Always uses the offline demo data.
 /// - `-screen <name>`: open one screen straight away: `home`, `whathelps`,
 ///   `focus`, `breathe`, `checkin`, `checkin-plan`, `puppet`, `pair`.
+/// - `-flow`: the first run and a short tour of Home (chat, more, growth, Help) play
+///   by themselves, at a person's pace, with nothing attached: for smooth recordings.
+///   Use it with `-offline`.
 /// - `-offline`: use the offline demo data even when a server is configured.
 /// - Screenshot moments on Home: see `DemoBackend` and `HomeView.runDemo`.
 struct RootView: View {
@@ -41,9 +43,11 @@ struct RootView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.scenePhase) private var scenePhase
     private let demo = ProcessInfo.processInfo.arguments.contains("-demo")
+    /// `-flow`: the first run and a short tour of Home play by themselves (for recordings).
+    private let flow = ProcessInfo.processInfo.arguments.contains("-flow")
     @State private var step: Step = {
         let args = ProcessInfo.processInfo.arguments
-        if args.contains("-demo") { return .welcome }
+        if args.contains("-demo") || args.contains("-flow") { return .welcome }
         return UserDefaults.standard.bool(forKey: "lanvi.welcomed") ? .home : .welcome
     }()
     /// Through the first run before (so after pairing, straight back to Home).
@@ -78,7 +82,7 @@ struct RootView: View {
                     PairView { go(welcomedBefore ? .home : .helps) }
                         .transition(LanviTiming.arrive)
                 case .helps:
-                    WhatHelpsView(demo: demo) { go(.home) }
+                    WhatHelpsView(demo: demo || flow) { go(.home) }
                         .transition(LanviTiming.arrive)
                 case .home:
                     HomeView(demo: demo)
@@ -91,9 +95,9 @@ struct RootView: View {
             await store.start()
         }
         .task {
-            guard demo else { return }
-            try? await Task.sleep(for: .seconds(4.2))
-            go(.home)
+            guard demo || flow else { return }
+            try? await Task.sleep(for: .seconds(flow ? 3.5 : 4.2))
+            go(flow ? .helps : .home)
         }
         .onAppear {
             // Already through the welcome before, but this phone is not paired (a new

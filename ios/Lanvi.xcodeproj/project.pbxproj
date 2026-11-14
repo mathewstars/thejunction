@@ -20,6 +20,7 @@
 		20B18DED37EAEDD3C5184E28 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CA1C956F7514A490E2C77E /* Theme.swift */; };
 		246F5298B66DEE487E49BD3E /* Harness.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 47EB2CBCF8B846132146AC4C /* Harness.framework */; };
 		2A64688C8640CBD20F6751CE /* Nunito-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 60508F343ED886BCE50BF7D9 /* Nunito-OFL.txt */; };
+		3483B1C13131906BB13DF27E /* LanviTouch.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE302A87F06086F1486E7DCF /* LanviTouch.swift */; };
 		378EA041835D15A942E8F4FC /* ServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */; };
 		3F11B1A55A50095524067A63 /* HealthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7415116ED3C0D377127D698 /* HealthTests.swift */; };
 		42388E6A19E9972BFD34235B /* FaceRawTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9880ABDFC5EF111BB77915E2 /* FaceRawTests.swift */; };
@@ -205,6 +206,7 @@
 		F71B90D0715EB72D1C84CFA7 /* HomeChatScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeChatScreen.swift; sourceTree = "<group>"; };
 		F7415116ED3C0D377127D698 /* HealthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthTests.swift; sourceTree = "<group>"; };
 		F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusGameView.swift; sourceTree = "<group>"; };
+		FE302A87F06086F1486E7DCF /* LanviTouch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviTouch.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -285,6 +287,7 @@
 				8863592B90900967DE7CA797 /* LanviPuppet.swift */,
 				5E91BDD22A3D7AF3A6B1F654 /* LanviPuppetPreview.swift */,
 				743C0B865552B2E8824FA20B /* LanviRig.swift */,
+				FE302A87F06086F1486E7DCF /* LanviTouch.swift */,
 				BCA5EF66B4A3CE2A4FFA2F8C /* LanviView.swift */,
 			);
 			path = Mascot;
@@ -665,6 +668,7 @@
 				F143A28682E5808FBAD2EB81 /* LanviPuppetPreview.swift in Sources */,
 				AF042D25043E7247AD53A177 /* LanviRig.swift in Sources */,
 				BC1B1DE3FDB56F877CB09FE4 /* LanviTiming.swift in Sources */,
+				3483B1C13131906BB13DF27E /* LanviTouch.swift in Sources */,
 				F63C6D18368CF51EE20C21AC /* LanviView.swift in Sources */,
 				DB6FE7A56601347A0911DCCB /* PaintedWorld.swift in Sources */,
 				C987BE8A3FD45A82FEE5AEA4 /* PairView.swift in Sources */,
