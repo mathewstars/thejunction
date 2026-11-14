@@ -44,6 +44,8 @@ struct LanviPuppetPreview: View {
     private let demo = UserDefaults.standard.string(forKey: "puppetDemo")
     private let plain = UserDefaults.standard.bool(forKey: "plain")
     private let snow = UserDefaults.standard.bool(forKey: "snow")
+    /// `-puppetBounds YES` (or the Bounds button): outline the eyes and their patches.
+    @State private var bounds = UserDefaults.standard.bool(forKey: "puppetBounds")
 
     private let reactions: [(String, LanviMood)] = [
         ("Hello", .greeting), ("Happy", .happy), ("Proud", .proud), ("Okay", .okay),
@@ -79,6 +81,7 @@ struct LanviPuppetPreview: View {
             .lanviLookAt(look)
             .lanviTouch(touchZone, side: touchSide, hold: touchHold, trigger: touchTrigger)
             .environment(\.lanviDebugFreeze, freeze)
+            .environment(\.lanviDebugBounds, bounds)
     }
 
     /// `-plain YES`: the fox alone on flat pure green, for measuring the motion frame by
@@ -137,7 +140,8 @@ struct LanviPuppetPreview: View {
                 grid(held.map { m in (m.0, heldMood == m.1, { toggle(m.1, m.0) }) }
                      + [("Talking", talking, { talking.toggle(); caption = talking ? "Talking" : "" }),
                         ("Look", look != nil, { nextLook() }),
-                        ("Hop", false, { bounce += 1; caption = "Hop" })])
+                        ("Hop", false, { bounce += 1; caption = "Hop" }),
+                        ("Bounds", bounds, { bounds.toggle() })])
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 24)

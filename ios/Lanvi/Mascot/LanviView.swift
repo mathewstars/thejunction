@@ -133,6 +133,7 @@ private struct LookKey: EnvironmentKey { static let defaultValue: UnitPoint? = n
 private struct MouthKey: EnvironmentKey { static let defaultValue: MouthShape? = nil }
 private struct HopsKey: EnvironmentKey { static let defaultValue = true }
 private struct FreezeKey: EnvironmentKey { static let defaultValue: LanviDebugFreeze? = nil }
+private struct BoundsKey: EnvironmentKey { static let defaultValue = false }
 
 extension EnvironmentValues {
     var lanviMood: LanviMood? {
@@ -154,6 +155,11 @@ extension EnvironmentValues {
     var lanviLook: UnitPoint? {
         get { self[LookKey.self] }
         set { self[LookKey.self] = newValue }
+    }
+    /// Debug: outline each eye (red) and its white patch (yellow).
+    var lanviDebugBounds: Bool {
+        get { self[BoundsKey.self] }
+        set { self[BoundsKey.self] = newValue }
     }
     var lanviDebugFreeze: LanviDebugFreeze? {
         get { self[FreezeKey.self] }

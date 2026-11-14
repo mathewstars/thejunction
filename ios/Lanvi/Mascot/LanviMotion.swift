@@ -208,8 +208,14 @@ struct LanviMotion {
 
         // Depth in miniature: a tilt turns the face a touch towards the low side.
         p.dirX += p.headTilt * 0.012
-        p.dirX = max(min(p.dirX, 1), -1)
-        p.dirY = max(min(p.dirY, 1), -1)
+        // Where the head faces is kept inside the unit circle (softly), before it drives
+        // anything: however far the finger, the face never turns past its limit.
+        let r = hypot(p.dirX, p.dirY)
+        if r > 0.0001 {
+            let k = tanh(r) / r
+            p.dirX *= k
+            p.dirY *= k
+        }
         // The head's shape moves a little with where it faces.
         p.headX += p.dirX * 5
         p.headY += p.dirY * 3
@@ -317,8 +323,8 @@ struct LanviMotion {
         guard let q else { return (0, 0, 0, 0, 0, nil) }
         let dx = Double((q.x - eyesCenter.x) / Rig.unit), dy = Double((q.y - eyesCenter.y) / Rig.unit)
         let d = max(hypot(dx, dy), 1)
-        let dirX = max(min(dx / 240, 1), -1) * 0.7
-        let dirY = max(min(dy / 240, 1), -1) * 0.55
+        // grows with distance; far targets saturate (the unit circle limit comes later)
+        let dirX = dx / 650, dirY = dy / 650 * 0.8
         let tilt = max(min(dx * 0.01, 5), -5)
         let ex = dx / d * 6, ey = dy / d * 6
         guard d > 70 else { return (dirX, dirY, tilt, ex * d / 70, ey * d / 70, .open) }
