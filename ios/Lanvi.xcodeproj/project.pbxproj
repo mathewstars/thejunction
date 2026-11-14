@@ -32,6 +32,7 @@
 		5049EED66C9F32131E68F66D /* HomeSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 166A2EF8FECA301AACE53B2A /* HomeSheets.swift */; };
 		51DD8A76B382F693BF1DE2B8 /* TokenKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 561A37AABE894380B546DE42 /* TokenKeychain.swift */; };
 		52849D842800BB2FC9D57F97 /* CheckinParts.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBD46076DB9CE3A066774D7 /* CheckinParts.swift */; };
+		559778D7817C23DE20017C0F /* LanviOverlayHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B006DA55F144DD2BA237BBE /* LanviOverlayHost.swift */; };
 		5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */; };
 		63F055804A5075D00F92CCF8 /* FaceSense.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0FB8AE15346D15FAA5BA3AF /* FaceSense.swift */; };
 		65D2DC99CA91B8EF96FAEC64 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC334EE89ADCF793E4BC0D9B /* SharedModels.swift */; };
@@ -152,6 +153,7 @@
 		575A49BAC44D679FBA763541 /* DemoBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoBackend.swift; sourceTree = "<group>"; };
 		5902AF89D6F6E5D7F772C619 /* LanviUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LanviUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviApp.swift; sourceTree = "<group>"; };
+		5B006DA55F144DD2BA237BBE /* LanviOverlayHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviOverlayHost.swift; sourceTree = "<group>"; };
 		5CA590D4CC8B49BBCECB6FDF /* LanviClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviClient.swift; sourceTree = "<group>"; };
 		5D91945D05F0DA6BDBC2AB0A /* FaceTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTracker.swift; sourceTree = "<group>"; };
 		5E91BDD22A3D7AF3A6B1F654 /* LanviPuppetPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviPuppetPreview.swift; sourceTree = "<group>"; };
@@ -434,6 +436,7 @@
 				607DA0BDB68AC9211EAADA43 /* HomeParts.swift */,
 				166A2EF8FECA301AACE53B2A /* HomeSheets.swift */,
 				C8082B9E5762CA3450E914CE /* HomeSpeech.swift */,
+				5B006DA55F144DD2BA237BBE /* LanviOverlayHost.swift */,
 				043F24BD4810CC96B85B74B4 /* LanviTiming.swift */,
 				CD8451A836E61C66138838EE /* PaintedWorld.swift */,
 			);
@@ -661,6 +664,7 @@
 				EDAB3E53B21FBF2A45578C8D /* LanviClient.swift in Sources */,
 				83D94EC75E881A9964282D4B /* LanviFrameLog.swift in Sources */,
 				4ABAE2E43A171B3B8395BD70 /* LanviMotion.swift in Sources */,
+				559778D7817C23DE20017C0F /* LanviOverlayHost.swift in Sources */,
 				4B8E994B97B8B69A57E5C727 /* LanviPuppet.swift in Sources */,
 				F143A28682E5808FBAD2EB81 /* LanviPuppetPreview.swift in Sources */,
 				AF042D25043E7247AD53A177 /* LanviRig.swift in Sources */,
