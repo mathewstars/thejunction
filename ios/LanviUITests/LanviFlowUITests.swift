@@ -221,6 +221,73 @@ final class LanviFlowUITests: XCTestCase {
         }
     }
 
+    /// The captain: since PR 70 the fox on Help appeared very late or never. Open
+    /// Help 20 times (every fourth time again while it is still closing) and check
+    /// on the screen's own pixels that the fox is there within 0.6 s, every time.
+    func test7HelpFoxEveryTime() {
+        launch(["-senseScreen", "none", "-screen", "home"])
+        let help = app.buttons["Help"].firstMatch
+        XCTAssertTrue(help.waitForExistence(timeout: 6))
+        pause(1.5)
+        // Where the fox stands on Help (measured once, before any timing).
+        help.tap()
+        let fox = app.otherElements["help.fox"].firstMatch
+        XCTAssertTrue(fox.waitForExistence(timeout: 3), "Help's fox element")
+        let foxRect = fox.frame
+        app.buttons["Close"].firstMatch.tap()
+        pause(1.2)
+        var worst = 0.0
+        for round in 1...20 {
+            help.tap()
+            let t0 = Date()
+            let close = app.buttons["Close"].firstMatch
+            if !close.waitForExistence(timeout: 1.0) {
+                event("helpfox.retap.\(round)")
+                help.tap()
+            }
+            // A screenshot takes a while to capture: a hit counts from the moment
+            // that screenshot started.
+            var seenAt: Double?
+            while Date().timeIntervalSince(t0) < 2.0 {
+                let shotStart = Date().timeIntervalSince(t0)
+                if Self.darkShare(in: foxRect, of: XCUIScreen.main.screenshot().image) > 0.04 {
+                    seenAt = shotStart
+                    break
+                }
+            }
+            let at = seenAt ?? 9
+            worst = max(worst, at)
+            event(String(format: "helpfox.%02d %.2f", round, at))
+            XCTAssertLessThanOrEqual(at, 0.6, "round \(round): the fox on Help was on screen after \(at) s")
+            XCTAssertTrue(close.waitForExistence(timeout: 2))
+            close.tap()
+            // Every fourth round: open again at once, while Help is still closing.
+            if round % 4 != 0 { pause(0.9) } else { pause(0.08) }
+        }
+        event(String(format: "helpfox.worst %.2f", worst))
+    }
+
+    /// Share of dark pixels (the fox's navy ears and eyes) inside a rect, in points.
+    private static func darkShare(in rect: CGRect, of image: UIImage) -> Double {
+        guard let cg = image.cgImage else { return 0 }
+        let scale = CGFloat(cg.width) / image.size.width
+        let r = CGRect(x: rect.minX * scale, y: rect.minY * scale,
+                       width: rect.width * scale, height: rect.height * scale).integral
+            .intersection(CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+        guard r.width > 4, r.height > 4, let crop = cg.cropping(to: r) else { return 0 }
+        let w = 64, h = 64
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        guard let ctx = CGContext(data: &px, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return 0 }
+        ctx.draw(crop, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var dark = 0
+        for i in stride(from: 0, to: px.count, by: 4) where (Int(px[i]) + Int(px[i + 1]) + Int(px[i + 2])) / 3 < 95 {
+            dark += 1
+        }
+        return Double(dark) / Double(w * h)
+    }
+
     func test4ChatKeyboard() {
         launch(["-senseScreen", "none", "-screen", "home", "-demoOpen", "chat"])
         let field = app.textFields.matching(NSPredicate(format: "label == %@ OR placeholderValue == %@", "Write to Lanvi", "Write to Lanvi")).firstMatch
