@@ -81,7 +81,7 @@ func write(_ name: String, from t0: Double, seconds: Double, _ configure: (inout
     try? rows.joined(separator: "\n").write(toFile: "\(out)/\(name).csv", atomically: true, encoding: .utf8)
 }
 
-let base = 50_000.0   // any clock time; the scenes below start here
+let base = CommandLine.arguments.count > 2 ? Double(CommandLine.arguments[2]) ?? 50_000 : 50_000.0   // any clock time (try a real one: 816_000_000)
 
 // Idle, day and evening: 40 s each, the moments pick themselves.
 write("idle", from: base, seconds: 40) { $0.appearAt = base - 10 }

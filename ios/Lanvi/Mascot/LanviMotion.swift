@@ -8,7 +8,7 @@ enum LanviMood: String, CaseIterable, Equatable {
     case thinking, greeting, proud, okay
 }
 
-/// The small performed moments of the idle: one every 6 to 12 seconds, never two at
+/// The small performed moments of the idle: one every 6 to 10 seconds, never two at
 /// once, never the same twice in a row. Each one eases in, returns exactly to rest.
 enum LanviMoment: String, CaseIterable, Equatable {
     case glance, glanceUp, tilt, ears, tailCurl, sniff, slowBlink, invite, yawn
@@ -371,11 +371,11 @@ struct LanviMotion {
             return (m, x - momentAt, momentSide, 1)
         }
         if moment != nil, x - momentAt >= -0.5, x - momentAt < moment!.duration + 3 { return nil }
-        // Otherwise one per 9 s slot, starting 1 to 4 s into it: 6 to 12 s apart.
-        let slot = 9.0
+        // Otherwise one per 8 s slot, starting 1 to 3 s into it: 6 to 10 s apart.
+        let slot = 8.0
         let off = Double(seed % 97) * 0.731
         let k = Int(floor((x + off) / slot))
-        let start = Double(k) * slot + 1 + 3 * Motion.rnd(k, seed &+ 41) - off
+        let start = Double(k) * slot + 1 + 2 * Motion.rnd(k, seed &+ 41) - off
         // the evening set if it is late, or if the fox was sleepy when this moment began
         let sleepy = (start >= heldSince ? held : heldFrom) == .sleepy
         let kind = momentKind(k, evening: evening || sleepy)
@@ -448,24 +448,39 @@ struct LanviMotion {
             if h > 0.55, face.eyes == .open { face.eyes = .up }
             p.tail += 3 * side * h
         case .ears:
-            // One ear flicks, then the other.
+            // One ear flicks, then the other; the eyes glance up toward the first one and
+            // the head leans to it, as if it heard something.
             let a = flick(lt, 0.22), b = flick(lt - 0.36, 0.22)
-            if side > 0 { p.earL += 11 * a; p.earR += 11 * b } else { p.earR += 11 * a; p.earL += 11 * b }
-            p.headTilt += 0.8 * side * (Motion.bump(lt, 0, 0.5) - Motion.bump(lt, 0.36, 0.86))
+            if side > 0 { p.earL += 13 * a; p.earR += 13 * b } else { p.earR += 13 * a; p.earL += 13 * b }
+            let to = side > 0 ? -1.0 : 1.0          // toward the first ear (left ear = viewer's left)
+            let eyes = Motion.env(lt, 0.02, 0.1, 0.72, 0.82)
+            let lean = Motion.pulse(lt, start: 0.08, end: 0.75, response: 0.4, damping: 0.72, settle: 0.45)
+            p.eyeX += 4 * to * eyes; p.eyeY -= 3 * eyes
+            if eyes > 0.5, face.eyes == .open { face.eyes = .up }
+            p.headTilt += 3 * to * lean; p.dirX += 0.14 * to * lean; p.dirY -= 0.1 * lean
         case .tailCurl:
-            // The tail lifts and curls, then settles with a small overshoot.
+            // The tail lifts and curls, and the fox glances back at it (it sits on the
+            // viewer's left), then looks back at you as the tail settles.
             let h = Motion.pulse(lt, start: 0, end: 0.7, response: 0.45, damping: 0.55, back: 0.6, settle: 1.0)
-            p.tail += 9 * h
-            p.tailCurl += 12 * h
+            p.tail += 11 * h
+            p.tailCurl += 14 * h
             p.chest += 0.004 * h
+            let eyes = Motion.env(lt, 0.05, 0.13, 0.95, 1.05)
+            let look = Motion.pulse(lt, start: 0.15, end: 1.0, response: 0.42, damping: 0.72, settle: 0.8)
+            p.eyeX -= 6 * eyes; p.eyeY += 3 * eyes
+            if eyes > 0.5, face.eyes == .open { face.eyes = .left }
+            p.dirX -= 0.32 * look; p.dirY += 0.12 * look; p.headTilt -= 3 * look
+            returnBlink(lt, at: 0.95, &face)
         case .sniff:
             // Nose and head lift, two tiny inhales, settle.
+            // Nose and chin lift, two tiny inhales with the eyes half shut (savouring), settle.
             let lift = Motion.pulse(lt, start: 0, end: 0.95, response: 0.4, damping: 0.75, settle: 0.7)
             let sniffs = Motion.bump(lt, 0.3, 0.46) + Motion.bump(lt, 0.52, 0.68)
-            p.dirY -= 0.22 * lift + 0.05 * sniffs
-            p.headY -= 3 * lift + 1.4 * sniffs
-            p.chest += 0.01 * sniffs
-            p.earL -= 3 * lift; p.earR -= 3 * lift
+            p.dirY -= 0.32 * lift + 0.06 * sniffs
+            p.headY -= 4 * lift + 1.6 * sniffs
+            p.chest += 0.012 * sniffs
+            p.earL -= 4 * lift; p.earR -= 4 * lift
+            if Motion.inside(lt, 0.26, 0.76), face.eyes == .open { face.eyes = .half }
         case .slowBlink:
             // A contented slow blink with a small smile and a soft head tilt.
             let h = Motion.env(lt, 0, 0.35, 1.05, 1.5)

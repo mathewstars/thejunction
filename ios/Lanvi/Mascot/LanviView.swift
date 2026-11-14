@@ -14,7 +14,7 @@ import SwiftUI
 //   space (the near ear comes forward, the far ear tucks back), the chest swells with
 //   each breath, and the tail and ears bend along their length with follow-through.
 // - At rest: a slow breath (4.5 s), a slow tail drift, soft blinks (sometimes slow or
-//   double), and every 6 to 12 s one small performed moment (`LanviMoment`): a glance
+//   double), and every 6 to 10 s one small performed moment (`LanviMoment`): a glance
 //   to the side or up, a curious tilt, ear flicks, a tail curl, a sniff, a contented
 //   slow blink, a look down at the button and back up at you; yawns in the evening.
 //   Never two at once, never the same twice in a row. Nothing to call.
@@ -203,7 +203,7 @@ extension View {
     }
 
     /// Play one idle moment now (each time `trigger` changes), instead of waiting for
-    /// the next one. The idle plays them by itself every 6 to 12 seconds.
+    /// the next one. The idle plays them by itself every 6 to 10 seconds.
     func lanviMoment<T: Hashable>(_ moment: LanviMoment, trigger: T) -> some View {
         environment(\.lanviMomentRequest, LanviMomentRequest(moment: moment, token: AnyHashable(trigger)))
     }
