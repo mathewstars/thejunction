@@ -242,12 +242,10 @@ struct HomeGrowthSheet: View {
                     Spacer()
                     Image(systemName: "chevron.right").font(.system(size: 14, weight: .black))
                 }
+                .padding(.horizontal, 20)
             }
-            .buttonStyle(ChunkyButtonStyle(fill: .white, edge: Theme.line, text: Theme.brand))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Theme.line, lineWidth: 2).allowsHitTesting(false)
-            }
+            // The rim is part of the face, so it goes down with the press.
+            .buttonStyle(ChunkyButtonStyle(fill: .white, edge: Theme.line, text: Theme.brand, outline: Theme.line))
             .padding(.top, 8)
             Color.clear.frame(height: 20)
         }

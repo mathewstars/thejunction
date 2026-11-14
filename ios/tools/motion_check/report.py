@@ -65,7 +65,9 @@ def judge(name, rows):
     eye_swaps = sum(1 for a, b in zip(rows, rows[1:]) if a["eyes"] != b["eyes"])
     eye_pops = sum(1 for a, b in zip(rows, rows[1:]) if a["eyes"] != b["eyes"] and b["eyeFade"] >= 0.999)
     mouth_swaps = sum(1 for a, b in zip(rows, rows[1:]) if a["mouth"] != b["mouth"])
-    mouth_pops = sum(1 for a, b in zip(rows, rows[1:]) if a["mouth"] != b["mouth"] and b["mouthFade"] >= 0.999)
+    # (a talking mouth swaps shape at once by design, where it is smallest: not a pop)
+    mouth_pops = sum(1 for a, b in zip(rows, rows[1:])
+                     if a["mouth"] != b["mouth"] and b["mouthFade"] >= 0.999 and b.get("talk", 0) != 1)
     rest = max(r["rest"] for r in rows[-8:])
     return {
         "scene": name, "s": round(dur, 2),

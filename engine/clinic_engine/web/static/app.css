@@ -106,6 +106,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 20px max(16px, env(safe-area-
 .panel h2 .count { color: var(--muted); font-weight: 600; margin-left: 6px; }
 .grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 .stack { display: grid; gap: 14px; min-width: 0; }
+.stack { grid-template-columns: minmax(0, 1fr); }   /* one column that never grows past its box: a wide table or list inside scrolls or wraps instead */
 @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 
 /* tables */
@@ -226,6 +227,8 @@ details.more > summary { cursor: pointer; color: var(--muted); font-weight: 600;
 .rho .pt.opposite { fill: var(--ember); }
 table.assoc td { vertical-align: top; }
 ul.plain { margin: 0; padding-left: 18px; }
+ul.plain li { overflow-wrap: anywhere; }   /* a long word or key must not widen the page on a phone */
+details.more, details.more > * { min-width: 0; max-width: 100%; }
 .subnav { flex: 1; min-width: 0; display: flex; }
 .subnav .tabs { border-bottom: 0; margin-bottom: 0; }
 .subnav .tabs button { padding: 6px 12px; margin-bottom: 0; }
@@ -262,6 +265,8 @@ select.pick { width: auto; max-width: 220px; appearance: none; padding-right: 26
 .hero-k { margin: 0 0 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .hero-t { margin: 0 0 12px; font-size: 26px; line-height: 1.2; font-weight: 700; max-width: 900px; }
 .hero-facts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.hero-facts .chip { white-space: normal; }
+.hero p.muted { max-width: 900px; margin: 0 0 10px; }
 .hero p.small { margin: 4px 0; }
 .viz { position: relative; }
 .tip { position: absolute; z-index: 6; pointer-events: none; min-width: 190px; max-width: 320px; padding: 8px 10px; font-size: 12px; background: var(--bg); border: 1px solid var(--muted); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }

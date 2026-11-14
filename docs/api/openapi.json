@@ -4023,6 +4023,18 @@
               }
             ],
             "title": "Observations"
+          },
+          "low_below_ratings": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low Below Ratings",
+            "description": "With design.unit rating, fewer ratings than this always give confidence low."
           }
         },
         "type": "object",
@@ -4356,6 +4368,30 @@
             ],
             "title": "Contrast",
             "description": "Cliff's delta, days with attention held against other days, oriented like rho."
+          },
+          "change_rho": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Rho",
+            "description": "With design.unit rating: Spearman rho of the CHANGES from one rating to the next (measure against score), oriented like rho. Two series that only drift over the same weeks are high in rho and low here."
+          },
+          "change_n": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change N",
+            "description": "Pairs of neighbouring ratings behind change_rho."
           },
           "quality": {
             "anyOf": [

@@ -40,6 +40,9 @@ struct RevontuletView: View {
     @State private var coachingEmbers = false
     /// The goodnight's Continue button is showing.
     @State private var continueShown = false
+    /// A short punch of the whole scene on each impact (bigger for the vein).
+    @State private var punchTick = 0
+    @State private var punchSize: CGFloat = 4
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.displayScale) private var displayScale
@@ -48,6 +51,7 @@ struct RevontuletView: View {
     private final class Box {
         var auto: RevontuletAutoPlay?
         var frame = 0
+        var furFrom: CGPoint?
     }
 
     private static let freezeBeat: RevontuletBeat? = {
@@ -64,6 +68,16 @@ struct RevontuletView: View {
                 ZStack {
                     if let engine, let art {
                         scene(engine, art)
+                            .keyframeAnimator(initialValue: CGFloat(1), trigger: punchTick) { content, k in
+                                content.scaleEffect(k)
+                            } keyframes: { _ in
+                                // A punch of a few points, eased out; it never lingers or shakes.
+                                KeyframeTrack {
+                                    CubicKeyframe(1 + punchSize / 400, duration: 0.05)
+                                    SpringKeyframe(1 - punchSize / 1600, duration: 0.12, spring: .snappy)
+                                    SpringKeyframe(1, duration: 0.3, spring: .smooth)
+                                }
+                            }
                         RevontuletTouchSurface { input, time in feed(input, at: time) }
                         overlay(engine)
                     } else {
@@ -455,9 +469,13 @@ struct RevontuletView: View {
                 emit(.emberMissed)
             case let .landing(at, _, hard, hits, _, ribbon, burstAt):
                 if !quiet { feel.landing(at: at, hard: hard, embersHit: hits, ribbon: ribbon, burstAt: burstAt) }
-            case let .impact(r, _, breaking):
+            case let .impact(r, pieces, breaking):
                 art?.sync(e)
                 say(nil)
+                if !quiet {
+                    punchSize = breaking ? 10 : CGFloat(3 + 1.5 * Double(pieces))
+                    punchTick += 1
+                }
                 if coachingEmbers {
                     RevontuletCoachMemory.learned(.embers)
                     coachingEmbers = false
@@ -465,11 +483,18 @@ struct RevontuletView: View {
                 emit(.iceImpact(round: r + 1))
                 foxReact(.surprised)
                 if !breaking, !quiet {
-                    let pleased: LanviMood = e.impacts.last?.hard == true ? .proud : .happy
+                    // Easy: a small warm smile, quickly. Hard: wide-eyed, then proud, then a
+                    // second happy beat when both embers were lit.
+                    let hit = e.impacts.last
+                    let hard = hit?.hard == true
                     Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(0.95))
+                        try? await Task.sleep(for: .seconds(hard ? 0.75 : 0.5))
                         guard let b = engine?.beat, b == .impact || b == .choice else { return }
-                        foxReact(pleased)
+                        foxReact(hard ? .proud : .happy)
+                        guard hard, (hit?.embersHit ?? 0) >= 2 else { return }
+                        try? await Task.sleep(for: .seconds(1.1))
+                        guard let b2 = engine?.beat, b2 == .impact || b2 == .choice || b2 == .trace else { return }
+                        foxReact(.happy)
                     }
                 }
             case .shattered:
@@ -500,8 +525,22 @@ struct RevontuletView: View {
                 petTick += 1
                 if n >= 2 { foxReact(n == 2 ? .proud : .happy) }
             case let .strokeMoved(speed):
-                if !quiet { feel.purr(speed: speed) }
+                if !quiet {
+                    feel.purr(speed: speed)
+                    // A faint tick of fur every few points the finger travels.
+                    if let f = e.finger {
+                        if let last = box.furFrom {
+                            if hypot(f.x - last.x, f.y - last.y) >= RevontuletTune.furStep {
+                                feel.furTick()
+                                box.furFrom = f
+                            }
+                        } else {
+                            box.furFrom = f
+                        }
+                    }
+                }
             case let .strokeEnded(n, counted):
+                box.furFrom = nil
                 if !quiet { feel.purrEnded() }
                 if counted {
                     RevontuletCoachMemory.learned(.stroke)

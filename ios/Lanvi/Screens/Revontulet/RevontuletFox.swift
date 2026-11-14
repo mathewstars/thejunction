@@ -25,7 +25,10 @@ struct RevontuletFox: View, Equatable {
         LanviView(pose: .curious, size: size)
             .lanviHops(act == .celebrating)
             .lanviReaction(reaction, trigger: reactionTick)
-            .lanviMood(act == .sleeping ? .sleepy : nil)
+            // Asleep: it yawns (the moment below), then its eyes close and stay closed (the
+            // closed crescent eyes `.okay` holds), breathing on. A true sleeping face would
+            // need a held closed-eyes mood from Mascot/ (asked in for-main.md).
+            .lanviMood(act == .sleeping ? .okay : nil)
             .lanviMoment(.yawn, trigger: yawnTick)
             .lanviLookAt(act == .sleeping ? nil : look)
             .lanviTouch(.head, hold: 1.5, trigger: petTick)

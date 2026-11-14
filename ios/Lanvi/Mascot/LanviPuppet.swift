@@ -16,6 +16,7 @@ struct LanviPuppet: View {
     @Environment(\.lanviReactionRequest) private var reactionRequest
     @Environment(\.lanviLook) private var lookUnit
     @Environment(\.lanviTalking) private var talking
+    @Environment(\.lanviSayRequest) private var sayRequest
     @Environment(\.lanviMouth) private var mouthOverride
     @Environment(\.lanviMomentRequest) private var momentRequest
     @Environment(\.lanviTouchRequest) private var touchRequest
@@ -62,6 +63,8 @@ struct LanviPuppet: View {
     @State private var mouthFrom: MouthShape?
     @State private var drivenSince: Double = -100
     @State private var talkStart: Double = -100
+    @State private var speech: [LanviSpeech.Beat] = []
+    @State private var speechAt: Double = -100
     @State private var moment: LanviMoment?
     @State private var momentAt: Double = -100
     @State private var momentSide: Double = 1
@@ -131,6 +134,11 @@ struct LanviPuppet: View {
             talkingSince = now
             if on { talkStart = now }
         }
+        .onChange(of: sayRequest) { _, new in
+            guard let new else { return }
+            speech = LanviSpeech.beats(new.text)
+            speechAt = now
+        }
         .onChange(of: mouthOverride) { old, new in
             mouthFrom = old
             mouthTickAt = now
@@ -186,6 +194,8 @@ struct LanviPuppet: View {
         m.mouthFrom = mouthFrom
         m.mouthTickAt = mouthTickAt
         m.drivenSince = drivenSince
+        m.speech = speech
+        m.speechAt = speechAt
         m.moment = moment
         m.momentAt = momentAt
         m.momentSide = momentSide
