@@ -5,7 +5,7 @@ enum TodayCopy {
     /// What Lanvi asks for, in the care voice (the activities are things done for him).
     static func ask(_ k: ActivityKind, firstTime: Bool) -> String {
         switch k {
-        case .focus: return "I want to chase sparks. Come?"
+        case .focus: return "The ice is thick today. Help me break it?"
         case .breathing: return firstTime ? "Breathe with me. I'm still a bit cold." : "Sit with me a minute?"
         case .checkin: return "Tell me three good things. I'll keep them."
         }

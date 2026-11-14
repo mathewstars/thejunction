@@ -217,7 +217,7 @@ struct HomeView: View {
         let lift: CGFloat = pop != nil ? 58 : 0
         let target = away
             ? CGPoint(x: L.foxCenter.x - L.fox * 0.1, y: L.foxCenter.y - L.fox * 0.55)
-            : CGPoint(x: L.foxCenter.x + L.fox * 0.10, y: L.foxTop + L.fox * 0.04)
+            : L.stage.speechTarget
         return HomeSpeech(text: bubbleText, target: target, width: L.size.width, mouth: $mouth) {
             open(.chat)
         }

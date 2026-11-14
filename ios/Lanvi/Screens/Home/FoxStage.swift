@@ -17,6 +17,8 @@ struct FoxStage {
     let foxCenter: CGPoint
 
     var foxTop: CGFloat { feetY - fox }
+    /// Where Lanvi's speech bubble points: just above and right of the face, as on Home.
+    var speechTarget: CGPoint { CGPoint(x: foxCenter.x + fox * 0.10, y: foxTop + fox * 0.04) }
 
     init(size: CGSize, insets: EdgeInsets, controls: CGFloat = 0) {
         self.size = size

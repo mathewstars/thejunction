@@ -75,6 +75,8 @@ struct HomeSpeech: View {
     var target: CGPoint
     var width: CGFloat
     @Binding var mouth: MouthShape?
+    /// What a tap does, for VoiceOver; nil on pages where the bubble only speaks.
+    var hint: String? = "Opens a chat with Lanvi"
     var onTap: () -> Void
 
     @State private var shown = ""
@@ -118,7 +120,7 @@ struct HomeSpeech: View {
         .opacity(opacity)
         .position(x: minX + maxWidth / 2, y: bottom - bh / 2)
         .accessibilityLabel(shown)
-        .accessibilityHint("Opens a chat with Lanvi")
+        .accessibilityHint(hint ?? "")
         .onAppear { speak(text) }
         .onChange(of: text) { _, t in speak(t) }
     }

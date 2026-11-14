@@ -21,6 +21,7 @@ struct RescueView: View {
     @State private var warmth: Double = 0          // 0...1, how far the hold has come
     @State private var awake = false
     @State private var say: String?
+    @State private var mouth: MouthShape?
     @State private var heartbeat = 0
     @State private var wakeTick = 0
     @State private var shakeOff: Date?
@@ -65,6 +66,7 @@ struct RescueView: View {
                     GroundedFox(stage: stage, scene: .night) {
                         LanviView(pose: .curious, size: fox)
                             .lanviReaction(.surprised, trigger: wakeTick)
+                            .lanviMouth(mouth)
                             .lanviHops(false)
                     }
                     .transition(.opacity)
@@ -81,13 +83,14 @@ struct RescueView: View {
                         .allowsHitTesting(false)
                 }
 
-                // Words: plain white on the dark sky while he sleeps; his bubble once awake.
+                // Awake: his words in the same bubble, in the same place, as on Home.
+                if let say {
+                    HomeSpeech(text: say, target: stage.speechTarget, width: w, mouth: $mouth, hint: nil) {}
+                }
+
+                // Asleep: the narrator's words, white on the dark night sky.
                 VStack(spacing: 10) {
-                    if let say {
-                        HomeSpeechBubble(text: say, pointAt: 0.5)
-                            .padding(.horizontal, 40)
-                            .transition(.opacity)
-                    } else {
+                    if say == nil {
                         if showLine {
                             Text("Someone has been left out here.")
                                 .font(Theme.rounded(24, .heavy))

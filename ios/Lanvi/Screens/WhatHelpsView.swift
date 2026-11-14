@@ -10,6 +10,7 @@ struct WhatHelpsView: View {
     @Environment(AppStore.self) private var store
     @State private var chosen: [String] = []
     @State private var say = "What usually helps you? Pick as many as you like."
+    @State private var mouth: MouthShape?
     /// One reaction at a time; never the same one twice in a row.
     @State private var reaction: LanviMood = .listening
     @State private var reactTick = 0
@@ -41,16 +42,13 @@ struct WhatHelpsView: View {
                 GroundedFox(stage: stage, scene: store.worldScene) {
                     LanviView(pose: .curious, size: stage.fox)
                         .lanviReaction(reaction, trigger: reactTick)
+                        .lanviMouth(mouth)
                         .lanviMood(proud ? .happy : nil)
                         .lanviHops(false)
                 }
 
-                VStack {
-                    Spacer(minLength: 0)
-                    HomeSpeechBubble(text: say)
-                }
-                .frame(width: geo.size.width - 48, height: max(stage.foxTop - (stage.compact ? 40 : 56), 60))
-                .padding(.top, stage.compact ? 28 : 44)
+                // Lanvi's words in the same bubble, in the same place, as on Home.
+                HomeSpeech(text: say, target: stage.speechTarget, width: geo.size.width, mouth: $mouth, hint: nil) {}
 
                 // Chips on the snow in front of Lanvi; they never animate their place.
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
