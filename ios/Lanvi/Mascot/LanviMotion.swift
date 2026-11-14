@@ -150,7 +150,8 @@ struct LanviMotion {
         }
         let tilt = lag(Self.earKernel) { $0.headTilt + $0.rootTilt }
         let lift = lag(Self.earKernel) { $0.rootY + $0.headY }
-        let side = lag(Self.earKernel) { $0.rootX + $0.headX + $0.dirX * 16 }
+        // (a look turn moves the ears with the head, as one piece: no trailing tips)
+        let side = lag(Self.earKernel) { $0.rootX + $0.headX - $0.dirX * 5 }
         let earL = lag(Self.earKernel) { $0.earL }
         let earR = lag(Self.earKernel) { $0.earR }
         // (soft limits: the bands bend cleanly up to about 12 degrees for ears, 22 for the tail)
@@ -425,10 +426,11 @@ struct LanviMotion {
         return 1 - (1 + w * t) * exp(-w * t)
     }
 
-    /// The head's answer to a new look: two frames the other way, a fast middle, about
-    /// 8 % past it, a soft settle.
-    static func headTurn(_ t: Double) -> Double {
-        -0.06 * Motion.bump(t, 0, 0.09) + Motion.spring(t - 0.05, response: 0.42, damping: 0.62)
+    /// The head's answer to a new look: two frames the other way (`jump`: only for a
+    /// real jump of gaze, 0...1; a finger's many small steps get none, so a drag never
+    /// wobbles), a fast middle, about 8 % past it, a soft settle.
+    static func headTurn(_ t: Double, jump: Double = 1) -> Double {
+        -0.06 * jump * Motion.bump(t, 0, 0.09) + Motion.spring(t - 0.05, response: 0.42, damping: 0.62)
     }
 
     private func lookLayer(_ x: Double, _ p: inout Pose, _ face: inout Face) {
@@ -443,8 +445,11 @@ struct LanviMotion {
             let lt = x - step.at
             if lt < 0 { break }
             let q = Self.lookPose(step.target)
-            let e = Self.critical(lt, response: 0.15)
-            let h = Self.headTurn(lt)
+            // (each change is spread over one frame, so a finger's touch events, which come
+            // at uneven times, never jolt the springs)
+            let e = 0.5 * (Self.critical(lt, response: 0.15) + Self.critical(lt - 1.0 / 60, response: 0.15))
+            let jump = Motion.smooth(0.08, 0.3, hypot(q.dx - prev.dx, q.dy - prev.dy))
+            let h = 0.5 * (Self.headTurn(lt, jump: jump) + Self.headTurn(lt - 1.0 / 60, jump: jump))
             ex += (q.ex - prev.ex) * e; ey += (q.ey - prev.ey) * e; cross += (q.cross - prev.cross) * e
             dx += (q.dx - prev.dx) * h; dy += (q.dy - prev.dy) * h; tilt += (q.tilt - prev.tilt) * h
             prev = q
