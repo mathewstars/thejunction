@@ -48,6 +48,7 @@ class Outreach:
         self.settings = settings
         self.transport = transport
         self.recorder = None  # set by the app: keeps the raw exchange for the clinician
+        self.last_frames_meta: dict = {}  # the last frame-reading call: codes and counts
 
     def _check_url(self, purpose: str, url: str) -> None:
         parts = urlsplit(url)
@@ -99,19 +100,28 @@ class Outreach:
     async def _frames_call(self, url: str, headers: dict, body: dict,
                            timeout: float) -> str | None:
         """The frame reading's call, at most three attempts with the same
-        checked body: a 400 is tried once more without the response schema (a
-        model that does not take one), a busy or failing service (429, 5xx, a
-        timeout) or an empty reply once more after a short wait."""
-        import asyncio
-        waited = False
+        checked stream: a 400 is tried once more without the response schema (a
+        model that does not take one); a busy or failing service (429, 5xx, a
+        timeout) once more after a short wait; an empty reply once more, with
+        twice the output limit when the model ran out of tokens while thinking.
+        Why it stopped and the token counts are kept in last_frames_meta."""
+        waited, attempts = False, 0
+        self.last_frames_meta = {}
         for _ in range(3):
+            attempts += 1
             try:
-                text = gemini.parse_response(await self._post("gemini", url, body, headers,
-                                                              timeout) or {})
+                data = await self._post("gemini", url, body, headers, timeout) or {}
+                text = gemini.parse_response(data)
+                self.last_frames_meta = {**gemini.reply_meta(data), "attempts": attempts}
                 if text is not None or waited:
                     return text
+                if self.last_frames_meta.get("finish") == "MAX_TOKENS":
+                    config = body["generationConfig"]
+                    body = {**body, "generationConfig": {
+                        **config, "maxOutputTokens": 2 * config["maxOutputTokens"]}}
             except httpx.HTTPStatusError as exc:
                 code = exc.response.status_code
+                self.last_frames_meta = {"finish": f"http_{code}", "attempts": attempts}
                 config = body["generationConfig"]
                 if code == 400 and "responseSchema" in config:
                     body = {**body, "generationConfig": {k: v for k, v in config.items()
@@ -120,6 +130,7 @@ class Outreach:
                 if waited or not (code == 429 or code >= 500):
                     raise
             except httpx.TransportError:
+                self.last_frames_meta = {"finish": "no_connection", "attempts": attempts}
                 if waited:
                     raise
             waited = True

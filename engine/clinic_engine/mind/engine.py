@@ -942,6 +942,11 @@ class Mind:
                     "channels": len(pack.payload["channels"]),
                     "moments": len(pack.payload["moments_s"])}
             reply = await self.outreach.gemini_complete(pack)
+            # Why the model stopped and its token counts (codes and counts only).
+            meta = getattr(self.outreach, "last_frames_meta", None) or {}
+            sent.update({k: meta[k] for k in ("finish", "attempts", "prompt_tokens",
+                                              "thought_tokens", "output_tokens")
+                         if meta.get(k) is not None})
             if reply is None:
                 result["reason"] = "no_reply"
             else:
@@ -958,7 +963,8 @@ class Mind:
             result["reason"] = "input_refused"
         ag = result.get("agreement") or {}
         counts = {k: ag.get(k) for k in ("smiles_reported", "smiles_confirmed",
-                                         "smiles_corrected", "smiles_faint", "smiles_missed",
+                                         "smiles_corrected", "smiles_faint", "smiles_brief",
+                                         "smiles_not_in_numbers", "smiles_missed",
                                          "segments_reported", "segments_confirmed",
                                          "blinks_model", "blinks_code", "overall_same")}
         try:

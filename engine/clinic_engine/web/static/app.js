@@ -843,15 +843,24 @@
     c.appendChild(svg("text", { class: "lane", x: L - 8, y: lane(1) + 17, "text-anchor": "end" }, "Model"));
     codeBars.forEach((b) => bar("code", b.a, b.b, 0, "Code: smile, " + span(b) + (b.missed ? " (the model did not report it)" : "")));
     f.smiles.forEach((b) => bar("same", b.start_s, b.end_s, 1, "Model: smile, " + span(b) + ". Code found the same smile" + (b.corrected && b.corrected.length ? "; code corrected " + b.corrected.map((w) => words(w).toLowerCase()).join(" and ") : "") + "."));
-    f.faint_smiles.forEach((b) => bar("faint", b.start_s, b.end_s, 1, "Model: faint smile, " + span(b) + ". Peak " + num(b.peak, 2) + ", under the fixed rule; it rises " + num(b.rise, 2) + " above this session's rest, and code confirmed that rise in the numbers."));
+    f.faint_smiles.forEach((b) => bar("faint", b.start_s, b.end_s, 1, b.status === "brief"
+      ? "Model: brief smile, " + span(b) + ". Peak " + num(b.peak, 2) + ": above the fixed rule's level, but shorter than the rule's minimum length. Code confirmed the rise in the numbers."
+      : "Model: faint smile, " + span(b) + ". Peak " + num(b.peak, 2) + ", under the fixed rule; it rises " + num(b.rise, 2) + " above the resting level around it, and code confirmed that rise in the numbers."));
     dropped.forEach((b) => bar("drop", b.start_s, b.end_s, 1, "Model: reported a smile, " + span(b) + ". Dropped by code: " + words(b.reason).toLowerCase() + "."));
     (f.moments || []).forEach((m) => c.appendChild(svg("path", { class: "fr-moment", d: "M" + x(m.at_s) + " " + (T + PH + 2) + "l4 8h-8z" }, svg("title", null, "Pleasant moment at " + num(m.at_s, 1) + " s: " + (m.smiled ? "a smile followed" : "no smile followed")))));
 
     const n = (k, one, many) => k + " " + (k === 1 ? one : many);
     const lines = [el("p", { class: "readout" }, el("b", null, model), " reported " + n(ag.smiles_reported || 0, "smile", "smiles") + ". Code's fixed rule found " + n(ag.smiles_code || 0, "smile", "smiles") + "; " + (ag.smiles_matched || 0) + " are the same.")];
     if (ag.smiles_faint) lines.push(el("p", { class: "readout fr-faint" }, el("b", null, n(ag.smiles_faint, "faint smile", "faint smiles")), " reported by the model only: under the fixed rule, above this person's own resting level, and code confirmed the rise in the numbers."));
-    if (dropped.length || ag.smiles_missed) lines.push(el("p", { class: "readout" }, (dropped.length ? n(dropped.length, "reported smile", "reported smiles") + " dropped by code (nothing in the numbers, or a poor match). " : "") + (ag.smiles_missed ? n(ag.smiles_missed, "smile", "smiles") + " of code's not reported by the model." : "")));
-    lines.push(el("p", { class: "readout muted" }, "Blinks: model " + ag.blinks_model + ", code " + ag.blinks_code + ". Segments confirmed: " + (ag.segments_confirmed || 0) + " of " + (ag.segments_reported || 0) + ". Overall words the same: " + (ag.overall_same === null || ag.overall_same === undefined ? "–" : ag.overall_same + " of 4") + "."));
+    if (ag.smiles_brief) lines.push(el("p", { class: "readout fr-faint" }, el("b", null, n(ag.smiles_brief, "brief smile", "brief smiles")), " reported by the model only: too short for the fixed rule's minimum length; code confirmed the rise in the numbers."));
+    const notIn = ag.smiles_not_in_numbers || 0, poor = ag.smiles_poor_match || 0;
+    if (notIn || poor || ag.smiles_missed) lines.push(el("p", { class: "readout" },
+      (notIn ? n(notIn, "reported smile is", "reported smiles are") + " not in the numbers, and code dropped " + (notIn === 1 ? "it. " : "them. ") : "") +
+      (poor ? n(poor, "report", "reports") + " of a real smile matched it poorly (a sliver, far too wide, or twice). " : "") +
+      (ag.smiles_missed ? n(ag.smiles_missed, "smile", "smiles") + " of code's not reported by the model." : "")));
+    const blinkOk = f.blinks && f.blinks.status === "confirmed";
+    lines.push(el("p", { class: "readout muted" }, "Blink counts " + (blinkOk ? "agree" : "differ") + ". Segments confirmed: " + (ag.segments_confirmed || 0) + " of " + (ag.segments_reported || 0) + ". Overall words the same: " + (ag.overall_same === null || ag.overall_same === undefined ? "–" : ag.overall_same + " of 4") + "."));
+    if (typeof f.resting_smile === "number" && f.resting_smile >= FR.onset - 0.05) lines.push(el("p", { class: "readout fr-faint" }, "This person's mouth rests at " + num(f.resting_smile, 2) + ", close to the fixed rule's level of " + FR.onset + ". The fixed rule is not reliable here; read its smiles with care."));
 
     const pick = ready.length > 1 ? el("div", { class: "seg", role: "group", "aria-label": "Session" }, ready.slice(0, 8).map((sx) =>
       el("button", { type: "button", class: "btn btn-small", "aria-pressed": sx.id === cur.id ? "true" : "false", on: { click: () => { S.frId = sx.id; render(); } } }, dayShort(sx.date) + " " + String(sx.started_at).slice(11, 16)))) : null;
@@ -882,8 +891,9 @@
         factTile(String(agreement.sessions), "sessions read by the model"),
         factTile(pct(agreement.smile_recall), "of code's smiles also reported by the model (" + agreement.smiles_matched + " of " + agreement.smiles_code + ")"),
         factTile(pct(agreement.smile_precision), "of the model's smiles at code's level also found by code"),
-        factTile(String(agreement.smiles_faint), "faint smiles: model only, rise confirmed"),
-        factTile(agreement.smile_start_error_s === null ? "–" : num(agreement.smile_start_error_s, 2) + " s", "mean difference in where a smile starts"));
+        factTile(String((agreement.smiles_faint || 0) + (agreement.smiles_brief || 0)), "faint or brief smiles: model only, rise confirmed"),
+        factTile(String(agreement.smiles_not_in_numbers || 0), "reported smiles not in the numbers, dropped by code"),
+        factTile(agreement.smile_start_error_s === null ? "–" : num(agreement.smile_start_error_s, 2) + " s", "mean difference in where a smile starts (the model marks the rise, the rule the crossing)"));
     }
     return panel("Two readers on one session", null, pick, lines, c, legend, load,
       el("p", { class: "muted fr-note" }, "The model receives numbers only: no picture, name, date or text. Two methods read the same numbers; neither is the truth, and neither says how the person feels. The fixed rule's thresholds are estimates, not yet calibrated on recordings."),

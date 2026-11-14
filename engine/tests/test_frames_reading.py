@@ -131,7 +131,8 @@ def test_a_correct_reading_is_confirmed_item_by_item():
     assert fr_["dropped"] == []
     assert fr_["agreement"] == {
         "smiles_reported": 3, "smiles_confirmed": 3, "smiles_corrected": 0, "smiles_matched": 3,
-        "smiles_faint": 0, "smiles_dropped": 0, "smiles_missed": 0, "smiles_code": 3,
+        "smiles_faint": 0, "smiles_brief": 0, "smiles_dropped": 0, "smiles_not_in_numbers": 0,
+        "smiles_poor_match": 0, "smiles_missed": 0, "smiles_code": 3,
         "smile_precision": 1.0, "smile_recall": 1.0, "smile_start_error_s": 0.0,
         "segments_reported": 1, "segments_confirmed": 1,
         "blinks_model": 11, "blinks_code": 11, "moments_reported": 2, "moments_agree": 2,
@@ -233,7 +234,8 @@ def test_a_faint_smile_under_the_fixed_onset_is_kept_apart_when_the_rise_is_in_t
     r = check(reply(smiles=GOOD["smiles"] + [faint]), raw)
     assert r.value["dropped"] == []
     assert r.value["reading"]["faint_smiles"] == [
-        {"start_s": 40.2, "end_s": 41.8, "status": "faint", "peak": 0.22, "rise": 0.17}]
+        {"start_s": 40.2, "end_s": 41.8, "status": "faint", "peak": 0.22, "rise": 0.17,
+         "rest": 0.05}]
     ag = r.value["agreement"]
     assert ag["smiles_faint"] == 1 and ag["smiles_matched"] == 3
     # A faint smile is no disagreement: the shares are over code-level smiles.
@@ -244,6 +246,43 @@ def test_a_faint_smile_under_the_fixed_onset_is_kept_apart_when_the_rise_is_in_t
     assert r.value["dropped"][0]["reason"] == "no_rise_in_numbers"
     # The summary and its smile count never change.
     assert len(r.value["reading"]["smiles"]) == 3
+
+
+def _with(raw, start, frames, left, right=None):
+    li, ri = raw["channels"].index("mouthSmileLeft"), raw["channels"].index("mouthSmileRight")
+    for i in range(frames):
+        raw["samples"][start + i][li] = left(i) if callable(left) else left
+        r = right if right is not None else left
+        raw["samples"][start + i][ri] = r(i) if callable(r) else r
+    return raw
+
+
+def test_the_faint_rule_does_not_take_a_step_a_twitch_or_a_repeat_for_a_smile():
+    one = {"reaches_eyes": False, "side": "both"}
+    # The baseline steps up at 39 s (the phone moved): spans on the plateau are not smiles.
+    step = _with(session_raw(), 1170, 180, 0.18)
+    r = check(reply(smiles=GOOD["smiles"] + [{"start_s": 41.0, "end_s": 42.5, **one}]), step)
+    assert r.value["reading"]["faint_smiles"] == []
+    assert r.value["dropped"][0]["reason"] == "no_rise_in_numbers"
+    # One corner only: jitter or a twitch, not a smile.
+    twitch = _with(session_raw(), 1200, 60, 0.3, 0.05)
+    r = check(reply(smiles=GOOD["smiles"] + [{"start_s": 40.0, "end_s": 42.0, **one}]), twitch)
+    assert r.value["reading"]["faint_smiles"] == []
+    # The same faint rise reported twice is kept once.
+    r = check(reply(smiles=GOOD["smiles"] + [{"start_s": 40.2, "end_s": 41.8, **one},
+                                             {"start_s": 40.6, "end_s": 41.6, **one}]), faint_raw())
+    assert len(r.value["reading"]["faint_smiles"]) == 1
+    assert r.value["dropped"] == [{"item": "smile", "start_s": 40.6, "end_s": 41.6,
+                                   "reason": "same_smile_twice"}]
+    assert r.value["agreement"]["smiles_poor_match"] == 1
+    assert r.value["agreement"]["smiles_not_in_numbers"] == 0
+    # A strong smile too short for the fixed rule (0.2 s) is "brief", never "faint".
+    brief = _with(session_raw(), 1200, 6, 0.6)
+    r = check(reply(smiles=GOOD["smiles"] + [{"start_s": 39.9, "end_s": 40.4, **one}]), brief)
+    f = r.value["reading"]["faint_smiles"]
+    assert [x["status"] for x in f] == ["brief"] and f[0]["peak"] == 0.6
+    ag = r.value["agreement"]
+    assert ag["smiles_faint"] == 0 and ag["smiles_brief"] == 1 and ag["smile_precision"] == 1.0
 
 
 def test_slivers_and_far_too_wide_spans_are_not_the_same_smile():
@@ -502,6 +541,35 @@ def test_the_frame_reading_call_is_tried_again(statuses, schema_on_last):
     assert all(b["contents"] == seen[0]["contents"] for b in seen)
 
 
+def test_an_empty_reply_out_of_tokens_is_tried_again_with_a_larger_limit_and_traced():
+    seen = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        body = json.loads(req.content)
+        if not is_frames_body(body):
+            return httpx.Response(200, json={"candidates": [{"content": {"parts": [
+                {"text": json.dumps({"objections": []})}]}}]})
+        seen.append(body)
+        usage = {"promptTokenCount": 9000, "thoughtsTokenCount": 15900, "candidatesTokenCount": 100}
+        if len(seen) == 1:  # the model thought until the limit and wrote nothing
+            return httpx.Response(200, json={"candidates": [{"finishReason": "MAX_TOKENS"}],
+                                             "usageMetadata": usage})
+        return httpx.Response(200, json={"candidates": [{"finishReason": "STOP", "content": {
+            "parts": [{"text": json.dumps(GOOD)}]}}], "usageMetadata": usage})
+
+    env = Env(level2=handler)
+    env.repo().put("patient.json", {**env.repo().patient(), "allow_outside_processing": True})
+    assert env.client.post("/v1/activities", headers=env.H, json=focus()).status_code == 200
+    env.run(env.mind.idle())
+    assert stored(env)["status"] == "ready"
+    assert [b["generationConfig"]["maxOutputTokens"] for b in seen] == [16000, 32000]
+    t = env.client.get(f"/v1/clinic/patients/{env.demo['patient_id']}/trace"
+                       "?changed_only=false&limit=100", headers=env.C()).json()
+    det = next(e["detail"] for c in t["chains"] if c["trigger"] == "frames_reading"
+               for e in c["entries"] if e["layer"] == "level2")
+    assert det["finish"] == "STOP" and det["attempts"] == 2 and det["thought_tokens"] == 15900
+
+
 def test_a_service_that_keeps_failing_gives_no_reply_after_two_tries():
     handler, seen = _flaky([503, 503, 200])
     env = Env(level2=handler)
@@ -682,7 +750,10 @@ def test_the_reference_set_is_fixed_and_the_fixed_rule_misses_every_faint_smile(
     assert (raw, truth) == ref.make_session(1000)
     assert {t["kind"] for t in truth} == {"strong", "faint"}
     out = asyncio.run(ref.run(False, 6))
-    code = out["code_vs_truth"]
+    assert out["sets"]["hard"]["sessions"] == 10
+    code = out["sets"]["clean"]["code_vs_truth"]
+    rule = out["sets"]["clean"]["rest_rule_vs_truth"]
+    assert rule["faint_found"] == rule["faint_planted"] and rule["false"] == 0
     assert code["strong_found"] == code["strong_planted"] > 0
     assert code["faint_found"] == 0 < code["faint_planted"] and code["false"] == 0
     # A reader that reports every planted span: code's check keeps all of them,

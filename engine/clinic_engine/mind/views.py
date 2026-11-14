@@ -371,7 +371,8 @@ def _reading_out(a: dict) -> dict:
 
 
 _AGREEMENT_KEYS = ("smiles_reported", "smiles_confirmed", "smiles_corrected", "smiles_matched",
-                   "smiles_faint", "smiles_dropped", "smiles_missed", "smiles_code",
+                   "smiles_faint", "smiles_brief", "smiles_dropped", "smiles_not_in_numbers",
+                   "smiles_poor_match", "smiles_missed", "smiles_code",
                    "smile_precision", "smile_recall", "smile_start_error_s",
                    "segments_reported", "segments_confirmed", "blinks_model", "blinks_code",
                    "moments_reported", "moments_agree", "overall_same")
@@ -401,7 +402,8 @@ def frames_reading_out(a: dict) -> dict:
                                           "corrected", "overlap", "code_start_s", "code_end_s",
                                           "start_error_s", "end_error_s")}
                    for x in rd.get("smiles", [])],
-        "faint_smiles": [{k: x.get(k) for k in ("start_s", "end_s", "status", "peak", "rise")}
+        "faint_smiles": [{k: x.get(k) for k in ("start_s", "end_s", "status", "peak", "rise",
+                                                "rest")}
                          for x in rd.get("faint_smiles", [])],
         "missed_smiles": [{k: x.get(k) for k in ("start_s", "end_s")}
                           for x in rd.get("missed_smiles", [])],

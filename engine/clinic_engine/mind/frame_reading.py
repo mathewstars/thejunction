@@ -266,7 +266,7 @@ def code_view(raw: dict, th: Thresholds = T) -> dict:
     }
     return {"rate": rate, "n": n, "tracked": tracked, "smiles": smiles, "blinks": blinks,
             "cond": cond, "moments": moments, "overall": overall, "summary": summary,
-            "smile": smile, "rest": rest, "enough": enough}
+            "smile": smile, "left": left, "right": right, "rest": rest, "enough": enough}
 
 
 def _still_frames(cols, runs, rate: float, n: int, th: Thresholds) -> list[bool]:
@@ -346,12 +346,15 @@ def verify(reply: dict, raw: dict, payload: dict, th: Thresholds = T) -> dict:
             elif best_free is None or iou > best_free[1]:
                 best_free = (j, iou)
         if best_free is None:
+            again = False
             if not touches:
                 rise = faint_rise(view, a, b, th)
-                if rise is not None:
-                    faint_out.append({"start_s": a, "end_s": b, "status": "faint", **rise})
+                again = rise is not None and any(
+                    min(b, f["end_s"]) > max(a, f["start_s"]) for f in faint_out)
+                if rise is not None and not again:
+                    faint_out.append({"start_s": a, "end_s": b, **rise})
                     continue
-            reason = "same_smile_twice" if taken else \
+            reason = "same_smile_twice" if taken or again else \
                 "poor_overlap" if touches else "no_rise_in_numbers"
             dropped.append({"item": "smile", "start_s": a, "end_s": b, "reason": reason})
             continue
@@ -436,13 +439,21 @@ def verify(reply: dict, raw: dict, payload: dict, th: Thresholds = T) -> dict:
 
     matched = len(smiles_out)
     at_code_level = len(reply["smiles"]) - len(faint_out)
+    reasons = [d["reason"] for d in dropped if d["item"] == "smile"]
     agreement = {
         "smiles_reported": len(reply["smiles"]),
         "smiles_confirmed": sum(1 for s in smiles_out if s["status"] == "confirmed"),
         "smiles_corrected": sum(1 for s in smiles_out if s["status"] == "corrected"),
         "smiles_matched": matched,
-        "smiles_faint": len(faint_out),
-        "smiles_dropped": sum(1 for d in dropped if d["item"] == "smile"),
+        # Kept apart, the rise confirmed by code: "faint" stays under the fixed
+        # onset; "brief" passes it but is shorter than the rule's minimum length.
+        "smiles_faint": sum(1 for f in faint_out if f["status"] == "faint"),
+        "smiles_brief": sum(1 for f in faint_out if f["status"] == "brief"),
+        "smiles_dropped": len(reasons),
+        # Of the dropped: nothing in the numbers, against a real smile matched badly
+        # (a sliver of it, far wider than it, or reported twice).
+        "smiles_not_in_numbers": reasons.count("no_rise_in_numbers"),
+        "smiles_poor_match": len(reasons) - reasons.count("no_rise_in_numbers"),
         "smiles_missed": len(missed),
         "smiles_code": len(view["smiles"]),
         # Of the smiles the model reported at code's level, the share code also
@@ -465,12 +476,24 @@ def verify(reply: dict, raw: dict, payload: dict, th: Thresholds = T) -> dict:
     return {"reading": reading, "agreement": agreement, "dropped": dropped}
 
 
+def _median(vals: list[float]) -> float:
+    vals = sorted(vals)
+    return vals[len(vals) // 2]
+
+
 def faint_rise(view: dict, start_s: float, end_s: float, th: Thresholds = T) -> dict | None:
-    """A reported smile that code's fixed onset did not reach: is the rise in
-    the numbers? Over the tracked full-rate frames of the span, the smile signal
-    must lie above the session's own resting level (its median) by at least
-    frames_faint_mean_rise on average and frames_faint_peak_rise at its peak,
-    for at least smile_min_s. Returns the measured rise, or None."""
+    """A reported smile that code's fixed rule did not find: is the rise in the
+    numbers? Over the tracked full-rate frames of the span, the smile signal
+    must lie above the local resting level by at least frames_faint_mean_rise
+    on average and frames_faint_peak_rise at its peak, for at least
+    smile_min_s, and both mouth corners must carry the rise. The local resting
+    level is taken within frames_faint_window_s before and after the span (the
+    span and code's smiles left out): the median of each side, and the higher of
+    the two, because a smile returns to rest on both sides and a step in the
+    baseline does not. With less than a second on either side, the session's
+    median. Returns the measured rise with its status ("faint":
+    the peak stays under the fixed onset; "brief": it passes the onset, but the
+    smile is shorter than the rule's minimum length), or None."""
     if not view["enough"]:
         return None
     rate, n = view["rate"], view["n"]
@@ -478,15 +501,36 @@ def faint_rise(view: dict, start_s: float, end_s: float, th: Thresholds = T) -> 
     idx = [i for i in range(a, b) if view["tracked"][i]]
     if len(idx) / rate < th.smile_min_s:
         return None
-    vals = [view["smile"][i] for i in idx]
-    mean_rise = sum(vals) / len(vals) - view["rest"]
-    peak_rise = max(vals) - view["rest"]
+    w = int(th.frames_faint_window_s * rate)
+    in_smile = [False] * n
+    for cs in view["smiles"]:
+        for i in range(cs["a"], cs["b"]):
+            in_smile[i] = True
+    sides = [[i for i in rng if view["tracked"][i] and not in_smile[i]]
+             for rng in (range(max(0, a - w), a), range(b, min(n, b + w)))]
+    sides = [sd for sd in sides if len(sd) / rate >= 1.0]
+
+    def rise_of(sig: list[float], fallback: float | None) -> tuple[float, float, float]:
+        # A smile returns to rest on both sides: the higher side is the rest.
+        rest = max(_median([sig[i] for i in sd]) for sd in sides) if sides else \
+            fallback if fallback is not None else \
+            _median([v for v, t in zip(sig, view["tracked"]) if t])
+        vals = [sig[i] for i in idx]
+        return sum(vals) / len(vals) - rest, max(vals) - rest, rest
+
+    mean_rise, peak_rise, rest = rise_of(view["smile"], view["rest"])
     if mean_rise < th.frames_faint_mean_rise or peak_rise < th.frames_faint_peak_rise:
         return None
-    return {"peak": round(max(vals), 2), "rise": round(peak_rise, 2)}
+    side = th.frames_faint_side_share * th.frames_faint_mean_rise
+    if rise_of(view["left"], None)[0] < side or rise_of(view["right"], None)[0] < side:
+        return None
+    peak = max(view["smile"][i] for i in idx)
+    return {"status": "faint" if peak < th.smile_onset else "brief",
+            "peak": round(peak, 2), "rise": round(peak_rise, 2), "rest": round(rest, 2)}
 
 
-_SUMS = ("smiles_reported", "smiles_matched", "smiles_faint", "smiles_dropped", "smiles_missed",
+_SUMS = ("smiles_reported", "smiles_matched", "smiles_faint", "smiles_brief", "smiles_dropped",
+         "smiles_not_in_numbers", "smiles_poor_match", "smiles_missed",
          "smiles_code", "segments_reported", "segments_confirmed", "moments_reported",
          "moments_agree")
 
@@ -494,12 +538,15 @@ _SUMS = ("smiles_reported", "smiles_matched", "smiles_faint", "smiles_dropped", 
 def aggregate(agreements: list[dict], th: Thresholds = T) -> dict | None:
     """The agreement of the two readers over several sessions: sums, the two
     shares and how many sessions they cover. None when there is no session."""
+    # Readings stored before the union-overlap match have no matched count:
+    # they are left out rather than counted as no agreement.
+    agreements = [a for a in agreements if a.get("smiles_matched") is not None]
     if not agreements:
         return None
     out = {"sessions": len(agreements)}
     for k in _SUMS:
         out[k] = sum(int(a.get(k) or 0) for a in agreements)
-    at_code_level = out["smiles_reported"] - out["smiles_faint"]
+    at_code_level = out["smiles_reported"] - out["smiles_faint"] - out["smiles_brief"]
     out["smile_precision"] = round(out["smiles_matched"] / at_code_level, 2) \
         if at_code_level else None
     out["smile_recall"] = round(out["smiles_matched"] / out["smiles_code"], 2) \
