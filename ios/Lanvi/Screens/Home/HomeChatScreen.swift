@@ -15,7 +15,6 @@ struct HomeChatScreen: View {
     @State private var draft = ""
     @FocusState private var focused: Bool
     @State private var pose: LanviPose = .curious
-    @State private var bounce = 0
 
     private let limit = 280
 
@@ -57,7 +56,8 @@ struct HomeChatScreen: View {
             Spacer()
             VStack(spacing: 2) {
                 ZStack {
-                    LanviView(pose: pose, size: 74, bounceTrigger: bounce)
+                    LanviView(pose: pose, size: 74)
+                        .lanviHops(false)
                         .lanviMood(draft.isEmpty ? nil : .listening)
                 }
                 .frame(width: 96, height: 80)
@@ -301,6 +301,12 @@ struct HomeChatScreen: View {
         guard let i = args.firstIndex(of: "-chatDemo"), i + 1 < args.count else { return }
         try? await Task.sleep(for: .milliseconds(700))
         switch args[i + 1] {
+        case "feelclose":
+            // Keyboard up, then the X: for every-frame checks of the close.
+            focused = true
+            try? await Task.sleep(for: .milliseconds(1500))
+            print(String(format: "FEEL chat.closekb %.3f", Date().timeIntervalSince1970))
+            close()
         case "typing":
             focused = true
             try? await Task.sleep(for: .milliseconds(400))

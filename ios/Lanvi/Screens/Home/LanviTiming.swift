@@ -9,6 +9,9 @@ enum LanviTiming {
     static let pop = Animation.spring(response: 0.35, dampingFraction: 0.75)
     /// Content swapping in place (a button row, a label).
     static let swap = Animation.easeInOut(duration: 0.22)
+    /// Everything presented over Home rises and settles on this, and goes back down
+    /// on it: firm, no bounce on close.
+    static let overlay = Animation.spring(response: 0.4, dampingFraction: 0.9)
     /// Presses.
     static let press = Animation.spring(response: 0.25, dampingFraction: 0.75)
 
