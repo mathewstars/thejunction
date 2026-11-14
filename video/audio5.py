@@ -5,7 +5,7 @@ def sh(a):
     r = subprocess.run(a, capture_output=True, text=True)
     if r.returncode: print(r.stderr[-600:])
     return r
-T = dict(A=0.0, B=76.3, RING=87.9, NURSE=89.3, D=95.6, E=106.6, END=116.6)
+T = dict(A=0.0, B=76.3, RING=90.2, NURSE=91.5, D=97.7, E=108.7, END=118.7)
 ms = lambda t: int(t * 1000)
 N = "loudnorm=I=-16:TP=-1.5:LRA=9"
 # Every change of take is a fade, never a switch: the outgoing piano fades after the last word,
@@ -21,13 +21,12 @@ fc = (
  + part("e", "x3", 20.9, 30.6, T["E"] - 0.5, 0.6, 1.4)        # in during the pause before "Lanvi"
  + f"[2:a]atrim=0:5.7,asetpts=PTS-STARTPTS,highpass=f=220,lowpass=f=3800,loudnorm=I=-17:TP=-2,afade=t=in:d=0.05,afade=t=out:st=5.3:d=0.4,adelay={ms(T['NURSE'])}:all=1[n];"
  f"sine=f=150:d=1.1,tremolo=f=28:d=0.9,volume=0.10,afade=t=in:d=0.05,afade=t=out:st=0.9:d=0.2,adelay={ms(T['RING'])}:all=1[r];"
- # Under the buzz and the nurse's call the music does not stop: the note the piano was on (G) is held softly,
- # coming up as the piano fades and going down as the next piano fades in.
- f"sine=f=98:d=10.4,volume=0.62[h1];sine=f=196:d=10.4,volume=0.52[h2];sine=f=293.66:d=10.4,volume=0.24[h3];sine=f=392:d=10.4,volume=0.12[h4];"
- f"[h1][h2][h3][h4]amix=inputs=4:normalize=0,tremolo=f=0.35:d=0.25,lowpass=f=1200,aecho=0.8:0.6:120|190:0.25|0.18,"
- f"afade=t=in:d=1.6:curve=qsin,afade=t=out:st=8.4:d=2.0:curve=qsin,adelay={ms(T['RING'] - 1.9)}:all=1[hold];"
+ # Under the alert, the clinician page and the nurse's call the music does not stop: a stretch of our own
+ # instrumental piano, moved three semitones up to the key of the take, comes up as one piano fades and goes down as the next comes in.
+ f"[3:a]atrim=92:106.6,asetpts=PTS-STARTPTS,asetrate=44100*1.18921,aresample=44100,loudnorm=I=-27:TP=-3,"
+ f"afade=t=in:d=1.8:curve=qsin,afade=t=out:st=10.0:d=2.2:curve=qsin,adelay={ms(T['B'] + 9.7)}:all=1[hold];"
  f"anoisesrc=color=pink:amplitude=0.003:d={T['END']},lowpass=f=1800[air];"
  f"[a][b][d][e][n][r][air][hold]amix=inputs=8:normalize=0:duration=longest,apad=whole_dur={T['END']},alimiter=limit=0.9[o]")
-sh(["ffmpeg", "-loglevel", "error", "-nostdin", "-y", "-i", "narr.m4a", "-i", "act3.m4a", "-i", "nurse.m4a", "-filter_complex", fc, "-map", "[o]", "-t", str(T["END"]), "-c:a", "aac", "-b:a", "192k", "track5.m4a"])
+sh(["ffmpeg", "-loglevel", "error", "-nostdin", "-y", "-i", "narr.m4a", "-i", "act3.m4a", "-i", "nurse.m4a", "-i", "music.m4a", "-filter_complex", fc, "-map", "[o]", "-t", str(T["END"]), "-c:a", "aac", "-b:a", "192k", "track5.m4a"])
 json.dump(T, open("audio5.json", "w"))
 print(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", "track5.m4a"], capture_output=True, text=True).stdout.strip())

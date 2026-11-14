@@ -18,6 +18,8 @@ INK, AMB, MUT, GLOW, DK = (243, 240, 234, 255), (240, 138, 28, 255), (157, 157, 
 text_png("cap_help.png", [("“I need help.”", 54, 560, (255, 255, 255, 255))])
 im_ = Image.new("RGBA", (1280, 720), (0, 0, 0, 0)); g_ = ImageDraw.Draw(im_); g_.text((34, 676), "The real app, simulator recording", font=ImageFont.truetype(F, 17), fill=MUT); im_.save("cap_app.png")
 text_png("tag_none.png", [])
+_t = Image.open(f"{OLD}/tag_gen.png").convert("RGBA"); _g = ImageDraw.Draw(_t); _f = ImageFont.truetype(F, 34); _s = "The next morning, her clinic calls."
+_w = _g.textlength(_s, font=_f); _g.text(((1280 - _w) / 2 + 2, 602), _s, font=_f, fill=(0, 0, 0, 220)); _g.text(((1280 - _w) / 2, 600), _s, font=_f, fill=(255, 255, 255, 255)); _t.save("tag_morning.png")
 text_png("c_yes.png", [("She said yes to one more thing.", 50, 292, INK), ("While she cares for him, the phone keeps count.", 30, 372, GLOW)])
 text_png("c_num.png", [("Numbers only. Never pictures.", 60, 286, INK), ("How far each part of the face moved, thirty times a second. No photo or video leaves the phone.", 22, 378, GLOW)], bg=(11, 19, 30, 150))
 text_png("c_gem.png", [("Gemini reads the raw numbers. Code checks its work.", 40, 150, INK),
@@ -131,18 +133,19 @@ at(65.7, lambda d: chart("chart_b.mp4", d))
 at(76.3, lambda d: still("chart_end.png", d, z0=1.0, z1=1.07, fx=1.0, fy=0.5, tag="tag_ex.png"))
 at(78.0, lambda d: clip(K("k5"), d, ss=0.2, zoom=1.9, fx=0.12, fy=0.8))    # the boots alone
 at(80.4, lambda d: clip(K("k4"), d, ss=0.4, cap=("cap_help.png", 1.3)))
-at(84.1, lambda d: clip(K("k7"), d, ss=1.8))
-at(85.5, lambda d: still("c_tg.png", d, z0=1.0, z1=1.05, fx=0.3, fy=1.0, tag="tag_none.png"))   # the real alert
-at(87.9, lambda d: still(S("morning"), d, z0=1.0, z1=1.05, fx=0.6, fy=0.5))  # the phone buzzes
-at(89.3, lambda d: clip(K("k8"), d, speed=0.78))                            # "Anna? I read your note. I'm here."
-# 7 honest
-at(95.6, lambda d: still(f"{OLD}/screens/r4_anna.jpg", d, z0=1.3, z1=1.4, fx=0.0, fy=0.14, tag="tag_ex.png", fit=True))
-at(98.4, lambda d: still(f"{OLD}/screens/r5_elina.jpg", d, z0=1.3, z1=1.4, fx=0.0, fy=0.14, tag="tag_ex.png", fit=True))
-at(102.7, lambda d: card("c_study.png", d))
+at(84.1, lambda d: still("c_tg.png", d, z0=1.0, z1=1.05, fx=0.3, fy=1.0, tag="tag_none.png"))                         # the real alert
+at(86.1, lambda d: still("real/clinic_list.png", d, z0=1.2, z1=1.4, fx=0.2, fy=0.3, tag="tag_ex.png", fit=True))     # Anna on top of the clinic's list
+at(87.6, lambda d: still("real/clinic_anna.png", d, z0=1.15, z1=1.75, fx=0.93, fy=0.2, tag="tag_ex.png", fit=True))      # her profile: asked for help, review today
+at(90.2, lambda d: still(S("morning"), d, z0=1.0, z1=1.05, fx=0.6, fy=0.5, tag="tag_morning.png"))                        # the phone buzzes
+at(91.5, lambda d: clip(K("k8"), d, speed=0.8, tag="tag_morning.png"))                                                    # her nurse: "Anna? I read your note. I'm here."
+# 7 honest: Anna's own research page, then the study
+at(97.7, lambda d: still(f"{OLD}/screens/r4_anna.jpg", d, z0=1.3, z1=1.38, fx=0.0, fy=0.14, tag="tag_ex.png", fit=True))
+at(100.5, lambda d: still(f"{OLD}/screens/r4_anna.jpg", d, z0=1.5, z1=1.62, fx=0.1, fy=0.75, tag="tag_ex.png", fit=True))
+at(104.8, lambda d: card("c_study.png", d))
 # 8 the name and the motto
-at(106.6, lambda d: card("c_brand.png", d, fade=0.8))
-END = 116.6
-FIXED = {0.0, 87.9, 89.3, 95.6, 106.6}        # cuts that belong to the sound and must not move
+at(108.7, lambda d: card("c_brand.png", d, fade=0.8))
+END = 118.7
+FIXED = {0.0, 90.2, 91.5, 97.7, 108.7}        # cuts that belong to the sound and must not move
 B = json.load(open("beats5.json"))
 def snap(t, prev):
     best, bs = t, -9
