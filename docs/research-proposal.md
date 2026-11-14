@@ -24,7 +24,7 @@ Second question: do any of them move before the symptom rating does?
 | Phone and watch | Steps, walking speed, sleep hours, heart-rate variability |
 | Reference | PHQ-9 every week, in the app or at the clinic. A clinician's global rating at visits. |
 
-No photo, video or face shape leaves the phone. The full list, with the expected direction for each measure and how well supported it is, is in `engine/clinic_engine/data/association_hypotheses.json`. It was written before any data, so it works as a list of hypotheses fixed in advance.
+No photo, video or face shape leaves the phone. The phone sends the raw numbers ARKit gives for each frame and the server computes every measure, so the frames can be read again whenever a rule changes (`docs/face-raw.md`). The full list, with the expected direction for each measure and how well supported it is, is in `engine/clinic_engine/data/association_hypotheses.json`. It was written before any data, so it works as a list of hypotheses fixed in advance.
 
 ## Design
 
@@ -34,6 +34,16 @@ No photo, video or face shape leaves the phone. The full list, with the expected
 - **Analysis per person:** Spearman correlation between each measure and the reference, with a bootstrap interval, a permutation test, and a correction for the number of measures tested. Lags of up to three days in both directions. All of this is done by code.
 - **Appraisal:** a language model on the clinic's own hardware reads the table of statistics, never the raw data or any text from the person. It names caveats, judges the overall pattern and proposes the next step. Code checks each judgement against the numbers and replaces any that the numbers do not support. The prompt is in `engine/clinic_engine/data/association_prompt.txt`.
 - **Across people:** how many participants show the expected direction for each measure, and a mixed model as the confirmatory analysis. To be specified with a statistician.
+
+## First step: check the readers on real recordings
+
+No team can collect real recordings from patients in a weekend, and we did not try to fake them. What we tested so far is on sessions we generated, with smiles planted at known places (`docs/face-raw.md`, "The reference set"). The study starts by replacing that with real data:
+
+- **Weeks 1 to 2, before any analysis of symptoms:** every session's raw frames are kept. A sample of about 200 sessions from the first participants is labelled by two people who mark smiles and blinks on a plot of the numbers (never on video; there is none).
+- **Three readers against those labels:** the fixed rule in the product, the rule relative to the person's own resting level, and Gemini reading the reduced stream. For each: smiles found, smiles reported that the labellers did not mark, and agreement between the two labellers as the ceiling.
+- **Calibration:** the fixed rule's thresholds, today estimates, are set from these recordings and frozen before the 12 weeks are analysed. Because the frames are stored, every earlier session is computed again with the frozen rule.
+- **What decides whether Gemini stays:** it must find faint smiles the rules miss, or report fewer things that are not smiles (talking, the phone moving), on real recordings. If a rule does as well, the rule is used and the model is dropped from this step.
+- **The same check for the daily data:** stretches of lower movement or sleep named by code and by Gemini, against the clinician's notes of when the person was unwell.
 
 ## What would count as a finding
 
@@ -45,7 +55,8 @@ No photo, video or face shape leaves the phone. The full list, with the expected
 
 - The collection path works end to end: phone to server, compared with the person's own normal, shown to a clinician.
 - The statistics and the appraisal run on the server.
-- The data so far is example data and a few sessions recorded by ourselves. It shows that the pipeline works. It shows nothing about depression.
+- The two readers of the face numbers (code and Gemini, with code checking each item Gemini reports) run on the server, and were scored on 50 generated sessions with planted smiles.
+- The data so far is example data, generated sessions and a few sessions recorded by ourselves. It shows that the pipeline works. It shows nothing about depression, and nothing yet about how well any reader reads a real face.
 
 ## Limits we already see
 
