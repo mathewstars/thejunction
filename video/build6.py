@@ -150,14 +150,11 @@ at(75.5, lambda d: still("chart_end.png", d, z0=1.0, z1=1.07, fx=1.0, fy=0.5, ta
 at(77.1, lambda d: clip(K("k5"), d, ss=0.2, zoom=1.9, fx=0.12, fy=0.8))                                   # the boots alone
 at(78.6, lambda d: clip(K("k4"), d, ss=0.2, cap=("cap_help.png", 2.3)))                                   # "At one a.m. she writes: I need help."
 at(83.5, lambda d: windows(K("k7"), d, [("w_tg.png", 0.3, d + 0.3)], ss=0.4))                             # "Her words go straight to her clinic": the real alert
-at(87.1, lambda d: windows(K("k8"), d, [("w_anna.png", 0.5, 4.6)], tag="tag_morning.png", dim=0.0))       # the nurse calls; her profile on the clinician page comes up over the morning
-# 7 honest
-at(98.2, lambda d: still(f"{OLD}/screens/r4_anna.jpg", d, z0=1.3, z1=1.38, fx=0.0, fy=0.14, tag="tag_ex.png", fit=True))
-at(102.1, lambda d: card("c_study.png", d))
-# 8 the name and the motto, on screen
-at(108.4, lambda d: card("c_brand.png", d, fade=0.8))
-END = 114.8
-FIXED = {0.0, 83.5, 87.1, 98.2, 108.4}
+at(87.1, lambda d: windows(K("k8"), d, [("w_anna.png", 0.5, 4.6)], tag="tag_morning.png", dim=0.0, fout=0.9))       # the nurse calls; her profile on the clinician page comes up over the morning
+# 7 the name and the motto: spoken, and on screen
+at(98.6, lambda d: card("c_brand6.png", d, fade=0.8))
+END = 108.6
+FIXED = {0.0, 83.5, 87.1, 98.6}
 B = json.load(open("beats6.json"))
 def snap(t, prev):
     best, bs = t, -9
