@@ -1343,7 +1343,7 @@
     wrap.appendChild(el("section", { class: "panel" }, el("figure", { class: "bp-fig" }, s,
       el("figcaption", { class: "muted small" }, "The amber box is Gemini; the others are plain code. The same five steps for every job below. Only with the patient's record allowing outside processing; without it nothing is sent."))));
 
-    const list = S.list || [];
+    const list = (S.list && S.list.patients) || [];
     const pidOf = (label) => { const p = list.find((q) => q.label === label); return p ? p.patient_id : null; };
     const leo = pidOf("Example F-001"), anna = S.me && S.me.demo && S.me.demo.patient_id;
     const go2 = (pid, tab, text) => pid ? el("a", { href: "#/p/" + encodeURIComponent(pid) + "/" + tab }, text) : el("span", { class: "muted" }, text);
