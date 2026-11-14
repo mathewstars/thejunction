@@ -18,7 +18,7 @@ from .mind import face_features, lines, xp
 from .mind import notes as note_logic
 from .mind.activities import check_activity, process_activity
 from .mind.engine import Clock, Mind
-from .mind.gates import INPUT_GATE, OUTPUT_GATE
+from .mind.gates import INPUT_GATE, OUTPUT_GATE, GateError
 from .mind.repo import PatientRepo
 from .mind.rounds import check_round, process_round
 from .mind.watchers import check_day
@@ -286,6 +286,84 @@ async def classify_text(ctx: Ctx, p: Principal, repo: PatientRepo, note_id: str,
     return cls
 
 
+def _chat_earlier(repo: PatientRepo, now: datetime, note_id: str) -> list[dict]:
+    """Today's earlier turns of the conversation (patient's local day): the
+    person's notes and Lanvi's replies, oldest first. A note that opened the help
+    screen is left out with its reply, so its words never reach the model."""
+    today = repo.local(now).date()
+    turns: list[dict] = []
+    for n in repo.notes():
+        if n["id"] == note_id or n.get("source", "note") != "note":
+            continue
+        try:
+            day = repo.local(datetime.fromisoformat(n["at"])).date()
+        except (KeyError, ValueError):
+            continue
+        cls = n.get("classification") or {}
+        if day != today or cls.get("crisis") or cls.get("asks_for_help"):
+            continue
+        turns.append({"role": "person", "text": n.get("text") or ""})
+        reply = (n.get("reply") or {}).get("text") or \
+            note_logic.reply_templates().get(cls.get("template_id"))
+        if reply:
+            turns.append({"role": "lanvi", "text": reply})
+    return turns
+
+
+async def chat_reply(ctx: Ctx, p: Principal, repo: PatientRepo, note_id: str, text: str,
+                     cls: dict) -> dict | None:
+    """CHAT_MODE=gemini: Lanvi's reply written by Gemini, or None for the fixed
+    line. Runs only AFTER classification, and never for a note that opened the
+    help screen: the code checks decide alone and the model cannot change them."""
+    outreach = ctx.mind.outreach
+    if ctx.settings.chat_mode != "gemini" or outreach is None:
+        return None
+    if cls["crisis"] or cls["asks_for_help"] or cls.get("lexicon_help"):
+        ctx.mind.trace(repo, "level2", "skipped", {"task": "chat", "reason": "help_screen",
+                                                   "used": "fixed_line"})
+        return None
+    patient = repo.patient() or {}
+    if not patient.get("allow_outside_processing"):
+        ctx.mind.trace(repo, "level2", "skipped", {"task": "chat", "reason": "no_consent",
+                                                   "used": "fixed_line"})
+        return None
+    if not getattr(outreach, "chat_on", False):
+        ctx.mind.trace(repo, "level2", "off", {"task": "chat", "used": "fixed_line"})
+        return None
+    # The record's own identifying values: if one is in the words, nothing is sent.
+    forbidden = [str(v) for v in (patient.get("id"), patient.get("clinic_id"),
+                                  patient.get("label"), patient.get("display_name"), note_id) if v]
+    earlier = _chat_earlier(repo, ctx.clock.now(), note_id)
+    try:
+        pack = INPUT_GATE.chat_pack(text, earlier, forbidden)
+    except GateError as e:
+        ctx.mind.refuse(repo, e.refusal)
+        ctx.mind.trace(repo, "level2", "refused", {"task": "chat", "verdict": "input_refused",
+                                                   "reasons": [e.refusal.reason],
+                                                   "used": "fixed_line"}, notable=True)
+        return None
+    raw = await outreach.chat_complete(pack, forbidden)
+    res = OUTPUT_GATE.chat(raw)
+    written = None
+    if res.ok:
+        from .llm.gemini import chat_model
+        written = {"template_id": "gemini", "text": res.value, "written_by": "model",
+                   "model": chat_model(ctx.settings)}
+    elif raw is not None:
+        for r in res.refusals:
+            ctx.mind.refuse(repo, r)
+    # The trace keeps codes only: never the words or the reply.
+    ctx.mind.trace(repo, "level2", "accepted" if res.ok else ("refused" if raw is not None
+                                                              else "no_reply"), {
+        "task": "chat",
+        "saw": {"fields": ["the note just written", f"{len(earlier)} earlier turns of today"]},
+        "verdict": "ok" if res.ok else ("refused" if raw is not None else "unavailable"),
+        "reasons": [r.reason for r in res.refusals] if raw is not None else [],
+        "used": "model_reply" if res.ok else "fixed_line"},
+        notable=raw is not None and not res.ok)
+    return written
+
+
 async def record_note(ctx: Ctx, p: Principal, note_id: str, text: str, rid: str) -> dict:
     repo = repo_for(ctx, p)
     async with ctx.mind.lock(p.clinic_id, p.patient_id):
@@ -295,14 +373,25 @@ async def record_note(ctx: Ctx, p: Principal, note_id: str, text: str, rid: str)
                 _audit(ctx, p, "note", "refused", "id_reused", rid, note_id=note_id)
                 raise ApiError(409, "conflict", "This note id was used for another note.")
             cls = old["classification"]
+            written = old.get("reply")
         else:
             # One trace chain for the note: the classification and what the mind did after.
             with ctx.mind.tracer.chain(p.clinic_id, p.patient_id, "note"):
                 cls = await classify_text(ctx, p, repo, note_id, text, rid)
+                written = await chat_reply(ctx, p, repo, note_id, text, cls)
+                if written is not None:
+                    rec = repo.get(f"notes/{note_id}.json")
+                    repo.put(f"notes/{note_id}.json", {**rec, "reply": written})
+                if ctx.settings.chat_mode == "gemini":
+                    _audit(ctx, p, "note_reply", "ok", None, rid, note_id=note_id,
+                           written_by="model" if written else "fixed")
                 await ctx.mind.publish("note", p.clinic_id, p.patient_id, note_id=note_id)
         open_s = next((s for s in repo.suggestions() if s["status"] == "open"), None)
-    out = {"reply": {"template_id": cls["template_id"],
-                     "text": note_logic.reply_templates()[cls["template_id"]]},
+    reply = ({"template_id": written["template_id"], "text": written["text"]}
+             if written and not cls["crisis"] else
+             {"template_id": cls["template_id"],
+              "text": note_logic.reply_templates()[cls["template_id"]]})
+    out = {"reply": reply,
            "crisis": cls["crisis"],
            "crisis_block": crisis_block(ctx) if cls["crisis"] else None,
            "suggestion": suggestion_out(open_s)}
@@ -433,6 +522,9 @@ async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
             rec = process_activity(stored, previous)
             rec.update(received_at=now.isoformat(), example=False, content_sha256=sha,
                        crisis=crisis, analysis={"status": ctx.mind.session_reading_state(repo, rec)})
+            if rec.get("face_source") == "raw":
+                # The frame reading (clinician-only): level 2 reads the frames, code checks.
+                rec["frames_reading"] = {"status": ctx.mind.frames_reading_state(repo, rec)}
             repo.put(f"activities/{rec['id']}.json", rec)
             if sug is not None:
                 sug["activity_id"] = rec["id"]
@@ -449,6 +541,8 @@ async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
                                    xp_gained=gained)
         if rec["analysis"]["status"] == "pending":
             await ctx.mind.schedule_session_reading(repo, rec["id"])
+        if (rec.get("frames_reading") or {}).get("status") == "pending":
+            await ctx.mind.schedule_frames_reading(repo, rec["id"])
         return _activity_out(ctx, repo, rec, gained, crisis)
 
 

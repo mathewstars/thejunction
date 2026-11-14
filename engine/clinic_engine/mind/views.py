@@ -275,9 +275,18 @@ def progress(mind, repo: PatientRepo, view: View, rows: list[dict]) -> dict:
 
 
 def _reply_line(note: dict) -> str | None:
-    """The fixed line Lanvi answered a note with. It is one of our own lines, never model text."""
+    """What Lanvi answered a note with: the model-written reply when there is one
+    (CHAT_MODE=gemini, marked by _reply_by), else the fixed line."""
+    written = note.get("reply") or {}
+    if written.get("text"):
+        return written["text"]
     from .lines import reply_templates
     return reply_templates().get((note.get("classification") or {}).get("template_id"))
+
+
+def _reply_by(note: dict) -> str:
+    """"model" when Gemini wrote Lanvi's reply (checked by code), else "fixed"."""
+    return "model" if (note.get("reply") or {}).get("text") else "fixed"
 
 
 def clinician_detail(mind, repo: PatientRepo) -> dict:
@@ -295,6 +304,7 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
     return {
         **line,
         "share_notes": share,
+        "chat_mode": mind.settings.chat_mode,
         "allow_outside_processing": bool(patient.get("allow_outside_processing")),
         "timeline": [{"date": s["date"], "z": s["z"], "movement_z": s["movement_z"],
                       "low": s["movement_z"] is not None and s["movement_z"] <= view.th.low_day_z}
@@ -323,6 +333,7 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
                    "classification": {k: n["classification"][k]
                                       for k in ("mood", "topic", "crisis", "asks_for_help", "model")},
                    "reply": _reply_line(n),
+                   "reply_by": _reply_by(n),
                    **({"text": n["text"]} if share else {})} for n in repo.notes()],
         "refusal_log": refusals,
         "notify_log": notify_log,
@@ -359,6 +370,41 @@ def _reading_out(a: dict) -> dict:
     return out
 
 
+_AGREEMENT_KEYS = ("smiles_reported", "smiles_confirmed", "smiles_corrected", "smiles_dropped",
+                   "smiles_missed", "smiles_code", "segments_reported", "segments_confirmed",
+                   "blinks_model", "blinks_code", "moments_reported", "moments_agree",
+                   "overall_replaced")
+
+
+def frames_reading_out(a: dict) -> dict:
+    """The frame reading for the clinician: what the model reported, as code
+    confirmed, corrected or dropped it. Counts, times and fixed words only;
+    never the frames. The same keys in every state (null or empty until ready)."""
+    fr = a.get("frames_reading") or {"status": "not_applicable"}
+    ready = fr.get("status") == "ready"
+    rd = fr.get("reading") or {}
+    ag = fr.get("agreement") or {}
+    return {
+        "status": fr.get("status", "not_applicable"),
+        "reason": fr.get("reason"),
+        "read_by": fr.get("read_by"), "model": fr.get("model"),
+        "checked_by": fr.get("checked_by"), "at": fr.get("at"),
+        "agreement": {k: ag.get(k) for k in _AGREEMENT_KEYS} if ready else None,
+        "overall": {k: (rd.get("overall") or {}).get(k) for k in
+                    ("expression", "smiling", "gaze", "tracking", "confidence")} if ready else None,
+        "overall_checks": rd.get("overall_checks") if ready else None,
+        "blinks": rd.get("blinks") if ready else None,
+        "smiles": [{k: x.get(k) for k in ("start_s", "end_s", "reaches_eyes", "side", "status",
+                                          "corrected")} for x in rd.get("smiles", [])],
+        "segments": [{k: x.get(k) for k in ("start_s", "end_s", "what", "code_share")}
+                     for x in rd.get("segments", [])],
+        "moments": [{k: x.get(k) for k in ("at_s", "smiled", "model", "status")}
+                    for x in rd.get("moments", [])],
+        "dropped": [{k: x.get(k) for k in ("item", "start_s", "end_s", "at_s", "what", "reason")
+                     if x.get(k) is not None} for x in fr.get("dropped", [])],
+    }
+
+
 def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
     tz = repo.tz()
     notes = {n["id"]: n for n in repo.notes()} if share else {}
@@ -393,6 +439,7 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                 s["raw"] = None if not info else {k: info.get(k) for k in (
                     "rate_hz", "frames", "tracked_share", "channels")}
                 s["reading"] = _reading_out(a)
+                s["frames_reading"] = frames_reading_out(a)
             else:
                 s["good_things"] = [item(g, "good_things") for g in a.get("good_things") or []]
                 s["plan"] = item(a.get("plan"), "plans")

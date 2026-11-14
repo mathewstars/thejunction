@@ -238,7 +238,7 @@ After a round that answered a suggestion, send `did_it` for that suggestion. The
 }
 ```
 
-- Show `reply.text` as the app's answer. It is one line from a fixed set. This is not a chat; do not offer a reply box after it.
+- Show `reply.text` as the app's answer. It is one line from a fixed set, or, when the server's chat mode is on (`template_id: gemini`), a short reply written by Gemini and checked by the server. The app shows both the same way.
 - If `crisis` is `true`, open the help screen at once with `crisis_block`.
 - If `suggestion` is not `null`, show it like a suggestion from `/v1/today`.
 
