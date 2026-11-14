@@ -1,7 +1,10 @@
 """The ONLY module that sends anything to a host outside the private network.
 
-Two kinds of outbound data exist:
+Three kinds of outbound data exist:
 - level-2 review packs to Gemini (OUTREACH_MODE=gemini, default off)
+- Lanvi's chat reply (CHAT_MODE=gemini, default fixed): the note the person
+  just wrote and today's earlier non-crisis turns, checked by
+  InputGate.check_chat_outbound right before sending
 - "needs review" messages to a clinic Telegram chat (NOTIFY_MODE=telegram, default off)
 
 Rules enforced here, in code:
@@ -16,7 +19,9 @@ Rules enforced here, in code:
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 import re
 from urllib.parse import urlsplit
 
@@ -83,7 +88,6 @@ class Outreach:
     async def gemini_complete(self, pack: Pack) -> str | None:
         if not self.gemini_on or pack.level != 2:
             return None
-        import time
         out, t0 = None, time.monotonic()
         try:
             out = await self._level2(pack)
@@ -123,6 +127,33 @@ class Outreach:
         except Exception as exc:  # noqa: BLE001
             log.warning("level 2 unavailable: %s", type(exc).__name__)
             return None
+
+    # ---- Lanvi's chat reply (CHAT_MODE=gemini) ----------------------------------
+
+    @property
+    def chat_on(self) -> bool:
+        s = self.settings
+        return s.chat_mode == "gemini" and bool(s.gemini_api_key and gemini.chat_model(s))
+
+    async def chat_complete(self, pack: Pack, forbidden: list[str]) -> str | None:
+        """The model's raw reply, or None (off, refused, error, timeout). Never raises."""
+        if not self.chat_on or pack.task != "chat" or pack.level != 2:
+            return None
+        out, t0 = None, time.monotonic()
+        try:
+            INPUT_GATE.check_chat_outbound(pack, forbidden)
+            url, headers, body = gemini.build_chat_request(self.settings, pack)
+            limit = self.settings.chat_timeout_s
+            data = await asyncio.wait_for(self._post("gemini", url, body, headers, limit), limit)
+            out = gemini.parse_response(data or {})
+            return out
+        except Exception as exc:  # noqa: BLE001 - any failure means the fixed line
+            log.warning("chat reply unavailable: %s", type(exc).__name__)
+            return None
+        finally:
+            if self.recorder is not None:
+                self.recorder(pack, out, (time.monotonic() - t0) * 1000,
+                              gemini.chat_model(self.settings), 2)
 
     # ---- notifications ---------------------------------------------------------
 

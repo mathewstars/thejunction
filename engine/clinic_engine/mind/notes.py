@@ -14,8 +14,11 @@ the help screen.
     no help-seeking hit, give crisis = false. They still set mood = "low" and
     so count as evidence for the clinician's attention items (low_notes).
 
-The reply is never generated text. Code picks a vetted template; the model
-may at most choose between the templates code allows for that case.
+With CHAT_MODE=fixed (default) the reply is never generated text: code picks
+a vetted template; the model may at most choose between the templates code
+allows for that case. With CHAT_MODE=gemini, a note that did not open the
+help screen may get a reply written by Gemini instead (service.chat_reply,
+checked by OutputGate.chat); this template stays the fallback.
 """
 
 from __future__ import annotations

@@ -136,7 +136,7 @@ Rules for this version:
 | What if someone is in crisis? | The app is not a crisis service. The help screen is one tap away and opens by itself when a note suggests it. The wording comes from clinicians. |
 | How is it different from Soihtu's game? | Their game is the treatment. Lanvi is what the app offers after the phone noticed a change, and it adapts to the person. |
 | Why a camera on someone recovering from depression? | It is opt-in, nothing is saved or sent except a few numbers, and everything works without it. |
-| Where does the data go? | It stays on the clinic's server. One optional step can send an anonymous trace to an outside model, only with consent. |
+| Where does the data go? | It stays on the clinic's server. One optional step can send an anonymous trace to an outside model, only with consent. A second optional switch (chat mode, off by default) sends a note that does not ask for help to Gemini so it can write Lanvi's reply, also only with consent. |
 | What stops the AI from saying something harmful? | It doesn't write freely to a patient. Lanvi's lines come from a fixed set, and code checks what the models return. |
 | How would a clinic start using it? | The clinic gives the patient a pairing code; entering it is the consent to share. The next step is a pilot with one clinic. |
 

@@ -275,9 +275,18 @@ def progress(mind, repo: PatientRepo, view: View, rows: list[dict]) -> dict:
 
 
 def _reply_line(note: dict) -> str | None:
-    """The fixed line Lanvi answered a note with. It is one of our own lines, never model text."""
+    """What Lanvi answered a note with: the model-written reply when there is one
+    (CHAT_MODE=gemini, marked by _reply_by), else the fixed line."""
+    written = note.get("reply") or {}
+    if written.get("text"):
+        return written["text"]
     from .lines import reply_templates
     return reply_templates().get((note.get("classification") or {}).get("template_id"))
+
+
+def _reply_by(note: dict) -> str:
+    """"model" when Gemini wrote Lanvi's reply (checked by code), else "fixed"."""
+    return "model" if (note.get("reply") or {}).get("text") else "fixed"
 
 
 def clinician_detail(mind, repo: PatientRepo) -> dict:
@@ -295,6 +304,7 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
     return {
         **line,
         "share_notes": share,
+        "chat_mode": mind.settings.chat_mode,
         "allow_outside_processing": bool(patient.get("allow_outside_processing")),
         "timeline": [{"date": s["date"], "z": s["z"], "movement_z": s["movement_z"],
                       "low": s["movement_z"] is not None and s["movement_z"] <= view.th.low_day_z}
@@ -323,6 +333,7 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
                    "classification": {k: n["classification"][k]
                                       for k in ("mood", "topic", "crisis", "asks_for_help", "model")},
                    "reply": _reply_line(n),
+                   "reply_by": _reply_by(n),
                    **({"text": n["text"]} if share else {})} for n in repo.notes()],
         "refusal_log": refusals,
         "notify_log": notify_log,
