@@ -212,9 +212,8 @@ at(43.6, lambda d: screen("v16/check.mp4", d))                                  
 at(49.8, lambda d: fclip("november", d, ss=0.05))
 at(54.6, lambda d: wins_shot("night", d, [("v16/w_help.png", 3.0, None, 90)]))     # "I need help.": the app's help screen comes up beside her
 at(59.55, lambda d: wins_shot("nurse", d, [("w_tg.png", 0.3, None, 110)]))                  # "Her clinic is told.": the alert, once, for the whole shot
-at(63.85, lambda d: wins_shot("nurse3", d, [("w_anna_left.png", 0.3, 4.5, 0)], ss=0.0))     # her page, once; then she reaches for her phone
-at(68.8, lambda d: fclip("nurse2", d, ss=0.0))                                     # "Anna, I read your note."
-at(73.75, lambda d: fclip("call", d, ss=0.0))                                      # "I'm here."
+at(63.85, lambda d: wins_shot("nurselong", d, [("w_anna_left.png", 0.3, None, 0)], ss=0.0))  # one long shot: she reads with Anna's page up, lifts the phone; she never speaks on camera
+at(70.3, lambda d: fclip("calllong", d, ss=0.0))                                   # one long shot: Anna hears "Anna, I read your note." and "I'm here."
 at(78.7, lambda d: fclip("frontdoor", d, ss=0.0))                                  # "This time,"
 at(83.65, lambda d: wins_shot("return", d, [], ss=0.0, dim=0.0, fout=0.6))         # "Anna doesn't wait six weeks."; fades down into the end card
 at(88.6, lambda d: end_card(d, 2.8, 7.7, 12.95, 14.0))

@@ -150,6 +150,8 @@ struct HomeChatScreen: View {
     /// Close: put the keyboard away first, so it never shrinks along with the screen.
     private func close() {
         closing = true
+        // If the chat is shown again before it has gone, its fox comes back by itself.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { closing = false }
         guard focused else { onClose(); return }
         focused = false
         Task { @MainActor in

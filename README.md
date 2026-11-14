@@ -15,7 +15,7 @@ Built at Junction 2026 for Aalto University's challenge "Beyond the Clinic", wit
 
 ## Open the demo
 
-Go to https://lanvi.app and sign in as **`admin`** with the password **`admin`**. It is a demo server: the patients are examples with generated histories, plus one shared test profile, "Team test P" (Patient T-001), that receives what our own phones send. Start with Anna Korhonen.
+Go to https://lanvi.app/demo. It needs no login and is read only: you see the clinician page as the clinic does, but nothing can be changed. (To sign in and change things, write to stafurik@gmail.com or call +421 917 916 569 for the login.) It is a demo server: the patients are examples with generated histories, plus one shared test profile, "Team test P" (Patient T-001), that receives what our own phones send. Start with Anna Korhonen.
 
 ## Install the app
 
@@ -25,7 +25,7 @@ You need a Mac with Xcode and an iPhone. The face numbers need a phone with Face
 2. Under Signing & Capabilities choose your own team, pick your iPhone and press Run.
 3. There is nothing to link for now: every install connects to the shared test profile on lanvi.app. Play a game or do the evening check-in, then open "Team test P" on the clinician page to see it arrive.
 
-The demo login above is public, so anyone can see what an install sends (games, face numbers and, if you allow it, Apple Health days). Do not allow Apple Health on a phone whose data you want to keep private. More about the app: [`ios/README.md`](ios/README.md).
+Everyone who has the demo login can see what an install sends (games, face numbers and, if you allow it, Apple Health days). Do not allow Apple Health on a phone whose data you want to keep private. More about the app: [`ios/README.md`](ios/README.md).
 
 ## Two things to look at
 

@@ -50,7 +50,7 @@ WEB_DIR = Path(__file__).resolve().parent / "web"
 
 
 def _is_page(path: str) -> bool:
-    return path in ("/", "/pitch") or path.startswith("/static/")
+    return path in ("/", "/pitch", "/demo") or path.startswith("/static/")
 
 
 def _json_bytes(status: int, code: str, message: str, rid: str) -> bytes:
@@ -246,6 +246,12 @@ def create_app(settings: Optional[Settings] = None, store: Optional[Store] = Non
     # The clinician web page: static files, no build step. The API stays under /v1.
     @app.get("/", include_in_schema=False)
     async def clinician_page():
+        return FileResponse(WEB_DIR / "index.html", media_type="text/html; charset=utf-8")
+
+    # The open demo: the same page, which then asks for a read-only visitor token
+    # (POST /v1/clinic/visit) in place of showing the sign-in form.
+    @app.get("/demo", include_in_schema=False)
+    async def open_demo_page():
         return FileResponse(WEB_DIR / "index.html", media_type="text/html; charset=utf-8")
 
     # The stage pitch: a page of its own, edited in web/static/pitch/index.html. It uses

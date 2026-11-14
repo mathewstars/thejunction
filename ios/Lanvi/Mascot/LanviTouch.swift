@@ -69,6 +69,86 @@ enum LanviTouchZone: String, CaseIterable {
     }
 }
 
+/// The one owner of the touch reactions: which reaction a tap plays (by place, never the
+/// same twice running; quick taps build up, then calm), and which one it replaces. The
+/// newest tap always wins: a reaction it replaces fades out in 0.3 s, and a calm tap
+/// (after many quick ones) ends the reaction in flight, so the eyes are back to normal
+/// open eyes within 0.6 s of the last reaction (never left in a squint or a sigh while
+/// the taps go on).
+struct LanviTapper {
+    /// One change of the touch reaction: from `at` on, `act` plays (nil = a calm tap
+    /// ended whatever played). The puppet reads this timeline for every moment it draws
+    /// or looks back on, so a new tap never rewrites what the eyes were doing before it.
+    struct Entry: Equatable {
+        var act: LanviTouchAct?
+        var at: Double
+        var side: Double
+    }
+    var timeline: [Entry] = []
+    var touch: LanviTouchAct?
+    var touchAt: Double = -100
+    var touchSide: Double = 1
+    var prevTouch: LanviTouchAct?
+    var prevTouchAt: Double = -100
+    var lastAct: LanviTouchAct?
+    var zoneTurns: [LanviTouchZone: Int] = [:]
+    var streak = 0
+    var lastTapAt: Double = -100
+
+    /// Reactions that aim the eyes themselves (the others look at the finger).
+    static let aims: Set<LanviTouchAct> = [.boop, .boopGiggle, .boopSniff, .earFlick, .earTickle, .earDouble,
+                                           .tailLook, .tailSwish, .tailCurlLook, .pawLift, .pawPat, .pawHold,
+                                           .nod, .giggleShy]
+
+    /// A tap at `p` (canvas units) at time `t`: the reaction it starts (nil = calm, the
+    /// eyes only follow the finger).
+    mutating func tap(at p: CGPoint, time t: Double) -> LanviTouchAct? {
+        let (zone, side) = LanviTouchZone.at(p)
+        streak = t - lastTapAt < 1.4 ? streak + 1 : 1
+        lastTapAt = t
+        var act: LanviTouchAct?
+        switch streak {
+        case 1:
+            act = pick(zone)
+            if zone == .head, let last = lastAct, [.petLean, .petNuzzle].contains(last), t - touchAt < 3 {
+                act = .petWiggle                 // a second pet soon after: a happy wiggle
+            }
+        case 2: act = lastAct == .giggle ? .giggleSqueeze : .giggle
+        case 3: act = lastAct == .tickleBig ? .tickle : .tickleBig
+        case 4: act = .sigh
+        default: act = nil                     // calm now: the eyes only follow the finger
+        }
+        // the newest wins: it goes on the timeline (a calm tap only when it ends something)
+        let playing = touch.map { t - touchAt < $0.duration } ?? false
+        if act != nil || playing { timeline.append(Entry(act: act, at: t, side: side)) }
+        while timeline.count > 2, t - timeline[1].at > 3 { timeline.removeFirst() }
+        // the reaction in flight (if any) gives way to the newest tap and fades out
+        if let a = touch, t - touchAt < a.duration {
+            prevTouch = a
+            prevTouchAt = touchAt
+            touch = nil
+            touchAt = t
+        } else {
+            prevTouch = nil
+        }
+        guard let act else { return nil }
+        touch = act
+        touchAt = t
+        touchSide = side
+        lastAct = act
+        return act
+    }
+
+    private mutating func pick(_ zone: LanviTouchZone) -> LanviTouchAct {
+        let acts = zone.acts
+        let turn = zoneTurns[zone, default: 0]
+        zoneTurns[zone] = turn + 1
+        var a = acts[turn % acts.count]
+        if a == lastAct { a = acts[(turn + 1) % acts.count] }
+        return a
+    }
+}
+
 /// One touch reaction.
 enum LanviTouchAct: String, CaseIterable, Equatable {
     case petLean, petNuzzle, petWiggle, nod
@@ -118,14 +198,52 @@ extension Rig {
 extension LanviMotion {
     // MARK: Touch reactions
 
+    /// The touch reaction playing at `x` and the one it replaced, read from the timeline
+    /// as it was at `x` (`at`: when the current one began; `prev`: its start and side).
+    func touchAt(_ x: Double) -> (act: LanviTouchAct?, at: Double, side: Double,
+                                  prev: (act: LanviTouchAct, at: Double, side: Double)?)? {
+        guard let i = touchTimeline.lastIndex(where: { $0.at <= x }) else { return nil }
+        let cur = touchTimeline[i]
+        var prev: (LanviTouchAct, Double, Double)?
+        if i > 0, let a = touchTimeline[i - 1].act, cur.at - touchTimeline[i - 1].at < a.duration {
+            prev = (a, touchTimeline[i - 1].at, touchTimeline[i - 1].side)
+        }
+        return (cur.act, cur.at, cur.side, prev)
+    }
+
     func touchLayer(_ x: Double, _ p: inout Pose, _ face: inout Face) {
+        if !touchTimeline.isEmpty {
+            // Taps from a finger: the timeline says what played at `x` (never rewritten
+            // by a later tap). The one replaced fades out in 0.3 s; if it was smiling with
+            // its eyes, the smile stays 0.15 s until the new one sets its own eyes (no
+            // squint opening for two frames and shutting again).
+            guard let now = touchAt(x) else { return }
+            let before = face.eyes
+            var prevEyes = before
+            if let pr = now.prev, x - now.at < 0.3 {
+                var q = Pose(), fq = face
+                act(pr.act, x - pr.at, side: pr.side, &q, &fq)
+                p.add(q, 1 - Motion.smooth(0, 0.3, x - now.at))
+                prevEyes = fq.eyes
+            }
+            if let a = now.act { act(a, x - now.at, side: now.side, &p, &face) }
+            if x - now.at < 0.15, face.eyes == before, prevEyes == .happy { face.eyes = .happy }
+            return
+        }
         // The touch this one replaced fades out in 0.3 s; the new one starts on the touch.
+        let before = face.eyes
+        var prevEyes = before
         if let a = prevTouch, x - touchAt < 0.3 {
             var q = Pose(), fq = face
             act(a, x - prevTouchAt, side: touchSide, &q, &fq)
             p.add(q, 1 - Motion.smooth(0, 0.3, x - touchAt))
+            prevEyes = fq.eyes
         }
         if let a = touch { act(a, x - touchAt, side: touchSide, &p, &face) }
+        // A new reaction that has not set its own eyes yet keeps the ones of the reaction it
+        // replaced for its first moments (a quick second tap never opens a squint for two
+        // frames and shuts it again).
+        if touch != nil, x - touchAt < 0.15, face.eyes == before, prevEyes == .happy { face.eyes = .happy }
     }
 
     /// A finger resting on him: he leans into it with slow content breaths and happy eyes
