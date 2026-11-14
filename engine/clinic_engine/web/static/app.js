@@ -343,7 +343,7 @@
       const prev = i > 0 ? values[i - 1] : null;
       if (!below) { on = false; return; }
       const px = (k) => (k * (W - 4) / Math.max(1, n - 1) + 2).toFixed(1);
-      if (!on && prev !== null && prev !== undefined) low += "M" + px(i - 1) + " " + y(prev).toFixed(1) + "L" + px(i) + " " + y(z).toFixed(1);
+      if (!on && i > 0 && prev !== null && prev !== undefined) low += "M" + px(i - 1) + " " + y(prev).toFixed(1) + "L" + px(i) + " " + y(z).toFixed(1);
       else low += (on ? "L" : "M") + px(i) + " " + y(z).toFixed(1);
       on = true;
     });
@@ -436,7 +436,7 @@
     $("subnav").replaceChildren(tabs);  // the patient's sections live in the top bar
     const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, talk: tabTalk, research: tabResearch, mind: tabMind, log: tabLog }[S.route.tab](d, today);
     if (S.route.tab === "overview" && d.summary) wrap.appendChild(el("p", { class: "lead" },
-      String(d.summary).replace(/\s*Last suggestion:[^.]*\.?/, "").replace(/\b\d{4}-\d{2}-\d{2}\b/g, (m) => dayShort(m))));
+      String(d.summary).replace(/\s*Last suggestion:[^.]*\.?/, "").replace(/held since/g, "flagged since").replace(/\b\d{4}-\d{2}-\d{2}\b/g, (m) => dayShort(m))));
     wrap.appendChild(el("div", { id: "tabpanel", role: "tabpanel", "aria-labelledby": "tab-" + S.route.tab }, body));
     return wrap;
   }
@@ -657,7 +657,7 @@
     const facts = panel("Last 7 days", null, el("div", { class: "facts" },
       factTile(withData + "/7", "days with data"),
       factTile(weekOffers.length ? answered + "/" + weekOffers.length : "–", "offers answered"),
-      factTile(meanZ === null ? "–" : signed(meanZ), zWord(meanZ))));
+      factTile(meanZ === null ? "–" : signed(meanZ), "average movement, in own spreads (" + zWord(meanZ) + ")")));
     return el("div", { class: "grid" }, el("div", { class: "stack" }, left, facts), el("div", { class: "stack" }, att, offer));
   }
 
@@ -720,7 +720,7 @@
       else if (layer === "level1" || layer === "level2") {
         const task = d.task ? words(d.task).toLowerCase() + ": " : "";
         const why = Array.isArray(d.reasons) && d.reasons.length ? d.reasons : d.reason ? [d.reason] : [];
-        const whyText = why.length ? " (" + Array.from(new Set(why)).map((w) => words(w).toLowerCase()).join(", ") + ")" : "";
+        const whyText = why.length ? " (" + Array.from(new Set(why.map(plainReason))).slice(0, 2).join("; ") + (new Set(why.map(plainReason)).size > 2 ? "; …" : "") + ")" : "";
         if (e.code === "partly_refused") out.push(el("span", null, task + "kept part, dropped " + why.length + whyText));
         else if (/refus/.test(e.code)) out.push(el("span", { class: "chip bad" }, task + "refused" + whyText));
         else out.push(el("span", { class: e.code === "off" ? "muted" : null }, task + words(e.code).toLowerCase()));
@@ -1000,6 +1000,16 @@
   const R_STATUS = { insufficient: "too few days", no_variation: "did not vary", is_reference: "is the reference" };
   const SRC = { model: "model", code: "code", code_corrected: "model, corrected by code" };
   function f2(v) { return v === null || v === undefined ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Number(v)).toFixed(2); }
+  const REASON = { not_json_object: "the reply was not in the required form", already_asked: "that question was already asked", unknown_evidence: "it pointed at evidence that does not exist",
+    no_own_baseline: "there is no own normal to compare with yet", no_face_baseline: "there is no own normal for the face yet", change_does_not_start_there: "the change does not start where it said",
+    stronger_than_interval_supports: "the label claimed more than the range supports", strongest_must_be_consistent_rows: "it named a measure that is not as expected", weak_evidence: "the evidence was too thin" };
+  function plainReason(code) {
+    const parts = String(code || "").split(":");
+    const last = parts[parts.length - 1];
+    const tail = REASON[last] || words(last).toLowerCase();
+    if (parts.length >= 3) return words(parts[1]).toLowerCase() + " " + (parts[0] === "claim_dropped" ? "dropped" : "changed") + ": " + tail;
+    return tail;
+  }
   function modelName(m) { m = String(m || ""); return /gemini/i.test(m) ? "Gemini" : /stand-in/i.test(m) ? "local model, standing in" : m === "code" || !m ? "code" : "local model"; }
   function rhoBar(r) {
     // Interval and point on a fixed -1..+1 scale; right of the middle = as expected.
@@ -1074,11 +1084,21 @@
     return Number(v).toFixed(2);
   }
   // Which measures stand for the pattern: the best of each kind first, then the next best.
+  // What a measure doing "worse" looks like, in words a person would use.
+  const WORSE = { "face.smile_time_share": "smiled less", "face.smile_rate_per_min": "smiled less often", "face.smile_intensity": "smiled more faintly",
+    "face.eye_smile_share": "had fewer smiles that reached the eyes", "face.smile_response_share": "smiled less at pleasant moments", "face.smile_response_latency_s": "was slower to smile",
+    "face.facial_activity": "showed less facial movement", "face.brow_down_share": "drew the brows down more", "face.inner_brow_up_share": "raised the inner brows more",
+    "face.blink_duration_ms": "blinked more slowly", "face.look_down_share": "looked down more", "face.head_pitch_deg": "held the head lower", "face.head_movement": "moved the head less",
+    "focus.median_reaction_ms": "reacted more slowly", "focus.reaction_spread_ms": "reacted less evenly", "focus.error_rate": "made more errors", "activity.completed_share": "finished fewer activities",
+    "checkin.good_things": "named fewer good things", "checkin.plan_done_share": "carried out fewer plans", "daily.steps": "walked less", "daily.walking_speed_m_s": "walked more slowly", "daily.hrv_ms": "had lower heart-rate variability" };
+  function joinAnd(list) { return list.length > 1 ? list.slice(0, -1).join(", ") + " and " + list[list.length - 1] : list[0] || ""; }
   function pickMeasures(a) {
     const sr = a.series || {}, rows = a.rows || [];
     const usable = rows.filter((r) => r.status === "tested" && r.expected !== "mixed" && ((sr.measures || {})[r.key] || []).length >= 5);
-    // The closest follower of each kind: the same rows that head each group in "Every measure".
-    const cons = usable.filter((r) => r.agreement === "consistent").sort((x, y) => y.rho - x.rho);
+    // Per kind, the measure research supports best among those that came out as expected (not the
+    // largest number: with a dozen ratings the top few are a coin toss). "Every measure" pins them first.
+    const SUP = { stronger: 0, moderate: 1, weaker: 2, mixed: 3 };
+    const cons = usable.filter((r) => r.agreement === "consistent").sort((x, y) => (SUP[x.support] - SUP[y.support]) || (y.rho - x.rho));
     const pick = [];
     const add = (r) => { if (r && pick.indexOf(r) < 0 && pick.length < 4) pick.push(r); };
     ["face", "activity", "daily"].forEach((g) => add(cons.find((r) => r.group === g)));
@@ -1086,67 +1106,78 @@
     if (!pick.length) usable.slice().sort((x, y) => Math.abs(y.rho) - Math.abs(x.rho)).slice(0, 3).forEach(add);
     return pick;
   }
-  // One panel, one direction: every series is put in the person's own spread units and turned so
-  // that up means worse. The rating is the amber line; the measures are grey, their average white.
+  // Two panels on one time axis. Above: the rating on its own fixed scale, the same on every
+  // patient's page. Below: the measures in the person's own spread units, turned so up means
+  // worse; grey lines, their average in white. Columns where the rating is at or over the usual
+  // cut-off are shaded through both panels.
   function togetherChart(a) {
     const sr = a.series;
     if (!sr || !(sr.reference || []).length) return null;
     const ref = a.reference || {}, pick = pickMeasures(a);
     if (!pick.length) return null;
+    const anyGood = pick.some((r) => r.agreement === "consistent");
     const t0 = Date.parse(sr.first_day + "T00:00:00Z");
     const N = Math.max(2, Math.round((Date.parse(sr.last_day + "T00:00:00Z") - t0) / 864e5) + 1);
     const std = (pts, flip) => {
       const v = pts.map((p) => p[1]), m = v.reduce((t, q) => t + q, 0) / v.length;
       const sd = Math.sqrt(v.reduce((t, q) => t + (q - m) * (q - m), 0) / Math.max(1, v.length - 1)) || 1;
-      return pts.map((p) => [p[0], ((p[1] - m) / sd) * (flip ? -1 : 1), p[1]]);
+      return pts.map((p) => [p[0], ((p[1] - m) / sd) * (flip ? -1 : 1)]);
     };
-    const smooth = (pts) => pts.map((p) => { const near = pts.filter((q) => Math.abs(q[0] - p[0]) <= 3); return [p[0], near.reduce((t, q) => t + q[1], 0) / near.length, p[2]]; });
-    const rp = std(sr.reference.slice().sort((p, q) => p[0] - q[0]), ref.worse_is === "lower");
+    const smooth = (pts) => pts.map((p) => { const near = pts.filter((q) => Math.abs(q[0] - p[0]) <= 3); return [p[0], near.reduce((t, q) => t + q[1], 0) / near.length]; });
+    const runs = (pts) => { const out = []; let cur = []; pts.forEach((p, i) => { if (i && p[0] - pts[i - 1][0] > 7) { out.push(cur); cur = []; } cur.push(p); }); if (cur.length) out.push(cur); return out; };
+    const rp = sr.reference.slice().sort((p, q) => p[0] - q[0]);
     const ms = pick.map((r) => ({ r, pts: smooth(std(sr.measures[r.key], r.expected === "lower")) }));
-    // the average of the measures, per day, where at least two of them have a value
     const avg = [];
     for (let day = 0; day < N; day += 1) {
       const vs = ms.map((m) => { const p = m.pts.find((q) => q[0] === day); return p ? p[1] : null; }).filter((v) => v !== null);
       if (vs.length >= Math.min(2, ms.length)) avg.push([day, vs.reduce((t, q) => t + q, 0) / vs.length]);
     }
-    const avgS = avg.map((p) => { const near = avg.filter((q) => Math.abs(q[0] - p[0]) <= 3); return [p[0], near.reduce((t, q) => t + q[1], 0) / near.length]; });
-    const W = 1000, H = 330, PL = 70, PR = 14, PT = 26, PB = 30;
-    const all = rp.map((p) => p[1]).concat(avgS.map((p) => p[1]));
-    ms.forEach((m) => m.pts.forEach((p) => all.push(p[1])));
-    const yMax = Math.min(4.5, Math.max(2.4, Math.max.apply(null, all) + 0.5)), yMin = Math.max(-4.5, Math.min(-2.4, Math.min.apply(null, all) - 0.5));
+    const avgS = smooth(avg);
+    const isPhq = ref.key === "phq9", CUT = 10;
+    const rv = rp.map((p) => p[1]);
+    const aLo = isPhq ? 0 : Math.min.apply(null, rv), aHi = isPhq ? Math.max(20, Math.ceil(Math.max.apply(null, rv) / 5) * 5) : Math.max.apply(null, rv);
+    const W = 1000, PL = 92, PR = 14, AT = 26, AH = 118, BT = AT + AH + 40, BH = 168, H = BT + BH + 28;
+    const zs = avgS.map((p) => p[1]); ms.forEach((m) => m.pts.forEach((p) => zs.push(p[1])));
+    const zMax = Math.min(6, Math.max(2.4, Math.max.apply(null, zs) + 0.4)), zMin = Math.max(-6, Math.min(-2.4, Math.min.apply(null, zs) - 0.4));
     const x = (day) => PL + (Math.max(0, Math.min(N - 1, day)) / (N - 1)) * (W - PL - PR);
-    const y = (z) => PT + (1 - (Math.max(yMin, Math.min(yMax, z)) - yMin) / (yMax - yMin)) * (H - PT - PB);
+    const ya = (v) => AT + (1 - (v - aLo) / ((aHi - aLo) || 1)) * AH;
+    const yb = (z) => BT + (1 - (Math.max(zMin, Math.min(zMax, z)) - zMin) / (zMax - zMin)) * BH;
     const sv = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "tg", role: "img",
-      "aria-label": "The " + (ref.label || ref.key) + " and the average of " + pick.map((r) => r.label).join(", ") + " over " + N + " days, all drawn so that up means worse." });
-    sv.appendChild(svg("rect", { x: PL, y: y(yMax), width: W - PL - PR, height: y(0) - y(yMax), class: "tg-worse" }));
-    [[2, "worse"], [0, "own usual"], [-2, "better"]].forEach(([g, word]) => {
-      if (g > yMax || g < yMin) return;
-      sv.appendChild(svg("line", { x1: PL, y1: y(g), x2: W - PR, y2: y(g), class: g === 0 ? "fp-zero" : "fp-grid" }));
-      sv.appendChild(svg("text", { x: PL - 8, y: y(g) + 4, class: "tg-ax", "text-anchor": "end" }, word));
-    });
-    // where a known cut-off of the scale falls, so "own usual" does not hide how high a score is
-    if (ref.key === "phq9") {
-      const raw = sr.reference.map((p) => p[1]), mean = raw.reduce((t, q) => t + q, 0) / raw.length;
-      const sd = Math.sqrt(raw.reduce((t, q) => t + (q - mean) * (q - mean), 0) / Math.max(1, raw.length - 1)) || 1;
-      const zc = (10 - mean) / sd;
-      if (zc > yMin + 0.2 && zc < yMax - 0.2) {
-        sv.appendChild(svg("line", { x1: PL, y1: y(zc), x2: W - PR, y2: y(zc), class: "tg-cut" }));
-        sv.appendChild(svg("text", { x: W - PR - 4, y: y(zc) - 5, class: "tg-cutl", "text-anchor": "end" }, "PHQ-9 = 10, the usual cut-off for moderate symptoms"));
-      }
-    }
-    const line = (pts, cls) => sv.appendChild(svg("polyline", { points: pts.map((p) => x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(" "), class: cls }));
-    ms.forEach((m) => line(m.pts, "tg-m"));
-    if (avgS.length > 1) line(avgS, "tg-avg");
-    line(rp, "tg-ref");
+      "aria-label": "Above, the " + (ref.label || ref.key) + " over " + N + " days. Below, on the same time axis, " + pick.map((r) => r.label).join(", ") + " and their average, drawn so that up means worse." });
+    // columns where the rating is at or over the cut-off (or, without a cut-off, in its worse half)
+    const mid = (Math.min.apply(null, rv) + Math.max.apply(null, rv)) / 2;
+    const high = (v) => (isPhq ? v >= CUT : (ref.worse_is === "lower" ? v <= mid : v >= mid) && Math.max.apply(null, rv) > Math.min.apply(null, rv));
     rp.forEach((p, i) => {
-      sv.appendChild(svg("circle", { cx: x(p[0]), cy: y(p[1]), r: 5, class: "tg-refpt" }));
+      if (!high(p[1])) return;
+      const xa = i === 0 ? x(p[0] - 3) : (x(rp[i - 1][0]) + x(p[0])) / 2, xb = i === rp.length - 1 ? x(p[0] + 3) : (x(p[0]) + x(rp[i + 1][0])) / 2;
+      sv.appendChild(svg("rect", { x: xa, y: AT, width: Math.max(1, xb - xa), height: BT + BH - AT, class: "tg-band" }));
+    });
+    // panel A: the rating
+    sv.appendChild(svg("text", { x: PL, y: 14, class: "tg-t" }, ref.label || ref.key, svg("tspan", { class: "tg-s" }, isPhq ? "   score, 0 to 27 · the same scale on every patient’s page" : "   " + (ref.worse_is === "lower" ? "lower is worse" : "higher is worse"))));
+    (isPhq ? [0, 10, 20] : [aLo, aHi]).forEach((g) => {
+      if (g > aHi) return;
+      sv.appendChild(svg("line", { x1: PL, y1: ya(g), x2: W - PR, y2: ya(g), class: isPhq && g === CUT ? "tg-cut" : "fp-grid" }));
+      sv.appendChild(svg("text", { x: PL - 8, y: ya(g) + 4, class: "tg-ax", "text-anchor": "end" }, isPhq && g === CUT ? "cut-off 10" : String(Math.round(g * 10) / 10)));
+    });
+    sv.appendChild(svg("polyline", { points: rp.map((p) => x(p[0]).toFixed(1) + "," + ya(p[1]).toFixed(1)).join(" "), class: "tg-ref" }));
+    rp.forEach((p, i) => {
+      sv.appendChild(svg("circle", { cx: x(p[0]), cy: ya(p[1]), r: 5, class: "tg-refpt" }));
       const prev = i > 0 ? rp[i - 1][1] : null, next = i < rp.length - 1 ? rp[i + 1][1] : null;
       const peak = (prev === null || p[1] >= prev) && (next === null || p[1] >= next);
-      sv.appendChild(svg("text", { x: x(p[0]), y: peak ? y(p[1]) - 10 : y(p[1]) + 19, class: "tg-v", "text-anchor": "middle" }, String(Math.round(p[2] * 10) / 10)));
+      sv.appendChild(svg("text", { x: x(p[0]), y: peak ? ya(p[1]) - 10 : ya(p[1]) + 19, class: "tg-v", "text-anchor": "middle" }, String(Math.round(p[1] * 10) / 10)));
     });
+    // panel B: the measures
+    sv.appendChild(svg("text", { x: PL, y: BT - 12, class: "tg-t" }, "The measures", svg("tspan", { class: "tg-s" }, "   each in this person’s own spread, turned so that up means worse")));
+    [[2, "+2 worse"], [0, "own usual"], [-2, "−2 better"]].forEach(([g, word]) => {
+      sv.appendChild(svg("line", { x1: PL, y1: yb(g), x2: W - PR, y2: yb(g), class: g === 0 ? "fp-zero" : "fp-grid" }));
+      sv.appendChild(svg("text", { x: PL - 8, y: yb(g) + 4, class: "tg-ax", "text-anchor": "end" }, word));
+    });
+    const line = (pts, cls) => runs(pts).forEach((run) => { if (run.length > 1) sv.appendChild(svg("polyline", { points: run.map((p) => x(p[0]).toFixed(1) + "," + yb(p[1]).toFixed(1)).join(" "), class: cls })); });
+    ms.forEach((m) => line(m.pts, "tg-m"));
+    line(avgS, anyGood ? "tg-avg" : "tg-avg dim");
     for (let dday = 0; dday < N - 9; dday += 14) sv.appendChild(svg("text", { x: x(dday), y: H - 8, class: "tg-ax", "text-anchor": dday === 0 ? "start" : "middle" }, dayShort(new Date(t0 + dday * 864e5).toISOString().slice(0, 10))));
     sv.appendChild(svg("text", { x: W - PR, y: H - 8, class: "tg-ax", "text-anchor": "end" }, "today"));
-    const cross = svg("line", { x1: 0, y1: PT, x2: 0, y2: H - PB, class: "tg-cross" });
+    const cross = svg("line", { x1: 0, y1: AT, x2: 0, y2: BT + BH, class: "tg-cross" });
     cross.setAttribute("visibility", "hidden");
     sv.appendChild(cross);
     const host = el("div", { class: "viz" }, sv);
@@ -1159,19 +1190,22 @@
       cross.setAttribute("x1", x(day)); cross.setAttribute("x2", x(day)); cross.setAttribute("visibility", "visible");
       const lines = [el("div", { class: "tip-h" }, dayShort(new Date(t0 + day * 864e5).toISOString().slice(0, 10)))];
       const rpt = near(rp, day, 4);
-      lines.push(el("div", { class: "tip-r" }, el("span", null, ref.label || ref.key), el("b", null, rpt ? String(rpt[2]) : "no rating")));
+      lines.push(el("div", { class: "tip-r" }, el("span", null, ref.label || ref.key), el("b", null, rpt ? String(rpt[1]) : "no rating")));
       ms.forEach((m) => { const p = near(sr.measures[m.r.key], day, 2); lines.push(el("div", { class: "tip-r" }, el("span", null, m.r.label), el("b", null, p ? fmtMeasure(m.r.key, p[1]) : "–"))); });
-      const cxp = ev.clientX - box.left;  // beside the cursor, on the side with more room, clear of the points
-      tip.show(cxp > box.width / 2 ? cxp - 260 : cxp, 2, lines);
+      const cxp = ev.clientX - box.left;
+      tip.show(cxp > box.width / 2 ? cxp - 260 : cxp, (box.height * (AT + AH + 6)) / H, lines);
     });
     sv.addEventListener("mouseleave", () => { cross.setAttribute("visibility", "hidden"); tip.hide(); });
+    const said = pick.map((r) => (WORSE[r.key] || r.label.toLowerCase()));
     return el("div", null,
       el("ul", { class: "legend" },
         el("li", null, el("span", { class: "key k-ref" }), (ref.label || ref.key) + " (the number is the score)"),
         el("li", null, el("span", { class: "key k-avg" }), "average of the " + pick.length + " measures"),
-        el("li", null, el("span", { class: "key k-m" }), pick.map((r) => r.label.charAt(0).toLowerCase() + r.label.slice(1)).join(" · "))),
+        el("li", null, el("span", { class: "key k-m" }), pick.map((r) => r.label.charAt(0).toLowerCase() + r.label.slice(1)).join(" · ")),
+        isPhq && rp.some((p) => p[1] >= CUT) ? el("li", null, el("span", { class: "bandkey amber" }), "weeks at or over the cut-off") : null),
       host,
-      el("p", { class: "muted small" }, "Every line is in this person’s own spread units and turned so that up means worse: fewer smiles, slower reactions and fewer steps all point up. Measures are 7-day averages."));
+      el("p", { class: "muted small" }, "In the lower panel up means worse: " + joinAnd(said.map((t) => "“" + t + "”")) + " all point up. Each grey line is a 7-day average; a break in a line is a week without that measure." +
+        (anyGood ? "" : " None of these came out as expected, so the average is drawn grey too.")));
   }
   // One row per measure, grouped by kind: the estimate and its range on one scale.
   function forestChart(a) {
@@ -1179,9 +1213,10 @@
     const tested = (a.rows || []).filter((r) => r.status === "tested");
     if (!tested.length) return null;
     const GROUPS = [["face", "Face"], ["activity", "Activities"], ["daily", "Daily data"]];
+    const charted = pickMeasures(a).filter((r) => r.agreement === "consistent");
     const layout = [];
     GROUPS.forEach(([g, name]) => {
-      const rs = tested.filter((r) => r.group === g).sort((p, q) => q.rho - p.rho);
+      const rs = tested.filter((r) => r.group === g).sort((p, q) => (charted.indexOf(q) >= 0) - (charted.indexOf(p) >= 0) || q.rho - p.rho);
       if (!rs.length) return;
       const openAll = !!S.open["fp-" + g], shown = rs.length > 5 && !openAll ? rs.slice(0, 4) : rs;
       layout.push({ head: name, n: rs.length, cons: rs.filter((r) => r.agreement === "consistent").length, g, more: rs.length - shown.length, canFold: rs.length > 5 });
@@ -1218,7 +1253,7 @@
       const r = it.r, my = cy + RHt / 2, ok = r.agreement === "consistent";
       const g = svg("g", { class: "fp-row" });
       g.appendChild(svg("rect", { x: 0, y: cy, width: W, height: RHt, class: "fp-hit" }));
-      g.appendChild(svg("text", { x: LX - 14, y: my + 4, class: "fp-l", "text-anchor": "end" }, r.label));
+      g.appendChild(svg("text", { x: LX - 14, y: my + 4, class: "fp-l", "text-anchor": "end" }, (charted.indexOf(r) >= 0 ? "in the chart above · " : "") + r.label));
       g.appendChild(svg("line", { x1: x(r.ci_low), y1: my, x2: x(r.ci_high), y2: my, class: ok ? "fp-ci" : "fp-ci dim" }));
       g.appendChild(svg("circle", { cx: x(r.rho), cy: my, r: 5.5, class: "fp-pt " + (ok ? "k-cons" : r.agreement === "opposite" ? "k-opp" : "k-inc") }));
       g.appendChild(svg("text", { x: RX + 18, y: my + 4, class: ok ? "fp-v" : "fp-v dim" }, f2(r.rho)));
@@ -1277,13 +1312,11 @@
     const picked = pickMeasures(a);
     const refVals = ((a.series || {}).reference || []).map((p) => p[1]);
     const lo = refVals.length ? Math.min.apply(null, refVals) : null, hi = refVals.length ? Math.max.apply(null, refVals) : null;
-    const names = picked.filter((r) => r.agreement === "consistent").slice(0, 3).map((r) => r.label.charAt(0).toLowerCase() + r.label.slice(1));
-    const nameList = names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] : names[0] || "";
+    const did = picked.filter((r) => r.agreement === "consistent").slice(0, 3).map((r) => WORSE[r.key] || r.label.toLowerCase());
     const good = o.pattern === "consistent_with_worse_state" || o.pattern === "partly_consistent";
     const flat = lo !== null && ref.key === "phq9" && hi - lo < 5;
     const headline = flat ? who + "’s " + refShort + " stayed between " + lo + " and " + hi + ". That is too little change to tell whether anything moves with it."
-      : good && nameList && lo !== null
-      ? "As " + who + "’s " + refShort + " moved between " + lo + " and " + hi + ", " + nameList + " moved with it."
+      : good && did.length && lo !== null ? "When " + who + "’s " + refShort + " was higher (it moved between " + lo + " and " + hi + "), " + who + " " + joinAnd(did) + "."
       : o.pattern === "opposite_to_expectation" ? who + "’s measures moved against what was expected."
       : o.pattern === "no_clear_relation" ? who + "’s measures did not clearly move with the " + refShort + "."
       : "Not enough data yet to say whether " + who + "’s measures move with the " + refShort + ".";
@@ -1296,14 +1329,14 @@
         el("span", { class: "chip" }, words(o.confidence).toLowerCase() + " confidence" + (o.confidence !== "high" ? ": " + (des.observations || des.days) + " " + unitWord + ", one person" : "")),
         d.example ? el("span", { class: "chip tag" }, "example data, not a finding") : null)));
     const together = togetherChart(a);
-    if (together) wrap.appendChild(el("section", { class: "panel" }, el("h2", null, "Moving together over " + Math.round(des.days / 7) + " weeks"),
+    if (together) wrap.appendChild(el("section", { class: "panel" }, el("h2", null, (good && !flat ? "Moving together over " : refShort + " and the closest measures over ") + Math.round(des.days / 7) + " weeks"),
       together));
     else if (!a.series) wrap.appendChild(empty("Select “Recalculate” to draw the charts."));
     const fp = forestChart(a);
     if (fp) wrap.appendChild(el("section", { class: "panel" }, el("h2", null, "Every measure", el("span", { class: "count" }, des.rows_tested)),
       el("p", { class: "muted small" }, "How closely each measure followed the " + refName + " across " + (des.observations || "") + " " + unitWord + ". Further right: it moved the way research leads us to expect when symptoms are worse. The bar is the range the true value plausibly lies in; a bar that reaches zero settles nothing."),
       fp,
-      el("ul", { class: "legend" }, el("li", null, el("span", { class: "dotk k-cons" }), "as expected: range clear of zero"), el("li", null, el("span", { class: "dotk k-inc" }), "inconclusive"),
+      el("ul", { class: "legend" }, el("li", null, el("span", { class: "dotk k-cons" }), "as expected: range clear of zero and corrected p ≤ 0.10"), el("li", null, el("span", { class: "dotk k-inc" }), "inconclusive"),
         (a.rows || []).some((r) => r.agreement === "opposite") ? el("li", null, el("span", { class: "dotk k-opp" }), "opposite") : null)));
     const tablesBox = el("div", { class: "stack" });
     const strongest = new Set(o.strongest || []);
@@ -1349,11 +1382,10 @@
     const wrap = el("div", { class: "stack" });
     const ref = d.refusal_log || [];
     // The same refusal many times is one line with a count.
-    const plainReason = (code) => { const p = String(code || "").split(":"); return p.length >= 3 ? words(p[1]).toLowerCase() + " changed: " + words(p[2]).toLowerCase() : words(code).toLowerCase(); };
     const groups = {};
     ref.forEach((r) => { const k = ((r.detail || {}).task || r.action || "") + "|" + (r.reason || r.code || ""); (groups[k] = groups[k] || { r, n: 0, last: r.at }).n += 1; if (r.at > groups[k].last) groups[k].last = r.at; });
     const gl = Object.keys(groups).map((k) => groups[k]).sort((x, y) => y.n - x.n);
-    wrap.appendChild(panel("What code refused or changed in a model’s answer", ref.length || "", ref.length ? table(["Step", "What happened", { t: "Times", r: 1 }, "Last"],
+    wrap.appendChild(panel("What code refused or changed in a model’s answer", gl.length || "", ref.length ? table(["Step", "What happened", { t: "Times", r: 1 }, "Last"],
       gl.map((g) => el("tr", null, el("td", null, TASK[(g.r.detail || {}).task] || words((g.r.detail || {}).task || g.r.action || "")),
         el("td", null, plainReason(g.r.reason || g.r.code)), el("td", { class: "r num" }, g.n), el("td", { class: "num" }, stamp(g.last)))), null, { filter: 0 }) : empty("No refusals.")));
     const nl = d.notify_log || [];

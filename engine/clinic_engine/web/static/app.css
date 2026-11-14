@@ -321,3 +321,8 @@ table.assoc td.num, table.assoc td.r { white-space: nowrap; }
 .tg-v { paint-order: stroke; stroke: var(--panel); stroke-width: 4px; stroke-linejoin: round; }
 .tg-cut { stroke: var(--amber); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0.8; }
 .tg-cutl { fill: var(--muted); font-size: 11px; }
+.chart .ep.l-watch { fill: var(--muted); stroke: none; }
+.lead { text-wrap: balance; }
+.tg-avg.dim { stroke: var(--muted); stroke-width: 2; }
+.bandkey.amber { background: var(--amber); opacity: 0.35; border-color: transparent; }
+.tg-cut { opacity: 1; }
