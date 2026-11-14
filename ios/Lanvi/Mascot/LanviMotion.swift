@@ -89,6 +89,9 @@ struct LanviMotion {
     var appearAt: Double = -100          // when this fox appeared (no idle moment for 3 s)
     var evening = false                  // late: the evening set of idle moments (yawns)
     var reduceMotion: Bool
+    /// False: no hops at all (a pose change, the happy reaction and the greeting keep
+    /// their faces, ears and tail, without leaving the snow). See `.lanviHops`.
+    var hops: Bool = true
     var freezeBlink: Double? = nil       // debug: hold a blink at this phase (s)
     var loving = false                   // the `love` pose: soft happy eyes
 
@@ -198,7 +201,7 @@ struct LanviMotion {
         reactionLayer(x, &p, &face)
         touchLayer(x, &p, &face)
         pettingLayer(x, &p, &face)
-        hop(&p, x - hopAt, height: 120)
+        if hops { hop(&p, x - hopAt, height: 120) }
         if withBlink { blink(x, &p, &face) }
         if loving, face.eyes == .open { face.eyes = .happy }
         rideNeck(x, &p)
@@ -634,7 +637,7 @@ struct LanviMotion {
             // of joy, the ears flop on landing, the tail wags, a little wiggle to settle.
             // Faces swap at the top of the hop, hidden inside the move.
             if Motion.inside(rt, 0.31, 1.65) { face.eyes = .happy; face.mouth = .happy }
-            hop(&p, rt - 0.05, height: 110, headLeads: true)
+            if hops { hop(&p, rt - 0.05, height: 110, headLeads: true) }
             p.headY += 7 * Motion.bump(rt, 1.55, 1.85)
             p.chest += 0.03 * Motion.bump(rt, 0.02, 0.6)
             p.dirY -= 0.28 * exp(-pow((rt - 0.33) / 0.11, 2))
@@ -680,7 +683,7 @@ struct LanviMotion {
             // eyes, then a happy look with a tilt and a short wag.
             let crouch = Motion.bump(rt, 0, 0.2)
             p.rootSY -= 0.035 * crouch; p.headY += 4 * crouch; p.earL += 3 * crouch; p.earR += 3 * crouch
-            hop(&p, rt - 0.1, height: 45)
+            if hops { hop(&p, rt - 0.1, height: 45) }
             let perk = Motion.pulse(rt, start: 0.12, end: 1.6, response: 0.24, damping: 0.45, settle: 0.6)
             p.earL -= 10 * perk; p.earR -= 10 * perk; p.earLS += 0.08 * perk; p.earRS += 0.08 * perk
             p.dirY -= 0.15 * perk

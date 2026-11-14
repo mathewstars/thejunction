@@ -37,7 +37,7 @@ targets:
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.access: []
     scheme:
-      testTargets: [LanviTests]
+      testTargets: [LanviTests, LanviUITests]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.lanvi.Lanvi
@@ -79,3 +79,18 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1"
+  LanviUITests:
+    # Drives first run and Home like a person (see LanviFlowUITests.swift); run it while
+    # recording the screen to catch glitches.
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [LanviUITests]
+    dependencies:
+      - target: Lanvi
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.lanvi.LanviUITests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        TEST_TARGET_NAME: Lanvi

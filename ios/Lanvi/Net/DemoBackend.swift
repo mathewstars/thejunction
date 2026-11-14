@@ -47,6 +47,8 @@ actor DemoBackend: LanviBackend {
             suggestion = Self.suggestion(for: action)
             if let s = suggestion { line = API.LineOut(templateId: "\(action).1", text: s.text) }
         }
+        // `-demoLine "<text>"`: what Lanvi says on Home (for screenshots of short and long lines).
+        if let l = value("-demoLine") { line = API.LineOut(templateId: "demo", text: l) }
         switch value("-demoWandering") {
         case "back":
             wandering = API.WanderingOut(state: .back, id: "wander-0006", returnsAt: nil, story: Self.stories[0])

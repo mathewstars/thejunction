@@ -19,6 +19,7 @@ struct LanviPuppet: View {
     @Environment(\.lanviMouth) private var mouthOverride
     @Environment(\.lanviMomentRequest) private var momentRequest
     @Environment(\.lanviTouchRequest) private var touchRequest
+    @Environment(\.lanviHops) private var hops
     @Environment(\.lanviDebugFreeze) private var freeze
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -139,11 +140,6 @@ struct LanviPuppet: View {
             let forced = UserDefaults.standard.string(forKey: "hour").flatMap { Int($0) }
             let hour = forced ?? Calendar.current.component(.hour, from: Date())
             lateHour = hour >= 20 || hour < 5
-            // Hello: the big fox greets you when it appears (small avatars do not).
-            if size >= 120, freeze == nil, !UserDefaults.standard.bool(forKey: "plain") {
-                reaction = .greeting
-                reactionAt = now + 0.35
-            }
         }
         .accessibilityElement()
         .accessibilityLabel("Lanvi the fox")
@@ -178,6 +174,7 @@ struct LanviPuppet: View {
         m.momentSide = momentSide
         m.appearAt = appearAt
         m.evening = lateHour
+        m.hops = hops
         m.loving = moodOverride == nil && pose == .love
         if let freeze {
             // Proof stills: a fixed clock, a reaction or moment held at a chosen moment.

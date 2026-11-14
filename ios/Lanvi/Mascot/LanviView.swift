@@ -18,12 +18,12 @@ import SwiftUI
 //   to the side or up, a curious tilt, ear flicks, a tail curl, a sniff, a contented
 //   slow blink, a look down at the button and back up at you; yawns in the evening.
 //   Never two at once, never the same twice in a row. Nothing to call.
-// - The big fox greets you when it appears (ears up, bright eyes, a little bounce).
 // - Moods (`LanviMood`), held with `.lanviMood` or played once with `.lanviReaction`:
 //     happy      a joyful hop: big breath, head leads, ears flop, tail wags, wiggle
 //     proud      after XP: chest out, chin up, happy eyes, tail high
 //     okay       for "Not today": soft eyes, a small nod. Never sad.
 //     greeting   hello: ears up, bright eyes, a small bounce, a happy look
+//   `.lanviHops(false)` keeps him on the snow (no hop, no bounce; faces still react).
 //     listening  while the person types: head tilted, ears forward, eyes down, nods
 //     thinking   while waiting for a reply: eyes up to the side, a slow tail swish
 //     curious    head tilt, eyes look up
@@ -131,6 +131,7 @@ private struct MoodKey: EnvironmentKey { static let defaultValue: LanviMood? = n
 private struct ReactionKey: EnvironmentKey { static let defaultValue: LanviReactionRequest? = nil }
 private struct LookKey: EnvironmentKey { static let defaultValue: UnitPoint? = nil }
 private struct MouthKey: EnvironmentKey { static let defaultValue: MouthShape? = nil }
+private struct HopsKey: EnvironmentKey { static let defaultValue = true }
 private struct FreezeKey: EnvironmentKey { static let defaultValue: LanviDebugFreeze? = nil }
 
 extension EnvironmentValues {
@@ -141,6 +142,10 @@ extension EnvironmentValues {
     var lanviReactionRequest: LanviReactionRequest? {
         get { self[ReactionKey.self] }
         set { self[ReactionKey.self] = newValue }
+    }
+    var lanviHops: Bool {
+        get { self[HopsKey.self] }
+        set { self[HopsKey.self] = newValue }
     }
     var lanviMouth: MouthShape? {
         get { self[MouthKey.self] }
@@ -165,6 +170,13 @@ extension View {
     /// Play `mood` once each time `trigger` changes. The idle keeps going underneath.
     func lanviReaction<T: Hashable>(_ mood: LanviMood, trigger: T) -> some View {
         environment(\.lanviReactionRequest, LanviReactionRequest(mood: mood, token: AnyHashable(trigger)))
+    }
+
+    /// False: Lanvi never leaves the snow (no hop on pose changes, taps or the happy
+    /// reaction; faces, ears and tail still react). Home and first run use this and
+    /// allow the hop only for the reward after an activity.
+    func lanviHops(_ on: Bool) -> some View {
+        environment(\.lanviHops, on)
     }
 
     /// Show one of the existing mouth shapes while set (talking); nil = the puppet decides.

@@ -69,7 +69,6 @@ struct HomeView: View {
     @State private var cover: Cover?
     @State private var sheet: Sheet?
     @State private var pose: LanviPose = .curious
-    @State private var bounce = 0
     @State private var pop: HomeCelebration?
     @State private var celebrating = false
     @State private var showGrowth = false
@@ -84,8 +83,17 @@ struct HomeView: View {
     @State private var reaction: LanviMood = .happy
     @State private var reactTick = 0
     @State private var look: UnitPoint?
+    /// The mouth Lanvi shows while saying a new line (nil = the puppet decides).
+    @State private var mouth: MouthShape?
+    /// What the chat grows out of: the bubble or the round chat button.
+    @State private var chatFrom: String? = "speech"
+    /// A screen to open once the sheet on top has gone.
+    @State private var pendingCover: Cover?
 
     var body: some View {
+        #if DEBUG
+        let _ = FrameMeter.count("Home")
+        #endif
         GeometryReader { geo in
             let w = geo.size.width
             let L = Layout(size: geo.size, insets: geo.safeAreaInsets, away: away)
@@ -95,16 +103,23 @@ struct HomeView: View {
 
                 // Lanvi, large on the snow, with the fox fire behind the tail.
                 ZStack {
-                    LanviView(pose: pose, size: L.fox, bounceTrigger: bounce)
+                    LanviView(pose: pose, size: L.fox)
+                        // Lanvi leaves the snow only for the reward after an activity.
+                        .lanviHops(celebrating)
                         .lanviReaction(reaction, trigger: reactTick)
                         .lanviMood(restingMood)
                         .lanviLookAt(look)
-                        .onTapGesture { tapFox() }
+                        .lanviMouth(mouth)
+                        // Alongside the puppet's own tap reaction (a child's tap would otherwise win).
+                        .simultaneousGesture(TapGesture().onEnded { tapFox() })
                 }
                 .frame(width: L.fox * 2, height: L.fox * 2)
                 .position(x: L.foxCenter.x + entrance, y: L.foxCenter.y)
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Lanvi")
                 .accessibilityHint("Shows how Lanvi is growing")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityIdentifier("home.fox")
 
                 // What Lanvi says, in one soft bubble above it. Tap to talk.
                 speech(L)
@@ -112,7 +127,8 @@ struct HomeView: View {
                 if let pop {
                     HomeXPPop(amount: pop.xpGained)
                         .id(pop.id)
-                        .position(x: min(L.foxCenter.x + L.fox * 0.40, L.size.width - 70), y: L.foxTop + L.fox * 0.30)
+                        // Floats up from the top of the head to sit centred above it.
+                        .position(x: L.foxCenter.x, y: L.foxTop + 16)
                         .allowsHitTesting(false)
                 }
 
@@ -132,6 +148,7 @@ struct HomeView: View {
                     Spacer()
                     Button { sheet = .growth } label: { dayPill }
                         .buttonStyle(SpeechPressStyle())
+                        .accessibilityIdentifier("home.day")
                         .accessibilityLabel("Day \(store.daysTogether) together. Shows how Lanvi is growing.")
                 }
                 .padding(.horizontal, 24)
@@ -147,8 +164,15 @@ struct HomeView: View {
                 // One action, pinned above the home bar.
                 // The zoom source is the whole action area, which is always there:
                 // closing a screen must never zoom back into a button that is gone.
-                actions
-                    .frame(width: w - 48)
+                // When today's thing changes, the row swaps by fading at a fixed size,
+                // so no button ever animates its width.
+                ZStack {
+                    actions
+                        .id(actionsKey)
+                        .transition(.opacity)
+                }
+                .frame(width: w - 48, height: 60)
+                .animation(LanviTiming.swap, value: actionsKey)
                     .homeZoomSource("today", in: zoom)
                     .position(x: w / 2, y: L.buttonY)
                     .opacity(arrived && !showGrowth ? 1 : 0)
@@ -161,17 +185,29 @@ struct HomeView: View {
                         .zIndex(10)
                 }
             }
-            .animation(.spring(response: 0.7, dampingFraction: 0.8), value: away)
-            .animation(.spring(response: 0.55, dampingFraction: 0.8), value: store.todayThing)
             .onAppear { size = geo.size; insets = geo.safeAreaInsets }
             .onChange(of: geo.size) { _, s in size = s; insets = geo.safeAreaInsets }
         }
         .sensoryFeedback(.success, trigger: haptic)
+        // The chat's keyboard must never reach Home underneath it.
+        .ignoresSafeArea(.keyboard)
         .fullScreenCover(item: $cover) { c in
-            coverContent(c)
-                .homeZoomTarget(zoomSource(for: c), in: zoom)
+            // Screens grow out of what was tapped; Help and notes slide up plainly
+            // (a tiny icon ballooning into a whole screen looks broken).
+            if let source = zoomSource(for: c) {
+                coverContent(c).homeZoomTarget(source, in: zoom)
+            } else {
+                coverContent(c)
+            }
         }
-        .sheet(item: $sheet) { s in
+        .sheet(item: $sheet, onDismiss: {
+            // A screen picked in a sheet opens only once the sheet has fully gone,
+            // so the two never fight.
+            if let next = pendingCover {
+                pendingCover = nil
+                cover = next
+            }
+        }) { s in
             switch s {
             case .more:
                 HomeMoreSheet { k in openAfterSheet(.activity(k)) }
@@ -198,7 +234,7 @@ struct HomeView: View {
             if new == .back, old != .back { runIn() } else if !celebrating { settle() }
         }
         .onChange(of: store.cheerTick) { _, _ in
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .cheer }
+            pose = .cheer
             react(.happy)
             haptic &+= 1
             Task {
@@ -212,32 +248,32 @@ struct HomeView: View {
             if phase == .active, old == .background { welcomeBack() }
         }
         .onAppear {
+            #if DEBUG
+            FrameMeter.shared.start()
+            #endif
             if store.wandering?.state == .back { runIn() } else { settle() }
-            withAnimation(.spring(response: 0.7, dampingFraction: 0.82).delay(0.25)) { arrived = true }
+            withAnimation(LanviTiming.screen.delay(0.2)) { arrived = true }
         }
         .task { await runDemo() }
     }
 
     // MARK: Pieces
 
+    /// Lanvi's line in its speech bubble: up and to the right of the head, the
+    /// tail pointing down to the face. During the reward it lifts a little to make
+    /// room for "+10 XP" (an offset, so nothing is laid out again while it moves).
     private func speech(_ L: Layout) -> some View {
-        let top: CGFloat = L.compact ? 64 : 80
-        // Clear air above the ear tips (and the little marks) in every pose.
-        let bottom = max(away ? L.foxCenter.y - L.fox / 2 - 14 : L.foxTop - 14, top + 90)
-        return VStack {
-            Spacer(minLength: 0)
-            Button { open(.chat) } label: {
-                HomeSpeechBubble(text: bubbleText, pointAt: away ? 0.78 : 0.5, size: L.compact ? 20 : 21)
-            }
-            .buttonStyle(SpeechPressStyle())
-            .homeZoomSource("speech", in: zoom)
-            .accessibilityHint("Opens a chat with Lanvi")
+        let lift: CGFloat = pop != nil ? 58 : 0
+        let target = away
+            ? CGPoint(x: L.foxCenter.x - L.fox * 0.1, y: L.foxCenter.y - L.fox * 0.55)
+            : CGPoint(x: L.foxCenter.x + L.fox * 0.10, y: L.foxTop + L.fox * 0.04)
+        return HomeSpeech(text: bubbleText, target: target, width: L.size.width, mouth: $mouth, zoom: zoom) {
+            chatFrom = "speech"
+            open(.chat)
         }
-        .padding(.horizontal, 24)
-        .frame(height: bottom - top)
-        .padding(.top, top)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: bubbleText)
-        .opacity(arrived ? 1 : 0)
+            .accessibilityIdentifier("home.speech")
+            .offset(y: -lift)
+            .opacity(arrived ? 1 : 0)
     }
 
     /// Solid white pill, navy type: reads on the pale dawn and the deep night alike.
@@ -285,6 +321,7 @@ struct HomeView: View {
                 moreButton
                 Button(TodayCopy.button(k)) { open(.activity(k)) }
                     .buttonStyle(HomePrimaryStyle())
+                    .accessibilityIdentifier("home.primary")
                 chatButton
             }
         case .story:
@@ -292,6 +329,7 @@ struct HomeView: View {
                 moreButton
                 Button("Hear my story") { openStory() }
                     .buttonStyle(HomePrimaryStyle())
+                    .accessibilityIdentifier("home.primary")
                 chatButton
             }
         case .realWorld(let s):
@@ -321,7 +359,10 @@ struct HomeView: View {
     }
 
     private var chatButton: some View {
-        Button { open(.chat) } label: { Image(systemName: "bubble.left.fill") }
+        Button {
+            chatFrom = nil          // from the small button: a plain slide, no ballooning icon
+            open(.chat)
+        } label: { Image(systemName: "bubble.left.fill") }
             .buttonStyle(HomeQuietRoundStyle())
             .accessibilityLabel("Talk to Lanvi")
     }
@@ -356,7 +397,10 @@ struct HomeView: View {
 
     // MARK: State for the scene
 
-    private var away: Bool { store.wandering?.state == .away && !celebrating }
+    /// Lanvi stays on Home at full size in the middle, also while "wandering":
+    /// a tiny distant fox looked broken (the captain, Saturday). The line still says
+    /// it is off wandering, and today's one thing stays available.
+    private var away: Bool { false }
 
     /// The mood Lanvi holds at rest: sleepy late at night, otherwise the pose decides.
     private var restingMood: LanviMood? {
@@ -373,22 +417,35 @@ struct HomeView: View {
 
     /// Eyes up to the bubble when Lanvi says something new, then back.
     private func glanceAtBubble() {
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { look = UnitPoint(x: 0.5, y: -0.35) }
+        #if DEBUG
+        FrameMeter.mark("glance at bubble")
+        #endif
+        look = UnitPoint(x: 0.8, y: -0.25)
         Task {
             try? await Task.sleep(for: .seconds(1.3))
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { look = nil }
+            look = nil
         }
     }
     private var isDoneToday: Bool { if case .done = store.todayThing { return true } else { return false } }
 
-    private func zoomSource(for c: Cover) -> String {
+    private func zoomSource(for c: Cover) -> String? {
         switch c {
         case .activity(let k):
             if case .game(let g) = store.todayThing, g == k { return "today" }
-            return "speech"
+            return nil                     // opened from the more sheet: slides up
         case .story: return "today"
-        case .help: return "help"
-        case .mind, .chat: return "speech"
+        case .chat: return chatFrom        // the bubble or the chat button, whichever was tapped
+        case .help, .mind: return nil
+        }
+    }
+
+    /// Which view the current row of actions is, so it swaps as a whole.
+    private var actionsKey: String {
+        switch store.todayThing {
+        case .game(let k): return "game-\(k.rawValue)"
+        case .story: return "story"
+        case .realWorld(let s): return "real-\(s.id)"
+        case .done: return "done"
         }
     }
 
@@ -420,18 +477,16 @@ struct HomeView: View {
     }
 
     private func openAfterSheet(_ c: Cover) {
+        pendingCover = c
         sheet = nil
-        Task {
-            try? await Task.sleep(for: .milliseconds(380))
-            cover = c
-        }
     }
 
-    /// The resting pose for the state Lanvi is in and the time of day.
+    /// The resting pose for the state Lanvi is in and the time of day. Pose, mood and
+    /// look-at are set plainly: the puppet eases its own parts on its own clock, so
+    /// Home never wraps them in a second animation.
     private func settle() {
         let next: LanviPose
         switch store.wandering?.state {
-        case .away: next = .run
         case .back: next = .surprised
         default:
             if isDoneToday { next = .love }
@@ -445,16 +500,16 @@ struct HomeView: View {
             }
         }
         if next != pose {
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = next }
+            pose = next
         }
     }
 
     /// Tapping Lanvi: a happy hop, then how it is growing.
+    /// Tapping Lanvi: the puppet reacts by itself; then how it is growing.
     private func tapFox() {
-        bounce &+= 1
         Task {
-            try? await Task.sleep(for: .milliseconds(350))
-            sheet = .growth
+            try? await Task.sleep(for: .milliseconds(450))
+            if cover == nil, sheet == nil { sheet = .growth }
         }
     }
 
@@ -466,7 +521,7 @@ struct HomeView: View {
         withAnimation(.easeOut(duration: 1.1)) { entrance = 0 }
         Task {
             try? await Task.sleep(for: .milliseconds(1100))
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .surprised }
+            pose = .surprised
             react(.surprised)
             haptic &+= 1
         }
@@ -475,7 +530,7 @@ struct HomeView: View {
     /// Opening the app again: Lanvi is pleased to see you.
     private func welcomeBack() {
         guard !celebrating, store.wandering?.state != .away else { return }
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .love }
+        pose = .love
         react(.happy)
         Task {
             try? await Task.sleep(for: .seconds(1.8))
@@ -486,22 +541,34 @@ struct HomeView: View {
     /// The reward: the growth bar slides up, Lanvi hops for joy, "+10 XP" pops,
     /// the bar fills and the day count ticks. No light effects on the fox.
     private func celebrate(_ c: HomeCelebration) {
+        #if DEBUG
+        FrameMeter.mark("reward start")
+        #endif
         celebrating = true
         if c.xpGained > 0 {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { showGrowth = true }
         }
         Task {
             try? await Task.sleep(for: .milliseconds(c.xpGained > 0 ? 350 : 150))
+            #if DEBUG
+            FrameMeter.mark("happy + pop")
+            #endif
             react(.happy)
             haptic &+= 1
             if c.xpGained > 0 {
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) { pop = c }
             }
             try? await Task.sleep(for: .seconds(2.8))
+            #if DEBUG
+            FrameMeter.mark("pop away")
+            #endif
             withAnimation(.easeOut(duration: 0.3)) { pop = nil }
             withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { showGrowth = false }
             try? await Task.sleep(for: .seconds(0.8))
             while store.grewUp != nil { try? await Task.sleep(for: .milliseconds(200)) }
+            #if DEBUG
+            FrameMeter.mark("settle")
+            #endif
             celebrating = false
             store.celebration = nil
             settle()
@@ -543,6 +610,7 @@ struct HomeView: View {
             try? await Task.sleep(for: .milliseconds(900))
             _ = await store.answerStory(answer)
         }
+        if args.contains("-flow") { await runFlow(); return }
         guard demo else { return }
 
         try? await Task.sleep(for: .seconds(3))
@@ -565,6 +633,29 @@ struct HomeView: View {
         while cover != nil { try? await Task.sleep(for: .milliseconds(200)) }
         try? await Task.sleep(for: .seconds(2))
         settle()
+    }
+
+    /// `-flow`: a short tour of Home, opening and closing each screen and sheet.
+    private func runFlow() async {
+        func wait(_ s: Double) async { try? await Task.sleep(for: .seconds(s)) }
+        await wait(3)
+        chatFrom = "speech"
+        open(.chat)
+        await wait(3)
+        cover = nil
+        await wait(1.8)
+        sheet = .more
+        await wait(2.2)
+        sheet = nil
+        await wait(1.6)
+        sheet = .growth
+        await wait(2.2)
+        sheet = nil
+        await wait(1.6)
+        open(.help)
+        await wait(2.4)
+        cover = nil
+        await wait(2)
     }
 
     private static func sample(_ kind: ActivityKind) -> API.ActivityIn {

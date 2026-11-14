@@ -8,6 +8,7 @@ one event to the mind's bus.
 from __future__ import annotations
 
 import json
+import re
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -127,7 +128,78 @@ async def ingest_days(ctx: Ctx, p: Principal, days: list[dict], rid: str) -> dic
                                last_day=accepted[-1] if accepted else "none",
                                rejected=len(rejected))
         status = _status(ctx, repo)
+    if accepted:
+        # Clinician-only, behind the consent: level 2 reads the daily numbers again.
+        await ctx.mind.schedule_days_reading(repo)
     return {"accepted": accepted, "rejected": rejected, "status": status}
+
+
+# The four HealthKit types the mind compares with the person's own normal, and
+# the field of the day record each fills. Every other type is stored and shown
+# to the clinician, and a few of them go into the day reading (mind/day_reading.py).
+HEALTH_DAY_FIELDS = {
+    "HKQuantityTypeIdentifierStepCount": "steps",
+    "HKQuantityTypeIdentifierWalkingSpeed": "walking_speed_m_s",
+    "HKQuantityTypeIdentifierHeartRateVariabilitySDNN": "hrv_ms",
+    "HKCategoryTypeIdentifierSleepAnalysis": "sleep_h",
+}
+HEALTH_MAX_DAYS = 400  # per type, the most recent are kept
+
+
+def health_key(type_id: str) -> str:
+    return "health/" + re.sub(r"[^A-Za-z0-9]", "_", type_id) + ".json"
+
+
+async def ingest_health(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
+    """An Apple Health summary from the HealthKit harness app: per type, one
+    value per day. Every type is stored (numbers by day, nothing else of the
+    summary). Steps, walking speed, sleep and HRV also fill the day records,
+    through the same checks as POST /v1/daily, so the own-normal comparison
+    sees them. A day needs steps to exist; values for a day without steps stay
+    in the stored type only."""
+    import math
+    repo = repo_for(ctx, p)
+    stored, fill = [], {}
+    async with ctx.mind.lock(p.clinic_id, p.patient_id):
+        now = ctx.clock.now()
+        for m in body["metrics"]:
+            tid = m["typeIdentifier"]
+            vals: dict[str, float] = {}
+            for d in m["daily"]:
+                v = d.get("mean") if d.get("mean") is not None else d.get("sum")
+                if v is None or not math.isfinite(v) or abs(v) > 1e7:
+                    continue
+                vals[d["day"]] = round(float(v), 4)
+            if not vals:
+                continue
+            key = health_key(tid)
+            old = repo.get(key) or {}
+            days = {**(old.get("days") or {}), **vals}
+            days = dict(sorted(days.items())[-HEALTH_MAX_DAYS:])
+            repo.put(key, {"type": tid, "unit": m.get("unit"), "aggregation": m["aggregation"],
+                           "days": days, "updated_at": now.isoformat()})
+            stored.append({"type": tid, "days": len(days), "last_day": max(days)})
+            field = HEALTH_DAY_FIELDS.get(tid)
+            if field:
+                for ds, v in vals.items():
+                    fill.setdefault(ds, {})[field] = int(round(v)) if field == "steps" else v
+        have = repo.days()
+    changed = []
+    for ds, new in sorted(fill.items()):
+        old = have.get(ds) or {}
+        rec = {"date": ds, **{k: old.get(k) for k in ("steps", "walking_speed_m_s", "hrv_ms",
+                                                      "sleep_h")}, **new}
+        if rec["steps"] is None:
+            continue  # a day record needs steps
+        if any(rec[k] != old.get(k) for k in ("steps", "walking_speed_m_s", "hrv_ms", "sleep_h")):
+            changed.append(rec)
+    out = {"accepted": [], "rejected": []}
+    if changed:
+        out = await ingest_days(ctx, p, changed, rid)
+    _audit(ctx, p, "health_summary", "ok", None, rid, types=len(stored),
+           days_updated=len(out["accepted"]))
+    return {"stored": stored, "days_updated": out["accepted"], "rejected": out["rejected"],
+            "status": out.get("status") or _status(ctx, repo)}
 
 
 def _status(ctx: Ctx, repo: PatientRepo) -> str:

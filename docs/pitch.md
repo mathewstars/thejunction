@@ -86,10 +86,10 @@ Rules for this version:
 > [type in silence; the help screen opens; the second phone buzzes; hold it up; say nothing for three seconds]
 > That is the clinic's phone. She sees the help numbers at once. The clinic knows today, not at her next appointment.
 
-**5. The proof (1:08 to 1:30).** Laptop: Elina's Research, then one face session recorded by one of us.
+**5. The proof (1:08 to 1:30).** Laptop: Elina's Research, then the last session of the generated face example (Leo Virtanen, Example F-001, Activity tab, Focus game).
 
 > This is example data. Here is Elina, who stayed well: same tool, and it refused to conclude.
-> This session is one of ours. Gemini never saw the face, only how it moved, and code checked every line. [point] This one it got wrong.
+> This session is generated: no face, only the numbers a face would give. Our fixed rule counts no smile in it. [point] Gemini found three small ones, and code confirmed each in the numbers.
 > Whether any of this follows mood after TMS is the study we want to run with you.
 
 **6. The return (1:30 to 1:45).** Phone only.
@@ -135,7 +135,7 @@ The extra minute goes to the fox and the slide, not to more exhibits. The proof 
 **5. The proof (1:50 to 2:25).** Laptop: Elina, one face session of ours, the refusal log.
 
 > This is example data. Here is Elina, who stayed well: same tool, and it refused to conclude.
-> This session is one of ours. Gemini never saw the face, only how it moved, and code checked every line. [point] This one it got wrong, and code threw it out. [point] And this small smile our own rule missed. Gemini caught it.
+> This session is generated: no face, only the numbers a face would give. Two readers went through it. Our fixed rule counts no smile. [point] Gemini found three small ones, and code confirmed each in the numbers. On fifty such sessions Gemini found every smile we had planted and reported nothing that was not there.
 > We also tried to make the system learn something harmful. This is the log of what it refused.
 > Whether any of this follows mood after TMS is the study we want to run with you.
 
@@ -198,8 +198,8 @@ Video:
 - Anna's example data shows it (Activity tab, Evening check-in, with the demo in its dip state): three good things every evening for the last two weeks of October, then two on three evenings, then one on two, then no check-in; a walk offered three times and not taken; her steps at about half of her normal. Look at the page on the day before saying the numbers, because the dates move with the calendar.
 - The app shows `welcome_back.1` in the demo. The set has three lines, so the demo must force this one.
 - The alert really arrives on a phone during the demo, and the help screen on the demo server shows 112 and an example clinic contact, not a placeholder.
-- Gemini runs on the demo server (it does since 14 November: key and model set, the demo patient allows outside processing), and one session recorded by one of us shows a reported smile that is not in the numbers (the panel says "not in the numbers, and code dropped it") and a faint smile that Gemini found below the fixed rule. Never call that session Anna's. On 14 November no such recorded session exists yet: the one raw session on the server shows three smiles, all agreed. If none exists by the pitch, drop "This one it got wrong" and "Gemini caught it" and use the reference numbers below instead.
-- The reference numbers, if said, are said with their limit: "On fifty test sessions that we generated ourselves, Gemini found every planted smile and reported nothing that was not there. A code rule we wrote to compete with it reported twenty-two things that were not smiles." Never say this about real faces. If not, drop the Gemini sentence.
+- Gemini runs on the demo server (it does since 14 November: key and model set), and the generated face example exists with its sessions read (`bash ~/angel/demo_prep.sh` makes it and prints the counts). Its last session must show no smile for the fixed rule and faint smiles for Gemini; look at the panel before saying the number. Always call it generated. Never present it as a recording of a person, and never call it Anna's. If a session recorded by one of us exists by the pitch, it may be shown after the generated one, as "and this one is a real recording", whatever it shows.
+- The reference numbers, if said, are said with their limit: "On fifty test sessions that we generated ourselves, Gemini found every planted smile and reported nothing that was not there. A simple code rule, which we did not tell about talking, reported twenty-two things that were not smiles." Never say this about real faces. If not, drop the Gemini sentence.
 - The refusal log exists on the clinician page and shows real refusals.
 - The bracket in "what we know" is filled only with something we measured ourselves.
 - The demo data is example data, and we say so out loud.
@@ -224,7 +224,7 @@ Video:
 | How is it different from Soihtu's game? | Their game is the treatment. Lanvi is what the app offers after the phone noticed a change, and it adapts to the person. |
 | Why a camera on someone recovering from depression? | It is opt-in and everything works without it. Numbers only, never a picture; the movement numbers are kept on the clinic's server. |
 | Where does the data go? | It stays on the clinic's server. With the patient's consent, a stream of numbers with no name, no date and no text goes to Gemini. A second optional switch (chat mode, off by default) sends a note that does not ask for help to Gemini so it can write Lanvi's reply, also only with consent. |
-| Could plain code do what Gemini does with the face numbers? | On a clean signal, yes: a rule relative to the person's own rest finds the faint smiles too. On sessions with talking or a shifting baseline that rule reported 22 things that were not smiles and Gemini reported none. That is on 50 sessions we generated ourselves; real faces are the study. |
+| Could plain code do what Gemini does with the face numbers? | On a clean signal, yes: a rule relative to the person's own rest finds the faint smiles too. On sessions with talking or a shifting baseline a simple such rule reported 22 things that were not smiles and Gemini reported none; Gemini had been told what talking looks like and the rule had not, and a more careful rule would do better. That is on 50 sessions we generated ourselves; real faces are the first step of the study. |
 | What stops the AI from saying something harmful? | It doesn't write freely to a patient. Lanvi's lines come from a fixed set, and code checks what the models return. |
 | Her name was at the top of the list. What did the clinic do? | The clinic gets one "needs review" message when a dip keeps going. What happens next is the clinic's decision, and that workflow is something we want to design with you. |
 | How would a clinic start using it? | The clinic gives the patient a pairing code; entering it is the consent to share. The next step is a pilot with one clinic. |

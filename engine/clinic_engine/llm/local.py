@@ -56,7 +56,7 @@ class LocalModel:
         try:
             # The association appraisal may think for a while before answering.
             # So may the frame reading when the local model stands in for level 2.
-            timeout = self.long_timeout if pack.task in ("association", "frames_reading") \
+            timeout = self.long_timeout if pack.task in ("association", "frames_reading", "days_reading") \
                 else self.timeout
             async with httpx.AsyncClient(timeout=timeout, transport=self.transport) as c:
                 r = await c.post(f"{self.base_url}/chat/completions", json=body, headers=headers)

@@ -215,9 +215,8 @@ struct LanviPuppetPreview: View {
         }
         switch demo {
         case "reactions":
-            caption = "Hello"                      // the fox greets by itself on appearing
-            var time = 3.2
-            for (label, m) in reactions where m != .greeting && m != .thinking {
+            var time = 1.2
+            for (label, m) in reactions where m != .thinking {
                 await at(time)
                 play(m, label)
                 time += m.reactionLength + 0.9
@@ -250,19 +249,19 @@ struct LanviPuppetPreview: View {
         case "idle":
             caption = "Idle"
         case "touch":
-            // Nine different touch reactions in about 20 s (the greeting plays first).
+            // Nine different touch reactions in about 20 s.
             let script: [(Double, LanviTouchZone, String, Double?)] = [
-                (2.6, .head, "Pet his head", nil), (4.5, .nose, "Boop the nose", nil),
-                (6.3, .ear, "Touch an ear", nil), (7.9, .cheek, "Touch a cheek", nil),
-                (9.5, .belly, "Tickle the belly", nil), (11.3, .tail, "Touch the tail", nil),
-                (13.4, .paw, "Touch a paw", nil), (15.2, .near, "Tap near him", nil),
-                (16.5, .head, "Hold to pet", 1.6),
+                (1.0, .head, "Pet his head", nil), (3.0, .nose, "Boop the nose", nil),
+                (4.9, .ear, "Touch an ear", nil), (6.6, .cheek, "Touch a cheek", nil),
+                (8.3, .belly, "Tickle the belly", nil), (10.2, .tail, "Touch the tail", nil),
+                (12.6, .paw, "Touch a paw", nil), (14.6, .near, "Tap near him", nil),
+                (16.0, .head, "Hold to pet", 1.8),
             ]
             for (at_, zone, label, hold) in script {
                 await at(at_)
                 touchIt(zone, label, hold: hold)
             }
-            await at(18.2)
+            await at(17.8)
             caption = "Let go: a slow blink"
         default:
             let wait = UserDefaults.standard.double(forKey: "puppetDemoDelay")
