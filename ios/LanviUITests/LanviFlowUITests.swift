@@ -24,7 +24,8 @@ final class LanviFlowUITests: XCTestCase {
     /// Tap the first hittable element matching a label, if it is there.
     @discardableResult
     private func tap(_ q: XCUIElementQuery, _ label: String, _ name: String, wait: Double = 4) -> Bool {
-        let e = q[label].firstMatch
+        // Labels can be shown in capitals by the button style: match without case.
+        let e = q.matching(NSPredicate(format: "label ==[c] %@ OR identifier == %@", label, label)).firstMatch
         guard e.waitForExistence(timeout: wait) else {
             event("missing:\(name)")
             return false
@@ -38,6 +39,15 @@ final class LanviFlowUITests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = ["-offline", "-hour", "13"] + extra
         app.launch()
+    }
+
+    /// Prints the accessibility tree of the first screen (to find labels).
+    func test0Tree() {
+        launch(["-firstRun"])
+        pause(3)
+        print("TREE-BEGIN")
+        print(app.debugDescription)
+        print("TREE-END")
     }
 
     func test1FirstRunAndHome() {
