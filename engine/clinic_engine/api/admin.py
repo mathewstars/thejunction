@@ -106,15 +106,27 @@ async def review_run(body: ReviewIn, request: Request, p: Principal = Depends(de
              summary="Run the level-2 reading again for one activity (or an earlier round)")
 async def demo_analyze(body: AnalyzeIn, request: Request, p: Principal = Depends(demo_actor)):
     """With `activity_id`: the session reading of a focus or breathing session
-    with a face summary. With `round_id`: the movement reading of an AR round
-    of the earlier design."""
+    with a face summary, or with `what: "frames"` the frame reading of a session
+    sent with raw face frames (level 2 reads them, code checks every item;
+    returns the stored `frames_reading`). With `round_id`: the movement reading
+    of an AR round of the earlier design."""
     ctx = ctx_of(request)
     c = _locate(request, p, body.patient_id)
     repo = ctx.mind.repo(c, body.patient_id)
+    if body.what == "days":
+        result = await ctx.mind.run_days_reading(repo, take_lock=True)
+        _audit(request, p, "demo_analyze", patient_id=body.patient_id, what="days",
+               status=result.get("status"))
+        return result
     if body.activity_id is not None:
         rec = repo.get(f"activities/{body.activity_id}.json")
         if rec is None:
             raise ApiError(404, "not_found", "Activity not found.")
+        if body.what == "frames":
+            result = await ctx.mind.run_frames_reading(repo, body.activity_id, take_lock=True)
+            _audit(request, p, "demo_analyze", patient_id=body.patient_id,
+                   activity_id=body.activity_id, what="frames", status=result.get("status"))
+            return result
         analysis = await ctx.mind.run_session_reading(repo, body.activity_id, take_lock=True)
         _audit(request, p, "demo_analyze", patient_id=body.patient_id,
                activity_id=body.activity_id)

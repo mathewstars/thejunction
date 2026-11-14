@@ -148,7 +148,7 @@
   function parseHash() {
     const parts = (location.hash || "").replace(/^#\/?/, "").split("/").filter(Boolean);
     if (parts[0] === "demo") return { view: "demo", pid: null, tab: "overview" };
-    if (parts[0] === "blueprint") return { view: "blueprint", pid: null, tab: "overview" };
+    if (parts[0] === "blueprint") { if (["research", "gemini", "learning"].indexOf(parts[1]) >= 0) S.bpTab = parts[1]; return { view: "blueprint", pid: null, tab: "overview" }; }
     if ((parts[0] === "p" || parts[0] === "patient") && parts[1]) {
       const tab = TABS.some((t) => t[0] === parts[2]) ? parts[2] : "overview";
       return { view: "patient", pid: decodeURIComponent(parts[1]), tab };
@@ -179,6 +179,7 @@
           try { S.bpAssoc = await api("GET", "/v1/clinic/patients/" + encodeURIComponent(S.me.demo.patient_id) + "/associations"); } catch (e) { S.bpAssoc = null; }
           const nul = ((S.list && S.list.patients) || []).find((q) => q.label === "Example R-001");
           if (nul) { try { S.bpNull = await api("GET", "/v1/clinic/patients/" + encodeURIComponent(nul.patient_id) + "/associations"); } catch (e) { S.bpNull = null; } }
+          try { S.bpDetail = await api("GET", "/v1/clinic/patients/" + encodeURIComponent(S.me.demo.patient_id)); } catch (e) { S.bpDetail = null; }
         }
       } else if (r.view === "patient") {
         const base = "/v1/clinic/patients/" + encodeURIComponent(r.pid);
@@ -441,6 +442,7 @@
     });
     $("subnav").replaceChildren(tabs);  // the patient's sections live in the top bar
     const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, talk: tabTalk, research: tabResearch, mind: tabMind, log: tabLog }[S.route.tab](d, today);
+    if (S.route.tab === "overview" && body && body.appendChild) { const dp = daysPanel(d); if (dp) body.appendChild(dp); }
     if (S.route.tab === "overview" && d.summary) wrap.appendChild(el("p", { class: "lead" },
       String(d.summary).replace(/\s*Last suggestion:[^.]*\.?/, "").replace(/held since/g, "flagged since").replace(/\b\d{4}-\d{2}-\d{2}\b/g, (m) => dayShort(m))));
     wrap.appendChild(el("div", { id: "tabpanel", role: "tabpanel", "aria-labelledby": "tab-" + S.route.tab }, body));
@@ -597,6 +599,71 @@
         try { await api("POST", "/v1/clinic/attention/" + encodeURIComponent(item.id) + "/ack"); await refresh(); } catch (e) { flash(e.message); }
       } } }, "Acknowledge");
   }
+
+  // ---- the day reading: two readers on the daily numbers from Apple Health
+  // Code's fixed rule (each day against the person's own normal) and the
+  // level-2 model read the same series. The series is the one that was sent.
+  const DAY_CH = { steps: "Steps", walk_speed: "Walking speed", sleep_h: "Sleep, hours", hrv: "HRV", rest_hr: "Resting heart rate", active_kcal: "Active energy", exercise_min: "Exercise minutes", daylight_min: "Daylight minutes" };
+  const WEEKDAY = ["", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays"];
+  function daysPanel(d) {
+    const f = d.days_reading, types = d.health_types || [];
+    if (!f || f.status === "off") return null;
+    const title = "Two readers on the daily numbers";
+    const typesLine = types.length ? el("p", { class: "muted fr-note" }, "Apple Health types stored for this person: " + types.length + " (" + types.slice(0, 6).map((t) => t.type.replace(/^HK(Quantity|Category)TypeIdentifier/, "")).join(", ") + (types.length > 6 ? ", …" : "") + ").") : null;
+    if (f.status !== "ready") {
+      return panel(title, null, empty(f.status === "not_allowed" ? "The patient has not allowed outside processing, so the daily numbers were not sent to the model. Code's comparison with the person's own normal is in the chart above."
+        : f.status === "too_few_days" ? "Fewer than three weeks of days so far; the model reads the series once there are more."
+        : f.status === "pending" ? "The model has not read the daily numbers yet." : "The model did not return a usable reading" + (f.reason ? " (" + words(f.reason).toLowerCase() + ")." : ".")), typesLine);
+    }
+    const st = f.stream, ag = f.agreement || {}, model = f.model || "the model";
+    const chans = st.channels.slice(2);
+    const ch = chans.indexOf(S.dayCh) >= 0 ? S.dayCh : "steps";
+    const k = st.channels.indexOf(ch), n = st.days;
+    const vals = st.rows.map((r) => r[k]);
+    const have = vals.filter((v) => v !== null);
+    const lo = Math.min.apply(null, have), hi = Math.max.apply(null, have);
+    const first = parseDay(st.first_date);
+    const dayLabel = (i) => { const t = new Date(first.getTime() + i * 86400000); return t.getUTCDate() + " " + MONTHS[t.getUTCMonth()]; };
+    const W = 920, L = 150, R = 14, T = 12, PH = 120, LANE = 26, H = T + PH + 18 + LANE * 2 + 26;
+    const x = (i) => L + (W - L - R) * (i + 0.5) / n, bw = (W - L - R) / n;
+    const y = (v) => T + PH - PH * (hi > lo ? (v - lo * 0.9) / (hi - lo * 0.9) : 0.5);
+    const c = svg("svg", { class: "chart fr", viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": DAY_CH[ch] + " by day: stretches found by code's fixed rule and named by " + model });
+    c.appendChild(svg("line", { class: "axis", x1: L, x2: W - R, y1: T + PH, y2: T + PH }));
+    c.appendChild(svg("text", { class: "lane", x: L - 8, y: T + 10, "text-anchor": "end" }, DAY_CH[ch]));
+    c.appendChild(svg("text", { x: L - 8, y: T + 26, "text-anchor": "end" }, num(lo, ch === "walk_speed" ? 2 : 0) + " to " + num(hi, ch === "walk_speed" ? 2 : 0)));
+    let dpath = "", pen = false;
+    vals.forEach((v, i) => { if (v === null) { pen = false; return; } dpath += (pen ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); pen = true; });
+    c.appendChild(svg("path", { class: "line", d: dpath }));
+    for (let i = 0; i < n; i += 14) c.appendChild(svg("text", { x: x(i), y: H - 4, "text-anchor": i === 0 ? "start" : "middle" }, dayLabel(i)));
+    c.appendChild(svg("text", { x: W - R, y: H - 4, "text-anchor": "end" }, dayLabel(n - 1)));
+    const lane = (q) => T + PH + 18 + LANE * q;
+    const bar = (cls, a, b, q, title) => c.appendChild(svg("rect", { class: "fr-bar " + cls, x: x(a) - bw / 2, y: lane(q) + 5, width: Math.max(4, x(b) - x(a) + bw), height: LANE - 12, rx: 3 }, svg("title", null, title)));
+    const span = (a, b) => dayLabel(a) + " to " + dayLabel(b);
+    c.appendChild(svg("text", { class: "lane", x: L - 8, y: lane(0) + 17, "text-anchor": "end" }, "Code, fixed rule"));
+    c.appendChild(svg("text", { class: "lane", x: L - 8, y: lane(1) + 17, "text-anchor": "end" }, "Model"));
+    const mine = (b) => b.channel === ch;
+    f.stretches.filter(mine).forEach((b) => {
+      if (b.status === "same") bar("code", b.code_start_d, b.code_end_d, 0, "Code: " + b.direction + ", " + span(b.code_start_d, b.code_end_d));
+      bar(b.status === "same" ? "same" : "faint", b.start_d, b.end_d, 1, "Model: " + b.direction + ", " + words(b.shape).toLowerCase() + ", " + span(b.start_d, b.end_d) + ". " + (b.status === "same" ? "Code's fixed rule flagged the same stretch." : "The fixed rule did not flag this stretch; code confirmed the change in the numbers (" + num(b.z, 1) + " spreads from before).")); });
+    f.missed_stretches.filter(mine).forEach((b) => bar("code", b.start_d, b.end_d, 0, "Code: " + b.direction + ", " + span(b.start_d, b.end_d) + " (the model did not name it)"));
+    (f.dropped || []).filter((b) => b.item === "stretch" && mine(b)).forEach((b) => bar("drop", b.start_d, b.end_d, 1, "Model: named " + b.direction + ", " + span(b.start_d, b.end_d) + ". Dropped by code: " + words(b.reason).toLowerCase() + "."));
+    const m = (q, one, many) => q + " " + (q === 1 ? one : many);
+    const lines = [el("p", { class: "readout" }, el("b", null, model), " named " + m(ag.stretches_reported || 0, "stretch", "stretches") + " that changed. Code's fixed rule flagged " + (ag.stretches_code || 0) + "; " + (ag.stretches_same || 0) + " are the same.")];
+    if (ag.stretches_model_only) lines.push(el("p", { class: "readout fr-faint" }, el("b", null, m(ag.stretches_model_only, "stretch", "stretches")), " named by the model only: not flagged by the fixed rule (too mild on any single day, or a slow slide), and code confirmed the change in the numbers."));
+    if (ag.stretches_not_in_numbers || ag.stretches_missed) lines.push(el("p", { class: "readout" }, (ag.stretches_not_in_numbers ? m(ag.stretches_not_in_numbers, "named stretch is", "named stretches are") + " not in the numbers, and code dropped " + (ag.stretches_not_in_numbers === 1 ? "it. " : "them. ") : "") + (ag.stretches_missed ? m(ag.stretches_missed, "stretch", "stretches") + " of code's not named by the model." : "")));
+    const wk = (f.weekly || []).filter((w) => w.low_weekdays.length).map((w) => DAY_CH[w.channel].toLowerCase() + " lower on " + w.low_weekdays.map((q) => WEEKDAY[q]).join(" and "));
+    if (wk.length) lines.push(el("p", { class: "readout muted" }, "This person's weekly rhythm, named by the model and confirmed by code: " + wk.join("; ") + ". A low day that belongs to the rhythm is not a change."));
+    const pick = chans.length > 1 ? el("div", { class: "seg", role: "group", "aria-label": "Measure" }, chans.map((q) =>
+      el("button", { type: "button", class: "btn btn-small", "aria-pressed": q === ch ? "true" : "false", on: { click: () => { S.dayCh = q; render(); } } }, DAY_CH[q]))) : null;
+    const legend = el("ul", { class: "legend" },
+      el("li", null, el("span", { class: "fr-key code" }), "code's fixed rule"),
+      el("li", null, el("span", { class: "fr-key same" }), "model, same stretch as code"),
+      el("li", null, el("span", { class: "fr-key faint" }), "model only: change confirmed by code"),
+      el("li", null, el("span", { class: "fr-key drop" }), "model only: dropped by code"));
+    return panel(title, null, pick, lines, c, legend,
+      el("p", { class: "muted fr-note" }, "The model receives " + n + " days as numbers with a day number and the weekday: no dates, name or text. The line is what was sent. Two methods read the same numbers; neither says how the person feels, and the thresholds are estimates."), typesLine);
+  }
+
   function tabOverview(d, today) {
     const series = (d.progress && d.progress.series) || [];
     const available = METRICS.filter((m) => m.key === "movement" || series.some((s) => s.z && s.z[m.key] !== undefined));
@@ -794,6 +861,116 @@
     return wrap;
   }
 
+
+  // ---- the frame reading: two readers on one session
+  // Code's fixed rule and the level-2 model read the same numbers. The bars
+  // come from the stored reading; the curve is the audited raw download.
+  const FR = { onset: 0.25 };
+  function framesPanel(sessions, agreement) {
+    const ready = sessions.filter((x) => x.frames_reading && x.frames_reading.status === "ready");
+    const waiting = sessions.filter((x) => x.frames_reading && /^(pending|failed|not_allowed)$/.test(x.frames_reading.status));
+    if (!ready.length) {
+      if (!waiting.length) return null;
+      const st = waiting[0].frames_reading;
+      return panel("Two readers on one session", null, empty(st.status === "not_allowed"
+        ? "The patient has not allowed outside processing, so no frames were sent to the model. Code's summary is in the table above."
+        : st.status === "pending" ? "The model is reading the latest session." : "The model did not return a usable reading" + (st.reason ? " (" + words(st.reason).toLowerCase() + ")." : ".")));
+    }
+    const cur = ready.find((x) => x.id === S.frId) || ready[0];
+    const f = cur.frames_reading, ag = f.agreement || {};
+    const model = f.model || "the model";
+    const dur = cur.raw && cur.raw.frames && cur.raw.rate_hz ? cur.raw.frames / cur.raw.rate_hz
+      : Math.max(10, ...[].concat(f.smiles, f.faint_smiles, f.missed_smiles).map((b) => b.end_s || 0));
+    const dropped = (f.dropped || []).filter((d) => d.item === "smile");
+    const codeBars = f.smiles.map((b) => ({ a: b.code_start_s, b: b.code_end_s })).concat(f.missed_smiles.map((b) => ({ a: b.start_s, b: b.end_s, missed: 1 })));
+    const curve = S.frCurve && S.frCurve.id === cur.id ? S.frCurve : null;
+
+    const W = 920, L = 150, R = 14, T = 12, PH = 120, LANE = 26, H = T + PH + 18 + LANE * 2 + 26;
+    const x = (t) => L + (W - L - R) * Math.min(1, Math.max(0, t / dur));
+    const peak = curve ? Math.max(0.5, ...curve.v) : 0.5;
+    const y = (v) => T + PH - PH * Math.min(1, v / peak);
+    const c = svg("svg", { class: "chart fr", viewBox: "0 0 " + W + " " + H, role: "img",
+      "aria-label": "Smiles in one session: found by code's fixed rule and reported by " + model });
+    c.appendChild(svg("line", { class: "axis", x1: L, x2: W - R, y1: T + PH, y2: T + PH }));
+    c.appendChild(svg("line", { class: "fr-onset", x1: L, x2: W - R, y1: y(FR.onset), y2: y(FR.onset) }));
+    c.appendChild(svg("text", { x: L - 8, y: y(FR.onset) + 4, "text-anchor": "end" }, "fixed rule " + FR.onset));
+    if (f.resting_smile !== null && f.resting_smile !== undefined) {
+      c.appendChild(svg("line", { class: "fr-rest", x1: L, x2: W - R, y1: y(f.resting_smile), y2: y(f.resting_smile) }));
+      c.appendChild(svg("text", { x: L - 8, y: y(f.resting_smile) + 4, "text-anchor": "end" }, "own rest " + num(f.resting_smile, 2)));
+    }
+    c.appendChild(svg("text", { class: "lane", x: L - 8, y: T + 10, "text-anchor": "end" }, "Smile, 0 to " + num(peak, 1)));
+    if (curve) c.appendChild(svg("path", { class: "line", d: curve.v.map((v, i) => (i ? "L" : "M") + x(curve.t[i]).toFixed(1) + " " + y(v).toFixed(1)).join("") }));
+    else c.appendChild(svg("text", { x: (L + W - R) / 2, y: T + PH / 2, "text-anchor": "middle" }, "The curve is not loaded. The bars below come from the stored reading."));
+    const step = dur > 90 ? 20 : dur > 30 ? 10 : 5;
+    for (let t = 0; t <= dur + 0.01; t += step) c.appendChild(svg("text", { x: x(t), y: H - 4, "text-anchor": t === 0 ? "start" : "middle" }, t + " s"));
+    const lane = (k) => T + PH + 18 + LANE * k;
+    const bar = (cls, a, b, k, title) => c.appendChild(svg("rect", { class: "fr-bar " + cls, x: x(a), y: lane(k) + 5, width: Math.max(4, x(b) - x(a)), height: LANE - 12, rx: 3 }, svg("title", null, title)));
+    const span = (b) => num(b.start_s !== undefined ? b.start_s : b.a, 1) + " to " + num(b.end_s !== undefined ? b.end_s : b.b, 1) + " s";
+    c.appendChild(svg("text", { class: "lane", x: L - 8, y: lane(0) + 17, "text-anchor": "end" }, "Code, fixed rule"));
+    c.appendChild(svg("text", { class: "lane", x: L - 8, y: lane(1) + 17, "text-anchor": "end" }, "Model"));
+    codeBars.forEach((b) => bar("code", b.a, b.b, 0, "Code: smile, " + span(b) + (b.missed ? " (the model did not report it)" : "")));
+    f.smiles.forEach((b) => bar("same", b.start_s, b.end_s, 1, "Model: smile, " + span(b) + ". Code found the same smile" + (b.corrected && b.corrected.length ? "; code corrected " + b.corrected.map((w) => words(w).toLowerCase()).join(" and ") : "") + "."));
+    f.faint_smiles.forEach((b) => bar("faint", b.start_s, b.end_s, 1, b.status === "inside_long"
+      ? "Model: smile, " + span(b) + ", peak " + num(b.peak, 2) + ". The fixed rule counted a far longer stretch here as one smile; code confirmed a clear rise and return inside it."
+      : b.status === "brief"
+      ? "Model: brief smile, " + span(b) + ". Peak " + num(b.peak, 2) + ": above the fixed rule's level, but shorter than the rule's minimum length. Code confirmed the rise in the numbers."
+      : "Model: faint smile, " + span(b) + ". Peak " + num(b.peak, 2) + ", under the fixed rule; it rises " + num(b.rise, 2) + " above the resting level around it, and code confirmed that rise in the numbers."));
+    dropped.forEach((b) => bar("drop", b.start_s, b.end_s, 1, "Model: reported a smile, " + span(b) + ". Dropped by code: " + words(b.reason).toLowerCase() + "."));
+    (f.moments || []).forEach((m) => c.appendChild(svg("path", { class: "fr-moment", d: "M" + x(m.at_s) + " " + (T + PH + 2) + "l4 8h-8z" }, svg("title", null, "Pleasant moment at " + num(m.at_s, 1) + " s: " + (m.smiled ? "a smile followed" : "no smile followed")))));
+
+    const n = (k, one, many) => k + " " + (k === 1 ? one : many);
+    const lines = [cur.example ? el("p", { class: "readout muted" }, "Generated example session: no person was recorded. The numbers come from a generator with smiles planted at known places.") : null,
+      el("p", { class: "readout" }, el("b", null, model), " reported " + n(ag.smiles_reported || 0, "smile", "smiles") + ". Code's fixed rule found " + n(ag.smiles_code || 0, "smile", "smiles") + "; " + (ag.smiles_matched || 0) + " are the same.")];
+    if (ag.smiles_faint) lines.push(el("p", { class: "readout fr-faint" }, el("b", null, n(ag.smiles_faint, "faint smile", "faint smiles")), " reported by the model only: under the fixed rule, above this person's own resting level, and code confirmed the rise in the numbers."));
+    if (ag.smiles_brief) lines.push(el("p", { class: "readout fr-faint" }, el("b", null, n(ag.smiles_brief, "brief smile", "brief smiles")), " reported by the model only: too short for the fixed rule's minimum length; code confirmed the rise in the numbers."));
+    if (ag.smiles_inside_long) lines.push(el("p", { class: "readout fr-faint" }, el("b", null, n(ag.smiles_inside_long, "smile", "smiles")), " reported by the model inside a far longer stretch that the fixed rule counted as one smile; code confirmed each rise and return in the numbers."));
+    const notIn = ag.smiles_not_in_numbers || 0, poor = ag.smiles_poor_match || 0;
+    if (notIn || poor || ag.smiles_missed) lines.push(el("p", { class: "readout" },
+      (notIn ? n(notIn, "reported smile is", "reported smiles are") + " not in the numbers, and code dropped " + (notIn === 1 ? "it. " : "them. ") : "") +
+      (poor ? n(poor, "report", "reports") + " of a real smile matched it poorly (a sliver, far too wide, or twice). " : "") +
+      (ag.smiles_missed ? n(ag.smiles_missed, "smile", "smiles") + " of code's not reported by the model." : "")));
+    const blinkOk = f.blinks && f.blinks.status === "confirmed";
+    lines.push(el("p", { class: "readout muted" }, "Blink counts " + (blinkOk ? "agree" : "differ") + ". Segments confirmed: " + (ag.segments_confirmed || 0) + " of " + (ag.segments_reported || 0) + ". Overall words the same: " + (ag.overall_same === null || ag.overall_same === undefined ? "–" : ag.overall_same + " of 4") + "."));
+    if (typeof f.resting_smile === "number" && f.resting_smile >= FR.onset - 0.05) lines.push(el("p", { class: "readout fr-faint" }, "This person's mouth rests at " + num(f.resting_smile, 2) + ", close to the fixed rule's level of " + FR.onset + ". The fixed rule is not reliable here; read its smiles with care."));
+
+    const pick = ready.length > 1 ? el("div", { class: "seg", role: "group", "aria-label": "Session" }, ready.slice(0, 8).map((sx) =>
+      el("button", { type: "button", class: "btn btn-small", "aria-pressed": sx.id === cur.id ? "true" : "false", on: { click: () => { S.frId = sx.id; render(); } } }, dayShort(sx.date) + " " + String(sx.started_at).slice(11, 16)))) : null;
+    const load = curve ? null : el("button", { type: "button", class: "btn btn-small", disabled: S.frBusy ? "disabled" : null, on: { click: async () => {
+      S.frBusy = true; render();
+      try {
+        const raw = await api("GET", "/v1/clinic/patients/" + encodeURIComponent(S.route.pid) + "/activities/" + encodeURIComponent(cur.id) + "/face-raw");
+        const li = raw.channels.indexOf("mouthSmileLeft"), ri = raw.channels.indexOf("mouthSmileRight");
+        const k = Math.max(1, Math.round(raw.rate_hz / 10)), t = [], v = [];
+        for (let i = 0; i < raw.samples.length; i += k) {
+          let sum = 0, cnt = 0;
+          for (let j = i; j < Math.min(raw.samples.length, i + k); j++) { if (!raw.tracked || raw.tracked[j]) { sum += (raw.samples[j][li] + raw.samples[j][ri]) / 2; cnt++; } }
+          if (cnt) { t.push(i / raw.rate_hz); v.push(sum / cnt); }
+        }
+        S.frCurve = { id: cur.id, t, v };
+      } catch (e) { flash(e.message); }
+      S.frBusy = false; render();
+    } } }, S.frBusy ? "Loading…" : "Show the smile curve (the download is written to the audit log)");
+    const legend = el("ul", { class: "legend" },
+      el("li", null, el("span", { class: "fr-key code" }), "code's fixed rule"),
+      el("li", null, el("span", { class: "fr-key same" }), "model, same smile as code"),
+      el("li", null, el("span", { class: "fr-key faint" }), "model only: rise confirmed by code"),
+      el("li", null, el("span", { class: "fr-key drop" }), "model only: dropped by code"));
+    let over = null;
+    if (agreement && agreement.sessions) {
+      const pct = (v) => (v === null || v === undefined ? "–" : Math.round(v * 100) + " %");
+      over = el("div", { class: "facts" },
+        factTile(String(agreement.sessions), "sessions read by the model"),
+        factTile(pct(agreement.smile_recall), "of code's smiles also reported by the model (" + agreement.smiles_matched + " of " + agreement.smiles_code + ")"),
+        factTile(pct(agreement.smile_precision), "of the model's smiles at code's level also found by code"),
+        factTile(String((agreement.smiles_faint || 0) + (agreement.smiles_brief || 0) + (agreement.smiles_inside_long || 0)), "smiles from the model only, rise confirmed by code"),
+        factTile(String(agreement.smiles_not_in_numbers || 0), "reported smiles not in the numbers, dropped by code"),
+        factTile(agreement.smile_start_error_s === null ? "–" : num(agreement.smile_start_error_s, 2) + " s", "mean difference in where a smile starts (the model marks the rise, the rule the crossing)"));
+    }
+    return panel("Two readers on one session", null, pick, lines, c, legend, load,
+      el("p", { class: "muted fr-note" }, "The model receives numbers only: no picture, name, date or text. Two methods read the same numbers; neither is the truth, and neither says how the person feels. The fixed rule's thresholds are estimates, not yet calibrated on recordings."),
+      over ? el("h3", { class: "fr-h" }, "Every session the model has read") : null, over);
+  }
+
   // ---- activity
   function outcomeWord(v) { return v === null || v === undefined ? "–" : v > 0.3 ? "better after" : v < -0.3 ? "worse after" : "no change"; }
   function tabActivity(d) {
@@ -850,6 +1027,7 @@
         el("td", { class: "num" }, !x.z || x.z.median_reaction_ms == null ? "–" : (x.z.median_reaction_ms >= 1.5 ? "slower than usual" : x.z.median_reaction_ms <= -1.5 ? "faster than usual" : "usual") + " (" + signed(x.z.median_reaction_ms) + ")"),
         el("td", { class: "r num" }, x.values && x.values.error_rate != null ? Math.round(x.values.error_rate * 100) + " %" : "–"),
         faceCell(x.face), readCell(x.reading))), null, { filter: 1 })));
+    if (sub === "focus" || sub === "breathing") { const fp = framesPanel(recent(A[sub]), A.frames_agreement); if (fp) wrap.appendChild(fp); }
     if (sub === "breathing") wrap.appendChild(panel("Breathing", A.breathing.sessions.length, table(["Date", "Finished", { t: "Time", r: 1 }, "Face", "Model reading"],
       recent(A.breathing).map((x) => el("tr", null, el("td", { class: "num" }, dayShort(x.date)), el("td", null, yes(x.completed)),
         el("td", { class: "r num" }, x.values && x.values.time_played_s != null ? num(x.values.time_played_s) + " s" : "–"), faceCell(x.face), readCell(x.reading))), null, { filter: 1 })));
@@ -913,9 +1091,14 @@
     const firstSaid = ev.findIndex((e) => e.kind !== "alert");
     if (firstSaid > 0) ev.splice(0, firstSaid);
     const localDay = (iso) => { const t = new Date(iso); return new Date(t.getTime() - t.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+    const chatOn = d.chat_mode === "gemini";
     wrap.appendChild(el("p", { class: "muted small" }, d.share_notes
-      ? "The patient agreed to share the words they write. Lanvi answers only with lines from a fixed set; a model labels the words and does not write to the patient."
-      : "This patient has not shared the words they write, so only the labels are shown. Lanvi answers only with lines from a fixed set."));
+      ? (chatOn
+        ? "The patient agreed to share the words they write. Chat mode is on: Lanvi's reply to a note may be written by Gemini (an outside model) and checked by code; each such reply is marked. A note that asks for help always gets the fixed line."
+        : "The patient agreed to share the words they write. Lanvi answers only with lines from a fixed set; a model labels the words and does not write to the patient.")
+      : (chatOn
+        ? "This patient has not shared the words they write, so only the labels are shown. Chat mode is on: Lanvi's replies written by Gemini are marked."
+        : "This patient has not shared the words they write, so only the labels are shown. Lanvi answers only with lines from a fixed set.")));
     if (!ev.length) { wrap.appendChild(empty("Nothing written or offered yet.")); return wrap; }
     const chat = el("div", { class: "chat" });
     const who = d.display_name || d.label;
@@ -933,7 +1116,7 @@
             el("span", { class: "chip" }, "about: " + words(c.topic).toLowerCase()),
             c.asks_for_help ? el("span", { class: "chip l-urgent" }, "asks for help") : null)));
         if (e.n.reply) chat.appendChild(el("div", { class: "msg from-lanvi" },
-          el("div", { class: "who" }, "Lanvi · fixed line"), el("div", { class: "text" }, e.n.reply)));
+          el("div", { class: "who" }, e.n.reply_by === "model" ? "Lanvi · written by Gemini, checked by code" : "Lanvi · fixed line"), el("div", { class: "text" }, e.n.reply)));
         if (c.crisis) chat.appendChild(el("div", { class: "chat-event urgent" }, "Help screen opened on the phone"));
       } else if (e.kind === "offer") {
         chat.appendChild(el("div", { class: "msg from-lanvi" },
@@ -1126,58 +1309,238 @@
     wrap.appendChild(P("Who does what: the phone only collects numbers and sends them. The clinic’s server computes every measure and the statistics with plain code. A language model sees only the summary numbers (such as " + (have ? Math.abs(row.rho).toFixed(2) : "0.67") + "), never the daily measurements, the name or the face, and puts the result into words. Code then checks those words against the numbers."));
   }
 
-  // ---- blueprint: how the learning loop works
-  function viewBlueprint() {
-    const wrap = el("div", { class: "stack" });
-    const tab = S.bpTab || "research";
-    const tabsRow = el("div", { class: "seg", role: "group", "aria-label": "Blueprint sections" }, [["research", "The research"], ["learning", "How it learns"]].map(([k, label]) =>
-      el("button", { type: "button", class: "btn btn-small", "aria-pressed": tab === k ? "true" : "false", "data-key": "bp-" + k, on: { click: () => { S.bpTab = k; window.scrollTo(0, 0); render(); } } }, label)));
-    if (tab === "research") { wrap.appendChild(el("div", { class: "head" }, el("h1", null, "The research: can a phone notice when someone is getting worse again?"))); wrap.appendChild(tabsRow); bpResearch(wrap); return wrap; }
-    wrap.appendChild(el("div", { class: "head" }, el("h1", null, "How the system learns")));
-    wrap.appendChild(tabsRow);
-    wrap.appendChild(el("p", { class: "lead" }, "The system learns which small things suit one person. A model proposes, code decides. Nothing a model writes reaches the patient, and a lesson can only change the order of offers that we wrote ourselves."));
-    const W = 960, H = 318, BW = 262, BH = 88;
+  // ---- blueprint: what Gemini does (the page to send a Gemini-track judge to)
+  // Measured on generated sessions and series, 14 November 2026 (docs/face-raw.md, docs/health-data.md).
+  const BP_FACE_CLEAN = [["Code, fixed rule (in the product)", "121 of 121", "0 of 89", "0 of 121"],
+    ["Code, simple rule relative to the person's rest", "121 of 121", "89 of 89", "0 of 210"],
+    ["Gemini", "121 of 121", "89 of 89", "0 of 210"]];
+  const BP_FACE_HARD = [["Code, fixed rule (in the product)", "20 of 28", "0 of 13", "3 of 23"],
+    ["Code, simple rule relative to the person's rest", "28 of 28", "13 of 13", "22 of 63"],
+    ["Gemini", "28 of 28", "13 of 13", "0 of 41"]];
+  const BP_DAYS = [["Code, fixed rule (in the product)", "8 of 8", "2 of 8", "10 of 20"],
+    ["Code, simple trend scan (written for this comparison)", "0 of 8", "7 of 8", "29 of 36"],
+    ["Gemini, as reported", "8 of 8", "8 of 8", "2 of 18"],
+    ["Gemini, after code's check", "8 of 8", "8 of 8", "0 of 16"]];
+  // The second sets: generated on new seeds after the instruction and the check were frozen, read once.
+  const BP_FACE_FRESH = [["Code, fixed rule (in the product)", "44 of 59", "0 of 31", "6 of 50"],
+    ["Code, simple rule relative to the person's rest", "59 of 59", "31 of 31", "32 of 122"],
+    ["Gemini", "59 of 59", "31 of 31", "0 of 90"]];
+  // The third face set: disturbances the instruction does not name, each session read three times.
+  const BP_FACE_UNNAMED = [["Code, fixed rule (in the product)", "34 of 34", "0 of 20", "0 of 34"],
+    ["Code, simple rule relative to the person's rest", "34 of 34", "20 of 20", "12 of 66"],
+    ["Gemini (three reads of each session)", "102 of 102", "58 of 60", "0 of 160"]];
+  const BP_DAYS_FRESH = [["Code, fixed rule (in the product)", "8 of 8", "3 of 8", "5 of 16"],
+    ["Code, simple trend scan (written for this comparison)", "0 of 8", "8 of 8", "27 of 35"],
+    ["Gemini, as reported", "8 of 8", "8 of 8", "2 of 18"],
+    ["Gemini, after code's check (3 correct ones dropped)", "8 of 8", "5 of 8", "1 of 14"]];
+  function bpGemini(wrap) {
+    wrap.appendChild(el("p", { class: "lead" }, "Gemini is the second reader. It reads numbers that plain code has already read with fixed rules. In the three reading jobs code checks every item it reports, and the result is shown only to the clinician. In the fourth job it may stop a lesson that code accepted; it cannot add one. It gets no name, no date, no photo or video of the person and, unless the clinic turns on the chat mode, none of the person's words."));
+    const W = 960, H = 150, BW = 176, BH = 96, GAP = 19;
     const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "bp", role: "img",
-      "aria-label": "The learning loop: the phone sends answers, code gathers evidence, model 1 proposes lessons, code checks them, model 2 may object, accepted lessons go to memory and change the order of the next offers." });
-    const box = (x, y, n, title, l1, l2, cls) => {
+      "aria-label": "How a Gemini reading is made: numbers only, an input gate in code, Gemini, an output gate in code, then code checks each item before the clinician sees it." });
+    const boxes = [["1", "Numbers only", ["how a face moved, or", "one row per day;", "no name, no date"], "code"],
+      ["2", "Input gate · code", ["a fixed list of allowed", "fields; checked again", "right before sending"], "code"],
+      ["3", "Gemini reads", ["a fixed instruction,", "a fixed answer shape,", "nothing else"], "model"],
+      ["4", "Output gate · code", ["the exact shape, or the", "whole answer is refused", "and logged"], "code"],
+      ["5", "Each item checked", ["same as code, or only", "Gemini's and confirmed", "in the numbers, or dropped"], "code"]];
+    boxes.forEach(([n, t, lines, cls], i) => {
+      const x = 2 + i * (BW + GAP), y = 26;
+      s.appendChild(svg("rect", { x, y, width: BW, height: BH, rx: 10, class: "bp-box " + cls }));
+      s.appendChild(svg("text", { x: x + 12, y: y + 24, class: "bp-t" }, n + "  " + t));
+      lines.forEach((l, k) => s.appendChild(svg("text", { x: x + 12, y: y + 46 + k * 17, class: "bp-s" }, l)));
+      if (i < boxes.length - 1) {
+        const x1 = x + BW, x2 = x + BW + GAP, ym = y + BH / 2;
+        s.appendChild(svg("line", { x1, y1: ym, x2: x2 - 2, y2: ym, class: "bp-line" }));
+        s.appendChild(svg("polygon", { points: (x2) + "," + ym + " " + (x2 - 9) + "," + (ym - 5) + " " + (x2 - 9) + "," + (ym + 5), class: "bp-head" }));
+      }
+    });
+    wrap.appendChild(el("section", { class: "panel" }, el("figure", { class: "bp-fig" }, s,
+      el("figcaption", { class: "muted small" }, "The amber box is Gemini; the others are plain code. These five steps are the three reading jobs below. Nothing is sent to Gemini unless the patient's record allows outside processing."))));
+
+    wrap.appendChild(panel("What Gemini adds over code", null, el("div", { class: "bp-say" },
+      el("p", null, "On clean generated sessions a short code rule, relative to the person's own resting level, finds exactly what Gemini finds. Gemini is ahead in two places."),
+      el("p", null, el("b", null, "When something else moves the same numbers. "), "With talking or a moved phone in the session, Gemini made 0 wrong reports of 41; the short rule made 22 of 63. On a second set made afterwards: 0 of 90 against 32 of 122. On a third set with yawning, chewing and fading light, which Gemini's instruction does not name, though two of them resemble what it does name: 0 of 160 against 12 of 66, and Gemini missed 2 faint smiles of 60."),
+      el("p", null, el("b", null, "On slow declines in the daily numbers. "), "In the steps Gemini named 8 of 8 on both sets, with 2 wrong reports of 18 each time. After code's check the clinician is shown 8 of 8 on the first set and 5 of 8 on the second, because the check dropped three correct ones. Our fixed rule found 2 of 8 and 3 of 8. A simple trend scan we wrote for this comparison saw every planted change, but its stretches were too wide to count as a match in 9 cases, and it made 20 reports where nothing was planted."),
+      el("p", { class: "muted" }, "For talking, a moved phone and slow declines, Gemini had been told in its instruction what to look for and the code rules had not; in the third face set it had not been told by name. A more careful code rule would do better than these simple ones. Whether Gemini's lead survives real recordings decides whether it stays. That is the first step of the study we propose."))));
+
+    const th = (t) => ({ t, r: 1 });
+    const rowsOf = (data, mark) => data.map((r, ri) => el("tr", null, r.map((v, i) => el("td", { class: i ? "r num" : null }, mark && mark[0] === i && mark[1].indexOf(ri) >= 0 ? el("b", null, v) : v))));
+    wrap.appendChild(panel("What we measured", null, el("div", { class: "bp-say" },
+      el("p", null, "Nobody can collect real recordings of patients in a weekend, so we did not pretend to. We generated face sessions and daily series with events planted at known places, let every reader go through them through the same gates as real data, and counted."),
+      el("ul", { class: "plain" },
+        el("li", null, "This shows how the readers handle a known signal. It shows nothing about real faces or real lives: generated data is cleaner than any recording."),
+        el("li", null, "Counted on 14 November 2026 with gemini-3.8-flash on the setting the server uses (thinking set low, about 4 seconds a call). All 154 calls were answered. Each item was read once, except in the third face set."),
+        el("li", null, "The first sets are the ones we looked at while writing the instruction and code's check. The second sets were generated afterwards on new seeds and read once; nothing was changed after seeing them."),
+        el("li", null, "With the model's default thinking (about 28 to 40 seconds a call) the face counts were the same, and the daily count had no wrong report where the fast setting has 2."))),
+      el("h3", { class: "fr-h" }, "Face numbers, clean set: 40 generated sessions"),
+      table(["Reader", th("Strong smiles found"), th("Faint smiles found"), th("Reports with no planted smile")], rowsOf(BP_FACE_CLEAN), "bp-table", { plain: true }),
+      el("h3", { class: "fr-h" }, "Face numbers, hard set: 10 sessions with talking, the phone moving, or a mouth that rests high"),
+      table(["Reader", th("Strong smiles found"), th("Faint smiles found"), th("Reports with no planted smile")], rowsOf(BP_FACE_HARD, [3, [1, 2]]), "bp-table", { plain: true }),
+      el("h3", { class: "fr-h" }, "Face numbers, second hard set: 20 new sessions ", el("span", { class: "chip" }, "read once, after the freeze")),
+      table(["Reader", th("Strong smiles found"), th("Faint smiles found"), th("Reports with no planted smile")], rowsOf(BP_FACE_FRESH, [3, [1, 2]]), "bp-table", { plain: true }),
+      el("h3", { class: "fr-h" }, "Face numbers, third set: 12 sessions with a yawn, chewing or fading light ", el("span", { class: "chip" }, "not named in the instruction, read three times")),
+      table(["Reader", th("Strong smiles found"), th("Faint smiles found"), th("Reports with no planted smile")], rowsOf(BP_FACE_UNNAMED, [3, [1, 2]]), "bp-table", { plain: true }),
+      el("p", { class: "small" }, "The same smiles came back in all three reads in 11 of the 12 sessions; the calls run at temperature 0, so this shows repeatability, not robustness. The chewing we generated turned out too weak to mislead any reader, so the test rests on the yawn and the fading light (8 sessions). Both resemble what the instruction does name: a moving jaw, and a level that rises and stays. No disturbance overlaps a smile."),
+      el("h3", { class: "fr-h" }, "Daily numbers: 24 generated series of 84 days"),
+      el("p", { class: "small" }, "8 with a sudden dip, 8 with a slow decline, 8 with no change planted (4 plain, 2 with single odd days, 2 with a gap). Scored on the steps."),
+      table(["Reader", th("Sudden dips found"), th("Slow declines found"), th("Reports with nothing planted")], rowsOf(BP_DAYS, [3, [1, 2]]), "bp-table", { plain: true }),
+      el("h3", { class: "fr-h" }, "Daily numbers, second set: 24 new series ", el("span", { class: "chip" }, "read once, after the freeze")),
+      table(["Reader", th("Sudden dips found"), th("Slow declines found"), th("Reports with nothing planted")], rowsOf(BP_DAYS_FRESH, [3, [1, 2]]), "bp-table", { plain: true }),
+      el("div", { class: "bp-say bp-gap" },
+        el("p", null, el("b", null, "Does code's check of Gemini do anything? "), "On the first daily set it removed both of Gemini's wrong reports in the steps and kept every correct one. On the second set it did worse: it removed one wrong report, let one through, and dropped three slow declines Gemini had named correctly. So the check is not yet a judge we would trust over Gemini on slow declines; we left it as it is rather than adjust it after seeing the second set. On the face numbers it changed nothing in either set. In an earlier face run it had wrongly dropped 8 correct smiles; that was fixed on the first set."),
+        el("p", null, el("b", null, "What the fast setting costs. "), "Blink counts: on the same 50 sessions Gemini's count agreed with code's in 50 with default thinking and in 29 on the fast setting; on the second hard set in 8 of 20. The rows are the same, so this is the price of less thinking. The blink rate in the clinician's face summary is code's own."),
+        el("p", { class: "muted" }, "The fixed rule's wrong reports in the daily table are mostly short pieces of a slow decline. The trend scan covers the planted change in all 16 series; 7 count as found because the others are too wide, so its 0 of 8 on sudden dips is that width, not blindness. Of 35 planted low weekdays on the first daily set, code and Gemini each named 34; on the second, of 34 planted, code named 31 and Gemini 33. Gemini named none that was not planted. The second sets use new seeds from the same generator and the same kinds of disturbance: they test whether the result was fitted to the first sessions. The third face set tests disturbances the instruction does not name; there is no such set for the daily numbers yet. The session comparison and the second opinion (jobs 3 and 4 below) have not been measured this way."))));
+
+    const ex = el("details", { class: "bp-ex", open: true }, el("summary", null, "One call, as sent and as answered (the last session of the generated example)"),
+      el("div", { class: "exch-h" }, "Sent: instruction (the first lines of 4,600 characters)"),
+      el("pre", { class: "raw" }, "You read a short recording of how one person's face moved while they played a small game or did a breathing exercise on a phone. You do not see a face. You see numbers: for each moment, how far a few parts of the face were moved. Your job is to describe what happened in the recording, precisely and without interpretation. You do not judge mood, health or character. You never diagnose.\n…"),
+      el("div", { class: "exch-h" }, "Sent: data (6 of 225 rows; a faint smile begins at 11.0 s)"),
+      el("pre", { class: "raw" }, '{"activity":"focus","rate_hz":5.0,\n "channels":["t","smile","smile_left","smile_right","cheek","frown","blink","look_down","brow_down","brow_inner_up","jaw_open","head_pitch","head_yaw","head_roll","tracked"],\n "frames":[ …\n  [10.8, 0.07, 0.07, 0.06, 0.04, 0.05, 0.09, 0.05, 0.08, 0.04, 0.04, 8.1, 0.0, 4.0, 1],\n  [11.0, 0.14, 0.15, 0.12, 0.04, 0.04, 0.09, 0.05, 0.08, 0.03, 0.04, 7.7, 0.1, 4.2, 1],\n  [11.2, 0.18, 0.20, 0.16, 0.04, 0.05, 0.09, 0.05, 0.08, 0.03, 0.04, 7.9, 0.0, 4.1, 1],\n  [11.4, 0.18, 0.20, 0.16, 0.04, 0.05, 0.08, 0.05, 0.08, 0.03, 0.04, 7.8, -0.1, 4.0, 1],\n  [11.6, 0.18, 0.19, 0.16, 0.04, 0.05, 0.09, 0.04, 0.08, 0.04, 0.05, 8.1, -0.1, 4.1, 1],\n  [11.8, 0.15, 0.17, 0.14, 0.04, 0.04, 0.09, 0.05, 0.08, 0.04, 0.05, 7.6, 0.0, 4.2, 1],\n  … ],\n "moments_s":[10.1, 19.0, 31.8]}'),
+      el("div", { class: "exch-h" }, "Gemini answered"),
+      el("pre", { class: "raw" }, '{"smiles":[{"start_s":11.0,"end_s":12.0,"reaches_eyes":false,"side":"both"},\n           {"start_s":23.2,"end_s":25.0,"reaches_eyes":false,"side":"both"},\n           {"start_s":32.6,"end_s":33.8,"reaches_eyes":false,"side":"both"}],\n "blinks":7, "segments":[],\n "moments":[{"at_s":10.1,"smiled":true},{"at_s":19.0,"smiled":false},{"at_s":31.8,"smiled":true}],\n "overall":{"expression":"moderate","smiling":"none","gaze":"mostly_up","tracking":"good","confidence":"high"}}'),
+      el("div", { class: "exch-h" }, "What code did with it"),
+      el("pre", { class: "raw" }, "Code's fixed rule found no smile in this session (nothing reaches 0.25).\nSmile 11.0 to 12.0 s: kept as faint. Peak 0.18, clearly above the resting level around it, both mouth corners.\nSmile 23.2 to 25.0 s: kept as faint.\nSmile 32.6 to 33.8 s: kept as faint.\nNothing dropped. (This call was made with the model's default thinking.)"));
+    wrap.appendChild(el("section", { class: "panel" }, ex));
+
+    const list = (S.list && S.list.patients) || [];
+    const pidOf = (label) => { const p = list.find((q) => q.label === label); return p ? p.patient_id : null; };
+    const leo = pidOf("Example F-001"), anna = S.me && S.me.demo && S.me.demo.patient_id;
+    const go2 = (pid, tab, text) => pid ? el("a", { href: "#/p/" + encodeURIComponent(pid) + "/" + tab }, text) : el("span", { class: "muted" }, text);
+    const part = (k, v) => el("p", null, el("b", null, k + " "), v);
+    const job = (n, t, tag, sent, back, check, see) => el("div", { class: "row" }, el("div", { class: "top" }, el("span", { class: "chip" }, n), el("span", { class: "t" }, t), el("span", { class: "chip" }, tag)),
+      el("div", { class: "d bp-job" }, part("Sent:", sent), part("Gemini returns:", back), part("Code then:", check), part("See it:", see)));
+    wrap.appendChild(panel("The four jobs", null, el("div", { class: "rows" },
+      job("1", "Reads how a face moved during one short game", "measured above",
+        "about 225 rows, five per second, each with a time and up to 14 numbers (smile, cheeks, blink, brows, gaze, head angle). The phone sent numbers only; a picture never existed on the server.",
+        "every smile with its start and end, a blink count, longer stretches such as looking down, and whether a smile followed each pleasant moment.",
+        "compares each smile with its own detection on the full 30 rows per second. Our fixed rule only counts a smile above one fixed level. Gemini judges against this person's own resting level, so it also finds faint smiles. Code keeps such a smile only when the rise is really in the numbers, and shows it apart. A smile that is not in the numbers is dropped.",
+        [go2(leo, "activity", "Leo Virtanen (generated example) → Activity → Focus game"), ", the panel “Two readers on one session”. In his last session the fixed rule counts no smile and Gemini finds three faint ones."]),
+      job("2", "Reads the daily numbers from Apple Health", "measured above",
+        "up to 84 days, one row per day with a day number and the weekday instead of a date: steps, walking speed, sleep, heart-rate variability, and more when a watch sends it.",
+        "the stretches where something changed against the weeks before, sudden or as a slow slide, and the person's weekly rhythm (for example always fewer steps on Sundays).",
+        "tests each stretch against the same numbers. Our fixed rule flags a day only when it is far outside the person's normal, so it sees sudden drops and mostly misses slow slides. A stretch only Gemini names is kept when the change is in the numbers.",
+        [go2(anna, "overview", "Anna Korhonen (example) → Overview"), ", the panel “Two readers on the daily numbers” at the bottom."]),
+      job("3", "Compares one session with the same person's earlier ones", "not measured yet",
+        "the session's numbers (reaction time, errors, the face summary) and the person's own usual values, with no identity.",
+        "a few fixed words (for example slower, less expressive, blinking less), each pointing at the numbers it rests on.",
+        "recomputes every claim from the numbers and drops the ones they do not support.",
+        [go2(anna, "activity", "Anna Korhonen → Activity → Focus game"), ", the column “Model reading”."]),
+      job("4", "Gives a second opinion on what the system learned", "not measured yet",
+        "the lessons code has already accepted and the evidence rows: rounded values, days counted back from today, a random label used once.",
+        "only objections, each one of three codes: weak evidence, contradicts recent days, too broad.",
+        "does not add that lesson in this run. This is the one place where Gemini's answer is acted on without code testing it against numbers, and all it can do is hold a lesson back. It cannot add or change one.",
+        [go2(anna, "mind", "Anna Korhonen → Learned"), ", “How it learns”, and the Blueprint section of the same name."])),
+      el("p", { class: "small" }, "Still switched on in the server, from an earlier design: a reading of a movement round, which sends the path of the phone in metres and two small drawings of that path seen from above (no photo). The app no longer sends rounds.")));
+
+    wrap.appendChild(el("div", { class: "grid even" },
+      panel("How the calls are made", null, el("ul", { class: "plain" },
+        el("li", null, "Model: gemini-3.8-flash through the Gemini API. Jobs 1 and 2 send a response schema; every answer is checked for its exact shape by the output gate."),
+        el("li", null, "Asked to think little: a reading takes about 4 seconds instead of about 28 to 40. With default thinking a reading used 3,000 to 4,000 thinking tokens (two readings measured); on the fast setting the service reported none."),
+        el("li", null, "A busy or failing service is tried again, then with a second model when one is set. An empty answer is asked again with more thinking, or a larger limit when the model ran out of tokens."),
+        el("li", null, "Readings are made in the background and stored. No page waits for Gemini."),
+        el("li", null, "Every call is kept for the clinician: open a patient, then Timeline. Each Gemini row shows exactly what was sent and the raw answer."))),
+      panel("What Gemini never gets", null, el("ul", { class: "plain" },
+        el("li", null, "a name, an id, a date or a clock time"),
+        el("li", null, "a photo, a video or the shape of a face"),
+        el("li", null, "the person's typed words (one exception below)"),
+        el("li", null, "anything at all unless the patient's record allows outside processing")),
+        el("p", { class: "muted small" }, "The exception, off unless the clinic turns it on: a chat mode in which Gemini writes Lanvi's short reply to a note that does not ask for help. Then that note and up to six earlier turns of the same day are sent, without any name or id, and code checks the reply before it is shown. In the demo the consent switch is set in the example data; a screen where the patient sets it is not built yet."))));
+    wrap.appendChild(panel("Where it is in the code", null, el("ul", { class: "plain" },
+      el("li", null, "Public repository: github.com/mathewstars/thejunction"),
+      el("li", null, "What Gemini is told: engine/clinic_engine/data/frames_prompt.txt and days_prompt.txt"),
+      el("li", null, "The gates: engine/clinic_engine/mind/gates.py. The check of each item: mind/frame_reading.py and mind/day_reading.py"),
+      el("li", null, "The call and its retries: engine/clinic_engine/outreach.py"),
+      el("li", null, "The generated test sets: engine/clinic_engine/frames_reference.py and days_reference.py"),
+      el("li", null, "Written out for a reader: docs/face-raw.md, docs/health-data.md, docs/research-proposal.md"))));
+  }
+
+  // The last checks of the example patient, counted from the stored runs.
+  function bpLearnCount() {
+    const rv = (S.bpDetail && S.bpDetail.reviews) || [];
+    if (!rv.length) return null;
+    const sum = (k) => rv.reduce((a, r) => a + (Array.isArray(r[k]) ? r[k].length : (Number(r[k]) || 0)), 0);
+    const g = rv.filter((r) => r.models && r.models.level2 === "replied").length;
+    return el("p", { class: "bp-count" }, "Counted on the example patient's stored runs: in the last " + rv.length + " checks, lessons were kept or renewed " + sum("accepted") + " times and " + sum("refused") + " proposals were dropped by code. Gemini answered in " + g + " of those checks. Example data: this shows the mechanism running, not that the lessons are right.");
+  }
+
+  // ---- blueprint: how the system learns, told with one example
+  function bpLearning(wrap) {
+    wrap.appendChild(el("p", { class: "lead" }, "The system learns one thing: which of our six small offers to show this person first, and at which time of day. It learns it from what the person did with earlier offers and how they moved in the days after."));
+
+    const W = 960, H = 150, BW = 290, BH = 40;
+    const s = svg("svg", { viewBox: "0 0 " + W + " " + H, class: "bp", role: "img",
+      "aria-label": "The six steps as a loop: what happened, a model proposes a lesson, code checks it, Gemini may object, the order of offers changes, and the check runs again." });
+    const box = (x, y, n, title, cls) => {
       s.appendChild(svg("rect", { x, y, width: BW, height: BH, rx: 10, class: "bp-box " + cls }));
       s.appendChild(svg("text", { x: x + 14, y: y + 26, class: "bp-t" }, n + "  " + title));
-      s.appendChild(svg("text", { x: x + 14, y: y + 48, class: "bp-s" }, l1));
-      s.appendChild(svg("text", { x: x + 14, y: y + 66, class: "bp-s" }, l2));
     };
-    const arrow = (x1, y1, x2, y2, label, lx, ly, anchor) => {
+    const arrow = (x1, y1, x2, y2) => {
       s.appendChild(svg("line", { x1, y1, x2, y2, class: "bp-line" }));
       const ang = Math.atan2(y2 - y1, x2 - x1), hx = (da, len) => (x2 - len * Math.cos(ang + da)).toFixed(1) + "," + (y2 - len * Math.sin(ang + da)).toFixed(1);
       s.appendChild(svg("polygon", { points: x2 + "," + y2 + " " + hx(0.4, 10) + " " + hx(-0.4, 10), class: "bp-head" }));
-      if (label) s.appendChild(svg("text", { x: lx, y: ly, class: "bp-l", "text-anchor": anchor || "middle" }, label));
     };
-    const X = [10, 349, 688], Y = [14, 216];
-    box(X[0], Y[0], "1", "The person", "offers answered, sessions played,", "a few words written", "code");
-    box(X[1], Y[0], "2", "Evidence · code", "what was offered, what was done,", "how the next days went", "code");
-    box(X[2], Y[0], "3", "Model 1 proposes", "lessons and up to 3 questions,", "only from lists it is given", "model");
-    box(X[2], Y[1], "4", "Check · code", "every proposal must point at evidence", "that supports it, or it is dropped", "code");
-    box(X[1], Y[1], "5", "Model 2 may object", "weak evidence, contradicts recent days,", "too broad", "model");
-    box(X[0], Y[1], "6", "Memory", "accepted lessons, open questions,", "the person's own rules", "code");
-    arrow(X[0] + BW, Y[0] + BH / 2, X[1], Y[0] + BH / 2, "numbers", (X[0] + BW + X[1]) / 2, Y[0] + BH / 2 - 8);
-    arrow(X[1] + BW, Y[0] + BH / 2, X[2], Y[0] + BH / 2, "anonymous", (X[1] + BW + X[2]) / 2, Y[0] + BH / 2 - 8);
-    arrow(X[2] + BW / 2, Y[0] + BH, X[2] + BW / 2, Y[1], "raw reply", X[2] + BW / 2 + 10, (Y[0] + BH + Y[1]) / 2 + 4, "start");
-    arrow(X[2], Y[1] + BH / 2, X[1] + BW, Y[1] + BH / 2, "kept", (X[1] + BW + X[2]) / 2, Y[1] + BH / 2 - 8);
-    arrow(X[1], Y[1] + BH / 2, X[0] + BW, Y[1] + BH / 2, "not objected", (X[0] + BW + X[1]) / 2, Y[1] + BH / 2 - 8);
-    arrow(X[0] + BW / 2, Y[1], X[0] + BW / 2, Y[0] + BH, "changes only the order of the next offers", X[0] + BW / 2 + 10, (Y[0] + BH + Y[1]) / 2 + 4, "start");
+    const X = [6, 335, 664], Y = [10, 96];
+    box(X[0], Y[0], "1", "What happened", "code");
+    box(X[1], Y[0], "2", "A model proposes a lesson", "model");
+    box(X[2], Y[0], "3", "Code checks the lesson", "code");
+    box(X[2], Y[1], "4", "Gemini may object", "model");
+    box(X[1], Y[1], "5", "The order of offers changes", "code");
+    box(X[0], Y[1], "6", "The check runs again", "code");
+    arrow(X[0] + BW, Y[0] + BH / 2, X[1], Y[0] + BH / 2);
+    arrow(X[1] + BW, Y[0] + BH / 2, X[2], Y[0] + BH / 2);
+    arrow(X[2] + BW / 2, Y[0] + BH, X[2] + BW / 2, Y[1]);
+    arrow(X[2], Y[1] + BH / 2, X[1] + BW, Y[1] + BH / 2);
+    arrow(X[1], Y[1] + BH / 2, X[0] + BW, Y[1] + BH / 2);
+    arrow(X[0] + BW / 2, Y[1], X[0] + BW / 2, Y[0] + BH);
     wrap.appendChild(el("section", { class: "panel" }, el("figure", { class: "bp-fig" }, s,
-      el("figcaption", { class: "muted small" }, "Amber boxes are models, the others are plain code. The loop runs after new answers arrive and once a day."))));
-    const step = (n, t, body) => el("div", { class: "row" }, el("div", { class: "top" }, el("span", { class: "chip" }, n), el("span", { class: "t" }, t)), el("div", { class: "d" }, body));
-    wrap.appendChild(panel("Step by step", null, el("div", { class: "rows" },
-      step("1", "The person answers", "Each offer ends as did it, not today or no answer. Sessions and daily steps arrive from the phone. Typed words are turned into labels on this server and are never part of learning as text."),
-      step("2", "Code gathers the evidence", "One row per offer: the action, the situation (weekday, time of day, what was held), the answer, and whether the following days were better or worse against the person's own normal. Each row gets a short reference that means nothing outside this one request."),
-      step("3", "Model 1 proposes", "The local model receives those rows and lists of allowed actions, situations and reason codes. It returns lessons of the form “prefer or avoid this action in this situation, because of these rows”, and at most three questions it would like answered."),
-      step("4", "Code checks every proposal", "A lesson is kept only if its rows exist, there are enough of them, and they really point the way the lesson claims. A question already asked is dropped. Anything outside the lists is dropped. Every drop is written to the refusal log with its reason."),
-      step("5", "Model 2 gives a second opinion", "A second model sees the kept lessons with their evidence, with no identity, and can only object with one of three codes. An objection removes the lesson. It cannot add one."),
-      step("6", "Memory and the next offer", "Accepted lessons go into the person's memory. When the next offer is due, code picks from our fixed list of actions; lessons move suited actions up and unsuited ones down. The person's own rules, such as quiet hours, always win."))));
-    wrap.appendChild(el("div", { class: "grid" },
-      panel("A lesson can", null, el("ul", { class: "plain" }, el("li", null, "move an action up or down in the order of offers"), el("li", null, "apply only in the situation it was learned in"), el("li", null, "be withdrawn when later evidence points the other way"))),
-      panel("A lesson cannot", null, el("ul", { class: "plain" }, el("li", null, "add an action that is not on our list"), el("li", null, "write or change any text the person sees"), el("li", null, "open, raise or close attention, or send an alert"), el("li", null, "override the person's own rules")))));
-    wrap.appendChild(panel("See it on real runs", null, el("p", { class: "small" }, "Open a patient, then Learned. “How it learns” lists each run with exactly what each model was sent and what it answered. The Timeline shows the same exchange inside the trigger that caused it, next to what code kept and dropped.")));
+      el("figcaption", { class: "bp-cap" }, "Amber boxes are models: a small one on the clinic's own hardware proposes, Gemini (optional, outside) may object. The others are plain code. A model only proposes or objects; code decides. The six steps below follow these boxes."))));
+
+    const cell = (v) => el("td", null, v);
+    const ev = [["3 weeks ago, evening", "Breathe with Lanvi", "did it", "yes"], ["3 weeks ago, afternoon", "Breathe with Lanvi", "not today", "not measured"],
+      ["2½ weeks ago, evening", "Breathe with Lanvi", "did it", "yes"], ["2½ weeks ago, afternoon", "Breathe with Lanvi", "not today", "not measured"],
+      ["2 weeks ago, evening", "Breathe with Lanvi", "did it", "yes"], ["2 weeks ago, afternoon", "Breathe with Lanvi", "not today", "not measured"]];
+    const step = (n, t, ...body) => el("div", { class: "row" }, el("div", { class: "top" }, el("span", { class: "chip" }, n), el("span", { class: "t" }, t)), el("div", { class: "d bp-job" }, body));
+    const para = (t) => el("p", null, t);
+    wrap.appendChild(panel("One example, start to finish", null, el("div", { class: "rows" },
+      step("1", "What happened", para("Our six offers have a usual order: a breathing minute, the spark game, a short walk, some daylight, reaching out to someone, the evening check-in. Lanvi offers the first one. So over three weeks this person was offered the breathing minute six times, and code wrote down what happened:"),
+        table(["When", "Offer", "Her answer", "Moved more afterwards?"], ev.map((r) => el("tr", null, r.map((v) => cell(v)))), "bp-table narrow", { plain: true }),
+        para("“Moved more” is measured by the phone: her average movement on the two days after, compared with the day of the offer. An offer she did not take has no “afterwards”, so nothing is measured. The table holds no words she typed.")),
+      step("2", "A model proposes a lesson", para("Code looks first. It sees both patterns, but they point opposite ways for the same offer, and its rule then is to learn nothing. A small model on the clinic's own hardware may still propose each pattern for its own time of day:"),
+        el("ul", { class: "plain" }, el("li", null, "Prefer the breathing minute in the evening: done three times, and she moved more afterwards."), el("li", null, "Avoid the breathing minute in the afternoon: offered three times, not done.")),
+        para("The model cannot write a lesson freely. It fills in a form: one of our six offers, “prefer” or “avoid”, a time of day (morning, afternoon, evening or any time), one of eight fixed reasons, and the rows it rests on.")),
+      step("3", "Code checks the lesson", para("Code counts again, without the model. A lesson is kept only if it points at three or more rows, each of those rows shows what the lesson claims, and at least six in ten of this offer's rows at that time of day show the same. Both lessons pass. A lesson that fails is dropped and written to the log with the reason."),
+        para("One exception to the three rows: when the person answers one of our fixed questions with yes, that single answer is enough.")),
+      step("4", "Gemini may object", para("Gemini, an outside model that is optional and only used when the patient's record allows it, sees the rows and the kept lessons with no name or id. It can only answer “weak evidence”, “contradicts recent days” or “too broad”. An objection stops a new lesson in that run. It cannot add one. Here it objects to neither.")),
+      step("5", "The order of offers changes", para("In the evening the breathing minute stays first. In the afternoon it drops two places, so her first offer becomes the spark game, then a short walk. The morning is unchanged."),
+        para("That is the effect: a different first offer at one time of day. If she told Lanvi at the start what helps her, that order is used until the first lesson exists. The app can show her one fixed sentence about what changed, and she can reject it.")),
+      step("6", "The check runs again", para("The check runs after every answer and about once a day. A lesson is withdrawn when fewer than six in ten rows still back it, or when an opposite lesson for the same offer and time is accepted. These two lessons also lapse after 30 days unless the model proposes them again. She can reject a lesson in the app; it returns only when a row it did not rest on before supports it."),
+        para("A limit today: rows never age out, so a lesson that code proposes itself stays as long as no answers go against it.")))));
+
+    wrap.appendChild(panel("What this does not prove", null, el("div", { class: "bp-say" }, el("ul", { class: "plain" },
+      el("li", null, "“Moved more” means: her average movement on the next two days, minus the day of the offer, rose by at least half of her usual day-to-day spread. That threshold is an estimate, not calibrated on patients."),
+      el("li", null, "Offers are made on days that already look off, so the next days often look better whatever was offered."),
+      el("li", null, "Three rows are a habit worth trying, not a proven effect. There is no test of chance here."),
+      el("li", null, "Only the first offer is ever shown, so the system gathers answers almost only about whatever is first. It cannot find out that the fifth offer would suit her."),
+      el("li", null, "That is why a lesson can only reorder six harmless offers, and why it is dropped when her answers turn."))),
+      bpLearnCount()));
+    wrap.appendChild(el("div", { class: "grid even" },
+      panel("A lesson can", null, el("ul", { class: "plain" }, el("li", null, "move one of our six offers up or down in the order"), el("li", null, "apply at one time of day, or all day"), el("li", null, "be withdrawn when later answers point the other way"), el("li", null, "show the person one fixed sentence about what changed, which they can reject")),
+        el("p", { class: "small muted" }, "The check may also ask her one of four fixed questions (yes, no, not sure).")),
+      panel("A lesson cannot", null, el("ul", { class: "plain" }, el("li", null, "add an offer that is not on our list"), el("li", null, "write or change any other text the person sees"), el("li", null, "mark the person for the clinic's attention, or send an alert"), el("li", null, "override the person's own rules, such as quiet hours")))));
+    wrap.appendChild(panel("See it on real runs", null, el("p", { class: "bp-cap" }, "Open a patient and choose the tab “Learned”. It lists each run with what each model was sent and what it answered, and each lesson with the rows behind it.")));
+  }
+
+  function viewBlueprint() {
+    const wrap = el("div", { class: "stack" });
+    const tab = S.bpTab || "research";
+    const tabsRow = el("div", { class: "seg", role: "group", "aria-label": "Blueprint sections" }, [["research", "The research"], ["gemini", "What Gemini does"], ["learning", "How it learns"]].map(([k, label]) =>
+      el("button", { type: "button", class: "btn btn-small", "aria-pressed": tab === k ? "true" : "false", "data-key": "bp-" + k, on: { click: () => { S.bpTab = k; history.replaceState(null, "", "#/blueprint/" + k); window.scrollTo(0, 0); render(); } } }, label)));
+    const title = tab === "research" ? "The research: can a phone notice when someone is getting worse again?" : tab === "gemini" ? "What Gemini does here" : "How the system learns";
+    wrap.appendChild(el("div", { class: "head" }, el("h1", null, title)));
+    wrap.appendChild(tabsRow);
+    if (tab === "research") bpResearch(wrap);
+    else if (tab === "gemini") bpGemini(wrap);
+    else bpLearning(wrap);
     return wrap;
   }
 

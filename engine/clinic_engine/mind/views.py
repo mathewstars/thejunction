@@ -275,9 +275,18 @@ def progress(mind, repo: PatientRepo, view: View, rows: list[dict]) -> dict:
 
 
 def _reply_line(note: dict) -> str | None:
-    """The fixed line Lanvi answered a note with. It is one of our own lines, never model text."""
+    """What Lanvi answered a note with: the model-written reply when there is one
+    (CHAT_MODE=gemini, marked by _reply_by), else the fixed line."""
+    written = note.get("reply") or {}
+    if written.get("text"):
+        return written["text"]
     from .lines import reply_templates
     return reply_templates().get((note.get("classification") or {}).get("template_id"))
+
+
+def _reply_by(note: dict) -> str:
+    """"model" when Gemini wrote Lanvi's reply (checked by code), else "fixed"."""
+    return "model" if (note.get("reply") or {}).get("text") else "fixed"
 
 
 def clinician_detail(mind, repo: PatientRepo) -> dict:
@@ -295,6 +304,7 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
     return {
         **line,
         "share_notes": share,
+        "chat_mode": mind.settings.chat_mode,
         "allow_outside_processing": bool(patient.get("allow_outside_processing")),
         "timeline": [{"date": s["date"], "z": s["z"], "movement_z": s["movement_z"],
                       "low": s["movement_z"] is not None and s["movement_z"] <= view.th.low_day_z}
@@ -317,12 +327,15 @@ def clinician_detail(mind, repo: PatientRepo) -> dict:
         "questions": repo.questions(),
         "reviews": repo.reviews()[-10:],
         "activities": activities_block(mind, repo, view, share),
+        "days_reading": days_reading_out(mind, repo),
+        "health_types": health_types_out(repo),
         "lanvi": {k: v for k, v in xp.facts(xp.load(repo)).items() if k in ("xp", "stage")},
         "preferences": repo.preferences(),
         "notes": [{"id": n["id"], "at": n["at"], "source": n.get("source", "note"),
                    "classification": {k: n["classification"][k]
                                       for k in ("mood", "topic", "crisis", "asks_for_help", "model")},
                    "reply": _reply_line(n),
+                   "reply_by": _reply_by(n),
                    **({"text": n["text"]} if share else {})} for n in repo.notes()],
         "refusal_log": refusals,
         "notify_log": notify_log,
@@ -359,6 +372,92 @@ def _reading_out(a: dict) -> dict:
     return out
 
 
+_AGREEMENT_KEYS = ("smiles_reported", "smiles_confirmed", "smiles_corrected", "smiles_matched",
+                   "smiles_faint", "smiles_brief", "smiles_inside_long", "smiles_dropped", "smiles_not_in_numbers",
+                   "smiles_poor_match", "smiles_missed", "smiles_code",
+                   "smile_precision", "smile_recall", "smile_start_error_s",
+                   "segments_reported", "segments_confirmed", "blinks_model", "blinks_code",
+                   "moments_reported", "moments_agree", "overall_same")
+
+
+def frames_reading_out(a: dict) -> dict:
+    """The frame reading for the clinician: what the model reported, as code
+    confirmed, corrected or dropped it; the faint smiles the model found under
+    code's fixed onset (the rise is in the numbers); the smiles of code's that
+    the model did not report. Counts, times and fixed words only; never the
+    frames. The same keys in every state (null or empty until ready)."""
+    fr = a.get("frames_reading") or {"status": "not_applicable"}
+    ready = fr.get("status") == "ready"
+    rd = fr.get("reading") or {}
+    ag = fr.get("agreement") or {}
+    return {
+        "status": fr.get("status", "not_applicable"),
+        "reason": fr.get("reason"),
+        "read_by": fr.get("read_by"), "model": fr.get("model"),
+        "checked_by": fr.get("checked_by"), "at": fr.get("at"),
+        "agreement": {k: ag.get(k) for k in _AGREEMENT_KEYS} if ready else None,
+        "overall": {k: (rd.get("overall") or {}).get(k) for k in
+                    ("expression", "smiling", "gaze", "tracking", "confidence")} if ready else None,
+        "overall_checks": rd.get("overall_checks") if ready else None,
+        "blinks": rd.get("blinks") if ready else None,
+        "smiles": [{k: x.get(k) for k in ("start_s", "end_s", "reaches_eyes", "side", "status",
+                                          "corrected", "overlap", "code_start_s", "code_end_s",
+                                          "start_error_s", "end_error_s")}
+                   for x in rd.get("smiles", [])],
+        "faint_smiles": [{k: x.get(k) for k in ("start_s", "end_s", "status", "peak", "rise",
+                                                "rest")}
+                         for x in rd.get("faint_smiles", [])],
+        "missed_smiles": [{k: x.get(k) for k in ("start_s", "end_s")}
+                          for x in rd.get("missed_smiles", [])],
+        "resting_smile": rd.get("resting_smile") if ready else None,
+        "segments": [{k: x.get(k) for k in ("start_s", "end_s", "what", "code_share")}
+                     for x in rd.get("segments", [])],
+        "moments": [{k: x.get(k) for k in ("at_s", "smiled", "model", "status")}
+                    for x in rd.get("moments", [])],
+        "dropped": [{k: x.get(k) for k in ("item", "start_s", "end_s", "at_s", "what", "reason")
+                     if x.get(k) is not None} for x in fr.get("dropped", [])],
+    }
+
+
+def days_reading_out(mind, repo: PatientRepo) -> dict:
+    """The day reading for the clinician: the stretches the model named as code
+    confirmed them (the same as one of code's, or the model's alone with the
+    change confirmed in the numbers), code's stretches the model did not name,
+    the weekly rhythm, and the series that was sent (with the date of its first
+    row, which was not sent). The same keys in every state."""
+    dr = repo.get("research/days_reading.json") or {}
+    state = mind.days_reading_state(repo)
+    status = dr.get("status") if dr.get("status") in ("ready", "failed") else state
+    ready = status == "ready"
+    rd = dr.get("reading") or {}
+    return {
+        "status": status, "reason": dr.get("reason") if status == "failed" else None,
+        "read_by": dr.get("read_by") if dr else None, "model": dr.get("model") if dr else None,
+        "checked_by": dr.get("checked_by") if dr else None, "at": dr.get("at") if dr else None,
+        "agreement": dr.get("agreement") if ready else None,
+        "stretches": rd.get("stretches", []) if ready else [],
+        "missed_stretches": rd.get("missed_stretches", []) if ready else [],
+        "weekly": rd.get("weekly", []) if ready else [],
+        "weekly_missed": rd.get("weekly_missed", {}) if ready else {},
+        "gaps": rd.get("gaps", []) if ready else [],
+        "overall": rd.get("overall") if ready else None,
+        "overall_checks": rd.get("overall_checks") if ready else None,
+        "dropped": dr.get("dropped", []) if ready else [],
+        "stream": dr.get("stream") if ready else None,
+    }
+
+
+def health_types_out(repo: PatientRepo) -> list[dict]:
+    """The HealthKit types stored for this person: counts and the last day only."""
+    out = []
+    for h in repo.docs("health"):
+        days = h.get("days") or {}
+        if h.get("type") and days:
+            out.append({"type": h["type"], "unit": h.get("unit"), "days": len(days),
+                        "first_day": min(days), "last_day": max(days)})
+    return sorted(out, key=lambda x: x["type"])
+
+
 def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
     tz = repo.tz()
     notes = {n["id"]: n for n in repo.notes()} if share else {}
@@ -393,6 +492,7 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                 s["raw"] = None if not info else {k: info.get(k) for k in (
                     "rate_hz", "frames", "tracked_share", "channels")}
                 s["reading"] = _reading_out(a)
+                s["frames_reading"] = frames_reading_out(a)
             else:
                 s["good_things"] = [item(g, "good_things") for g in a.get("good_things") or []]
                 s["plan"] = item(a.get("plan"), "plans")
@@ -420,7 +520,15 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                       "finished": sum(1 for a in done if a["ended_by"] == "finished")}
         return out
 
-    return {**by_type, "counts": {"last_7_days": counts(7), "last_28_days": counts(28)}}
+    # The two readers over every session the model has read: sums, the two
+    # shares for smiles, and how many sessions they cover.
+    from .frame_reading import aggregate
+    read = [a["frames_reading"]["agreement"] for t in ("focus", "breathing")
+            for a in view.of_type(t)
+            if (a.get("frames_reading") or {}).get("status") == "ready"
+            and a["frames_reading"].get("agreement")]
+    return {**by_type, "counts": {"last_7_days": counts(7), "last_28_days": counts(28)},
+            "frames_agreement": aggregate(read)}
 
 
 def clinician_round(repo: PatientRepo, round_id: str, mind=None) -> dict | None:

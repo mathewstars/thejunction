@@ -2,8 +2,9 @@
 
 Kept per patient, next to the trace, so a clinician can open any model step and
 read it. The trace itself stays codes and numbers only; this is the one place
-that holds the full prompt. A note's prompt contains the patient's words, so
-`view()` hides that message unless the patient shares their notes.
+that holds the full prompt. A note's prompt contains the patient's words (and so does
+a chat prompt, CHAT_MODE=gemini), so `view()` hides those messages unless the
+patient shares their notes.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from ..security import new_id
 from . import trace as trace_mod
 
 MAX_REPLY = 20000
-PATIENT_WORD_TASKS = ("note",)
+PATIENT_WORD_TASKS = ("note", "chat")
 HIDDEN = "[the patient's words are not shared with the clinic]"
 
 

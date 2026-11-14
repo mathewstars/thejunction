@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Path, Request
 from .. import service
 from ..mind import views
 from ..models import (ActivityIn, ActivityOut, ActivityReadingOut, AnalysisOut, AnswerIn,
+                      HealthSummaryIn, HealthSummaryOut,
                       CheckinOptionsOut, DailyIn, DailyOut, FeedbackIn, NoteIn, NoteOut, PairIn,
                       PairOut, PreferencesIn, PreferencesOut, RoundIn, RoundOut, RuleWrap,
                       TodayOut, WanderingAnswerIn)
@@ -39,6 +40,25 @@ async def daily(body: DailyIn, request: Request, p: Principal = Depends(device_o
     and never used for the baseline."""
     days = [d.model_dump(mode="json") for d in body.days]
     return await service.ingest_days(ctx_of(request), p, days, rid_of(request))
+
+
+@router.post("/health/summary", response_model=HealthSummaryOut, responses=AUTH_ERRORS,
+             summary="Upload an Apple Health summary: any HealthKit type, one value per day")
+async def health_summary(body: HealthSummaryIn, request: Request,
+                         p: Principal = Depends(device_only)):
+    """For the HealthKit harness app and a watch companion. Post the harness's
+    `HealthDataSummary` JSON as it is: only `metrics[].typeIdentifier`, `unit`,
+    `aggregation` and `daily[].day`, `count`, `sum`, `mean` are read; everything
+    else is ignored and never stored (source and device names, single samples).
+
+    Every type is stored per day (upsert by type and day; the most recent 400
+    days are kept). Steps, walking speed (m/s), sleep (hours) and HRV (SDNN, ms)
+    also fill the day records, with the same checks as `POST /v1/daily`, so the
+    comparison with the person's own normal sees them. Send it as often as you
+    like; unchanged days are not written again. The body may be up to 4 MiB:
+    send about 90 days per call, or the types in several calls."""
+    return await service.ingest_health(ctx_of(request), p, body.model_dump(mode="json"),
+                                       rid_of(request))
 
 
 @router.post("/activities", response_model=ActivityOut,
@@ -152,8 +172,15 @@ async def feedback(body: FeedbackIn, request: Request, p: Principal = Depends(de
 async def notes(body: NoteIn, request: Request, p: Principal = Depends(device_only)):
     """The text is untrusted data. It is classified into enums (code lexicon
     plus the local model through the gates), never followed as an
-    instruction, never logged, and never sent outside the server. The reply
-    is a fixed template. When `crisis` is true the help block is included."""
+    instruction and never logged. When `crisis` is true the help block is
+    included and the reply is the fixed help line.
+
+    CHAT_MODE=fixed (default): the reply is a fixed template and the text is
+    never sent outside the server.
+    CHAT_MODE=gemini: for a note that did not open the help screen, and only
+    for a patient who allowed outside processing, the note and today's earlier
+    turns go to Gemini, which writes Lanvi's reply (`template_id: gemini`),
+    checked by code. Any failure gives the fixed template."""
     return await service.record_note(ctx_of(request), p, body.id, body.text, rid_of(request))
 
 

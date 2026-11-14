@@ -1,0 +1,11 @@
+// Optional. Builds already talk to the live server, https://lanvi.app, and ask
+// for the clinic's one-time pairing code on first run (ask Mathew for one).
+//
+// Copy this file to Config.xcconfig (git-ignored) only to point the app at
+// another server, for example a local engine, or to pair silently with a test code.
+// Leave the code empty to get the pairing screen. Never commit a real code.
+//
+// In xcconfig files "//" starts a comment, so write the address with $()
+// between the two slashes, like this: https:/$()/example.org
+LANVI_SERVER_URL = http:/$()/127.0.0.1:8080
+LANVI_PAIRING_CODE =

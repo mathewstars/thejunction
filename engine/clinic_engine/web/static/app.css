@@ -370,3 +370,37 @@ ul.plain.big li, .d.big { font-size: 14.5px; line-height: 1.45; }
 .rb-pt { fill: var(--ink); stroke: var(--bg); stroke-width: 2.5; }
 .bp-sub { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 0; }
 .bp.mini { max-width: none; }
+
+/* The frame reading: code's fixed rule and the model on one session. */
+.chart.fr .fr-onset { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 5 4; }
+.chart.fr .fr-rest { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 3; }
+.chart.fr .fr-bar.code { fill: var(--muted); }
+.chart.fr .fr-bar.same { fill: var(--ink); }
+.chart.fr .fr-bar.faint { fill: var(--sun); }
+.chart.fr .fr-bar.drop { fill: none; stroke: var(--ember); stroke-width: 1.5; stroke-dasharray: 3 2; }
+.chart.fr .fr-moment { fill: var(--muted); }
+.fr-key { display: inline-block; width: 14px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+.fr-key.code { background: var(--muted); }
+.fr-key.same { background: var(--ink); }
+.fr-key.faint { background: var(--sun); }
+.fr-key.drop { border: 1.5px dashed var(--ember); }
+.readout.fr-faint b { color: var(--sun); }
+.fr-note { font-size: 12px; margin: 10px 0 0; max-width: 78ch; }
+.fr-h { font-size: 13px; font-weight: 700; margin: 18px 0 8px; }
+
+/* Blueprint: body text of the Gemini and learning sections at reading size. */
+.row .d.bp-job { font-size: 14px; color: var(--ink); max-width: 96ch; }
+.row .d.bp-job p { margin: 0 0 6px; }
+.row .d.bp-job ul { margin: 0 0 6px; }
+.bp-say { font-size: 14px; max-width: 96ch; }
+.bp-say p { margin: 0 0 8px; }
+.bp-table { max-width: none; }
+.bp-table.narrow { max-width: 640px; margin: 2px 0 8px; }
+.bp-table td b { color: var(--sun); }
+.grid.even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 860px) { .grid.even { grid-template-columns: minmax(0, 1fr); } }
+.bp-ex summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+.bp-ex pre.raw { white-space: pre-wrap; }
+.bp-cap { font-size: 14px; color: var(--muted); max-width: 96ch; margin: 6px 0 0; }
+.bp-count { font-size: 14px; max-width: 96ch; margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
+.bp-gap { margin-top: 16px; }

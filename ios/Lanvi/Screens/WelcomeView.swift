@@ -4,13 +4,15 @@ struct WelcomeView: View {
     var demo: Bool
     var onStart: () -> Void
 
+    @Environment(AppStore.self) private var store
+
     @State private var bounce = 0
 
     var body: some View {
         GeometryReader { geo in
             let hill = geo.size.height * 0.56
             ZStack(alignment: .top) {
-                SkyScene(top: Theme.skyTop, bottom: Theme.skyBottom, hillTop: hill)
+                PaintedWorld(scene: store.worldScene)
 
                 LanviView(pose: .cheer, size: 250, bounceTrigger: bounce)
                     .position(x: geo.size.width / 2, y: hill - 125 + 16)

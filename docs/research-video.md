@@ -2,7 +2,26 @@
 
 A short second video that explains only the research idea: can a phone notice when someone is getting worse again? It is for the research track and for anyone who has never heard of a PHQ-9. The main two-minute pitch video is a different piece and is not covered here.
 
-Status: a draft script and shot list. Nothing has been generated or recorded yet.
+Status on Saturday 14 November, evening: the plan below was built once (two versions) and judged too slow. The current cut is **the rescue film**, described in the next section; the older plan is kept below it for the shot prompts and the wording rules, which still hold.
+
+## The rescue film (current cut)
+
+One story, under two minutes, cut fast: the clinic door closes behind Anna; on the way home she finds an abandoned Arctic fox kit and takes him in; every day she does one small thing for him; what she does not know is that he keeps watch over her (steps, smiles, reactions, numbers only, beside the clinic's weekly score); in November the lines turn and at one at night she writes "I need help"; her clinician's phone lights up; the honest close (Anna is an example, nobody knows yet, the study we want to run); last line: "She thought she was saving a fox. He kept the light on for her."
+
+How it is made, so anyone can rebuild it (`video/`):
+
+| File | Does |
+|---|---|
+| `video/build.py` | The shot list, keyed to times on the soundtrack. Uses a generated clip where one exists and otherwise the still with a slow move, moves every cut onto a beat, checks each shot's length, and joins picture and sound. |
+| `video/beats.py` | Finds the beats of the soundtrack (`beats.json`). |
+| `video/chart.py` | Draws the chart that builds itself, from the example patient's series as the server returns it (`anna.json`). |
+| `video/track.json` | The narration with the time of each sentence. |
+
+Not in the repository, because they are large or generated: the stills and clips (Higgsfield: stills first, then each still turned into a 5-second clip, 720p), and the soundtrack (Suno Speech, one take with voice and music; long pauses shortened and the whole take played 1.3 times faster). `build.py` expects them beside it in `stills/`, `clips/` and `track.m4a`, and the earlier clips and overlays one folder up.
+
+Rules kept from the first plan: generated footage only tells the story and is labelled "Illustrative footage, generated"; every chart and screen is real and labelled "Example data"; no claim that the phone detects or predicts anything. In the app the fox is rescued once and never suffers because of the person (`docs/game-design-rescue.md`).
+
+Open before it is final: someone has to listen to the soundtrack (the joins where pauses were shortened, and whether "Anna" is said clearly), and the clips can be rendered again at a higher quality once the cut is approved.
 
 ## What it must do
 
@@ -18,7 +37,7 @@ Status: a draft script and shot list. Nothing has been generated or recorded yet
 | 2. The phone is there | 0:12 to 0:22 | Generated footage, then the real app |
 | 3. What we compare | 0:22 to 0:40 | Real screen: Blueprint, "The research" |
 | 4. Two answers | 0:40 to 0:58 | Real screen: Anna's Research, then Elina's |
-| 5. The open question | 0:58 to 1:12 | Real screen, then one generated closing shot |
+| 5. The open question | 0:58 to 1:12 | Real screen, then the question as text |
 
 Rule for the whole video: **generated footage tells the story, real screen recordings carry every piece of evidence.** No generated app screens, charts or patients presented as real.
 
@@ -38,7 +57,7 @@ Rule for the whole video: **generated footage tells the story, real screen recor
 
 **4. Two answers (0:40 to 0:58)**
 
-> This is Anna, an example. When her score was higher, she smiled less, reacted more slowly and walked less. [switch] And this is Elina, who stayed well. Her score hardly moved, and the tool says: we cannot tell. It does not find patterns that are not there.
+> This is Anna, an example. When her score was higher, she smiled less, reacted more slowly and walked less. The tool is careful even here: partly consistent, low confidence, because thirteen scores are few. [switch] And this is Elina, who stayed well. Her score hardly moved, and the tool says: we cannot tell. Here it refuses to conclude.
 
 **5. The open question (0:58 to 1:12)**
 
@@ -55,7 +74,6 @@ Keep every shot 3 to 5 seconds, no faces in close-up, no text in the image, natu
 | G3 | Part 1 | A wall calendar in a hallway with one date circled weeks ahead, soft daylight, slow push in. |
 | G4 | Part 2 | A phone lying on a wooden bedside table next to a glass of water, early morning light, the screen lights up softly, static shot. |
 | G5 | Part 2 | Close on hands holding a phone in a kitchen, thumb tapping the screen in a calm rhythm, face not visible, morning light. |
-| G6 | Part 5 | The same woman from behind, walking along a snowy path between birch trees in daylight, steady pace, the camera follows at a distance. |
 
 Do not generate: the app, the fox, the clinic page, any chart, any doctor looking at a screen with data, any face presented as a patient.
 
@@ -107,18 +125,13 @@ Model names are as given on Higgsfield's page on 14 Nov 2026; use whatever the s
 - Still: `Close view of two hands holding a phone above a kitchen table, a mug beside them, morning light, the person's face out of frame, the phone screen turned away from the camera.`
 - Motion: `One thumb taps the screen in a calm, slow rhythm. Static camera.`
 
-**G6. Walking again**
-
-- Still: `A woman in a dark winter coat seen from behind at a distance, walking along a snowy path between birch trees in daylight, soft overcast sky.`
-- Motion: `She walks steadily away; the camera follows slowly at the same distance. Light snow falls.`
-
 **Check each result before keeping it**
 
 - No face in close-up, and nobody who could be taken for a real patient.
 - No readable text, signs or logos anywhere in the frame. Generated text is always wrong and gives the clip away.
 - The phone screen never shows an app. Our real screens are recorded, never generated.
 - Hands have five fingers. Reject and regenerate if not.
-- The same coat in G1 and G6, so it reads as the same person. If the site lets you reuse a character or a reference image, use the G1 still for G6.
+- There is no shot of her walking again (the earlier G6 is dropped): it suggests a recovery we have not shown.
 
 ## Shots to record from the real system
 
@@ -127,7 +140,7 @@ Model names are as given on Higgsfield's page on 14 Nov 2026; use whatever the s
 | R1 | Part 2 | The phone with Lanvi on the home screen, then five seconds of the focus game. |
 | R2 | Part 3 | lanvi.app, Blueprint, "The research": the three boxes, then the panel "What moving together looks like". Scroll slowly; pause on the two lines. |
 | R3 | Part 3 | The same page: the yardstick bar from 0 to 27. Two seconds. |
-| R4 | Part 4 | Anna's Research page: the headline, then the chart. Move the cursor along the shaded weeks. |
+| R4 | Part 4 | Anna's Research page: the headline (it reads "partly consistent" with low confidence; say so), then the chart. Move the cursor along the shaded weeks. |
 | R5 | Part 4 | Elina's Research page: the headline "too little change to tell", then her flat line under the cut-off. |
 | R6 | Part 5 | Blueprint, the panel "Do the phone's numbers change first?". |
 

@@ -154,6 +154,11 @@ async def patient_exchanges(request: Request, patient_id: str = Path(pattern=SID
     ctx = ctx_of(request)
     repo = _patient_repo(request, p, patient_id)
     share = bool((repo.patient() or {}).get("share_notes"))
+    # The frame reading's exchange holds the reduced stream of a session, so a
+    # read is written down like the raw download (which task, never any values).
+    write_audit(ctx.store, ctx.clock.now(), clinic_id=p.clinic_id, patient_id=patient_id,
+                actor=p.actor, action="exchanges_read", detail={"task": task, "limit": limit},
+                request_id=rid_of(request))
     return {"share_notes": share,
             "exchanges": ex.view(ctx.store, p.clinic_id, patient_id, share, limit, task, chain_id)}
 

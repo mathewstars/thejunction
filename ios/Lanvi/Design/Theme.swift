@@ -28,8 +28,16 @@ enum Theme {
     static let aurora = Color(hex: 0xA8E3FF)
     static let auroraViolet = Color(hex: 0xC9B8FF)
 
-    /// Rounded system font, close to Duolingo's feel. Swap for Nunito later if wanted.
+    /// Lanvi's type: Nunito (SIL Open Font License, see Fonts/Nunito-OFL.txt),
+    /// bundled in four weights. ExtraBold for lines and buttons, SemiBold for small text.
     static func rounded(_ size: CGFloat, _ weight: Font.Weight = .bold) -> Font {
-        .system(size: size, weight: weight, design: .rounded)
+        let name: String
+        switch weight {
+        case .black: name = "Nunito-Black"
+        case .heavy: name = "Nunito-ExtraBold"
+        case .bold: name = "Nunito-Bold"
+        default: name = "Nunito-SemiBold"
+        }
+        return .custom(name, fixedSize: size)
     }
 }

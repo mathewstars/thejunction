@@ -130,6 +130,109 @@ class Thresholds:
     # (about 18 deg/s) about 0.6. Estimated, not yet calibrated.
     head_movement_full_deg_s: float = 30.0
 
+    # The frame reading (mind/frame_reading.py, data/frames_prompt.txt): the
+    # level-2 model reads a reduced stream of the raw frames; code checks every
+    # item on the full-rate frames. Clinician-only: none of these values
+    # touches attention, suggestions or lessons.
+    frames_rate_hz: float = 5.0  # rows per second sent (blocks of frames averaged)
+    frames_max_frames: int = 400  # longer recordings get a lower rate to fit
+    # A reported smile is the same smile as one code found when the two spans
+    # overlap by at least this share of their union (the model reads 5 rows per
+    # second, so its edges are up to 0.2 s off; a sliver inside a smile and a
+    # span several times wider than it both fall below).
+    frames_smile_iou: float = 0.3
+    # A faint smile: a reported smile that touches no smile of code's (the
+    # signal stayed under smile_onset) is kept apart when, over its span, the
+    # smile signal lies above the session's resting level (its median) by this
+    # much on average and this much at its peak. Estimated, not calibrated;
+    # ARKit jitter on a resting mouth is about 0.02.
+    frames_faint_mean_rise: float = 0.05
+    frames_faint_peak_rise: float = 0.10
+    # The resting level a faint smile is measured against is local: the median
+    # of the smile signal within this many seconds before the span and after it
+    # (code's smiles left out), the higher of the two, so a step in the baseline
+    # (the phone moved) is not read as a smile. Each mouth corner must carry at
+    # least this share of the mean rise: jitter in one corner is not a smile.
+    # A report that lies inside a smile of code's at least this many times
+    # longer is not dropped as a poor match at once: the fixed rule merges a
+    # whole stretch into one smile when a mouth rests near the onset. It is
+    # tested against the local rest (code's smiles not left out, twice the
+    # peak rise) and kept apart as "inside_long" when the rise is there.
+    frames_long_smile_ratio: float = 4.0
+    frames_long_smile_min_s: float = 5.0  # and code's smile lasts at least this long
+    frames_faint_window_s: float = 8.0
+    frames_faint_side_share: float = 0.5
+    # A reported segment must last this long (the prompt asks for two seconds);
+    # eyes_closed and not_tracked may be shorter.
+    frames_segment_min_s: float = 2.0
+    frames_segment_min_short_s: float = 0.5
+    # Code's "side" of a smile: mean(mouthSmileLeft - mouthSmileRight) inside it
+    # at least this (left) or at most minus this (right); else "both".
+    frames_side_diff: float = 0.15
+    # Blinks agree when the counts differ by at most max(n, share x code's count).
+    frames_blink_tolerance_n: int = 2
+    frames_blink_tolerance_share: float = 0.2
+    # Segments: a frame counts for "head_down" at this headPitch or more, for
+    # "still_face" when its 0.1 s block moves less than this per second (mean
+    # over the blend shapes, blinks left out), for "eyes_closed" at blink_onset;
+    # the other kinds use look_down_min, brow_down_min and inner_brow_up_min.
+    frames_head_down_deg: float = 15.0
+    frames_still_speed: float = 0.1
+    # A reported segment is confirmed when code's share of its span (tracked
+    # frames; all frames for not_tracked) is at least this.
+    frames_share_looking_down: float = 0.6
+    frames_share_brows_down: float = 0.6
+    frames_share_inner_brows_raised: float = 0.6
+    frames_share_head_down: float = 0.6
+    frames_share_still_face: float = 0.7
+    frames_share_eyes_closed: float = 0.7
+    frames_share_not_tracked: float = 0.8
+    # The overall words, from code's face summary:
+    # expression: facial_activity >= lively_min "lively", >= still_below "moderate", else "still"
+    frames_lively_min: float = 0.45
+    frames_still_below: float = 0.2
+    # smiling: no smile "none"; smile_rate_per_min >= often_min "often",
+    # >= sometimes_min "sometimes", else "rarely"
+    frames_smiling_often_min: float = 3.0
+    frames_smiling_sometimes_min: float = 1.0
+    # gaze: look_down_share >= this "often_down", else "mostly_up"
+    frames_gaze_down_share: float = 0.3
+    # tracking: tracking_quality >= good "good", >= face_min_quality "partly", else "poor"
+    frames_tracking_good: float = 0.9
+
+    # The day reading (mind/day_reading.py, data/days_prompt.txt): the level-2
+    # model reads the daily numbers of the last weeks; code checks every item.
+    # Clinician-only: none of these values touches attention, suggestions or
+    # lessons. All are estimates, not calibrated on real series.
+    dayr_max_days: int = 84  # the window sent, in calendar days
+    dayr_min_days: int = 21  # days with steps needed before anything is sent
+    dayr_min_channel_days: int = 14  # a channel is sent when it has this many values
+    dayr_min_before: int = 7  # values needed before a day or a stretch to judge it
+    # Code's own stretches: days at least this many spreads outside the trailing
+    # normal, for at least dayr_min_len days with data.
+    dayr_code_z: float = 1.5
+    dayr_min_len: int = 3
+    # A reported stretch is in the numbers when its median lies this many
+    # spreads from the days before (milder than code's own rule: the model may
+    # name a stretch the fixed rule does not flag, and code confirms it here).
+    dayr_stretch_z: float = 1.0
+    # A gradual stretch: at least this long, the values fall day by day
+    # (Spearman of value against day), and its last third lies dayr_stretch_z
+    # spreads from its first third.
+    dayr_gradual_min_len: int = 7
+    dayr_gradual_rho: float = 0.5
+    # The same stretch as code's: overlap over the union of the two spans.
+    dayr_iou: float = 0.3
+    # A weekday is this person's low day when its median lies this many spreads
+    # under the other days, with at least this many of that weekday, and it is
+    # low week after week.
+    dayr_weekday_z: float = 1.0
+    dayr_weekday_min_n: int = 3
+    dayr_weekday_share: float = 0.8  # and this share of that weekday's values lie under
+    dayr_gap_min: int = 2  # days in a row without steps
+    dayr_overall_z: float = 1.0  # the last seven days' median for "lower" or "higher"
+    dayr_min_hours_between: float = 6.0  # a new reading at most this often per person
+
     # Responder.
     suggestion_cooldown_hours: float = 6.0
     suggestion_ttl_hours: float = 20.0

@@ -1,104 +1,98 @@
 # App design
 
-What the iPhone app does, screen by screen, and how it talks to the server. Written on Friday night from what the team decided so far. Working name: **Angel** (not final, Matthew decides).
+What the iPhone app does and why, in the fox design. Short on purpose. The game detail is in `docs/game-design.md` (Matthew). The calls are in `docs/app-api.md`. What the app code holds today is in `ios/HANDOFF.md` and `ios/SENSORS.md`.
 
-Who builds what: Peter builds the app, AR and the Apple Health read. Matthew owns the look, the game design and the wording. Mathew builds the server and the mind.
+The product is **Lanvi**, a small Arctic fox on the phone, for people at home after TMS treatment for depression. This page replaces the earlier design, an AR round where the person walked to lights in the room. That round is cut.
+
+Who owns what: Matthew the app, the fox, the games and the wording. Peter the sensors (Apple Health, the face frames). Mathew the server, the clinician page and these documents.
 
 ## The idea in one loop
 
-1. **Sense.** The phone already knows how the person moves. The app reads it from Apple Health and sends one record per day.
-2. **Respond.** When the server sees a clear change from that person's own normal, the app offers one small action. The main one is a two-minute round in AR: lights appear in the person's own room and they move to catch them.
-3. **Learn.** The app reports what the person did. The server learns what helps this person and offers that first next time.
+1. **Sense.** The phone already counts how the person moves and sleeps. The app reads daily totals from Apple Health and sends them. During two short activities it can also send how the face moved, as numbers.
+2. **Respond.** The server compares each day with that person's own normal. When it sees a clear change, Lanvi offers one small thing: a minute of breathing, a short game, a walk, some daylight, a message to someone, an evening check-in.
+3. **Learn.** The app reports what the person did. The server learns what suits this person and offers that first next time. The person can see what it learned and say "not true".
 
-The app never diagnoses. It says "you have moved less than your usual this week", never anything about depression.
+The app never diagnoses. The server's sentence is "Your movement has been lower than your usual for a few days", never a word about depression.
 
 ## What the app reads from the phone
 
 | Data | Source | Needed |
 |---|---|---|
-| Steps per day | Apple Health, from the iPhone itself | Yes |
-| Walking speed | Apple Health, from the iPhone itself | Yes |
+| Steps per day | Apple Health | Yes |
+| Walking speed | Apple Health | Optional, sent when the phone has it |
 | Heart-rate variability | Apple Health, only with a watch | Optional |
-| Sleep hours | Apple Health, only with a watch | Optional |
+| Hours asleep | Apple Health, only with a watch | Optional |
+| Face movement during Sparks and snow and Breathe with Lanvi | Front camera (ARKit), about 30 times a second | Optional, asked once, can be switched off on the Help screen |
 
-- On first start the app asks permission and uploads the history the phone already holds, so the server has a real baseline at once.
-- After that it sends one record per day, when the app opens.
-- Garmin users are covered if Garmin Connect syncs into Apple Health. There is no Garmin code in the app.
-- Peter confirms the exact data types and that his developer account allows the Apple Health capability.
+- First run: the app asks for Apple Health in Lanvi's voice and sends the history the phone holds, up to 400 days. After that it sends the missing days on every open.
+- The server needs 14 days before it knows a person's normal.
+- Face: numbers only leave the phone. No picture, video or face mesh is kept or sent. A phone without Face ID sends nothing and the games are unchanged.
+- Both questions can be skipped and the app works the same.
 
 ## Screens
 
-| Screen | What the person sees | Notes |
-|---|---|---|
-| **Start** | What the app measures and what it does not. Permission for Apple Health. A pairing code from the clinic. | The pairing code is how the person agrees to share with the clinic. For the demo one code is fixed. |
-| **Today** | Most days: "all as usual" and nothing else. On a change: one sentence about what the app noticed and one suggestion. | The app is quiet by default. No streaks, no guilt about a skipped day. |
-| **The round** | The room through the camera with lights floating in it. Time left, lights caught, pause, "sit down instead". | See "The AR round" below. |
-| **After the round** | "Done." Three answers to the suggestion: I did it, not today, something else. One optional tap: rough, ok, good. | Answers are buttons, not text. |
-| **A few words** | A short text box, about 280 characters. The app answers with one short, warm line. | The answer is picked from a fixed set by the server. It is not a chat. If the note suggests the person needs help, the help screen opens at once. |
-| **What works for you** | What the app has learned, in plain words, each with a "not true" button. The person's own rules. At most three questions from the app, answered yes, no or not sure. | The person can always correct the app. Their rules always win. |
-| **Help** | The app is not an emergency service, and where to get help now. | Reachable from every screen. The text comes from the server so the clinic can set it. Wording to be agreed with the Aalto mentors. |
+Taken from the code in `ios/Lanvi/`. Matthew judges the look; this table is only what each screen is for.
 
-## The AR round
+| Screen | What the person sees |
+|---|---|
+| **Welcome** | "You did the hard part. Lanvi helps it last." |
+| **What helps** | Music, Moving, People, Quiet. Up to four, in the order tapped. Lanvi answers with one line. Can be skipped. |
+| **Apple Health, then the face question** | One question each, asked once. The face question comes before the first game: "May I watch your face while we play?" with "Not now" as an equal answer. |
+| **Home** | A painted scene with Lanvi in the middle, one line of speech, and one thing for today: the server's suggestion, else a pick by time of day. Not a menu. Help is in a corner. The three activities are always reachable one tap further. |
+| **Sparks and snow, Breathe with Lanvi, Evening check-in** | See below. |
+| **The XP moment** | After an activity: "+10 XP", the growth bar, Lanvi's line. Sometimes Lanvi grows up or runs off to wander. |
+| **A story** | When Lanvi is back from a wandering: a few sentences and one question with two answers. |
+| **Chat** | A thread with Lanvi for today. Every reply comes from the server. If the words ask for help, the Help screen opens at once. |
+| **How Lanvi is growing, and what Lanvi noticed** | The stage, a bar to the next one, days together, and what the server learned in plain words, each with "Not true". Up to three questions, answered yes, no or not sure. |
+| **Help** | The app is not an emergency service, and who to call. The text comes from the server so the clinic can set it. Also the switch for the face. |
 
-The round is what the app offers. The phone's daily data stays the main sensor; the round adds a small signal about how the person moved.
+There is no pairing screen. The pairing code is put into the build (`ios/Config.xcconfig`, never committed). With no server set, the app runs on sample data.
 
-- Two minutes. Lights appear around the room, the person walks to each one to catch it, the round ends warmly.
-- Three modes: standing in AR, seated in AR, and on the flat screen with no camera. The flat-screen mode is also the fallback if AR does not work in time.
-- The app logs each light and the path of the phone and sends one record when the round ends. The full interface is in `docs/game-interface.md`.
-- A round can be played any day, not only when the app suggests it.
-- An offered round that is not played is recorded too. Ignoring it is also a signal.
+## The three activities
 
-**Checkpoint, Saturday mid-afternoon:** lights visible and catchable in a real room on Peter's phone. If not, the round moves to the flat screen.
+| Activity | Length | What it is | What the app sends |
+|---|---|---|---|
+| **Sparks and snow** (focus) | 45 seconds | Tap the sparks, let the snowflakes fall. | Taps, wrong taps, misses, reaction times, face numbers |
+| **Breathe with Lanvi** | About a minute, 6 breaths | Breathe in and out with a light behind Lanvi. No winning or losing. | Time played, breaths completed, face numbers |
+| **Evening check-in** | About a minute, once a day | Three good things from today (tap or type), one small nice thing for tomorrow. Next evening Lanvi asks if it happened. | The chosen items, the plan, the answer about yesterday's plan |
 
-Stretch goals, only after the loop works: a calm voice during the round, and face tracking as a second optional signal.
-
-## How the app talks to the server
-
-The app talks only to the server, over HTTPS, with a bearer token it gets at pairing. The clinician page and the models are behind the server.
-
-| When | Call | What it does |
-|---|---|---|
-| First start | `POST /v1/devices/pair` | Exchanges the pairing code for the device token |
-| First start, then daily | `POST /v1/daily` | Sends day records; many days in one call for the history upload |
-| App opens, and after every round | `GET /v1/today` | Returns the status, one suggestion or none, the round settings and the help text |
-| A round ends | `POST /v1/rounds` | Reports the round |
-| The person answers a suggestion | `POST /v1/feedback` | Reports the answer |
-| The person writes a few words | `POST /v1/notes` | Sends the note; returns the reply line and whether to open the help screen |
-| "What works for you" opens | `GET /v1/mind` | Returns rules, lessons and questions |
-| The person edits rules or answers | `POST /v1/mind/...` | Adds or removes a rule, rejects a lesson, answers a question |
-
-Status values the app must handle: `no_baseline` (not enough history yet), `within` (as usual), `outside` (a clear change), `no_data` (nothing received for some days).
-
-This table is the draft the server is being built against. The exact fields will be in `docs/api/openapi.json` and `docs/api/README.md` when the server lands in the repo. Until then, treat field names as not final.
+An activity can be played any day, not only when Lanvi suggests it. Rules, timings and the reasons behind each: `docs/game-design.md`.
 
 ## Rules for wording and behaviour
 
-- One suggestion at a time. No repeated reminders.
+- **No score.** XP is for showing up. A game played badly or stopped early earns the same as a perfect one.
+- **No streak.** Nothing counts days in a row. "Days together" only goes up. After a gap Lanvi says "I kept the light on for you."
+- **A bad day never costs anything.** XP never goes down and the stage never goes back.
+- **Nothing about mood or the face is shown to the person.** Those measures go to the server and the clinician page only. Lanvi never says "you look sad".
+- **Never a sad fox.** Lanvi does not dim, get sick or look sad because of the person.
+- One suggestion at a time. "Not today" is a fine answer and is never argued with.
 - Never clinical words. Never a diagnosis.
-- Most days the app says nothing.
-- "Not today" is a fine answer and is never argued with.
-- Everything the person typed stays on the clinic's server. It is never sent to an outside model.
-- The help screen is always one tap away.
+- The Help button is one tap away. Words that ask for help open it by themselves.
+- What the person types stays on the clinic's server. One exception, off by default: the server's chat mode, where a message that did not open Help goes to Gemini so it can write Lanvi's reply (`docs/api/README.md`, "Free text").
+- Every sentence Lanvi says comes from the server (`engine/clinic_engine/data/lanvi_lines.json`), so the clinic can change the wording. No clinician has reviewed it yet.
 
 ## What the clinician sees
 
-A web page behind a login, not part of the app: one line per patient, with those outside their own normal on top, a short plain summary, and a progress view per patient. For a case that needs a look today, the clinic gets a short message with no patient data in it, only a label and a link.
+A web page behind a login, not part of the app. One line per patient, those who need a look on top, each compared with their own normal. Per patient: the days as a chart, the activities with their numbers (reaction time, time played, good things, the face measures and how well the face was tracked), what the person wrote and what Lanvi answered (the words only if the patient's record allows it), every decision the server made and why, and a research view. For a case that needs a look today the clinic can get a short message with a label and a link and no health data in it (Telegram; off unless set up).
 
 ## The demo in three steps
 
-1. Show the patient "as usual" in the app, and their line on the clinician page.
-2. Switch the demo patient into a dip. The app shows the suggestion, we play the AR round live and answer.
-3. Run the learning step. The next suggestion is different, and the clinician page has changed.
+Before the demo the example patient is put into a dip with a switch on the clinician page. A reset puts it back, so the demo can be repeated.
 
-The server has a switch for step 2 and a reset, so the demo can be repeated all Sunday.
+1. **Phone.** Lanvi offers one small thing. We play it for a few seconds.
+2. **Phone, then the clinic's phone.** We type a few words that ask for help. The Help screen opens by itself and the clinic gets its message.
+3. **Clinician page.** The patient is on top of the list. We show the days against the person's own normal, what was written and answered, and what the server decided and refused.
+
+The full run, with times and fallbacks, is `docs/demo-script.md`. Its status there is "a draft, not rehearsed".
 
 ## Not in the app this weekend
 
-Accounts and passwords, push notifications, settings, Android, a Garmin integration, an open chat.
+The AR round. Accounts and passwords. A screen to type the pairing code. Push notifications. Android. A Garmin integration (it works only if Garmin Connect writes into Apple Health; not tested). Live heart data from a watch. A screen where the person gives or withdraws consent for outside processing. The person's own rules (the server has them, the app does not). Naming the fox and choosing a tail colour (in `docs/game-design.md`, not in the app or the server).
 
 ## Open points
 
-1. Peter confirms which Apple Health values the phone gives without a watch.
-2. Matthew decides the name, the look and the round's game design.
-3. The help-screen text and the words that trigger it, with the Aalto mentors.
-4. A second iPhone with the app installed, as a spare for Sunday.
+1. **Matthew:** the handbook says no light or glow on the fox's tail. The server's lines still say "my tail glows" in several places, and `docs/game-design.md` describes a glowing tail. Which stays?
+2. **Matthew and the Aalto mentors:** the Help text and the word list that opens it are drafts.
+3. **Peter:** the face capture on a real phone (the list in `ios/SENSORS.md`). ARKit face tracking does not run in the simulator.
+4. **All:** a second iPhone with the app installed, as a spare for Sunday.
+5. **All:** with real patients, sending face numbers or chat words to Gemini needs their consent and an agreement with the provider. In the demo it is example data.

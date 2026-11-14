@@ -2,7 +2,8 @@
 catalog in data/checkin_catalog.json.
 
 Code picks a line; a model may at most choose among the ids code offers,
-through the output gate. Nothing generated is ever shown to the person.
+through the output gate. Nothing generated is ever shown to the person,
+except Lanvi's reply to a note when CHAT_MODE=gemini (see service.chat_reply).
 """
 
 from __future__ import annotations

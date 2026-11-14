@@ -291,7 +291,8 @@ TRIGGER_SHORT = {
     "ack": "Acknowledged", "lesson_rejected": "Lesson rejected", "question_answered": "Question answered",
     "reading": "Movement reading", "reading_requested": "Movement reading", "round": "Round",
     "preferences": "Preferences set", "queued_message_due": "Queued message",
-    "appraisal": "Association appraisal",
+    "appraisal": "Association appraisal", "frames_reading": "Frame reading",
+    "days_reading": "Day reading",
 }
 OUTCOMES = ("message_sent", "attention_opened", "attention_raised", "suggested",
             "attention_closed", "refused", "nothing")
