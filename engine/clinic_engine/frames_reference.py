@@ -60,10 +60,14 @@ RATE = 30
 MATCH_IOU = 0.3  # a reported span is a planted smile at this overlap over the union
 
 
-def make_session(seed: int, hard: str | None = None) -> tuple[dict, list[dict]]:
+def make_session(seed: int, hard: str | None = None, wanted: list[str] | None = None,
+                 moments: bool = False) -> tuple[dict, list[dict]]:
     """One synthetic session and its planted smiles:
     [{"start_s", "end_s", "peak", "kind": "strong" | "faint"}]. `hard` adds one
-    thing that is not a smile: "talking", "step" or "high_rest"."""
+    thing that is not a smile: "talking", "step" or "high_rest". `wanted` sets the
+    smiles to plant, in order ("strong" or "faint"), instead of drawing them.
+    With `moments`, a pleasant moment is marked 0.8 s before every second smile,
+    and one more where no smile follows."""
     rng = random.Random(seed)
     n = SECONDS * RATE
     rest = rng.uniform(0.20, 0.23) if hard == "high_rest" else rng.uniform(0.03, 0.10)
@@ -81,13 +85,14 @@ def make_session(seed: int, hard: str | None = None) -> tuple[dict, list[dict]]:
                        for i in range(n)]
     # Planted smiles: two to four strong and one to three faint, never touching.
     truth: list[dict] = []
-    wanted = ["strong"] * rng.randint(2, 4) + ["faint"] * rng.randint(1, 3)
+    drawn = ["strong"] * rng.randint(2, 4) + ["faint"] * rng.randint(1, 3)
     if hard == "high_rest":
-        wanted = ["strong"] * rng.randint(2, 3)  # nothing can be faint under this rest
-    rng.shuffle(wanted)
+        drawn = ["strong"] * rng.randint(2, 3)  # nothing can be faint under this rest
+    rng.shuffle(drawn)
+    wanted = list(wanted) if wanted is not None else drawn
     # The hard part takes the last ten seconds; the smiles keep to the time before it.
     span = SECONDS - (12 if hard in ("talking", "step") else 0)
-    slot = (span - 4) / len(wanted)
+    slot = (span - 4) / max(1, len(wanted))
     for k, kind in enumerate(wanted):
         dur = rng.uniform(1.0, 2.4)
         start = 2 + k * slot + rng.uniform(0, max(0.1, slot - dur - 1.0))
@@ -141,6 +146,13 @@ def make_session(seed: int, hard: str | None = None) -> tuple[dict, list[dict]]:
            "samples": [[round(min(1.0, max(0.0, cols[c][i])), 3) if c not in ff.HEAD_CHANNELS
                         else round(cols[c][i], 2) for c in channels] for i in range(n)],
            "moments_ms": []}
+    if moments:
+        marks = [int((t["start_s"] - 0.8) * 1000) for t in truth[::2] if t["start_s"] > 1.0]
+        free = [s for s in range(3, SECONDS - 4)
+                if all(not (t["start_s"] - 4 < s < t["end_s"] + 1) for t in truth)]
+        if free:
+            marks.append(free[len(free) // 2] * 1000)
+        raw["moments_ms"] = sorted(marks)
     return raw, truth
 
 

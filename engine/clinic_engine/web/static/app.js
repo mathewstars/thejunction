@@ -441,6 +441,7 @@
     });
     $("subnav").replaceChildren(tabs);  // the patient's sections live in the top bar
     const body = { overview: tabOverview, timeline: tabTimeline, activity: tabActivity, talk: tabTalk, research: tabResearch, mind: tabMind, log: tabLog }[S.route.tab](d, today);
+    if (S.route.tab === "overview" && body && body.appendChild) { const dp = daysPanel(d); if (dp) body.appendChild(dp); }
     if (S.route.tab === "overview" && d.summary) wrap.appendChild(el("p", { class: "lead" },
       String(d.summary).replace(/\s*Last suggestion:[^.]*\.?/, "").replace(/held since/g, "flagged since").replace(/\b\d{4}-\d{2}-\d{2}\b/g, (m) => dayShort(m))));
     wrap.appendChild(el("div", { id: "tabpanel", role: "tabpanel", "aria-labelledby": "tab-" + S.route.tab }, body));
@@ -597,6 +598,71 @@
         try { await api("POST", "/v1/clinic/attention/" + encodeURIComponent(item.id) + "/ack"); await refresh(); } catch (e) { flash(e.message); }
       } } }, "Acknowledge");
   }
+
+  // ---- the day reading: two readers on the daily numbers from Apple Health
+  // Code's fixed rule (each day against the person's own normal) and the
+  // level-2 model read the same series. The series is the one that was sent.
+  const DAY_CH = { steps: "Steps", walk_speed: "Walking speed", sleep_h: "Sleep, hours", hrv: "HRV", rest_hr: "Resting heart rate", active_kcal: "Active energy", exercise_min: "Exercise minutes", daylight_min: "Daylight minutes" };
+  const WEEKDAY = ["", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays"];
+  function daysPanel(d) {
+    const f = d.days_reading, types = d.health_types || [];
+    if (!f || f.status === "off") return null;
+    const title = "Two readers on the daily numbers";
+    const typesLine = types.length ? el("p", { class: "muted fr-note" }, "Apple Health types stored for this person: " + types.length + " (" + types.slice(0, 6).map((t) => t.type.replace(/^HK(Quantity|Category)TypeIdentifier/, "")).join(", ") + (types.length > 6 ? ", …" : "") + ").") : null;
+    if (f.status !== "ready") {
+      return panel(title, null, empty(f.status === "not_allowed" ? "The patient has not allowed outside processing, so the daily numbers were not sent to the model. Code's comparison with the person's own normal is in the chart above."
+        : f.status === "too_few_days" ? "Fewer than three weeks of days so far; the model reads the series once there are more."
+        : f.status === "pending" ? "The model has not read the daily numbers yet." : "The model did not return a usable reading" + (f.reason ? " (" + words(f.reason).toLowerCase() + ")." : ".")), typesLine);
+    }
+    const st = f.stream, ag = f.agreement || {}, model = f.model || "the model";
+    const chans = st.channels.slice(2);
+    const ch = chans.indexOf(S.dayCh) >= 0 ? S.dayCh : "steps";
+    const k = st.channels.indexOf(ch), n = st.days;
+    const vals = st.rows.map((r) => r[k]);
+    const have = vals.filter((v) => v !== null);
+    const lo = Math.min.apply(null, have), hi = Math.max.apply(null, have);
+    const first = parseDay(st.first_date);
+    const dayLabel = (i) => { const t = new Date(first.getTime() + i * 86400000); return t.getUTCDate() + " " + MONTHS[t.getUTCMonth()]; };
+    const W = 920, L = 150, R = 14, T = 12, PH = 120, LANE = 26, H = T + PH + 18 + LANE * 2 + 26;
+    const x = (i) => L + (W - L - R) * (i + 0.5) / n, bw = (W - L - R) / n;
+    const y = (v) => T + PH - PH * (hi > lo ? (v - lo * 0.9) / (hi - lo * 0.9) : 0.5);
+    const c = svg("svg", { class: "chart fr", viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": DAY_CH[ch] + " by day: stretches found by code's fixed rule and named by " + model });
+    c.appendChild(svg("line", { class: "axis", x1: L, x2: W - R, y1: T + PH, y2: T + PH }));
+    c.appendChild(svg("text", { class: "lane", x: L - 8, y: T + 10, "text-anchor": "end" }, DAY_CH[ch]));
+    c.appendChild(svg("text", { x: L - 8, y: T + 26, "text-anchor": "end" }, num(lo, ch === "walk_speed" ? 2 : 0) + " to " + num(hi, ch === "walk_speed" ? 2 : 0)));
+    let dpath = "", pen = false;
+    vals.forEach((v, i) => { if (v === null) { pen = false; return; } dpath += (pen ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); pen = true; });
+    c.appendChild(svg("path", { class: "line", d: dpath }));
+    for (let i = 0; i < n; i += 14) c.appendChild(svg("text", { x: x(i), y: H - 4, "text-anchor": i === 0 ? "start" : "middle" }, dayLabel(i)));
+    c.appendChild(svg("text", { x: W - R, y: H - 4, "text-anchor": "end" }, dayLabel(n - 1)));
+    const lane = (q) => T + PH + 18 + LANE * q;
+    const bar = (cls, a, b, q, title) => c.appendChild(svg("rect", { class: "fr-bar " + cls, x: x(a) - bw / 2, y: lane(q) + 5, width: Math.max(4, x(b) - x(a) + bw), height: LANE - 12, rx: 3 }, svg("title", null, title)));
+    const span = (a, b) => dayLabel(a) + " to " + dayLabel(b);
+    c.appendChild(svg("text", { class: "lane", x: L - 8, y: lane(0) + 17, "text-anchor": "end" }, "Code, fixed rule"));
+    c.appendChild(svg("text", { class: "lane", x: L - 8, y: lane(1) + 17, "text-anchor": "end" }, "Model"));
+    const mine = (b) => b.channel === ch;
+    f.stretches.filter(mine).forEach((b) => {
+      if (b.status === "same") bar("code", b.code_start_d, b.code_end_d, 0, "Code: " + b.direction + ", " + span(b.code_start_d, b.code_end_d));
+      bar(b.status === "same" ? "same" : "faint", b.start_d, b.end_d, 1, "Model: " + b.direction + ", " + words(b.shape).toLowerCase() + ", " + span(b.start_d, b.end_d) + ". " + (b.status === "same" ? "Code's fixed rule flagged the same stretch." : "The fixed rule did not flag this stretch; code confirmed the change in the numbers (" + num(b.z, 1) + " spreads from before).")); });
+    f.missed_stretches.filter(mine).forEach((b) => bar("code", b.start_d, b.end_d, 0, "Code: " + b.direction + ", " + span(b.start_d, b.end_d) + " (the model did not name it)"));
+    (f.dropped || []).filter((b) => b.item === "stretch" && mine(b)).forEach((b) => bar("drop", b.start_d, b.end_d, 1, "Model: named " + b.direction + ", " + span(b.start_d, b.end_d) + ". Dropped by code: " + words(b.reason).toLowerCase() + "."));
+    const m = (q, one, many) => q + " " + (q === 1 ? one : many);
+    const lines = [el("p", { class: "readout" }, el("b", null, model), " named " + m(ag.stretches_reported || 0, "stretch", "stretches") + " that changed. Code's fixed rule flagged " + (ag.stretches_code || 0) + "; " + (ag.stretches_same || 0) + " are the same.")];
+    if (ag.stretches_model_only) lines.push(el("p", { class: "readout fr-faint" }, el("b", null, m(ag.stretches_model_only, "stretch", "stretches")), " named by the model only: not flagged by the fixed rule (too mild on any single day, or a slow slide), and code confirmed the change in the numbers."));
+    if (ag.stretches_not_in_numbers || ag.stretches_missed) lines.push(el("p", { class: "readout" }, (ag.stretches_not_in_numbers ? m(ag.stretches_not_in_numbers, "named stretch is", "named stretches are") + " not in the numbers, and code dropped " + (ag.stretches_not_in_numbers === 1 ? "it. " : "them. ") : "") + (ag.stretches_missed ? m(ag.stretches_missed, "stretch", "stretches") + " of code's not named by the model." : "")));
+    const wk = (f.weekly || []).filter((w) => w.low_weekdays.length).map((w) => DAY_CH[w.channel].toLowerCase() + " lower on " + w.low_weekdays.map((q) => WEEKDAY[q]).join(" and "));
+    if (wk.length) lines.push(el("p", { class: "readout muted" }, "This person's weekly rhythm, named by the model and confirmed by code: " + wk.join("; ") + ". A low day that belongs to the rhythm is not a change."));
+    const pick = chans.length > 1 ? el("div", { class: "seg", role: "group", "aria-label": "Measure" }, chans.map((q) =>
+      el("button", { type: "button", class: "btn btn-small", "aria-pressed": q === ch ? "true" : "false", on: { click: () => { S.dayCh = q; render(); } } }, DAY_CH[q]))) : null;
+    const legend = el("ul", { class: "legend" },
+      el("li", null, el("span", { class: "fr-key code" }), "code's fixed rule"),
+      el("li", null, el("span", { class: "fr-key same" }), "model, same stretch as code"),
+      el("li", null, el("span", { class: "fr-key faint" }), "model only: change confirmed by code"),
+      el("li", null, el("span", { class: "fr-key drop" }), "model only: dropped by code"));
+    return panel(title, null, pick, lines, c, legend,
+      el("p", { class: "muted fr-note" }, "The model receives " + n + " days as numbers with a day number and the weekday: no dates, name or text. The line is what was sent. Two methods read the same numbers; neither says how the person feels, and the thresholds are estimates."), typesLine);
+  }
+
   function tabOverview(d, today) {
     const series = (d.progress && d.progress.series) || [];
     const available = METRICS.filter((m) => m.key === "movement" || series.some((s) => s.z && s.z[m.key] !== undefined));
@@ -852,7 +918,8 @@
     (f.moments || []).forEach((m) => c.appendChild(svg("path", { class: "fr-moment", d: "M" + x(m.at_s) + " " + (T + PH + 2) + "l4 8h-8z" }, svg("title", null, "Pleasant moment at " + num(m.at_s, 1) + " s: " + (m.smiled ? "a smile followed" : "no smile followed")))));
 
     const n = (k, one, many) => k + " " + (k === 1 ? one : many);
-    const lines = [el("p", { class: "readout" }, el("b", null, model), " reported " + n(ag.smiles_reported || 0, "smile", "smiles") + ". Code's fixed rule found " + n(ag.smiles_code || 0, "smile", "smiles") + "; " + (ag.smiles_matched || 0) + " are the same.")];
+    const lines = [cur.example ? el("p", { class: "readout muted" }, "Generated example session: no person was recorded. The numbers come from a generator with smiles planted at known places.") : null,
+      el("p", { class: "readout" }, el("b", null, model), " reported " + n(ag.smiles_reported || 0, "smile", "smiles") + ". Code's fixed rule found " + n(ag.smiles_code || 0, "smile", "smiles") + "; " + (ag.smiles_matched || 0) + " are the same.")];
     if (ag.smiles_faint) lines.push(el("p", { class: "readout fr-faint" }, el("b", null, n(ag.smiles_faint, "faint smile", "faint smiles")), " reported by the model only: under the fixed rule, above this person's own resting level, and code confirmed the rise in the numbers."));
     if (ag.smiles_brief) lines.push(el("p", { class: "readout fr-faint" }, el("b", null, n(ag.smiles_brief, "brief smile", "brief smiles")), " reported by the model only: too short for the fixed rule's minimum length; code confirmed the rise in the numbers."));
     if (ag.smiles_inside_long) lines.push(el("p", { class: "readout fr-faint" }, el("b", null, n(ag.smiles_inside_long, "smile", "smiles")), " reported by the model inside a far longer stretch that the fixed rule counted as one smile; code confirmed each rise and return in the numbers."));

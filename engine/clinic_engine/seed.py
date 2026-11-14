@@ -410,7 +410,7 @@ def wipe_patient(store: Store, clinic_id: str, patient_id: str) -> None:
     base = f"clinics/{clinic_id}/patients/{patient_id}/"
     for folder in ("days", "rounds", "activities", "lanvi", "suggestions", "feedback", "notes",
                    "attention", "mind", "rejected", "ratings", "research", "exchanges",
-                   "faceraw"):
+                   "faceraw", "health"):
         store.delete_prefix(base + folder + "/")
     for key in store.list(f"clinics/{clinic_id}/attention_index/"):
         if (store.get(key) or {}).get("patient_id") == patient_id:

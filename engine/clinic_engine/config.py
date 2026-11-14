@@ -81,9 +81,11 @@ class Settings:
     # The frame reading (level 2 reads the raw face frames; code checks it).
     # Gemini thinks before it answers on a long stream: it gets more room.
     frames_reader: str = "auto"  # auto (when level 2 is on) | off
+    days_reader: str = "auto"  # the day reading: auto (when level 2 is on) | off
     gemini_frames_max_tokens: int = 16000  # the model's thinking counts against it
     gemini_frames_retry_wait_s: float = 2.0
     gemini_frames_timeout_s: float = 60.0
+    gemini_days_timeout_s: float = 150.0  # the day reading thinks longer over 84 rows
 
     # Lanvi's reply to a note: fixed (a vetted line, nothing leaves the server)
     # | gemini (Gemini writes the reply for a note that did not open the help screen,
@@ -148,9 +150,11 @@ class Settings:
             gemini_model=_env("GEMINI_MODEL"),
             gemini_timeout_s=_env_float("GEMINI_TIMEOUT_S", 15.0),
             frames_reader=_env("FRAMES_READER", "auto").lower(),
+            days_reader=_env("DAYS_READER", "auto").lower(),
             gemini_frames_max_tokens=_env_int("GEMINI_FRAMES_MAX_TOKENS", 16000),
             gemini_frames_retry_wait_s=_env_float("GEMINI_FRAMES_RETRY_WAIT_S", 2.0),
             gemini_frames_timeout_s=_env_float("GEMINI_FRAMES_TIMEOUT_S", 60.0),
+            gemini_days_timeout_s=_env_float("GEMINI_DAYS_TIMEOUT_S", 150.0),
             chat_mode=_env("CHAT_MODE", "fixed").lower(),
             chat_model=_env("CHAT_MODEL"),
             chat_timeout_s=_env_float("CHAT_TIMEOUT_S", 4.0),
