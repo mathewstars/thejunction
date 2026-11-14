@@ -386,6 +386,12 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                  "z": {k: (a.get("z") or {}).get(k) for k in HEADLINE[t]}}
             if t in ("focus", "breathing"):
                 s["face"] = _face_out(a)
+                # Where the summary came from. For raw sessions: counts only,
+                # never the frames (GET .../activities/{id}/face-raw has them).
+                s["face_source"] = a.get("face_source") or ("summary" if a.get("face") else None)
+                info = a.get("face_raw_info")
+                s["raw"] = None if not info else {k: info.get(k) for k in (
+                    "rate_hz", "frames", "tracked_share", "channels")}
                 s["reading"] = _reading_out(a)
             else:
                 s["good_things"] = [item(g, "good_things") for g in a.get("good_things") or []]

@@ -46,6 +46,68 @@ The jury are researchers. So: every claim can be checked, the demo is the real a
 
 > You did the hard part. Lanvi helps it last.
 
+## The story cut: making the jury feel it first
+
+Rescue videos work because of four beats: someone is left alone, somebody notices, small patient care, and you see them come back. Our project already has all four. We only have to tell it in that order, about one person, before any architecture. Feeling first, proof second: researchers trust the proof more once they care about who it is for.
+
+Rules for this version:
+
+- One person, named, from the first sentence. Anna is an example and we say so once, plainly. No invented quotes from real patients.
+- Show, do not explain. Every beat is something on a screen.
+- Three seconds of silence after the alert arrives. Do not talk over it.
+- Then turn to the evidence, so nobody can call it a sob story.
+
+### Two minutes
+
+**1. Left alone (0:00 to 0:20).** Speaker only, no screen.
+
+> Six weeks, every day, Anna went to the clinic. Somebody looked at her every day. On the last day they said: you did great. Then the door closed, and there was nobody.
+> Anna is an example. The door is real: after TMS, relapse is common, and at home no one is watching.
+
+**2. Somebody stays (0:20 to 0:40).** Phone: Lanvi on the home screen.
+
+> We could not give her a psychiatrist at home. We gave her a small fox who stays.
+> He asks for one small thing a day. A game, a minute of breathing, three good things.
+> [open the app after a few days away] And when she disappears for a while, he never says "you missed three days". He says: [let them read it] "I kept the light on for you."
+
+**3. The slide nobody sees (0:40 to 1:00).** Laptop: Anna's Overview.
+
+> Then November comes. [point at the drop] She walks less. In the game her face moves less and she reacts more slowly. Nobody would see this. Her phone does, because it knows what is normal for her.
+
+**4. The night (1:00 to 1:20).** Phone, then the second phone.
+
+> And one night, just before one o'clock, she writes this. [type it slowly] "i cannot do this anymore, i need help."
+> [the help screen opens; then the second phone buzzes; hold it up; say nothing for three seconds]
+> That was her clinician's phone. Not tomorrow. Not at the next appointment in six weeks. Now.
+
+**5. Why you can trust it (1:20 to 1:45).** Laptop: Anna's Research, then Elina's.
+
+> Here are twelve weeks of Anna. [point] When her PHQ-9 was higher, she smiled less often, reacted more slowly and walked less. Same weeks, same shape.
+> And here is Elina, who stayed well. [switch] Same tool, and it says: too little change to tell. It does not find patterns that are not there.
+> A model reads the numbers and code checks everything it says. This is example data. The real study is what we want to run with you.
+
+**6. Close (1:45 to 2:00).** Phone: Lanvi.
+
+> You did the hard part: you got her well. We built the one who keeps the light on after the door closes.
+
+### Sixty seconds at the table
+
+> Six weeks of daily clinic visits, then the door closes and there is nobody. [phone] This fox stays. One small thing a day, and when you vanish for a week he says "I kept the light on for you". [laptop] Meanwhile the phone notices what nobody sees: she walks less, smiles less, reacts more slowly. [type the note; second phone buzzes; wait] Her clinician knows tonight, not in six weeks. [Research] And this is why you can believe it: twelve weeks, the measures follow her PHQ-9, and for a patient who stayed well it refuses to conclude. Example data. The study is what we want to do with you.
+
+### What makes it land
+
+- **The door.** Open and close with the same image.
+- **"I kept the light on for you."** Let the jury read it on the phone themselves. Do not read it aloud first.
+- **The buzz.** The second phone must be on the table, screen up, sound on vibrate. This is the moment people remember.
+- **Elina.** For researchers the honest "we cannot tell" is the emotional peak of the second half. Do not skip it to save time.
+
+### What not to do
+
+- No sad music, no stock photos of people holding their heads. It reads as manipulation to this jury.
+- Do not say Lanvi "saved" anyone. He stays; the clinician helps.
+- Do not show a sad or neglected fox. In the app a bad day never costs anything, and the pitch must not suggest otherwise.
+- Do not let the story run past 1:20. Without the last 40 seconds it is only a story.
+
 ## What must be true before we say it
 
 - One activity runs live on the phone. Without it the middle of the pitch falls.

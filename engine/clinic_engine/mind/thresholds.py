@@ -87,6 +87,49 @@ class Thresholds:
     #    but not played follow the same rule 1 and 2.
     activity_lowers_deviation_by: int = 1
 
+    # Raw face frames (mind/face_features.py, docs/face-raw.md). The phone sends
+    # what ARKit gives per frame; the server derives the face summary with these
+    # rules. Change them and run POST /v1/demo/recompute-face to re-analyse the
+    # stored frames. Event rules follow the FaceMetrics research app
+    # (facemetrics/FaceMetrics/Analysis): hysteresis onset/offset on a coefficient.
+    face_raw_min_tracked_s: float = 5.0  # less tracked time: every measure null but tracking_quality
+    face_raw_overshoot: float = 0.02  # blend shapes may overshoot 0..1 by this; clamped before use
+    # Smile: mean(mouthSmileLeft, mouthSmileRight). Starts at >= onset, ends at
+    # <= offset (FaceMetrics activationOnset / activationOffset), counts if it lasts.
+    smile_onset: float = 0.25
+    smile_offset: float = 0.15
+    smile_min_s: float = 0.3  # shorter runs are flickers, not smiles
+    # A smile "reaches the eyes" when mean(cheekSquintLeft, cheekSquintRight)
+    # inside it is at least this.
+    eye_smile_cheek_min: float = 0.2
+    # A marked pleasant moment is answered when a smile starts within this many
+    # seconds after it.
+    smile_response_window_s: float = 2.5
+    # Blink: max(eyeBlinkLeft, eyeBlinkRight), i.e. starts when either eye is at
+    # >= onset, ends when both are at <= offset (FaceMetrics BlinkConfiguration).
+    blink_onset: float = 0.5
+    blink_offset: float = 0.3
+    blink_min_s: float = 0.03  # shorter: noise
+    blink_max_s: float = 0.5  # longer: an eye closure, not a blink; left out of rate and length
+    # Share of tracked frames at or above these values.
+    look_down_min: float = 0.3  # mean(eyeLookDownLeft, eyeLookDownRight)
+    brow_down_min: float = 0.3  # mean(browDownLeft, browDownRight)
+    inner_brow_up_min: float = 0.3  # browInnerUp
+    # Movement is measured on short blocks of frames (about 0.1 s, never shorter
+    # than one frame) so that the frame rate does not change the result.
+    face_motion_block_s: float = 0.1
+    # facial_activity = mean |change per second| over the blend shapes (blinks
+    # left out), divided by this and clipped to 0..1. Chosen so that a still face
+    # (ARKit jitter, about 0.05 per second) gives about 0.1 and a lively face
+    # (talking, smiling, about 0.3 per second) about 0.6. Estimated, not yet
+    # calibrated on recordings.
+    facial_activity_full_per_s: float = 0.5
+    # head_movement = mean angular speed of the head (pitch, yaw, roll together,
+    # degrees per second) divided by this and clipped to 0..1: a still head
+    # (about 3 deg/s of jitter and small sway) gives about 0.1, a lively one
+    # (about 18 deg/s) about 0.6. Estimated, not yet calibrated.
+    head_movement_full_deg_s: float = 30.0
+
     # Responder.
     suggestion_cooldown_hours: float = 6.0
     suggestion_ttl_hours: float = 20.0
