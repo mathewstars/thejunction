@@ -12,7 +12,7 @@ The platform does not read this file. After a change here, the same change has t
 |---|---|---|
 | Project name | 30 characters | Lanvi |
 | Punchline | 200 characters | See below (181 characters) |
-| Description | 5,000 characters | See below (4,984 characters) |
+| Description | 5,000 characters | See below (5,000 characters) |
 | Challenge | one | Aalto University, Beyond the Clinic |
 | Tech challenge | any number | Google DeepMind, Best Use of Gemini API |
 | Project demo | link | https://lanvi.app/demo (no login, read only; https://lanvi.app itself needs a login, which is no longer published) |
@@ -44,7 +44,7 @@ After TMS the daily clinic visits end and nobody sees a slow slide back. Lanvi i
 
 COULD IT HELP PEOPLE STAY WELL AT HOME?
 
-The clinic hears before the next appointment, in two ways. When someone drifts from their own normal for days, their name moves to the top of the clinic's list and, if it is serious, the clinic gets one message the same day. When someone writes that they need help, help numbers open on the phone at once and the clinic is told, with no model in between. Lanvi is not a crisis service; the help wording still needs a clinician's review. The person gets one small offer, chosen from what helped them before: sense, respond, learn.
+The clinic hears before the next appointment, in two ways. When someone drifts from their own normal for days, their name moves to the top of the clinic's list and, if it is serious, the clinic gets one message the same day. When someone writes that they need help, help numbers open on the phone at once and the clinic is told, with no model in between. Lanvi is not a crisis service; the help wording still needs a clinician's review. The person gets one small offer, chosen from what helped before: sense, respond, learn.
 
 WOULD SOMEONE RECOVERING FROM DEPRESSION USE IT EVERY DAY?
 
@@ -52,11 +52,11 @@ One thing a day, 90 seconds or less: a game, a minute of breathing together, thr
 
 SMART SENSING: WHAT THE PHONE MEASURES
 
-During the game and the breathing, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. Gemini gets a reduced stream of numbers, no name or date, with consent (that screen is not built yet). The server computes 18 measures: smiles and whether they reach the eyes, blinks, gaze, how much the face moves at all. The game, Revontulet, borrows from published tasks, far shorter than the originals: an easy or a hard shot (effort for reward), a traced half circle (drawing speed), reaction to embers, slow strokes over the sleeping fox (swipe speed). Steps and walking speed come from Apple Health. Each number is compared only with the person's own earlier days.
+During the game and the breathing, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. Gemini gets a reduced stream of numbers, no name or date, with consent (that screen is not built yet). The server computes 18 measures: smiles and whether they reach the eyes, blinks, gaze, how much the face moves at all. Since Saturday night the app also sends a finer signal from the Face ID sensor: the face mesh reduced on the phone to twelve regions, in millimetres per frame (noise about 1 mm). Two real sessions so far; nothing reads it. The game, Revontulet, borrows from published tasks, far shorter than the originals: an easy or a hard shot (effort for reward), a traced half circle (drawing speed), reaction to embers, slow strokes over the sleeping fox (swipe speed). Steps and walking speed come from Apple Health. Each number is compared only with the person's own earlier days.
 
-On real people: in the public PSYCHE-D data (1,390 people with a Fitbit and four PHQ-9 scores over a year), quarters with steps clearly below the person's own normal had a PHQ-9 0.4 points above their own other quarters (95% interval 0.2 to 0.6): the direction we fixed in advance, and small. In Depresjon (wrist movement, 23 patients, 32 controls) a short version of our rule flagged none of 27 controls.
+On real people: in the public PSYCHE-D data (1,390 people with a Fitbit and four PHQ-9 scores over a year), quarters with steps clearly below the person's own normal had a PHQ-9 0.4 points above their own other quarters (95% interval 0.2 to 0.6): the direction we fixed in advance, and small. In Depresjon (23 patients, 32 controls) a short version of our rule flagged none of 27 controls.
 
-Two readers go through each face session: a fixed rule in code, and Gemini, whose every reported smile is checked against the numbers. On ten hard generated sessions, with talking, a moving phone and smiles planted at known places, the fixed rule found 20 of 28 clear smiles and none of 13 faint ones. A simple rule relative to the person's own rest found all but also reported 22 things that were not smiles. Gemini found all 41 and nothing else. Gemini had been told what talking looks like; the rule had not. Step one of the study repeats this on real recordings.
+Two readers go through each face session: a fixed rule in code, and Gemini, whose every reported smile is checked against the numbers. On ten hard generated sessions, with talking, a moving phone and smiles planted at known places, the fixed rule found 20 of 28 clear smiles and none of 13 faint ones. A simple rule relative to the person's own rest found all but reported 22 things that were not smiles. Gemini found all 41 and nothing else. Gemini had been told what talking looks like; the rule had not. Step one of the study repeats this on real recordings.
 
 We fixed 24 hypotheses before any data (three redefined when the game changed). For each person the server relates every measure to their PHQ-9 with a rank correlation, a permutation test and a correction for many measures.
 
@@ -64,20 +64,19 @@ THE MIND, AND HOW WE TESTED IT
 
 Plain rules we can explain notice a change and raise a flag. Two models weigh it: a small one on the clinic's own hardware sets how soon someone should look, and Gemini agrees, raises or lowers one step. Code guards both: help is always urgent, no model can lower what the rules call "needs review today", and the rules stand when no model answers. A clinician can add a rule for one person in plain words.
 
-On 40 generated cases read by the real models, each as it is, again, strictly worse, and with a clinic rule:
+On 40 generated cases read by the real models, as it is, again, worse, and with a clinic rule:
 Worse never meant lower: 0 of 107 flags.
-The models respond to severity: of 88 flags the rules level the same, 33 went higher, none lower.
 Against the rules alone the models only lowered: 12 of 107 flags, one step. No level is yet compared with a clinician's.
 The clinic rule was applied where it belonged in 20 of 20 cases, and nowhere else.
 What does not flatter us: the same case read twice changed 7 of 107 flags, and Gemini agreed in 369 of 372 readings.
 
 WHAT IS NEW
 
-In Finnish the northern lights are revontulet, fox fires. A rescued fox instead of a tracker, a game that borrows from research tasks, and models that only weigh, under code that guards.
+In Finnish the northern lights are revontulet, fox fires: a rescued fox instead of a tracker, and a game that borrows from research tasks.
 
 WHAT IS REAL AND WHAT IS NOT
 
-A weekend prototype. Live: the server, the clinician page, both models, the alert; one team member's iPhone sent real games, face numbers and Apple Health days through the whole path. The other people on the page are generated examples. Nothing is tested with patients, and the face and game measures are not shown to follow depression. That is the study we want to run with Aalto: 20 to 30 people after TMS, twelve weeks, each compared only with themselves.
+Live: the server, the clinician page, both models, the alert; one team member's iPhone sent real games, face numbers and Apple Health days through the whole path. The other people on the page are generated examples. Nothing is tested with patients, and the face and game measures are not shown to follow depression. That is the study we want to run with Aalto: 20 to 30 people after TMS, twelve weeks, each compared only with themselves.
 
 The research and the mind in depth: lanvi.app/demo#/blueprint.
 ```
