@@ -34,3 +34,15 @@ An unrelated rule ("She is allergic to penicillin.") changed nothing in 3 of 3 r
 | Do the patients move less than the controls? | Yes, as the dataset's authors report: a median of about 256,000 counts a day against 397,000, about a third less (permutation p about 0.0003). This is a difference between people, not the within-person change our rule looks for. |
 
 One thing the check found about the data and not about the rule: many files run on for days or weeks after the device came off. Counted as days, those rows made more than half of the controls' days look like a collapse. The check uses only the number of days the dataset itself gives for each person.
+
+## The movement hypothesis on real people (PSYCHE-D)
+
+`psyched-check-2026-11-15.json` is the output of `psyched_check.py` (in this folder; it needs pandas and pyarrow) on the public PSYCHE-D dataset (Evidation's DiSCover Project, https://zenodo.org/records/5085146, CC BY-NC 4.0): about 10,000 adults in the United States who wore a Fitbit for a year and filled in the PHQ-9 every three months. One row is one person and one three-month window, with the PHQ-9 at its start and end and summaries of the steps in it. The data is not in this repository. It has no daily series, so the own-normal rule cannot be run on it as it runs on the server; what it can test is the hypothesis the rule rests on, fixed on 13 November before any data: within one person, less movement goes with worse symptoms.
+
+| Question, always within one person | Result |
+|---|---|
+| Across a person's windows (1,390 people with four windows each): when they walked less than their own average, was their PHQ-9 above their own average? | Yes, weakly: rank correlation -0.08 (95% interval -0.10 to -0.05), about 0.13 PHQ-9 points for every 1,000 fewer steps a day. Taking out what all people share in a study month (season, getting used to the questionnaire) leaves it unchanged (-0.08). |
+| As a rule in the spirit of ours: in a window with steps clearly below the person's own normal (1.5 of their own spreads under their own median, from their other three windows), how was their PHQ-9 against their own other windows? | 0.4 points higher than otherwise (0.30 against -0.09; 95% interval of the difference 0.18 to 0.62; 1,218 such windows in 923 people). In 45.5% of those windows the score was above the person's own, against 41.2% of the others. |
+| Inside one window (10,829 windows, 4,027 people): did the change of the PHQ-9 over the three months go with the trend of the steps in it? | No. The rank correlation is +0.03 (0.02 to 0.05), very small and in the other direction. |
+
+What this says: on real people the direction we fixed in advance holds within a person, and it is small. A quarter with clearly fewer steps goes with less than half a point on a scale of 27. It does not say that a phone can warn of a relapse: the windows are three months long, a "normal" from three other windows is crude (it calls 22% of windows clearly low), and one of the three questions came out slightly the other way. Intervals come from resampling people, not rows.

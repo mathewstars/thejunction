@@ -12,7 +12,7 @@ The platform does not read this file. After a change here, the same change has t
 |---|---|---|
 | Project name | 30 characters | Lanvi |
 | Punchline | 200 characters | See below (181 characters) |
-| Description | 5,000 characters | See below (4,998 characters) |
+| Description | 5,000 characters | See below (4,984 characters) |
 | Challenge | one | Aalto University, Beyond the Clinic |
 | Tech challenge | any number | Google DeepMind, Best Use of Gemini API |
 | Project demo | link | https://lanvi.app/demo (no login, read only; https://lanvi.app itself needs a login, which is no longer published) |
@@ -54,9 +54,9 @@ SMART SENSING: WHAT THE PHONE MEASURES
 
 During the game and the breathing, ARKit turns the front camera into 52 numbers about how the face moves and three head angles, thirty times a second. No photo or video leaves the phone. Gemini gets a reduced stream of numbers, no name or date, with consent (that screen is not built yet). The server computes 18 measures: smiles and whether they reach the eyes, blinks, gaze, how much the face moves at all. The game, Revontulet, borrows from published tasks, far shorter than the originals: an easy or a hard shot (effort for reward), a traced half circle (drawing speed), reaction to embers, slow strokes over the sleeping fox (swipe speed). Steps and walking speed come from Apple Health. Each number is compared only with the person's own earlier days.
 
-On real people: in the public Depresjon recordings (wrist movement, 23 depressed patients, 32 controls) patients moved about a third less, and a short-history version of our movement rule flagged none of 27 controls. They are too short for the full rule.
+On real people: in the public PSYCHE-D data (1,390 people with a Fitbit and four PHQ-9 scores over a year), quarters with steps clearly below the person's own normal had a PHQ-9 0.4 points above their own other quarters (95% interval 0.2 to 0.6): the direction we fixed in advance, and small. In Depresjon (wrist movement, 23 patients, 32 controls) a short version of our rule flagged none of 27 controls.
 
-Two readers go through each face session: a fixed rule in code, and Gemini, whose every reported smile is checked against the numbers. On ten hard generated sessions, with talking, a moving phone and smiles planted at known places, the fixed rule found 20 of 28 clear smiles and none of 13 faint ones. A simple rule relative to the person's own rest found all but also reported 22 things that were not smiles. Gemini found all 41 and nothing else. Gemini had been told what talking looks like; the rule had not. Generated data is cleaner than a face; step one of the study repeats this on real recordings.
+Two readers go through each face session: a fixed rule in code, and Gemini, whose every reported smile is checked against the numbers. On ten hard generated sessions, with talking, a moving phone and smiles planted at known places, the fixed rule found 20 of 28 clear smiles and none of 13 faint ones. A simple rule relative to the person's own rest found all but also reported 22 things that were not smiles. Gemini found all 41 and nothing else. Gemini had been told what talking looks like; the rule had not. Step one of the study repeats this on real recordings.
 
 We fixed 24 hypotheses before any data (three redefined when the game changed). For each person the server relates every measure to their PHQ-9 with a rank correlation, a permutation test and a correction for many measures.
 
@@ -70,7 +70,6 @@ The models respond to severity: of 88 flags the rules level the same, 33 went hi
 Against the rules alone the models only lowered: 12 of 107 flags, one step. No level is yet compared with a clinician's.
 The clinic rule was applied where it belonged in 20 of 20 cases, and nowhere else.
 What does not flatter us: the same case read twice changed 7 of 107 flags, and Gemini agreed in 369 of 372 readings.
-The night before the deadline the check caught the local model ignoring a clinic rule (0 of 4); one changed paragraph fixed it (6 of 6).
 
 WHAT IS NEW
 
@@ -78,7 +77,7 @@ In Finnish the northern lights are revontulet, fox fires. A rescued fox instead 
 
 WHAT IS REAL AND WHAT IS NOT
 
-A weekend prototype. Live: the server, the clinician page, both models, the alert; one team member's iPhone sent real games, face numbers and Apple Health days through the whole path. The other people on the page are generated examples. Nothing is tested with patients and nothing here shows these measures follow depression. That is the study we want to run with Aalto: 20 to 30 people after TMS, twelve weeks, each compared only with themselves.
+A weekend prototype. Live: the server, the clinician page, both models, the alert; one team member's iPhone sent real games, face numbers and Apple Health days through the whole path. The other people on the page are generated examples. Nothing is tested with patients, and the face and game measures are not shown to follow depression. That is the study we want to run with Aalto: 20 to 30 people after TMS, twelve weeks, each compared only with themselves.
 
 The research and the mind in depth: lanvi.app/demo#/blueprint.
 ```
