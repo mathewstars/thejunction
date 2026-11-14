@@ -94,7 +94,14 @@ async def patients(request: Request, p: Principal = Depends(clinician_only)):
             lines.append(views.clinician_line(ctx.mind, ctx.mind.repo(p.clinic_id, pid)))
     order = {"urgent": 0, "attention": 1, "watch": 2, None: 3}
     status_order = {"outside": 0, "no_data": 1, "no_baseline": 2, "within": 3}
-    lines.sort(key=lambda x: (order[x["level"]], status_order.get(x["status"], 4), x["label"]))
+    # Within one level: a request for help first, then the person with more
+    # items at that level, then status and label.
+    def rank(x: dict):
+        at_top = [a for a in x["attention"] if a["level"] == x["level"]]
+        return (order[x["level"]],
+                0 if any(a["kind"] == "asked_for_help" for a in x["attention"]) else 1,
+                -len(at_top), status_order.get(x["status"], 4), x["label"])
+    lines.sort(key=rank)
     return {"patients": lines}
 
 
