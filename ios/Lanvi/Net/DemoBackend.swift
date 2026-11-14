@@ -41,7 +41,7 @@ actor DemoBackend: LanviBackend {
         glow = value("-demoGlow").flatMap(Double.init).map { min(max($0, 0), 1) } ?? (walkthrough ? 0.8 : 0.45)
         line = API.LineOut(templateId: "hello.2", text: "Good to see you. My tail is a little brighter now.")
 
-        if let action = value("-demoSuggestion") ?? (walkthrough ? "breathing" : nil) {
+        if let action = value("-demoSuggestion") ?? (walkthrough ? "focus_game" : nil) {
             suggestion = Self.suggestion(for: action)
             if let s = suggestion { line = API.LineOut(templateId: "\(action).1", text: s.text) }
         }
@@ -84,8 +84,8 @@ actor DemoBackend: LanviBackend {
 
         let lineText: String
         switch (a.type, a.completed) {
-        case (.focus, true): lineText = "Thanks for playing with me. The sparks liked that."
-        case (.focus, false): lineText = "Thanks for playing. Every spark counts."
+        case (.focus, true): lineText = "We broke the ice. Look at the lights!"
+        case (.focus, false): lineText = "Thanks for playing. Every crack counts."
         case (.breathing, true): lineText = "That was calm and lovely. Thank you for breathing with me."
         case (.breathing, false): lineText = "Thank you for breathing with me."
         case (.checkin, _):
@@ -192,7 +192,7 @@ actor DemoBackend: LanviBackend {
     static func suggestion(for action: String) -> API.SuggestionOut? {
         let texts = [
             "breathing": "Want to breathe with me for a minute?",
-            "focus_game": "Want to catch a few sparks with me?",
+            "focus_game": "The ice is thick tonight. Help me break it?",
             "checkin": "Want to tell me three good things from today?",
             "walk_10min": "How about a ten-minute walk, at your own pace?",
             "daylight_10min": "Shall we find ten minutes of daylight, by a window or outside?",
