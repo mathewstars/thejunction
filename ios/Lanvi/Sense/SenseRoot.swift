@@ -70,6 +70,7 @@ struct LanviSense: ViewModifier {
                 default: EmptyView()
                 }
             }
+            .environment(store)   // the sense screens sit outside RootView's environment
             .overlay {
                 if asking {
                     HealthAskView(onAllow: { await HealthSync.shared.allow(store) },

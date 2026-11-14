@@ -195,13 +195,12 @@ struct FaceSenseSwitch: View {
                         .foregroundStyle(Theme.ink)
                 }
                 .tint(Theme.brand)
-                Text(face.isAllowed && face.cameraDenied
-                     ? "The camera is off for Lanvi in Settings."
-                     : "Only a few numbers, never a picture.")
-                    .font(Theme.rounded(14, .semibold))
-                    .foregroundStyle(Theme.inkSecondary)
+                if face.isAllowed && face.cameraDenied {
+                    Text("The camera is off for Lanvi in Settings.")
+                        .font(Theme.rounded(14, .semibold))
+                        .foregroundStyle(Theme.inkSecondary)
+                }
             }
-            .padding(.top, 8)
         }
     }
 }
