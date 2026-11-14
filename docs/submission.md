@@ -44,14 +44,14 @@ After TMS the daily clinic visits end and nobody sees a slow slide back. Lanvi i
 
 What we can show:
 - It runs. The film shows the app; lanvi.app/demo opens the clinic page, no login.
-- The face, as numbers only (ARKit and the Face ID sensor). On 1,684 real videos of people with and without depression, our three best-supported face hypotheses hold: less time smiling, fewer smiles, less facial movement.
+- The face, as numbers only, from ARKit and the Face ID sensor. We ran 1,676 real videos of people with and without depression through our own fine-movement code: with depression the face travels less far from rest (4 mm against 6.6) and more slowly, as we had written down. On our own phones those two numbers are the most repeatable we have. Our three best-supported ARKit hypotheses hold on the same videos: less smiling, fewer smiles, less facial movement.
 - The mind: rules notice, two AI models in two layers weigh (the clinic's own, then Gemini), code guards, and it learns which small step helps each person. Tested on 40 cases: worse never meant lower, 0 of 107.
 - Movement: in 1,390 real Fitbit wearers our hypothesis holds within a person, and it is small.
 - Not shown: that any of it follows depression in one patient over time. That is the study.
 
 COULD IT HELP PEOPLE STAY WELL AT HOME?
 
-When someone drifts from their own normal for days, their name moves to the top of the clinic's list and, if it is serious, the clinic gets a message the same day. When someone writes that they need help, help numbers open on the phone at once and the clinic is told, with no model in between. Lanvi is not a crisis service; the help wording still needs a clinician's review. Then one small offer: sense, respond, learn.
+When someone drifts from their own normal for days, their name moves to the top of the clinic's list and, if it is serious, the clinic gets a message the same day. When someone writes that they need help, help numbers open on the phone at once and the clinic is told, with no model in between. Lanvi is not a crisis service. Then one small offer: sense, respond, learn.
 
 WOULD SOMEONE RECOVERING FROM DEPRESSION USE IT EVERY DAY?
 
@@ -65,8 +65,8 @@ WHAT WE TESTED, AND HOW
 
 We fixed 24 hypotheses before any data (three redefined when the game changed), then ran them on public data of real people, with every rule decided before looking at a result.
 
-Faces (LMVD, 1,684 video logs, half by people with depression): 6 of 11 measures differ as we wrote down, including all three we rated strongest; 3 go the other way; 2 show nothing. A score from our measures ranks unseen videos at 0.76.
-Fine movement (1,676 of those videos through our Face ID code): with depression a region of the face travels 4 mm from rest against 6.6 mm, and more slowly. Brief twitches came out opposite, so we do not trust that rule yet.
+Faces (LMVD, 1,684 video logs, half by people with depression): 6 of 11 ARKit-style measures as we wrote down, 3 opposite, 2 nothing; a score from them ranks unseen videos at 0.76.
+Fine movement: reach and speed as expected; brief twitches came out opposite, so we do not trust that rule yet.
 Movement (PSYCHE-D, 1,390 people, a year): a quarter with steps clearly below the person's own normal had a PHQ-9 0.4 points above their own other quarters.
 False alarms (LifeSnaps, 67 healthy volunteers): our rule, unchanged, flagged 23 at least once in three months. A low-step day there is a rest day, not a sad one.
 Gemini as second reader: on ten hard generated sessions, with disturbances its prompt names, it found all 41 planted smiles and nothing else; our fixed rule found 20. Code checks every item.
@@ -83,7 +83,7 @@ WHAT IS REAL AND WHAT IS NOT
 
 Live: the server, the clinician page, both models, the alert; a team member's iPhone sent real games, face numbers and Apple Health days through the whole path. The other people on the page are generated examples. Nothing is tested with patients. That is the study we want to run with Aalto: 20 to 30 people after TMS, twelve weeks, each compared only with themselves.
 
-In depth: lanvi.app/demo#/blueprint. Every check with its script: github.com/mathewstars/thejunction, docs/checks.
+In depth: lanvi.app/demo#/blueprint. Every check and its script: docs/checks in the repository.
 ```
 
 ## Rules for the wording
