@@ -46,6 +46,31 @@ No team can collect real recordings from patients in a weekend, and we did not t
 - **The same check for the levels:** the two models now set how soon the clinic should look at a flag (Blueprint, "The mind"). On generated pictures they never rated a worse picture lower, but nobody has compared their levels with a clinician's. Two clinicians rate the same pictures (`engine/clinic_engine/triage_check.py` makes them) and, later, real ones. What decides whether the models stay in this step: their levels must agree with the clinicians' more often than the fixed rules' levels do, and the second reader must change something a clinician agrees with. Otherwise the fixed rules set the levels, which is one setting.
 - **The same check for the daily data:** stretches of lower movement or sleep named by code and by Gemini, against the clinician's notes of when the person was unwell.
 
+## A finer signal we would try next (not built)
+
+Peter's idea, written down on 14 November. Nothing here exists in the app; it is the next experiment we would run, not a result and not a feature.
+
+**The idea.** What we use today are ARKit's blend shapes: about fifty numbers per frame that Apple computes for animating faces. They are smoothed, and each one sums up a whole region. The same sensor that Face ID uses (the TrueDepth camera) gives an app two finer things through Apple's public interfaces: the fitted face mesh, about 1,200 points per frame, and the depth map itself. With those we could look for movements a blend shape averages away: a brief twitch on one side, how fast a smile rises and how fast it fades, small tremor, a face that moves less in one region than the other.
+
+**Why it could matter.** Slowed and reduced facial movement is reported with worse depressive symptoms. If that shows first in small, fast movements, a coarse measure would see it late or not at all. That is a hypothesis; we have no data for it, and the literature for it still has to be read paper by paper like the rest.
+
+**What limits it.** These are our expectations and have to be measured on the device before anything else:
+
+- Time. Face tracking gives up to 60 frames a second and the depth map 30. A movement shorter than a few hundredths of a second cannot be resolved, so the very shortest micro-expressions are out of reach.
+- Depth noise. At phone distance we expect noise of around a millimetre. A twitch smaller than the noise cannot be told from it.
+- Head movement. The head moves far more than any muscle. It has to be removed first, and what is left is small.
+- It is not a hidden sensor. Apps cannot read the infrared dot pattern Face ID itself uses; only the mesh and the depth map that Apple derives from it.
+
+**What it changes for privacy.** A mesh and a depth map are the shape of a face, and our rule is that no face shape leaves the phone (`ios/SENSORS.md`). So this would be the one place where the phone computes before it sends: for each region, how far it moved after the head's movement and the person's own resting shape are taken out. Only those movement numbers would leave. That gives up, for this signal only, the ability to recompute everything on the server later, and it would need its own line in the consent.
+
+**The first experiment, before any patient.**
+
+1. Noise floor: record a still face and a rigid object, and measure how much the points move when nothing moves.
+2. Known movements: one of us makes small movements on cue (one mouth corner, one brow, a short twitch). Does the mesh show them where the blend shape shows nothing?
+3. Decide by the numbers: if the finer signal adds nothing over the blend shapes on these recordings, it is dropped.
+
+If it stays, its measures and their expected directions are written into the hypothesis list before any patient data is looked at, the same as the others.
+
 ## What would count as a finding
 
 - A measure is worth keeping if it moves in the expected direction in clearly more than half of the participants, with an interval that excludes zero in a meaningful share of them.
