@@ -1,0 +1,139 @@
+{
+  "_about": "ILLUSTRATIVE example of what the app POSTs to the proxy for Experiment C (combined). Shape follows GeminiPayloadBuilder.combinedPayload; the numbers are from the synthetic example datasets and are shortened (one metric, two sessions, five daily rows). A real payload carries every metric, all selected sessions and up to 180 daily rows.",
+  "request_id": "6C1D2F3A-0000-4000-8000-000000000001",
+  "experiment": "combined",
+  "model": "gemini-4-carbon",
+  "thinking_level": "medium",
+  "system_instruction": "<GeminiPrompts.systemInstruction, see HKGeminiHarness/Gemini/GeminiPrompts.swift>",
+  "user_prompt": "<GeminiPrompts.userPrompt(for: .combined)>",
+  "payload": {
+    "date_range": {"start": "2026-10-15T21:17:00.000Z", "end": "2026-11-14T21:59:00.000Z"},
+    "time_zone": "Europe/Helsinki",
+    "health": {
+      "source": "Apple Health via HealthKit / Apple Health XML export; statistics computed on device",
+      "date_range": {"start": "2026-10-15T21:17:00.000Z", "end": "2026-11-14T21:59:00.000Z"},
+      "time_zone": "Europe/Helsinki",
+      "metrics": [
+        {
+          "metric": "HeartRateVariabilitySDNN",
+          "display_name": "HRV (SDNN)",
+          "category": "Cardiovascular",
+          "unit": "ms",
+          "daily_aggregation": "mean",
+          "sample_count": 95,
+          "first_date": "2026-10-16T00:12:00.000Z",
+          "last_date": "2026-11-14T04:40:00.000Z",
+          "source_count": 1,
+          "statistics_per_sample": {"count": 95, "mean": 43.1, "median": 43.9, "standardDeviation": 9.4, "minimum": 18.2, "maximum": 66.7, "percentile5": 27.5, "percentile25": 36.8, "percentile75": 49.6, "percentile95": 58.9, "interquartileRange": 12.8, "medianAbsoluteDeviation": 6.3, "sum": 4094.5},
+          "statistics_per_day": {"count": 30, "mean": 43.2, "median": 44.6, "standardDeviation": 6.1, "minimum": 31.4, "maximum": 54.0, "percentile5": 33.0, "percentile25": 38.9, "percentile75": 47.5, "percentile95": 52.6, "interquartileRange": 8.6, "medianAbsoluteDeviation": 4.4, "sum": 1296.0},
+          "daily": [
+            {"day": "2026-11-10", "value": 46.2, "n": 3},
+            {"day": "2026-11-11", "value": 38.9, "n": 4},
+            {"day": "2026-11-12", "value": 44.6, "n": 2},
+            {"day": "2026-11-13", "value": 49.1, "n": 3},
+            {"day": "2026-11-14", "value": 41.7, "n": 3}
+          ],
+          "daily_points_omitted": 25,
+          "weekly": [
+            {"weekStart": "2026-10-26", "days": 7, "mean": 36.4, "median": 35.9, "standardDeviation": 4.1, "sum": 254.8},
+            {"weekStart": "2026-11-02", "days": 7, "mean": 45.8, "median": 46.0, "standardDeviation": 3.9, "sum": 320.6},
+            {"weekStart": "2026-11-09", "days": 6, "mean": 44.5, "median": 45.4, "standardDeviation": 3.8, "sum": 267.0}
+          ],
+          "sampling_frequency": {"sampleCount": 95, "spanSeconds": 2521680, "medianIntervalSeconds": 15420, "meanIntervalSeconds": 26826, "samplesPerDay": 3.25, "largestGapSeconds": 79200, "largestGapStart": "2026-10-28T03:10:00.000Z", "isContinuous": false, "note": "Sparse or irregular sampling: treat as point measurements, not a continuous signal."},
+          "coverage": {"daysInRange": 31, "daysWithData": 30, "coverageFraction": 0.968, "missingDaysCount": 1},
+          "outliers": {"method": "robust_z_mad", "threshold": 3.5, "outlierCount": 0, "outlierDays": []},
+          "longitudinal_change": {"metric": "HKQuantityTypeIdentifierHeartRateVariabilitySDNN", "unit": "ms", "firstPeriod": "2026-10-16…2026-10-22", "firstPeriodMedian": 45.3, "lastPeriod": "2026-11-08…2026-11-14", "lastPeriodMedian": 44.6, "absoluteChange": -0.7, "relativeChange": -0.015, "slopePerDay": -0.04, "daysCovered": 30}
+        }
+      ],
+      "unavailable_types": [],
+      "empty_types": ["BloodPressureSystolic", "BloodPressureDiastolic", "VO2Max", "BodyFatPercentage"],
+      "workouts": {"count": 8, "by_activity": {"walking": 8}},
+      "processing_notes": [
+        "Sleep: 2 sources; each night uses the source with the most recorded sleep.",
+        "Sleep is attributed to the wake-up day (end date of the interval).",
+        "Steps: 2 sources overlap; each day uses the source with the largest total to avoid double counting.",
+        "Daily values are formed in time zone Europe/Helsinki.",
+        "HRV and most watch metrics are sampled a few times a day; see samplingFrequency per metric before treating any series as continuous."
+      ]
+    },
+    "arkit": {
+      "source": "FaceMetrics ARKit recorder exports (samples.csv, session.json); features computed on device",
+      "feature_definitions": {
+        "blink": "Hysteresis events on bs_eyeBlink_L/R (onset ≥ 0.5, offset ≤ 0.3, 0.03–0.5 s). ratePerMinute = count / tracked span.",
+        "eyeOpenness": "1 − mean(eyeBlink_L, eyeBlink_R) per frame; statistics over the window.",
+        "headMovement": "Euler angles (rad) from head_world_m00..m33; amplitude = range, poseVariability = mean std, frequency = zero-crossing rate of yaw+pitch.",
+        "facialMovement": "Over all bs_* coefficients on tracked frames: amplitude = mean range, variability = mean std, activityPerSecond = mean Σ|Δ| / span.",
+        "asymmetry": "Per _L/_R pair mean(L − R) (signed) and mean |L − R| (overall and by group).",
+        "gaze": "look_at_x/y/z direction; a change is counted when consecutive frames differ by ≥ 5°.",
+        "trackingQuality": "face_tracked fraction, camera_tracking_state distribution, dropped frame estimate, light estimate means.",
+        "exportedDerivedMeans": "Means of the recorder's own derived columns (its blink detector, quality score…). Independent of the features above.",
+        "windows": "Consecutive fixed-length windows on the recording clock; startWallClock/endWallClock come from the session.json time anchor."
+      },
+      "sessions": [
+        {
+          "session_id": "20261114-060000-synth01",
+          "recorded_start": "2026-11-14T06:00:00.000Z",
+          "recorded_end": "2026-11-14T06:00:44.967Z",
+          "time_alignment": "session_manifest",
+          "duration_s": 44.967,
+          "frame_count": 1348,
+          "tracked_fraction": 0.9666,
+          "effective_fps": 29.96,
+          "video_format": "1280x720 @ 30 fps",
+          "markers": ["Look left", "Look right", "Neutral face", "Smile"],
+          "validation": {"frameCount": 1348, "trackedFrameCount": 1303, "recordingDurationSeconds": 44.967, "effectiveFrameRate": 29.96, "expectedFrameRate": 30, "medianFrameIntervalSeconds": 0.0333, "missingFramesEstimate": 2, "gapCount": 0, "largestGapSeconds": 0.1, "pauseCount": 0, "pausedSeconds": 0, "interruptionCount": 0, "faceLostEvents": 1, "blendShapeColumns": 52, "blendShapeMissingFraction": 0, "framesWithAnyMissingBlendShape": 0, "cameraStateDistribution": {"normal": 0.956, "limited": 0.044}, "limitedReasons": {"insufficientFeatures": 60}, "geometryAvailable": true, "geometryRecords": 5, "manifestSampleCountMatches": true, "issues": [{"severity": "info", "message": "CSV wall_clock_unix_s cross-check residual median 0.000 s."}]},
+          "session_level_features": {
+            "id": "20261114-060000-synth01-44s-73421.500", "sessionID": "20261114-060000-synth01", "windowSeconds": 44.967, "startUptime": 73421.5, "endUptime": 73466.467,
+            "startWallClock": "2026-11-14T06:00:00.000Z", "endWallClock": "2026-11-14T06:00:44.967Z", "frameCount": 1348, "trackedFrameCount": 1303, "missingBlendShapeFraction": 0,
+            "markers": ["Look left", "Look right", "Neutral face", "Smile"],
+            "blink": {"count": 16, "ratePerMinute": 21.4, "meanDurationSeconds": 0.111, "durationStdSeconds": 0.021, "meanInterBlinkIntervalSeconds": 2.79, "leftOnlyCount": 0, "rightOnlyCount": 0, "method": "hysteresis on max(eyeBlink_L, eyeBlink_R): onset ≥ 0.5, offset ≤ 0.3, duration 0.03–0.5 s; longer closures excluded"},
+            "eyeOpenness": {"n": 1303, "mean": 0.942, "standardDeviation": 0.157, "minimum": 0.02, "maximum": 0.995, "median": 0.971},
+            "headMovement": {"amplitudeRad": {"pitch": 0.071, "yaw": 0.375, "roll": 0.034}, "meanAmplitudeRad": 0.16, "frequencyHz": 0.27, "poseVariabilityRad": 0.038, "meanAngularSpeedRadPerS": 0.19, "positionRangeM": {"x": 0.024, "y": 0.007, "z": 0.02}, "meanDistanceToOriginM": 0.422},
+            "facialMovement": {"amplitude": 0.21, "variability": 0.041, "activityPerSecond": 0.33, "meanActivation": 0.047, "activeCoefficientFraction": 0.19, "mostActiveCoefficients": ["eyeBlink_L", "eyeBlink_R", "mouthSmile_L", "mouthSmile_R", "eyeLookOut_L"]},
+            "blendShapeDynamics": {"mouthSmile_L": {"n": 1303, "mean": 0.112, "standardDeviation": 0.221, "minimum": 0, "maximum": 0.68, "median": 0.024}},
+            "asymmetry": {"pairCount": 23, "overallMeanAbsoluteDifference": 0.017, "byGroup": {"smile": 0.06, "brow": 0.012, "eye": 0.021, "cheek": 0.014, "mouth": 0.012, "nose": 0.011}, "byPairSigned": {"mouthSmile": 0.06, "eyeBlink": 0.018}},
+            "gaze": {"directionChangeCount": 4, "changeThresholdDegrees": 5, "meanAngularSpeedDegPerS": 2.9, "yawStdDeg": 13.6, "pitchStdDeg": 3.2, "meanLookAtDistanceM": 0.502},
+            "trackingQuality": {"trackedFraction": 0.9666, "cameraStateDistribution": {"normal": 0.956, "limited": 0.044}, "meanFrameIntervalSeconds": 0.0334, "droppedFramesEstimate": 2, "meanAmbientIntensity": 902, "meanColorTemperatureK": 4800, "meanExposureDurationS": 0.0167},
+            "supportingMeasurements": [],
+            "exportedDerivedMeans": {"asym_overall": 0.017, "blink_rate_per_min": 20.8, "quality_score": 0.98}
+          },
+          "windows": {"60s": []},
+          "blend_shape_statistics": {"eyeBlink_L": {"count": 1303, "mean": 0.062, "median": 0.03, "standardDeviation": 0.16, "minimum": 0, "maximum": 1}, "mouthSmile_L": {"count": 1303, "mean": 0.112, "median": 0.024, "standardDeviation": 0.221, "minimum": 0, "maximum": 0.68}},
+          "recorder_exported_derived_means": {"asym_overall": 0.017, "blink_rate_per_min": 20.8, "quality_score": 0.98}
+        }
+      ]
+    },
+    "daily_rows": [
+      {"day": "2026-11-10", "health": {"HeartRateVariabilitySDNN": 46.2, "SleepAnalysis": 7.8, "StepCount": 11840, "RestingHeartRate": 57}, "previousDayHealth": {"HeartRateVariabilitySDNN": 44.0, "SleepAnalysis": 7.1, "StepCount": 9020, "RestingHeartRate": 58}, "facial": {"blinkRatePerMinute": 19.5, "facialVariability": 0.039, "headPoseVariabilityRad": 0.036, "eyeOpennessMean": 0.944, "trackedFraction": 0.97}, "arKitSessionIDs": ["20261110-061200-synth"], "facialWindowCount": 1},
+      {"day": "2026-11-11", "health": {"HeartRateVariabilitySDNN": 38.9, "SleepAnalysis": 6.2, "StepCount": 7310, "RestingHeartRate": 60}, "previousDayHealth": {"HeartRateVariabilitySDNN": 46.2, "SleepAnalysis": 7.8, "StepCount": 11840, "RestingHeartRate": 57}, "facial": {"blinkRatePerMinute": 24.1, "facialVariability": 0.031, "headPoseVariabilityRad": 0.029, "eyeOpennessMean": 0.931, "trackedFraction": 0.91}, "arKitSessionIDs": ["20261111-060900-synth"], "facialWindowCount": 1},
+      {"day": "2026-11-12", "health": {"HeartRateVariabilitySDNN": 44.6, "SleepAnalysis": 7.4, "StepCount": 12970, "RestingHeartRate": 58}, "previousDayHealth": {"HeartRateVariabilitySDNN": 38.9, "SleepAnalysis": 6.2, "StepCount": 7310, "RestingHeartRate": 60}, "facial": {"blinkRatePerMinute": 20.2, "facialVariability": 0.04, "headPoseVariabilityRad": 0.037, "eyeOpennessMean": 0.94, "trackedFraction": 0.98}, "arKitSessionIDs": ["20261112-061500-synth"], "facialWindowCount": 1},
+      {"day": "2026-11-13", "health": {"HeartRateVariabilitySDNN": 49.1, "SleepAnalysis": 8.1, "StepCount": 13420, "RestingHeartRate": 56}, "previousDayHealth": {"HeartRateVariabilitySDNN": 44.6, "SleepAnalysis": 7.4, "StepCount": 12970, "RestingHeartRate": 58}, "facial": {"blinkRatePerMinute": 18.7, "facialVariability": 0.043, "headPoseVariabilityRad": 0.04, "eyeOpennessMean": 0.947, "trackedFraction": 0.99}, "arKitSessionIDs": ["20261113-060300-synth"], "facialWindowCount": 1},
+      {"day": "2026-11-14", "health": {"HeartRateVariabilitySDNN": 41.7, "SleepAnalysis": 7.5, "StepCount": 12225, "RestingHeartRate": 58}, "previousDayHealth": {"HeartRateVariabilitySDNN": 49.1, "SleepAnalysis": 8.1, "StepCount": 13420, "RestingHeartRate": 56}, "facial": {"blinkRatePerMinute": 21.4, "facialVariability": 0.041, "headPoseVariabilityRad": 0.038, "eyeOpennessMean": 0.942, "trackedFraction": 0.9666}, "arKitSessionIDs": ["20261114-060000-synth01"], "facialWindowCount": 1}
+    ],
+    "correlations": [
+      {"metricA": "HeartRateVariabilitySDNN", "metricB": "facialVariability", "lagDays": 0, "pairedPoints": 9, "pearsonR": 0.62, "spearmanRho": 0.58, "note": "Descriptive association over 9 paired days. Not a causal estimate; no significance test applied."},
+      {"metricA": "SleepAnalysis", "metricB": "blinkRatePerMinute", "lagDays": 0, "pairedPoints": 9, "pearsonR": -0.71, "spearmanRho": -0.67, "note": "Descriptive association over 9 paired days. Not a causal estimate; no significance test applied."},
+      {"metricA": "RestingHeartRate", "metricB": "facialVariability", "lagDays": 0, "pairedPoints": 9, "pearsonR": -0.49, "spearmanRho": -0.45, "note": "Descriptive association over 9 paired days. Not a causal estimate; no significance test applied."},
+      {"metricA": "StepCount", "metricB": "headPoseVariabilityRad", "lagDays": 1, "pairedPoints": 8, "pearsonR": 0.12, "spearmanRho": 0.1, "note": "Descriptive association over 8 paired days. Not a causal estimate; no significance test applied."},
+      {"metricA": "AppleExerciseTime", "metricB": "facialVariability", "lagDays": 0, "pairedPoints": 5, "pearsonR": null, "spearmanRho": null, "note": "Only 5 paired days; fewer than 7. Not computed."}
+    ],
+    "baseline_profile": {
+      "generatedAt": "2026-11-14T09:40:00.000Z",
+      "range": {"start": "2026-10-15T21:17:00.000Z", "end": "2026-11-14T21:59:00.000Z"},
+      "healthReferences": [
+        {"metric": "HeartRateVariabilitySDNN", "unit": "ms", "sampleCount": 95, "daysCovered": 30, "median": 44.6, "medianAbsoluteDeviation": 4.4, "percentile5": 33.0, "percentile25": 38.9, "percentile75": 47.5, "percentile95": 52.6, "mean": 43.2, "standardDeviation": 6.1, "lowerUsual": 28.3, "upperUsual": 60.9, "coverageFraction": 0.968, "firstDate": "2026-10-15T22:00:00.000Z", "lastDate": "2026-11-13T22:00:00.000Z"}
+      ],
+      "facialReferences": [
+        {"metric": "blinkRatePerMinute", "sampleCount": 9, "daysCovered": 9, "median": 20.2, "medianAbsoluteDeviation": 1.2, "percentile5": 18.7, "percentile25": 19.5, "percentile75": 21.4, "percentile95": 24.1, "mean": 20.8, "standardDeviation": 1.9, "lowerUsual": 15.8, "upperUsual": 24.6}
+      ],
+      "longitudinalChanges": [],
+      "caveat": "Reference ranges describe this person's own recorded history (median ± 2.5 robust SD). They are not a healthy norm, and the history may itself contain unwell periods. Facial references count 60 s windows with ≥ 50 % face tracking; 'daysCovered' is the number of recordings."
+    },
+    "processing_notes": [
+      "8 of 56 health×facial pairs had at least 7 paired days; the rest are listed with their pair count and no coefficient.",
+      "Facial daily values are means over 60 s windows of that day's recordings; recordings are short and sparse compared with health data.",
+      "All correlations are descriptive. No causal claim is implied and no multiple-comparison correction is applied."
+    ]
+  },
+  "response_schema": "<GeminiSchema.responseSchema(experiment: .combined), see HKGeminiHarness/Gemini/GeminiSchema.swift>"
+}

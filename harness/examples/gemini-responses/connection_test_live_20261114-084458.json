@@ -1,0 +1,44 @@
+{
+  "sent_at": "2026-11-14T08:44:58.130203+00:00",
+  "experiment": "connection_test",
+  "request_id": "live-test",
+  "thinking_level": null,
+  "proxy_reply": {
+    "request_id": "live-test",
+    "model": "gemini-4-carbon",
+    "status": "success",
+    "text": "{\"experiment_type\":\"connection_test\",\"plain_language_explanation\":\"ok\"}",
+    "usage": {
+      "prompt_tokens": 147,
+      "output_tokens": 21,
+      "thought_tokens": 552,
+      "total_tokens": 720
+    },
+    "latency_ms": 13125.0,
+    "upstream_status": 200,
+    "finish_reason": "STOP",
+    "error": null
+  },
+  "validation": {
+    "schema_errors": [
+      "missing key baseline_summary",
+      "missing key health_observations",
+      "missing key facial_behavior_observations",
+      "missing key cross_modal_patterns",
+      "missing key longitudinal_changes",
+      "missing key potential_confounders",
+      "missing key data_quality",
+      "missing key uncertainties",
+      "missing key recommended_tracking"
+    ],
+    "unsupported_numbers": [],
+    "forbidden_terms": [],
+    "observations": 0,
+    "numbers_checked": 0,
+    "is_valid": false
+  },
+  "parsed": {
+    "experiment_type": "connection_test",
+    "plain_language_explanation": "ok"
+  }
+}

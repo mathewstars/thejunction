@@ -1,0 +1,1776 @@
+{
+  "app": {
+    "build": "1",
+    "name": "FaceMetrics",
+    "version": "0.1.0"
+  },
+  "blendShapeFriendlyNames": {
+    "browDown_L": "browDownLeft",
+    "browDown_R": "browDownRight",
+    "browInnerUp": "browInnerUp",
+    "browOuterUp_L": "browOuterUpLeft",
+    "browOuterUp_R": "browOuterUpRight",
+    "cheekPuff": "cheekPuff",
+    "cheekSquint_L": "cheekSquintLeft",
+    "cheekSquint_R": "cheekSquintRight",
+    "eyeBlink_L": "eyeBlinkLeft",
+    "eyeBlink_R": "eyeBlinkRight",
+    "eyeLookDown_L": "eyeLookDownLeft",
+    "eyeLookDown_R": "eyeLookDownRight",
+    "eyeLookIn_L": "eyeLookInLeft",
+    "eyeLookIn_R": "eyeLookInRight",
+    "eyeLookOut_L": "eyeLookOutLeft",
+    "eyeLookOut_R": "eyeLookOutRight",
+    "eyeLookUp_L": "eyeLookUpLeft",
+    "eyeLookUp_R": "eyeLookUpRight",
+    "eyeSquint_L": "eyeSquintLeft",
+    "eyeSquint_R": "eyeSquintRight",
+    "eyeWide_L": "eyeWideLeft",
+    "eyeWide_R": "eyeWideRight",
+    "jawForward": "jawForward",
+    "jawLeft": "jawLeft",
+    "jawOpen": "jawOpen",
+    "jawRight": "jawRight",
+    "mouthClose": "mouthClose",
+    "mouthDimple_L": "mouthDimpleLeft",
+    "mouthDimple_R": "mouthDimpleRight",
+    "mouthFrown_L": "mouthFrownLeft",
+    "mouthFrown_R": "mouthFrownRight",
+    "mouthFunnel": "mouthFunnel",
+    "mouthLeft": "mouthLeft",
+    "mouthLowerDown_L": "mouthLowerDownLeft",
+    "mouthLowerDown_R": "mouthLowerDownRight",
+    "mouthPress_L": "mouthPressLeft",
+    "mouthPress_R": "mouthPressRight",
+    "mouthPucker": "mouthPucker",
+    "mouthRight": "mouthRight",
+    "mouthRollLower": "mouthRollLower",
+    "mouthRollUpper": "mouthRollUpper",
+    "mouthShrugLower": "mouthShrugLower",
+    "mouthShrugUpper": "mouthShrugUpper",
+    "mouthSmile_L": "mouthSmileLeft",
+    "mouthSmile_R": "mouthSmileRight",
+    "mouthStretch_L": "mouthStretchLeft",
+    "mouthStretch_R": "mouthStretchRight",
+    "mouthUpperUp_L": "mouthUpperUpLeft",
+    "mouthUpperUp_R": "mouthUpperUpRight",
+    "noseSneer_L": "noseSneerLeft",
+    "noseSneer_R": "noseSneerRight",
+    "tongueOut": "tongueOut"
+  },
+  "blendShapeIdentifiers": [
+    "browDown_L",
+    "browDown_R",
+    "browInnerUp",
+    "browOuterUp_L",
+    "browOuterUp_R",
+    "cheekPuff",
+    "cheekSquint_L",
+    "cheekSquint_R",
+    "eyeBlink_L",
+    "eyeBlink_R",
+    "eyeLookDown_L",
+    "eyeLookDown_R",
+    "eyeLookIn_L",
+    "eyeLookIn_R",
+    "eyeLookOut_L",
+    "eyeLookOut_R",
+    "eyeLookUp_L",
+    "eyeLookUp_R",
+    "eyeSquint_L",
+    "eyeSquint_R",
+    "eyeWide_L",
+    "eyeWide_R",
+    "jawForward",
+    "jawLeft",
+    "jawOpen",
+    "jawRight",
+    "mouthClose",
+    "mouthDimple_L",
+    "mouthDimple_R",
+    "mouthFrown_L",
+    "mouthFrown_R",
+    "mouthFunnel",
+    "mouthLeft",
+    "mouthLowerDown_L",
+    "mouthLowerDown_R",
+    "mouthPress_L",
+    "mouthPress_R",
+    "mouthPucker",
+    "mouthRight",
+    "mouthRollLower",
+    "mouthRollUpper",
+    "mouthShrugLower",
+    "mouthShrugUpper",
+    "mouthSmile_L",
+    "mouthSmile_R",
+    "mouthStretch_L",
+    "mouthStretch_R",
+    "mouthUpperUp_L",
+    "mouthUpperUp_R",
+    "noseSneer_L",
+    "noseSneer_R",
+    "tongueOut"
+  ],
+  "blinkEvents": [
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73422.63,
+      "interBlinkIntervalSeconds": null,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 1.0,
+      "startTimestamp": 73422.5
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73425.54243208264,
+      "interBlinkIntervalSeconds": 2.9124320826329573,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 3.9124320826329573,
+      "startTimestamp": 73425.41243208264
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73428.07430026527,
+      "interBlinkIntervalSeconds": 2.5318681826339047,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 6.444300265266862,
+      "startTimestamp": 73427.94430026527
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73431.70635610596,
+      "interBlinkIntervalSeconds": 3.6320558406876797,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 10.076356105954542,
+      "startTimestamp": 73431.57635610596
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73434.06571593662,
+      "interBlinkIntervalSeconds": 2.359359830668595,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 12.435715936623136,
+      "startTimestamp": 73433.93571593662
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73437.44465634611,
+      "interBlinkIntervalSeconds": 3.3789404094747155,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 15.814656346097852,
+      "startTimestamp": 73437.3146563461
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73440.44917196331,
+      "interBlinkIntervalSeconds": 3.0045156172076872,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 18.81917196330554,
+      "startTimestamp": 73440.3191719633
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73442.77676959781,
+      "interBlinkIntervalSeconds": 2.327597634504354,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 21.146769597809893,
+      "startTimestamp": 73442.6467695978
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73446.09312821084,
+      "interBlinkIntervalSeconds": 3.3163586130167246,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 24.463128210826618,
+      "startTimestamp": 73445.96312821083
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73448.3756186594,
+      "interBlinkIntervalSeconds": 2.282490448572368,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 26.745618659398986,
+      "startTimestamp": 73448.24561865939
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73451.52963916346,
+      "interBlinkIntervalSeconds": 3.15402050405725,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 29.899639163456236,
+      "startTimestamp": 73451.39963916346
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73453.88332109533,
+      "interBlinkIntervalSeconds": 2.353681931864159,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 32.253321095320395,
+      "startTimestamp": 73453.75332109533
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73456.28288972468,
+      "interBlinkIntervalSeconds": 2.3995686293565015,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 34.652889724676896,
+      "startTimestamp": 73456.15288972468
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73459.41683194079,
+      "interBlinkIntervalSeconds": 3.1339422161135317,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 37.78683194079043,
+      "startTimestamp": 73459.28683194079
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73463.43590661508,
+      "interBlinkIntervalSeconds": 4.019074674278485,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 41.80590661506891,
+      "startTimestamp": 73463.30590661507
+    },
+    {
+      "bilateral": true,
+      "durationSeconds": 0.13,
+      "endTimestamp": 73465.9082709296,
+      "interBlinkIntervalSeconds": 2.472364314529223,
+      "kind": "blink",
+      "onsetLagSeconds": 0.0,
+      "peakAsymmetry": 0.02,
+      "peakLeft": 1.0,
+      "peakRight": 0.98,
+      "recordingStartTime": 44.278270929598136,
+      "startTimestamp": 73465.7782709296
+    }
+  ],
+  "coefficientStatistics": {},
+  "columns": [
+    {
+      "description": "Index of this row in the recording (0-based).",
+      "name": "sample_index",
+      "origin": "app",
+      "unit": ""
+    },
+    {
+      "description": "Index of the ARFrame since tracking started.",
+      "name": "frame_index",
+      "origin": "app",
+      "unit": ""
+    },
+    {
+      "description": "ARFrame.timestamp, device uptime clock.",
+      "name": "timestamp_s",
+      "origin": "arkit",
+      "unit": "s"
+    },
+    {
+      "description": "timestamp_s minus the first recorded sample's timestamp.",
+      "name": "recording_time_s",
+      "origin": "derived",
+      "unit": "s"
+    },
+    {
+      "description": "Wall-clock time when the frame was processed, Unix epoch.",
+      "name": "wall_clock_unix_s",
+      "origin": "app",
+      "unit": "s"
+    },
+    {
+      "description": "Seconds since the previous ARFrame (empty for the first frame).",
+      "name": "frame_interval_s",
+      "origin": "derived",
+      "unit": "s"
+    },
+    {
+      "description": "round(frame_interval / expected_interval) - 1 when the interval was long, else 0.",
+      "name": "dropped_frames_est",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "An ARFaceAnchor existed on this frame.",
+      "name": "face_anchor_present",
+      "origin": "arkit",
+      "unit": "0/1"
+    },
+    {
+      "description": "ARFaceAnchor.isTracked. Face columns are empty when 0.",
+      "name": "face_tracked",
+      "origin": "arkit",
+      "unit": "0/1"
+    },
+    {
+      "description": "ARCamera.trackingState: notAvailable, limited, normal.",
+      "name": "camera_tracking_state",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARCamera.TrackingState.Reason when limited.",
+      "name": "camera_limited_reason",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "Label of the researcher's held interval marker at this sample, if any.",
+      "name": "active_marker",
+      "origin": "app",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m00.",
+      "name": "head_world_m00",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m01.",
+      "name": "head_world_m01",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m02.",
+      "name": "head_world_m02",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m03.",
+      "name": "head_world_m03",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m10.",
+      "name": "head_world_m10",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m11.",
+      "name": "head_world_m11",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m12.",
+      "name": "head_world_m12",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m13.",
+      "name": "head_world_m13",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m20.",
+      "name": "head_world_m20",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m21.",
+      "name": "head_world_m21",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m22.",
+      "name": "head_world_m22",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m23.",
+      "name": "head_world_m23",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m30.",
+      "name": "head_world_m30",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m31.",
+      "name": "head_world_m31",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m32.",
+      "name": "head_world_m32",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.transform in ARKit world space (gravity-aligned). Row-major element m33.",
+      "name": "head_world_m33",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "Translation of the face anchor in world space.",
+      "name": "head_world_pos_x",
+      "origin": "arkit",
+      "unit": "m"
+    },
+    {
+      "description": "Translation of the face anchor in world space.",
+      "name": "head_world_pos_y",
+      "origin": "arkit",
+      "unit": "m"
+    },
+    {
+      "description": "Translation of the face anchor in world space.",
+      "name": "head_world_pos_z",
+      "origin": "arkit",
+      "unit": "m"
+    },
+    {
+      "description": "Euler angles decomposed from the world transform. Pitch is rotation about X.",
+      "name": "head_world_pitch_rad",
+      "origin": "derived",
+      "unit": "rad"
+    },
+    {
+      "description": "Euler angles decomposed from the world transform. Yaw is rotation about Y.",
+      "name": "head_world_yaw_rad",
+      "origin": "derived",
+      "unit": "rad"
+    },
+    {
+      "description": "Euler angles decomposed from the world transform. Roll is rotation about Z.",
+      "name": "head_world_roll_rad",
+      "origin": "derived",
+      "unit": "rad"
+    },
+    {
+      "description": "Face position in portrait camera view space.",
+      "name": "head_view_pos_x",
+      "origin": "derived",
+      "unit": "m"
+    },
+    {
+      "description": "Face position in portrait camera view space.",
+      "name": "head_view_pos_y",
+      "origin": "derived",
+      "unit": "m"
+    },
+    {
+      "description": "Face position in portrait camera view space.",
+      "name": "head_view_pos_z",
+      "origin": "derived",
+      "unit": "m"
+    },
+    {
+      "description": "Euler angles of the face relative to the portrait camera view. Pitch is rotation about X.",
+      "name": "head_view_pitch_rad",
+      "origin": "derived",
+      "unit": "rad"
+    },
+    {
+      "description": "Euler angles of the face relative to the portrait camera view. Yaw is rotation about Y.",
+      "name": "head_view_yaw_rad",
+      "origin": "derived",
+      "unit": "rad"
+    },
+    {
+      "description": "Euler angles of the face relative to the portrait camera view. Roll is rotation about Z.",
+      "name": "head_view_roll_rad",
+      "origin": "derived",
+      "unit": "rad"
+    },
+    {
+      "description": "Distance from camera to face anchor origin.",
+      "name": "head_distance_m",
+      "origin": "derived",
+      "unit": "m"
+    },
+    {
+      "description": "View-space position minus the baseline pose.",
+      "name": "head_rel_pos_x",
+      "origin": "derived",
+      "unit": "m"
+    },
+    {
+      "description": "View-space position minus the baseline pose.",
+      "name": "head_rel_pos_y",
+      "origin": "derived",
+      "unit": "m"
+    },
+    {
+      "description": "View-space position minus the baseline pose.",
+      "name": "head_rel_pos_z",
+      "origin": "derived",
+      "unit": "m"
+    },
+    {
+      "description": "View-space Euler minus the baseline pose. Pitch is rotation about X.",
+      "name": "head_rel_pitch_rad",
+      "origin": "derived",
+      "unit": "rad"
+    },
+    {
+      "description": "View-space Euler minus the baseline pose. Yaw is rotation about Y.",
+      "name": "head_rel_yaw_rad",
+      "origin": "derived",
+      "unit": "rad"
+    },
+    {
+      "description": "View-space Euler minus the baseline pose. Roll is rotation about Z.",
+      "name": "head_rel_roll_rad",
+      "origin": "derived",
+      "unit": "rad"
+    },
+    {
+      "description": "Finite difference of view-space Euler angles.",
+      "name": "head_ang_vel_x",
+      "origin": "derived",
+      "unit": "rad/s"
+    },
+    {
+      "description": "Finite difference of view-space Euler angles.",
+      "name": "head_ang_vel_y",
+      "origin": "derived",
+      "unit": "rad/s"
+    },
+    {
+      "description": "Finite difference of view-space Euler angles.",
+      "name": "head_ang_vel_z",
+      "origin": "derived",
+      "unit": "rad/s"
+    },
+    {
+      "description": "Finite difference of angular velocity.",
+      "name": "head_ang_acc_x",
+      "origin": "derived",
+      "unit": "rad/s^2"
+    },
+    {
+      "description": "Finite difference of angular velocity.",
+      "name": "head_ang_acc_y",
+      "origin": "derived",
+      "unit": "rad/s^2"
+    },
+    {
+      "description": "Finite difference of angular velocity.",
+      "name": "head_ang_acc_z",
+      "origin": "derived",
+      "unit": "rad/s^2"
+    },
+    {
+      "description": "Finite difference of view-space position.",
+      "name": "head_lin_vel_x",
+      "origin": "derived",
+      "unit": "m/s"
+    },
+    {
+      "description": "Finite difference of view-space position.",
+      "name": "head_lin_vel_y",
+      "origin": "derived",
+      "unit": "m/s"
+    },
+    {
+      "description": "Finite difference of view-space position.",
+      "name": "head_lin_vel_z",
+      "origin": "derived",
+      "unit": "m/s"
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m00.",
+      "name": "eye_left_m00",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m01.",
+      "name": "eye_left_m01",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m02.",
+      "name": "eye_left_m02",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m03.",
+      "name": "eye_left_m03",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m10.",
+      "name": "eye_left_m10",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m11.",
+      "name": "eye_left_m11",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m12.",
+      "name": "eye_left_m12",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m13.",
+      "name": "eye_left_m13",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m20.",
+      "name": "eye_left_m20",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m21.",
+      "name": "eye_left_m21",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m22.",
+      "name": "eye_left_m22",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m23.",
+      "name": "eye_left_m23",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m30.",
+      "name": "eye_left_m30",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m31.",
+      "name": "eye_left_m31",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m32.",
+      "name": "eye_left_m32",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.leftEyeTransform, relative to the face anchor. Row-major element m33.",
+      "name": "eye_left_m33",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m00.",
+      "name": "eye_right_m00",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m01.",
+      "name": "eye_right_m01",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m02.",
+      "name": "eye_right_m02",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m03.",
+      "name": "eye_right_m03",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m10.",
+      "name": "eye_right_m10",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m11.",
+      "name": "eye_right_m11",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m12.",
+      "name": "eye_right_m12",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m13.",
+      "name": "eye_right_m13",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m20.",
+      "name": "eye_right_m20",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m21.",
+      "name": "eye_right_m21",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m22.",
+      "name": "eye_right_m22",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m23.",
+      "name": "eye_right_m23",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m30.",
+      "name": "eye_right_m30",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m31.",
+      "name": "eye_right_m31",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m32.",
+      "name": "eye_right_m32",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFaceAnchor.rightEyeTransform, relative to the face anchor. Row-major element m33.",
+      "name": "eye_right_m33",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "+Z axis of the left eye transform in face-anchor space.",
+      "name": "eye_left_fwd_x",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "+Z axis of the left eye transform in face-anchor space.",
+      "name": "eye_left_fwd_y",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "+Z axis of the left eye transform in face-anchor space.",
+      "name": "eye_left_fwd_z",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "+Z axis of the right eye transform in face-anchor space.",
+      "name": "eye_right_fwd_x",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "+Z axis of the right eye transform in face-anchor space.",
+      "name": "eye_right_fwd_y",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "+Z axis of the right eye transform in face-anchor space.",
+      "name": "eye_right_fwd_z",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Left eye yaw in camera view space.",
+      "name": "eye_left_yaw_deg",
+      "origin": "derived",
+      "unit": "deg"
+    },
+    {
+      "description": "Left eye pitch in camera view space.",
+      "name": "eye_left_pitch_deg",
+      "origin": "derived",
+      "unit": "deg"
+    },
+    {
+      "description": "Right eye yaw in camera view space.",
+      "name": "eye_right_yaw_deg",
+      "origin": "derived",
+      "unit": "deg"
+    },
+    {
+      "description": "Right eye pitch in camera view space.",
+      "name": "eye_right_pitch_deg",
+      "origin": "derived",
+      "unit": "deg"
+    },
+    {
+      "description": "ARFaceAnchor.lookAtPoint in face-anchor space.",
+      "name": "look_at_x",
+      "origin": "arkit",
+      "unit": "m"
+    },
+    {
+      "description": "ARFaceAnchor.lookAtPoint in face-anchor space.",
+      "name": "look_at_y",
+      "origin": "arkit",
+      "unit": "m"
+    },
+    {
+      "description": "ARFaceAnchor.lookAtPoint in face-anchor space.",
+      "name": "look_at_z",
+      "origin": "arkit",
+      "unit": "m"
+    },
+    {
+      "description": "Unit vector from eye midpoint to lookAtPoint, face-anchor space.",
+      "name": "gaze_anchor_x",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Unit vector from eye midpoint to lookAtPoint, face-anchor space.",
+      "name": "gaze_anchor_y",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Unit vector from eye midpoint to lookAtPoint, face-anchor space.",
+      "name": "gaze_anchor_z",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Gaze direction in portrait camera view space.",
+      "name": "gaze_view_x",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Gaze direction in portrait camera view space.",
+      "name": "gaze_view_y",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Gaze direction in portrait camera view space.",
+      "name": "gaze_view_z",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Gaze direction in ARKit world space.",
+      "name": "gaze_world_x",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Gaze direction in ARKit world space.",
+      "name": "gaze_world_y",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Gaze direction in ARKit world space.",
+      "name": "gaze_world_z",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Gaze yaw in camera view space.",
+      "name": "gaze_yaw_deg",
+      "origin": "derived",
+      "unit": "deg"
+    },
+    {
+      "description": "Gaze pitch in camera view space.",
+      "name": "gaze_pitch_deg",
+      "origin": "derived",
+      "unit": "deg"
+    },
+    {
+      "description": "Angle between left and right eye forward vectors.",
+      "name": "gaze_divergence_deg",
+      "origin": "derived",
+      "unit": "deg"
+    },
+    {
+      "description": "Gaze ray crossing of the camera plane, x.",
+      "name": "gaze_plane_hit_x_m",
+      "origin": "derived",
+      "unit": "m"
+    },
+    {
+      "description": "Gaze ray crossing of the camera plane, y.",
+      "name": "gaze_plane_hit_y_m",
+      "origin": "derived",
+      "unit": "m"
+    },
+    {
+      "description": "Angular speed of the gaze direction.",
+      "name": "gaze_speed_deg_s",
+      "origin": "derived",
+      "unit": "deg/s"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[browDown_L].",
+      "name": "bs_browDown_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[browDown_R].",
+      "name": "bs_browDown_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[browInnerUp].",
+      "name": "bs_browInnerUp",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[browOuterUp_L].",
+      "name": "bs_browOuterUp_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[browOuterUp_R].",
+      "name": "bs_browOuterUp_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[cheekPuff].",
+      "name": "bs_cheekPuff",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[cheekSquint_L].",
+      "name": "bs_cheekSquint_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[cheekSquint_R].",
+      "name": "bs_cheekSquint_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeBlink_L].",
+      "name": "bs_eyeBlink_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeBlink_R].",
+      "name": "bs_eyeBlink_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeLookDown_L].",
+      "name": "bs_eyeLookDown_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeLookDown_R].",
+      "name": "bs_eyeLookDown_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeLookIn_L].",
+      "name": "bs_eyeLookIn_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeLookIn_R].",
+      "name": "bs_eyeLookIn_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeLookOut_L].",
+      "name": "bs_eyeLookOut_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeLookOut_R].",
+      "name": "bs_eyeLookOut_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeLookUp_L].",
+      "name": "bs_eyeLookUp_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeLookUp_R].",
+      "name": "bs_eyeLookUp_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeSquint_L].",
+      "name": "bs_eyeSquint_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeSquint_R].",
+      "name": "bs_eyeSquint_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeWide_L].",
+      "name": "bs_eyeWide_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[eyeWide_R].",
+      "name": "bs_eyeWide_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[jawForward].",
+      "name": "bs_jawForward",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[jawLeft].",
+      "name": "bs_jawLeft",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[jawOpen].",
+      "name": "bs_jawOpen",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[jawRight].",
+      "name": "bs_jawRight",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthClose].",
+      "name": "bs_mouthClose",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthDimple_L].",
+      "name": "bs_mouthDimple_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthDimple_R].",
+      "name": "bs_mouthDimple_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthFrown_L].",
+      "name": "bs_mouthFrown_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthFrown_R].",
+      "name": "bs_mouthFrown_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthFunnel].",
+      "name": "bs_mouthFunnel",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthLeft].",
+      "name": "bs_mouthLeft",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthLowerDown_L].",
+      "name": "bs_mouthLowerDown_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthLowerDown_R].",
+      "name": "bs_mouthLowerDown_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthPress_L].",
+      "name": "bs_mouthPress_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthPress_R].",
+      "name": "bs_mouthPress_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthPucker].",
+      "name": "bs_mouthPucker",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthRight].",
+      "name": "bs_mouthRight",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthRollLower].",
+      "name": "bs_mouthRollLower",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthRollUpper].",
+      "name": "bs_mouthRollUpper",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthShrugLower].",
+      "name": "bs_mouthShrugLower",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthShrugUpper].",
+      "name": "bs_mouthShrugUpper",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthSmile_L].",
+      "name": "bs_mouthSmile_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthSmile_R].",
+      "name": "bs_mouthSmile_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthStretch_L].",
+      "name": "bs_mouthStretch_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthStretch_R].",
+      "name": "bs_mouthStretch_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthUpperUp_L].",
+      "name": "bs_mouthUpperUp_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[mouthUpperUp_R].",
+      "name": "bs_mouthUpperUp_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[noseSneer_L].",
+      "name": "bs_noseSneer_L",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[noseSneer_R].",
+      "name": "bs_noseSneer_R",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceAnchor.blendShapes[tongueOut].",
+      "name": "bs_tongueOut",
+      "origin": "arkit",
+      "unit": "0-1"
+    },
+    {
+      "description": "Mean |d/dt| across all blend-shape coefficients.",
+      "name": "facial_activity",
+      "origin": "derived",
+      "unit": "1/s"
+    },
+    {
+      "description": "Sum of |delta| across coefficients for this frame.",
+      "name": "total_variation",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Mean over coefficients of (window max - window min).",
+      "name": "movement_amplitude",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Zero-crossing rate of the mean activation signal.",
+      "name": "movement_frequency_hz",
+      "origin": "derived",
+      "unit": "Hz"
+    },
+    {
+      "description": "Mean of all coefficient values on this frame.",
+      "name": "mean_activation",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Std of the mean-activation signal in the window.",
+      "name": "activation_std",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Variance of the mean-activation signal in the window.",
+      "name": "activation_variance",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Activation onsets per second in the window.",
+      "name": "transition_rate",
+      "origin": "derived",
+      "unit": "1/s"
+    },
+    {
+      "description": "Coefficients currently above the activation threshold.",
+      "name": "active_coefficients",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Inside a low-activity period.",
+      "name": "low_activity",
+      "origin": "derived",
+      "unit": "0/1"
+    },
+    {
+      "description": "A blink event is open on this frame.",
+      "name": "blink_in_progress",
+      "origin": "derived",
+      "unit": "0/1"
+    },
+    {
+      "description": "Cumulative blinks detected since tracking started.",
+      "name": "blink_count",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Blinks per minute over the rate window.",
+      "name": "blink_rate_per_min",
+      "origin": "derived",
+      "unit": "1/min"
+    },
+    {
+      "description": "Asymmetry group value.",
+      "name": "asym_smile",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Asymmetry group value.",
+      "name": "asym_brow",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Asymmetry group value.",
+      "name": "asym_eye",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Asymmetry group value.",
+      "name": "asym_cheek",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Asymmetry group value.",
+      "name": "asym_mouth",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Asymmetry group value.",
+      "name": "asym_nose",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "Asymmetry group value.",
+      "name": "asym_overall",
+      "origin": "derived",
+      "unit": ""
+    },
+    {
+      "description": "|angular velocity| of the head.",
+      "name": "head_speed_rad_s",
+      "origin": "derived",
+      "unit": "rad/s"
+    },
+    {
+      "description": "Mean over pitch/yaw/roll of window range.",
+      "name": "head_amplitude_rad",
+      "origin": "derived",
+      "unit": "rad"
+    },
+    {
+      "description": "Zero-crossing rate of mean-removed yaw+pitch.",
+      "name": "head_frequency_hz",
+      "origin": "derived",
+      "unit": "Hz"
+    },
+    {
+      "description": "Mean std of pitch/yaw/roll in the window.",
+      "name": "head_variability_rad",
+      "origin": "derived",
+      "unit": "rad"
+    },
+    {
+      "description": "1 - clamp(variability / 0.05 rad).",
+      "name": "head_stability",
+      "origin": "derived",
+      "unit": "0-1"
+    },
+    {
+      "description": "Mean std of gaze yaw and pitch in the window.",
+      "name": "gaze_variability_deg",
+      "origin": "derived",
+      "unit": "deg"
+    },
+    {
+      "description": "0.5*trackedFraction + 0.3*(1-droppedFraction) + 0.2*cameraStateWeight.",
+      "name": "quality_score",
+      "origin": "derived",
+      "unit": "0-1"
+    },
+    {
+      "description": "ARFaceGeometry.vertexCount.",
+      "name": "mesh_vertex_count",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "Mean vertex displacement since the previous frame.",
+      "name": "mesh_mean_displacement_m",
+      "origin": "derived",
+      "unit": "m"
+    },
+    {
+      "description": "Largest vertex displacement since the previous frame.",
+      "name": "mesh_max_displacement_m",
+      "origin": "derived",
+      "unit": "m"
+    },
+    {
+      "description": "ARLightEstimate.ambientIntensity (1000 = neutral).",
+      "name": "light_ambient_intensity",
+      "origin": "arkit",
+      "unit": "lumen"
+    },
+    {
+      "description": "ARLightEstimate.ambientColorTemperature.",
+      "name": "light_color_temperature_k",
+      "origin": "arkit",
+      "unit": "K"
+    },
+    {
+      "description": "ARDirectionalLightEstimate.primaryLightIntensity.",
+      "name": "light_primary_intensity",
+      "origin": "arkit",
+      "unit": "lumen"
+    },
+    {
+      "description": "ARDirectionalLightEstimate.primaryLightDirection.",
+      "name": "light_primary_dir_x",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARDirectionalLightEstimate.primaryLightDirection.",
+      "name": "light_primary_dir_y",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARDirectionalLightEstimate.primaryLightDirection.",
+      "name": "light_primary_dir_z",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARCamera.exposureDuration.",
+      "name": "camera_exposure_duration_s",
+      "origin": "arkit",
+      "unit": "s"
+    },
+    {
+      "description": "ARCamera.exposureOffset.",
+      "name": "camera_exposure_offset",
+      "origin": "arkit",
+      "unit": "EV"
+    },
+    {
+      "description": "ARFrame.capturedDepthData was non-nil.",
+      "name": "depth_data_available",
+      "origin": "arkit",
+      "unit": "0/1"
+    },
+    {
+      "description": "ARFrame.capturedDepthDataTimestamp.",
+      "name": "depth_data_timestamp_s",
+      "origin": "arkit",
+      "unit": "s"
+    },
+    {
+      "description": "ARFrame.exifData ExposureTime.",
+      "name": "exif_exposure_time",
+      "origin": "arkit",
+      "unit": "s"
+    },
+    {
+      "description": "ARFrame.exifData ISOSpeedRatings.",
+      "name": "exif_iso",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "ARFrame.exifData BrightnessValue.",
+      "name": "exif_brightness",
+      "origin": "arkit",
+      "unit": ""
+    },
+    {
+      "description": "Intrinsics focal length x.",
+      "name": "camera_fx",
+      "origin": "arkit",
+      "unit": "px"
+    },
+    {
+      "description": "Intrinsics focal length y.",
+      "name": "camera_fy",
+      "origin": "arkit",
+      "unit": "px"
+    },
+    {
+      "description": "Principal point x.",
+      "name": "camera_cx",
+      "origin": "arkit",
+      "unit": "px"
+    },
+    {
+      "description": "Principal point y.",
+      "name": "camera_cy",
+      "origin": "arkit",
+      "unit": "px"
+    },
+    {
+      "description": "ARCamera.imageResolution width.",
+      "name": "image_width",
+      "origin": "arkit",
+      "unit": "px"
+    },
+    {
+      "description": "ARCamera.imageResolution height.",
+      "name": "image_height",
+      "origin": "arkit",
+      "unit": "px"
+    }
+  ],
+  "configuration": {
+    "geometryEveryNthSample": 300,
+    "includeFaceGeometry": true,
+    "notes": "Generated by make_example_arkit_session.py; not a real person.",
+    "participantLabel": "SYNTHETIC",
+    "targetSampleRate": 30,
+    "writeJSONSamples": false
+  },
+  "createdAt": "2026-11-14T06:00:00Z",
+  "device": {
+    "model": "iPhone16,1",
+    "systemName": "iOS",
+    "systemVersion": "17.6.1"
+  },
+  "droppedFramesEstimate": 2,
+  "durationSeconds": 44.9667,
+  "endedAt": "2026-11-14T06:00:45Z",
+  "files": [
+    "samples.csv",
+    "session.json",
+    "geometry.bin",
+    "geometry.json"
+  ],
+  "formatVersion": 1,
+  "framesSeen": 1350,
+  "framesSkippedByRateLimit": 0,
+  "id": "20261114-060000-synth01",
+  "lifecycle": [
+    {
+      "date": "2026-11-14T05:59:58Z",
+      "detail": "ARFaceTrackingConfiguration",
+      "kind": "configured"
+    },
+    {
+      "date": "2026-11-14T05:59:58Z",
+      "detail": "",
+      "kind": "started"
+    },
+    {
+      "date": "2026-11-14T05:59:59Z",
+      "detail": "",
+      "kind": "faceAnchorAdded"
+    },
+    {
+      "date": "2026-11-14T06:00:16Z",
+      "detail": "",
+      "kind": "faceAnchorRemoved"
+    },
+    {
+      "date": "2026-11-14T06:00:16Z",
+      "detail": "limited(insufficientFeatures)",
+      "kind": "cameraTrackingChanged"
+    },
+    {
+      "date": "2026-11-14T06:00:18Z",
+      "detail": "",
+      "kind": "faceAnchorAdded"
+    },
+    {
+      "date": "2026-11-14T06:00:18Z",
+      "detail": "normal",
+      "kind": "cameraTrackingChanged"
+    }
+  ],
+  "lowActivityPeriods": [],
+  "markers": [
+    {
+      "endFrameIndex": 565,
+      "endTimestamp": 73436.35,
+      "id": "00000000-0000-4000-8000-000000000000",
+      "kind": "interval",
+      "label": "Neutral face",
+      "note": null,
+      "recordingEndTime": 14.850000000000001,
+      "recordingStartTime": 3.6,
+      "startFrameIndex": 228,
+      "startTimestamp": 73425.1,
+      "wallClock": "2026-11-14T06:00:03Z"
+    },
+    {
+      "endFrameIndex": 902,
+      "endTimestamp": 73447.6,
+      "id": "00000001-0000-4000-8000-000000000001",
+      "kind": "interval",
+      "label": "Smile",
+      "note": null,
+      "recordingEndTime": 26.099999999999998,
+      "recordingStartTime": 18.9,
+      "startFrameIndex": 687,
+      "startTimestamp": 73440.4,
+      "wallClock": "2026-11-14T06:00:18Z"
+    },
+    {
+      "endFrameIndex": 1132,
+      "endTimestamp": 73455.25,
+      "id": "00000002-0000-4000-8000-000000000002",
+      "kind": "interval",
+      "label": "Look left",
+      "note": null,
+      "recordingEndTime": 33.75,
+      "recordingStartTime": 30.150000000000002,
+      "startFrameIndex": 1024,
+      "startTimestamp": 73451.65,
+      "wallClock": "2026-11-14T06:00:30Z"
+    },
+    {
+      "endFrameIndex": 1240,
+      "endTimestamp": 73458.85,
+      "id": "00000003-0000-4000-8000-000000000003",
+      "kind": "interval",
+      "label": "Look right",
+      "note": null,
+      "recordingEndTime": 37.35,
+      "recordingStartTime": 33.75,
+      "startFrameIndex": 1132,
+      "startTimestamp": 73455.25,
+      "wallClock": "2026-11-14T06:00:33Z"
+    }
+  ],
+  "notes": [
+    "SYNTHETIC DATA for pipeline testing. Blend shapes, head pose and gaze are generated functions plus noise.",
+    "timestamp_s is device uptime; createdAt + recordingStartTimestamp give the wall-clock anchor."
+  ],
+  "pauses": [],
+  "recordingEndTimestamp": 73466.46666667581,
+  "recordingStartTimestamp": 73421.5,
+  "sampleCount": 1348,
+  "summary": {
+    "activationEvents": 0,
+    "averageFPS": 30,
+    "blinkCount": 16,
+    "closureCount": 0,
+    "interruptions": 0,
+    "lowActivityPeriods": 0,
+    "trackedSampleFraction": 0.9666,
+    "unknownBlendShapeKeysSeen": 0
+  },
+  "trackedSampleCount": 1303,
+  "tracking": {
+    "expectedFrameIntervalSeconds": 0.033333,
+    "framesPerSecond": 30,
+    "lightEstimationEnabled": true,
+    "supportedNumberOfTrackedFaces": 1,
+    "supportsWorldTracking": false,
+    "videoFormat": "1280x720 @ 30 fps"
+  }
+}
