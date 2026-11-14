@@ -8,6 +8,7 @@ import SwiftUI
 //       .lanviLookAt(UnitPoint(x: 0.9, y: -0.3))  // eyes, then head, turn to a point
 //       .lanviTalking(isSpeaking)                 // mouth and head talk while true
 //       .lanviMouth(.o)                           // or drive the mouth shape yourself
+//       .lanviSays(reply.text, trigger: reply.id) // the mouth follows the words of a line
 //
 // - The fox is a paper puppet with depth: tail, body, paws, head, ears, eyes and mouth
 //   are separate pictures. When the head turns, the painted face slides around it in
@@ -98,6 +99,10 @@ struct LanviView: View {
         }
         .frame(width: size, height: size)
     }
+
+    /// How long Lanvi takes to say `text` with `.lanviSays` (seconds, about 13 letters a
+    /// second with pauses at commas and full stops).
+    static func sayingTime(_ text: String) -> Double { LanviSpeech.length(text) }
 
     /// Where the puppet's tail tip is at rest, from the centre of the fox's square.
     static func puppetTailTip(foxSize s: CGFloat) -> CGPoint {
@@ -214,6 +219,14 @@ struct LanviTouchRequest: Equatable {
     static func == (a: Self, b: Self) -> Bool { a.token == b.token }
 }
 
+/// A line for Lanvi to say (`.lanviSays`).
+struct LanviSayRequest: Equatable {
+    var text: String
+    var token: AnyHashable
+    static func == (a: Self, b: Self) -> Bool { a.token == b.token }
+}
+private struct SayKey: EnvironmentKey { static let defaultValue: LanviSayRequest? = nil }
+
 private struct TalkingKey: EnvironmentKey { static let defaultValue = false }
 private struct TouchKey: EnvironmentKey { static let defaultValue: LanviTouchRequest? = nil }
 
@@ -230,6 +243,10 @@ extension EnvironmentValues {
     var lanviTalking: Bool {
         get { self[TalkingKey.self] }
         set { self[TalkingKey.self] = newValue }
+    }
+    var lanviSayRequest: LanviSayRequest? {
+        get { self[SayKey.self] }
+        set { self[SayKey.self] = newValue }
     }
     var lanviMomentRequest: LanviMomentRequest? {
         get { self[MomentKey.self] }
@@ -250,6 +267,15 @@ extension View {
     /// bobs on the words. Set it while a speech bubble's words arrive.
     func lanviTalking(_ talking: Bool) -> some View {
         environment(\.lanviTalking, talking)
+    }
+
+    /// Lanvi says `text` (silently) each time `trigger` changes: the mouth follows its
+    /// syllables, round on o and u, open on the other vowels, the lips meet on m, b and
+    /// p, closed at commas and full stops; small nods on the stressed syllables; then a
+    /// smile. It takes `LanviView.sayingTime(text)`, so a screen can reveal the words at
+    /// the same pace. A chat: `.lanviSays(reply.text, trigger: reply.id)`.
+    func lanviSays<T: Hashable>(_ text: String, trigger: T) -> some View {
+        environment(\.lanviSayRequest, LanviSayRequest(text: text, token: AnyHashable(trigger)))
     }
 
     /// Play one idle moment now (each time `trigger` changes), instead of waiting for
