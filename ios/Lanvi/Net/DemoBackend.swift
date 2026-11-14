@@ -175,7 +175,9 @@ actor DemoBackend: LanviBackend {
 
     /// Offline chat: a few believable replies from the server's own fixed set.
     func note(_ n: API.NoteIn) async throws -> API.NoteOut {
-        try await Task.sleep(for: .milliseconds(1100))
+        // `-chatSlow`: a slower answer, to show the waiting dots in a screenshot.
+        let slow = ProcessInfo.processInfo.arguments.contains("-chatSlow")
+        try await Task.sleep(for: .milliseconds(slow ? 4000 : 1100))
         let t = n.text.lowercased()
         if ["need help", "help me", "kill myself", "hurt myself"].contains(where: t.contains) {
             return API.NoteOut(reply: .init(templateId: "help", text: "Thank you for telling me. You do not have to carry this alone. The help contacts are right here."),

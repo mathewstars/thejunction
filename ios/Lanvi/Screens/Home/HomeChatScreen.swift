@@ -8,6 +8,8 @@ struct HomeChatScreen: View {
     var onClose: () -> Void
     var onHelp: () -> Void
     var onActivity: (ActivityKind) -> Void
+    /// Demo walk-through only: send this by itself, then close.
+    var demoMessage: String? = nil
 
     @Environment(AppStore.self) private var store
     @State private var draft = ""
@@ -64,13 +66,9 @@ struct HomeChatScreen: View {
                     .foregroundStyle(.white.opacity(0.7))
             }
             Spacer()
-            Button(action: onHelp) {
-                HStack(spacing: 5) {
-                    Image(systemName: "lifepreserver.fill")
-                    Text("Help")
-                }
-            }
-            .buttonStyle(HomeSkyChipStyle())
+            Button(action: onHelp) { Image(systemName: "lifepreserver.fill") }
+                .buttonStyle(HomeSkyRoundStyle())
+                .accessibilityLabel("Help")
         }
         .padding(.horizontal, 20)
         .padding(.top, 6)
@@ -279,6 +277,19 @@ struct HomeChatScreen: View {
 
     /// `-chatDemo <name>`: type a draft (`typing`), or play a short conversation (`talk`).
     private func runDemo() async {
+        if let demoMessage {
+            try? await Task.sleep(for: .milliseconds(900))
+            for ch in demoMessage {
+                draft.append(ch)
+                try? await Task.sleep(for: .milliseconds(45))
+            }
+            try? await Task.sleep(for: .milliseconds(300))
+            send()
+            while store.chatWaiting { try? await Task.sleep(for: .milliseconds(100)) }
+            try? await Task.sleep(for: .seconds(2.6))
+            onClose()
+            return
+        }
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: "-chatDemo"), i + 1 < args.count else { return }
         try? await Task.sleep(for: .milliseconds(700))

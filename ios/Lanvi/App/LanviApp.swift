@@ -16,9 +16,10 @@ struct LanviApp: App {
 /// straight to Home.
 ///
 /// Launch arguments:
-/// - `-demo`: the whole story by itself for the pitch video (about 70 seconds):
-///   Welcome, what helps, Home, Breathe with Lanvi, the XP and glow moment,
-///   growing up, a wandering and its story. Always uses the offline demo data.
+/// - `-demo`: the whole story by itself for the pitch video (under a minute):
+///   Welcome, Home with today's one thing, Breathe with Lanvi, the XP and glow
+///   moment, growing up, done for today, a wandering and its story, a word with
+///   Lanvi. Always uses the offline demo data.
 /// - `-screen <name>`: open one screen straight away: `home`, `whathelps`,
 ///   `focus`, `breathe`, `checkin`, `checkin-plan`.
 /// - `-offline`: use the offline demo data even when a server is configured.
@@ -53,7 +54,7 @@ struct RootView: View {
             default:
                 switch step {
                 case .welcome:
-                    WelcomeView(demo: demo) { go(.helps) }
+                    WelcomeView(demo: demo) { go(demo ? .home : .helps) }
                         .transition(.opacity)
                 case .helps:
                     WhatHelpsView(demo: demo) { go(.home) }
@@ -72,7 +73,7 @@ struct RootView: View {
         .task {
             guard demo else { return }
             try? await Task.sleep(for: .seconds(4.2))
-            go(.helps)
+            go(.home)
         }
         .onChange(of: scenePhase) { old, phase in
             if phase == .active, old == .background { Task { await store.resume() } }

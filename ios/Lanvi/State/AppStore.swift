@@ -138,7 +138,7 @@ final class AppStore {
         }
     }
 
-    var daysTogether: Int { max(days.dates.count, 0) }
+    var daysTogether: Int { max(days.dates.count, 1) }   // today counts as day one
 
     /// Today's one thing. A waiting story comes first; then what is done stays
     /// done; then the server's suggestion; then the clock (morning breathing,

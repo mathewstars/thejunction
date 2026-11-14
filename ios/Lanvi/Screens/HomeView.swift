@@ -72,6 +72,7 @@ struct HomeView: View {
     @State private var entrance: CGFloat = 0
     @State private var haptic = 0
     @State private var storyAutoAnswer: String?
+    @State private var chatDemoMessage: String?
     @State private var arrived = false
 
     var body: some View {
@@ -356,7 +357,8 @@ struct HomeView: View {
         case .chat:
             HomeChatScreen(onClose: { cover = nil },
                            onHelp: { cover = .help },
-                           onActivity: { cover = .activity($0) })
+                           onActivity: { cover = .activity($0) },
+                           demoMessage: chatDemoMessage)
         }
     }
 
@@ -551,6 +553,11 @@ struct HomeView: View {
         try? await Task.sleep(for: .seconds(3))
         storyAutoAnswer = "a"
         open(.story)
+        while cover != nil { try? await Task.sleep(for: .milliseconds(200)) }
+        try? await Task.sleep(for: .seconds(2))
+        // A short word with Lanvi.
+        chatDemoMessage = "The coffee outside was nice today"
+        open(.chat)
         while cover != nil { try? await Task.sleep(for: .milliseconds(200)) }
         try? await Task.sleep(for: .seconds(2))
         settle()

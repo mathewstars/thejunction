@@ -36,27 +36,6 @@ struct HomeRoundButtonStyle: ButtonStyle {
     }
 }
 
-// MARK: - Top chips
-
-/// Small frosted pill in the sky that presses down like the other buttons.
-struct HomeSkyChipStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        let pressed = configuration.isPressed
-        configuration.label
-            .font(Theme.rounded(16, .heavy))
-            .foregroundStyle(.white)
-            .padding(.vertical, 9)
-            .padding(.horizontal, 14)
-            .background(Capsule().fill(.ultraThinMaterial.opacity(0.55)))
-            .background(Capsule().fill(.white.opacity(0.16)))
-            .overlay(Capsule().stroke(.white.opacity(0.35), lineWidth: 1))
-            .offset(y: pressed ? 3 : 0)
-            .background(Capsule().fill(Theme.nightTop.opacity(0.45)).offset(y: 3))
-            .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: pressed)
-    }
-}
-
 // MARK: - Speech bubble
 
 /// What Lanvi says, in a white bubble whose point aims down at the fox.
