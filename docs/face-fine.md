@@ -114,7 +114,9 @@ The summary (`clinic_engine/mind/face_fine.py`), on tracked frames only, after a
 
 And for each left and right pair, `asymmetry`: -1 when only the right side moves, 0 when both move alike, +1 when only the left side moves.
 
-`quality` is `good`, `partly` (under nine tenths of the frames tracked), `noisy` (`noise_mm` above 1) or `short` (under 5 seconds tracked; every measure is then null). Every session with numbers counts toward the person's own usual on the clinician page, whatever its label; the page shows the label and the reason beside a `partly` or `noisy` session. On the first five real games (14 November, one phone) the values differed widely between games, so the usual is a rough middle for now.
+`quality` is `good`, `partly` (under nine tenths of the frames measured), `noisy` (noise above 1 mm) or `short` (under 5 seconds measured; every measure is then null).
+
+**Since rules version 4** (after the first seven real games, 14 November): the noise is read from the stream itself (a robust spread of the frame-to-frame steps per region, averaged), because the figure the phone stated was 50 to 200 times the real jitter; the summary's `noise_mm` is the noise used and `noise_stated_mm` is what the phone sent. The frames in the third of a second after tracking returns are left out. Each region is measured from its own level over ten seconds around each moment, so a slow creep or a step when the phone shifts is not movement. Stored summaries are made again with `python -m clinic_engine.fine_resummarize`. On those seven games the reach of the well tracked ones then lay between 0.25 and 0.91 mm (before: 0.32 to 2.63 mm over all seven); the count of brief movements still differed several times over between games and is not yet a measure to compare. Every session with numbers counts toward the person's own usual on the clinician page, whatever its label; the page shows the label and the reason beside a `partly` or `noisy` session. On the first five real games (14 November, one phone) the values differed widely between games, so the usual is a rough middle for now.
 
 These thresholds are first guesses. They are not set on recordings of people. Because the stream is kept, the summary can be computed again when they change.
 
@@ -140,7 +142,7 @@ python -m clinic_engine.fine_reference --stream stream.json       # the same on 
 ```
 
 - **Generated sessions** with brief movements planted at known places, plus three kinds that must not be reported: slow expressions, a step (the phone moved) and a higher noise floor.
-- **The code rule** (`face_fine.twitches`) scored against the planted places. On 14 November: clean 196 of 196 found and nothing else reported; expressions and noise the same; **after a step it missed 9 of 28**, because the usual level is taken over the whole session. That is the first thing to improve, and a test keeps it visible.
+- **The code rule** (`face_fine.twitches`) scored against the planted places. On 14 November: clean 196 of 196 found and nothing else reported; expressions and noise the same; **after a step it missed 9 of 28**, because the usual level is taken over the whole session. That is the first thing to improve, and a test keeps it visible. Since rules version 4 the level is followed over ten seconds: after a step 28 of 28 are found and nothing else is reported.
 - **A draft instruction** for a model, `engine/clinic_engine/data/fine_prompt.txt`, and `payload()`, which builds what the model would be given (numbers and fixed names only, about 40 KB for 45 seconds).
 - **`verify()`**: every item a model reports is checked against the numbers. An item that code also finds is confirmed; every other item is dropped with its reason. Paste a reply from any model into a file and run `--reply` to see it work.
 - **With real data**: save the `stream` from the download below and run `--stream`.
