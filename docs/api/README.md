@@ -122,18 +122,29 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
    | `ended_by` | `finished`, `user_stopped`, `interrupted` |
    | `suggestion_id` | optional: the suggestion it was played from |
 
-   `focus` (Sparks and snow): `correct_taps`, `wrong_taps` (tapped a snowflake), `misses` (whole numbers), `reaction_ms` (list of whole milliseconds, at most 200; the server computes the statistics), optional `face`.
+   `focus` (Sparks and snow): `correct_taps`, `wrong_taps` (tapped a snowflake), `misses` (whole numbers), `reaction_ms` (list of whole milliseconds, at most 200; the server computes the statistics), optional `face_raw` (or, from older clients, `face`).
 
-   `breathing` (Breathe with Lanvi): `time_played_s`, optional `breaths_completed`, optional `face`.
+   `breathing` (Breathe with Lanvi): `time_played_s`, optional `breaths_completed`, optional `face_raw` (or `face`).
 
    `checkin` (evening, once a day): `good_things` (0 to 3 items), `plan` (one item or null), `plan_done` (`yes | no | not_asked`, about yesterday's plan). An item is either `{"catalog_id": "walked"}` (ids from `GET /v1/checkin/options`) or `{"text": "a few words"}` (at most 120 characters), never both.
 
-   `face` (only on focus and breathing, only when the person allowed the camera; numbers only, no frames, images or landmarks): `smile_rate_per_min`, `smile_intensity` (0-1), `facial_activity` (0-1), `blink_rate_per_min`, `look_down_share` (0-1), `head_tilt_deg`, all optional, and `tracking_quality` (0-1, required). Below 0.6 the summary is kept but not used.
+   `face_raw` (only on focus and breathing, only when the person allowed the camera): the raw numbers ARKit gives per frame. **The phone computes nothing on the face; the server computes every face measure** and keeps the frames so the rules can change and sessions can be analysed again. Shape, channel list, limits and the rules the server applies: [`docs/face-raw.md`](../face-raw.md). In short:
+
+   ```json
+   "face_raw": {"rate_hz": 30,
+                "channels": ["mouthSmileLeft", "mouthSmileRight", "eyeBlinkLeft", "eyeBlinkRight", "headPitch", "headYaw", "headRoll"],
+                "samples": [[0.04, 0.05, 0.08, 0.07, 6.2, -1.4, 0.8], [0.05, 0.05, 0.09, 0.08, 6.1, -1.3, 0.8]],
+                "tracked": [1, 1], "moments_ms": [40]}
+   ```
+
+   Channels are the 52 ARKit blend-shape names plus `headPitch`, `headYaw`, `headRoll` (degrees); `mouthSmileLeft`, `mouthSmileRight`, `eyeBlinkLeft`, `eyeBlinkRight` are required. At most 60 channels, 12,000 samples and 20 moments; this route accepts bodies up to 4 MiB (all other routes keep 256 KiB). Unknown or repeated channel names, a row of the wrong length, a number that is not finite, a blend shape outside 0 to 1 (a 0.02 overshoot is allowed and clamped) or an angle outside -180 to 180 give 422 `invalid_request` with a message naming the position. `face` and `face_raw` together: 422. Frames lasting much longer than `duration_s`: 422 `implausible_activity` (`face_frames_longer_than_activity`). Re-sending the same record (same frames) answers with `xp_gained: 0`; the frames are stored once.
+
+   `face` (older clients: a summary the phone computed; still accepted, numbers only, no frames, images or landmarks): `smile_rate_per_min`, `smile_intensity` (0-1), `facial_activity` (0-1), `blink_rate_per_min`, `look_down_share` (0-1), `head_tilt_deg`, all optional, and `tracking_quality` (0-1, required). Below 0.6 the summary is kept but not used.
 
    - Re-sending the same record answers with `xp_gained: 0`; a different record under a used id is 409.
    - Implausible values reject the record with 422 `implausible_activity` (logged).
    - `crisis: true` (with `crisis_block`) when typed check-in words ask for help: show the help screen at once, as for a note.
-   - `reading`: `pending` when the level-2 session reading runs in the background, `off`, `not_allowed`, or `not_applicable` (a check-in, or no face summary). Poll `GET /v1/activities/{id}/reading` for `{"status":"ready","line":"..."}`; the line is neutral and from a fixed set.
+   - `reading`: `pending` when the level-2 session reading runs in the background, `off`, `not_allowed`, or `not_applicable` (a check-in, or no face summary or frames). Poll `GET /v1/activities/{id}/reading` for `{"status":"ready","line":"..."}`; the line is neutral and from a fixed set.
 
 6. **A story came back.** When `lanvi.wandering.state` is `back`:
    ```sh
@@ -199,11 +210,12 @@ The engine serves a plain web page for clinicians at `/` (files in `engine/clini
 | `POST /v1/clinic/login` | Session token, kept in memory and `sessionStorage` only |
 | `GET /v1/clinic/me` | Product name, clinic name, and whether the demo panel may be shown (`demo.enabled`) |
 | `GET /v1/clinic/patients` | One line per patient, those needing a look first. Also `spark` (28 daily movement z-scores, null for missing days), `since` (oldest held item), `level` (highest held level) and `reason_short` (at most 6 words, from a fixed set) |
-| `GET /v1/clinic/patients/{id}` | Detail; `progress.band` gives the own-normal band for the charts. `activities` has per type (`focus`, `breathing`, `checkin`) the sessions with date, completed, headline `values` and their `z` against own normal (or null), the face summary with tracking quality, the checked session reading, and `counts` (offered, played when offered, played, finished) for the last 7 and 28 days. `lanvi` has `xp` and `stage` (small facts, not clinical signals) |
+| `GET /v1/clinic/patients/{id}` | Detail; `progress.band` gives the own-normal band for the charts. `activities` has per type (`focus`, `breathing`, `checkin`) the sessions with date, completed, headline `values` and their `z` against own normal (or null), the face summary with tracking quality, the checked session reading, and `counts` (offered, played when offered, played, finished) for the last 7 and 28 days. Each focus or breathing session has `face_source` (`raw`: computed by the server from frames, `summary`: sent by the phone, or null) and, for raw sessions, `raw` `{rate_hz, frames, tracked_share, channels}` (counts only, never the frames). `lanvi` has `xp` and `stage` (small facts, not clinical signals) |
 | `GET /v1/clinic/patients/{id}/trace` | The decision trace; every chain has a `headline` (at most 6 words) and an `outcome` (`attention_opened`, `attention_raised`, `attention_closed`, `suggested`, `message_sent`, `refused`, `nothing`) |
 | `GET /v1/clinic/patients/{id}/rounds/{round_id}` | Round detail; `usual_round` (or null) gives a usual round of the same mode for the second trail |
+| `GET /v1/clinic/patients/{id}/activities/{activity_id}/face-raw` | Research download: the stored raw frames of one session as the phone sent them, plus `frames`, `channel_count`, `tracked_frames`. 404 when the session has no frames. Each download is audited (activity id only, no values) |
 | `POST /v1/clinic/attention/{id}/ack` | The Acknowledge button |
-| `/v1/demo/...`, `/v1/review/run` | The demo panel, only for the demo clinic while demo mode is on |
+| `/v1/demo/...`, `/v1/review/run` | The demo panel, only for the demo clinic while demo mode is on. `POST /v1/demo/recompute-face {"patient_id"}` computes the face summary of every raw session of the patient again from the stored frames with the current thresholds and returns `{"patient_id", "recomputed": n}` |
 
 ## Reference ratings and the association appraisal (clinician only)
 

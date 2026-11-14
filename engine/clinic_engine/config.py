@@ -50,6 +50,9 @@ class Settings:
     # HTTP layer
     cors_origins: list[str] = field(default_factory=list)
     max_body_bytes: int = 256 * 1024
+    # POST /v1/activities only: an activity may carry raw face frames
+    # (12,000 frames x up to 60 numbers at most).
+    max_face_raw_body_bytes: int = 4 * 1024 * 1024
     rate_per_minute: int = 120
     rate_burst: int = 60
     session_ttl_minutes: int = 120
@@ -111,6 +114,7 @@ class Settings:
             s3_region=_env("S3_REGION", "us-east-1"),
             cors_origins=origins,
             max_body_bytes=_env_int("MAX_BODY_BYTES", 256 * 1024),
+            max_face_raw_body_bytes=_env_int("MAX_FACE_RAW_BODY_BYTES", 4 * 1024 * 1024),
             rate_per_minute=_env_int("RATE_PER_MINUTE", 120),
             rate_burst=_env_int("RATE_BURST", 60),
             session_ttl_minutes=_env_int("SESSION_TTL_MINUTES", 120),
