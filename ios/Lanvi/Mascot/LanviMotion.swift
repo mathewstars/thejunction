@@ -31,6 +31,25 @@ struct LanviMotion {
     private static var bodyHeight: CGFloat { Rig.body.size.height / Rig.unit }
 
     func frame() -> RigFrame {
+        var f = core()
+        // --- Blink (always, even with Reduce Motion) ---
+        // Never on the same moment as an eye-set swap: skip a blink that would land
+        // within 0.2 s of one.
+        if freezeBlink != nil || (eyes(at: t - 0.2) == f.eyes && eyes(at: t + 0.2) == f.eyes) {
+            applyBlink(&f, sleepy: held == .sleepy)
+        }
+        return f
+    }
+
+    /// The eye set this fox shows at another moment (for keeping blinks off swaps).
+    private func eyes(at x: Double) -> EyeShape {
+        var m = self
+        m.t = x
+        return m.core().eyes
+    }
+
+    /// Everything except the blink.
+    private func core() -> RigFrame {
         var f = RigFrame()
         let sleepy = held == .sleepy
         let s = Double(seed % 997)
@@ -38,28 +57,42 @@ struct LanviMotion {
         // Held-mood face and stance (soft change-over for the motion parts).
         applyHeld(&f)
 
-        // --- Idle loops (all on the one clock, each its own length) ---
+        // --- Idle loops (all on the one clock, each its own length, none on a beat) ---
         if !reduceMotion {
+            // Breathing: in a little quicker than out, the rhythm drifting slightly.
             let breathPeriod = sleepy ? 4.5 : 3.6
             let breathAmp = sleepy ? 0.018 : 0.012
-            let b = sin(2 * .pi * (t + s) / breathPeriod)
-            let bLate = sin(2 * .pi * (t + s - 0.15) / breathPeriod)
+            let breath = { (x: Double) -> Double in
+                let phase = (x + s) / breathPeriod + 0.05 * sin(2 * .pi * (x + s) / 23.0)
+                return Motion.breath(phase)
+            }
+            let b = breath(t)
             f.bodySY += CGFloat(breathAmp * b)
             f.bodySX += CGFloat(breathAmp * 0.45 * b)
             // The head rides the chest a beat late.
-            f.headDY -= CGFloat(breathAmp * bLate) * Self.bodyHeight * 0.85
+            f.headDY -= CGFloat(breathAmp * breath(t - 0.15)) * Self.bodyHeight * 0.85
 
-            // Tail: base sways, the tip follows 0.25 s later.
-            let tailPeriod = held == .happy ? 2.2 : 3.3
-            let sway = { (x: Double) in 8 * sin(2 * .pi * (x + s * 0.7) / tailPeriod) }
+            // Tail: two swings of different lengths; the tip follows 0.25 s later.
+            let fast = held == .happy ? 0.68 : 1.0
+            let sway = { (x: Double) -> Double in
+                let y = x + s * 0.7
+                return 6 * sin(2 * .pi * y / (3.3 * fast)) + 3 * sin(2 * .pi * y / (5.7 * fast) + 1.1)
+            }
             f.tail += sway(t)
-            f.tailTip += 1.6 * (sway(t - 0.25) - sway(t))
+            f.tailTip += 1.7 * (sway(t - 0.25) - sway(t))
+
+            // Weight shifts: the whole fox leans a little, the head follows late.
+            let shift = { (x: Double) -> Double in
+                3.0 * sin(2 * .pi * (x + s) / 8.9) + 1.5 * sin(2 * .pi * (x + s * 1.9) / 13.3)
+            }
+            f.rootX += CGFloat(shift(t))
+            f.headDX += CGFloat(shift(t - 0.15) - shift(t)) * 1.5
 
             // Small head tilts and drift, never repeating exactly.
             let tiltA: Double = 1.8 * sin(2 * .pi * (t + s) / 7.3)
             let tiltB: Double = 1.0 * sin(2 * .pi * (t + s * 1.3) / 11.9)
             f.headTilt += tiltA + tiltB
-            let drift: Double = 3 * sin(2 * .pi * (t + s) / 9.7)
+            let drift: Double = 2.5 * sin(2 * .pi * (t + s) / 9.7)
             f.headDX += CGFloat(drift)
 
             // Ear twitches: one ear, every 4 to 9 s.
@@ -69,6 +102,9 @@ struct LanviMotion {
             let e = Motion.flick(t - start, duration: 0.12) * 7
             if Motion.rnd(k, seed &+ 12) < 0.5 { f.earL += e; f.earLStretch -= CGFloat(e) * 0.004 }
             else { f.earR += e; f.earRStretch -= CGFloat(e) * 0.004 }
+
+            // Glances: now and then the eyes look somewhere and come back.
+            applyGlance(&f, s: s)
 
             // A fidget every 15 to 30 s.
             applyFidget(&f, s: s)
@@ -80,27 +116,36 @@ struct LanviMotion {
         // --- Reactions on top (the idle never stops) ---
         if let r = reaction { applyReaction(r, &f, rt: t - reactionAt) }
         applyTap(&f, rt: t - tapAt)
-        if !reduceMotion {
-            let h = Motion.hop(t - hopAt, height: 120)
-            f.rootY -= CGFloat(h.lift)
-            f.bodySY *= CGFloat(h.squash)
-            f.bodySX *= CGFloat(1 + (1 - h.squash) * 0.6)
-            earsLag(&f, lift: h.lift, t: t - hopAt)
-        }
+        if !reduceMotion { hop(&f, t - hopAt, height: 120) }
 
-        // The head stays on the neck when the body squashes or stretches.
+        // The head stays on the neck when the chest breathes or yawns.
         f.headDY -= (f.bodySY - 1) * Self.bodyHeight * 0.85
-
-        // --- Blink (always, even with Reduce Motion) ---
-        applyBlink(&f, sleepy: sleepy)
         return f
+    }
+
+    /// A hop of the whole fox: anticipation crouch, stretch up, squash on landing, two
+    /// settling wobbles. The fox squashes as a whole (gently) so no part distorts;
+    /// the head lags the body, the ears and tail trail and overshoot.
+    private func hop(_ f: inout RigFrame, _ ht: Double, height: Double) {
+        guard ht > -0.1, ht < 1.3 else { return }
+        let h = Motion.hop(ht, height: height)
+        let late = Motion.hop(ht - 0.07, height: height)
+        f.rootY -= CGFloat(h.lift)
+        let sq = 1 + (h.squash - 1) * 0.5
+        f.rootSY *= CGFloat(sq)
+        f.rootSX *= CGFloat(1 + (1 - sq) * 0.8)
+        // Head: sinks into the crouch, lags going up, overshoots on landing.
+        f.headDY += CGFloat((h.lift - late.lift) * 0.35) + CGFloat((1 - h.squash) * 70)
+        earsLag(&f, lift: h.lift, t: ht)
     }
 
     // MARK: Held moods
 
     private func applyHeld(_ f: inout RigFrame) {
-        // Face swaps are instant (crisp); stance changes spring in.
-        switch held {
+        // Face swaps are instant (crisp) but wait 0.12 s, so they land inside the
+        // hop's crouch that a pose change starts; stance changes spring in.
+        let face = (!reduceMotion && t - heldSince < 0.12) ? heldFrom : held
+        switch face {
         case .calm: break
         case .happy: f.mouth = .happy
         case .curious: break
@@ -127,6 +172,27 @@ struct LanviMotion {
         }
     }
 
+    // MARK: Glances
+
+    private func applyGlance(_ f: inout RigFrame, s: Double) {
+        guard look == nil, reaction == nil || t - reactionAt > 2.5, t - tapAt > 1.8 else { return }
+        let slot = 6.1
+        let k = Int(floor((t + s * 2.3) / slot))
+        guard Motion.rnd(k, seed &+ 41) < 0.55 else { return }
+        let start = Double(k) * slot + 2.0 * Motion.rnd(k, seed &+ 42) - s * 2.3
+        let length = 0.6 + 0.5 * Motion.rnd(k, seed &+ 43)
+        let gt = t - start
+        guard gt > 0, gt < length + 0.8 else { return }
+        let pick = Motion.rnd(k, seed &+ 44)
+        let (shape, dir): (EyeShape, Double) = pick < 0.4 ? (.right, 1) : (pick < 0.8 ? (.left, -1) : (.up, 0))
+        // Eyes lead; the head follows 0.1 s later with a spring, then both come back.
+        if gt < length, f.eyes == .open { f.eyes = shape }
+        let follow = Motion.hold(gt, start: 0.1, end: length + 0.05, response: 0.4, damping: 0.7)
+        f.headDX += CGFloat(5 * dir * follow)
+        f.headTilt += 2.5 * dir * follow
+        if dir == 0 { f.headDY -= CGFloat(4 * follow) }
+    }
+
     // MARK: Fidgets
 
     private func applyFidget(_ f: inout RigFrame, s: Double) {
@@ -147,9 +213,10 @@ struct LanviMotion {
         case 1: yawn(&f, yt: ft)
         case 2: // paw wave
             let up = Motion.hold(ft, start: 0.0, end: 1.6, response: 0.35, damping: 0.6)
-            f.pawR += 30 * up + 12 * up * sin(ft * 2 * .pi / 0.42)
-            f.pawRX += CGFloat(10 * up) / Rig.unit
-            f.pawRY -= CGFloat(360 * up) / Rig.unit
+            let dip = Motion.flick(ft, duration: 0.09) * 0.12
+            f.pawR += 62 * (up - dip) + 11 * up * sin(ft * 2 * .pi / 0.42)
+            f.pawRX += CGFloat(30 * up) / Rig.unit
+            f.pawRY -= CGFloat(90 * up) / Rig.unit
             if Motion.inside(ft, 0.15, 1.6) { f.eyes = .happy }
             f.headTilt -= 4 * up
         default: // happy squint
@@ -215,21 +282,19 @@ struct LanviMotion {
         switch r {
         case .happy:
             guard rt < 2.0 else { return }
-            if Motion.inside(rt, 0.06, 1.6) { f.eyes = .happy }
-            if rt < 1.75 { f.mouth = .happy }
+            // Faces swap at the bottom of the crouch, hidden inside the move.
+            if Motion.inside(rt, 0.13, 1.6) { f.eyes = .happy }
+            if Motion.inside(rt, 0.13, 1.75) { f.mouth = .happy }
             guard m else { return }
-            let h = Motion.hop(rt - 0.05, height: 110)
-            f.rootY -= CGFloat(h.lift)
-            f.bodySY *= CGFloat(h.squash)
-            f.bodySX *= CGFloat(1 + (1 - h.squash) * 0.6)
-            earsLag(&f, lift: h.lift, t: rt - 0.05)
-            let paws = Motion.hold(rt, start: 0.08, end: 1.35, response: 0.32, damping: 0.55)
-            // Both paws up beside the white chest, wiggling.
+            hop(&f, rt - 0.05, height: 110)
+            // Both front legs swing up and out from the shoulder, after a small dip.
+            let paws = Motion.hold(rt, start: 0.12, end: 1.35, response: 0.34, damping: 0.55)
+            let dip = Motion.flick(rt, duration: 0.08) * 0.15
             let wiggle = 6 * sin(2 * .pi * rt / 0.3) * paws
-            f.pawL += 28 * paws + wiggle; f.pawR += 28 * paws - wiggle
-            f.pawLX -= CGFloat(10 * paws) / Rig.unit; f.pawRX += CGFloat(10 * paws) / Rig.unit
-            f.pawLY -= CGFloat(330 * paws) / Rig.unit; f.pawRY -= CGFloat(330 * paws) / Rig.unit
-            // Tail wags fast, three-ish times, with the tip whipping behind.
+            f.pawL += 65 * (paws - dip) + wiggle; f.pawR += 65 * (paws - dip) - wiggle
+            f.pawLX -= CGFloat(30 * paws) / Rig.unit; f.pawRX += CGFloat(30 * paws) / Rig.unit
+            f.pawLY -= CGFloat(90 * paws) / Rig.unit; f.pawRY -= CGFloat(90 * paws) / Rig.unit
+            // Tail wags fast, the tip whipping behind.
             let wagEnv = Motion.hold(rt, start: 0.0, end: 1.3, response: 0.25, damping: 0.9)
             let wag = { (x: Double) in 15 * sin(2 * .pi * x / 0.34) }
             f.tail += wagEnv * wag(rt)
@@ -237,17 +302,18 @@ struct LanviMotion {
             f.headTilt += 4 * sin(2 * .pi * rt / 0.68) * wagEnv
         case .surprised:
             guard rt < 1.8 else { return }
-            if rt < 1.4 { f.eyes = .wide; f.mouth = .o }
+            if Motion.inside(rt, 0.07, 1.4) || (!m && rt < 1.4) { f.eyes = .wide; f.mouth = .o }
             guard m else { return }
-            let perk = Motion.hold(rt, start: 0, end: 1.3, response: 0.22, damping: 0.45)
+            f.rootY += CGFloat(6 * Motion.flick(rt, duration: 0.06))
+            let perk = Motion.hold(rt, start: 0.05, end: 1.3, response: 0.22, damping: 0.45)
             f.earL -= 9 * perk; f.earR -= 9 * perk
             f.earLStretch += CGFloat(0.08 * perk); f.earRStretch += CGFloat(0.08 * perk)
-            let jolt = Motion.hold(rt, start: 0, end: 0.35, response: 0.16, damping: 0.5)
+            let jolt = Motion.hold(rt, start: 0.05, end: 0.4, response: 0.16, damping: 0.5)
             f.rootY -= CGFloat(24 * jolt)
             f.headDY -= CGFloat(10 * perk)
             f.bodySY += CGFloat(0.03 * jolt)
             f.tail -= 10 * perk
-            f.pawLY -= CGFloat(40 * jolt); f.pawRY -= CGFloat(40 * jolt)
+            f.pawL += 9 * jolt; f.pawR += 9 * jolt
         case .curious:
             guard rt < 2.2 else { return }
             if look == nil, Motion.inside(rt, 0.05, 1.7), f.eyes == .open { f.eyes = .up; f.eyeDX += 4; f.eyeDY -= 3 }
@@ -280,16 +346,13 @@ struct LanviMotion {
     /// Tap: eyes jump to the finger, head tilts toward it, a happy squint, an ear flick, a small hop.
     private func applyTap(_ f: inout RigFrame, rt: Double) {
         guard rt >= 0, rt < 1.6 else { return }
-        if Motion.inside(rt, 0.28, 0.95) { f.eyes = .happy; f.mouth = f.mouth == .smile ? .happy : f.mouth }
+        if Motion.inside(rt, 0.36, 0.95) { f.eyes = .happy; f.mouth = f.mouth == .smile ? .happy : f.mouth }
         guard !reduceMotion else { return }
         let tilt = Motion.hold(rt, start: 0.08, end: 0.95, response: 0.35, damping: 0.55)
         f.headTilt += 7 * tapSide * tilt
         let flick = Motion.flick(rt - 0.05, duration: 0.13) * 11
         if tapSide < 0 { f.earL += flick } else { f.earR += flick }
-        let h = Motion.hop(rt - 0.3, height: 45)
-        f.rootY -= CGFloat(h.lift)
-        f.bodySY *= CGFloat(h.squash)
-        earsLag(&f, lift: h.lift, t: rt - 0.3)
+        hop(&f, rt - 0.3, height: 45)
         f.tail += 10 * Motion.flick(rt - 0.2, duration: 0.2)
     }
 
@@ -313,12 +376,13 @@ struct LanviMotion {
             let k = Int(floor(t / slot))
             let start = Double(k) * slot + 2.6 * Motion.rnd(k, seed &+ 31)
             let bt = t - start
-            if bt >= 0 && bt < 0.18 * len { phase = bt / len }
-            else if Motion.rnd(k, seed &+ 32) < 0.2, bt >= 0.3 * len, bt < 0.48 * len { phase = (bt - 0.3 * len) / len }   // the odd double blink
+            if bt >= 0 && bt < 0.15 * len { phase = bt / len }
+            else if Motion.rnd(k, seed &+ 32) < 0.2, bt >= 0.27 * len, bt < 0.42 * len { phase = (bt - 0.27 * len) / len }   // the odd double blink
         }
-        guard let p = phase, p >= 0, p < 0.18 else { return }
-        // close 60 ms, shut 40 ms, open 80 ms: open, half closed, closed, half closed, open
-        let o: Double = p < 0.06 ? 1 - p / 0.06 : (p < 0.10 ? 0 : Motion.easeOut((p - 0.10) / 0.08))
+        guard let p = phase, p >= 0, p < 0.15 else { return }
+        // close 50 ms, shut 35 ms, open 65 ms: open, half closed, closed, half closed, open
+        let o: Double = p < 0.05 ? 1 - Motion.easeIn(p / 0.05) : (p < 0.085 ? 0 : Motion.easeOut((p - 0.085) / 0.065))
+        if !reduceMotion { f.headDY += CGFloat(2.5 * (1 - o)) }
         switch f.eyes {
         case .happy, .closed: return
         case .half:

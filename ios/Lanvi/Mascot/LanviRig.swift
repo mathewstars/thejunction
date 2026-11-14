@@ -41,8 +41,8 @@ enum Rig {
     static let earL = Part(name: "ear-left", center: CGPoint(x: 782, y: 492), scale: 1.3, pivot: UnitPoint(x: 0.36, y: 0.8))
     static let earR = Part(name: "ear-right", center: CGPoint(x: 1419, y: 492), scale: 1.3, pivot: UnitPoint(x: 0.64, y: 0.8))
     static let body = Part(name: "body", center: CGPoint(x: 1084, y: 1466), scale: 1.31, pivot: UnitPoint(x: 0.5, y: 1.0))
-    static let legL = Part(name: "leg-left", center: CGPoint(x: 772, y: 1640), scale: 1.06, pivot: .center)
-    static let legR = Part(name: "leg-right", center: CGPoint(x: 1196, y: 1640), scale: 1.06, pivot: .center)
+    static let legL = Part(name: "leg-left", center: CGPoint(x: 772, y: 1640), scale: 1.06, pivot: UnitPoint(x: 0.5, y: 0.06))
+    static let legR = Part(name: "leg-right", center: CGPoint(x: 1196, y: 1640), scale: 1.06, pivot: UnitPoint(x: 0.5, y: 0.06))
     /// The head turns low in its neck stub, under the chin, so tilting never opens a gap.
     static let head = Part(name: "head", center: CGPoint(x: 1086, y: 832), scale: 1.5, pivot: UnitPoint(x: 0.5, y: 0.85))
 
@@ -146,6 +146,9 @@ enum MouthShape: Equatable {
 struct RigFrame {
     var rootX: CGFloat = 0
     var rootY: CGFloat = 0
+    /// The whole fox squashes and stretches from the feet (gently), so no part distorts.
+    var rootSX: CGFloat = 1
+    var rootSY: CGFloat = 1
     var bodySX: CGFloat = 1
     var bodySY: CGFloat = 1
     var headDX: CGFloat = 0
@@ -158,7 +161,7 @@ struct RigFrame {
     var earRStretch: CGFloat = 1
     var tail: Double = 0
     var tailTip: Double = 0
-    /// Front legs: positive = the paw swings outward (turned around the leg's middle).
+    /// Front legs: positive = the paw swings up and out, turned at the shoulder (leg top).
     var pawL: Double = 0
     var pawR: Double = 0
     var pawLX: CGFloat = 0   // negative = outward
@@ -197,6 +200,13 @@ enum Motion {
         return sin(t / duration * .pi) * exp(-t / duration * 1.1)
     }
 
+    /// A breath, -1...1 over one cycle: in over 40 % of the time, out over 60 %, eased.
+    static func breath(_ phase: Double) -> Double {
+        let x = phase - floor(phase)
+        let v = x < 0.4 ? easeInOut(x / 0.4) : 1 - easeInOut((x - 0.4) / 0.6)
+        return 2 * v - 1
+    }
+
     static func easeOut(_ p: Double) -> Double { let c = min(max(p, 0), 1); return 1 - pow(1 - c, 3) }
     static func easeIn(_ p: Double) -> Double { let c = min(max(p, 0), 1); return c * c * c }
     static func easeInOut(_ p: Double) -> Double {
@@ -217,12 +227,13 @@ enum Motion {
     /// The jump: crouch 90 ms, up 180 ms, fall 150 ms, land squash 120 ms, wobble 0.4 s.
     /// Returns (lift, squash) where squash < 1 is squashed, > 1 stretched.
     static func hop(_ t: Double, height: Double) -> (lift: Double, squash: Double) {
-        guard t >= 0, t < 1.0 else { return (0, 1) }
+        guard t >= 0, t < 1.2 else { return (0, 1) }
         if t < 0.09 { return (0, 1 - 0.08 * easeOut(t / 0.09)) }
         if t < 0.27 { let p = easeOut((t - 0.09) / 0.18); return (height * p, 0.92 + 0.15 * p) }
         if t < 0.42 { let p = easeIn((t - 0.27) / 0.15); return (height * (1 - p), 1.07 - 0.04 * p) }
         if t < 0.54 { let p = (t - 0.42) / 0.12; return (0, 1 - 0.09 * sin(p * .pi / 2)) }
+        // two small settling wobbles
         let p = t - 0.54
-        return (0, 1 - 0.09 * cos(p / 0.4 * .pi * 1.5) * exp(-p * 7))
+        return (0, 1 - 0.09 * cos(p / 0.2 * .pi) * exp(-p * 5.5))
     }
 }
