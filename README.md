@@ -24,9 +24,13 @@ Where to start:
 - **Team test P**, Activity, Focus game: ten real games from one phone on one evening. The page says they are too few and too close together to compare.
 - **Blueprint**, in the top bar: how the system decides, with live examples.
 
-## Install the app
+## See the app, or install it
 
-You need a Mac with Xcode and an iPhone. The face numbers need a phone with Face ID; everything else also runs in the simulator.
+<!-- The video of the app on a real iPhone goes here when Matthew has recorded it: one line with the link, above this comment. -->
+
+**The easiest way to try it on your own iPhone: ask Matthew.** He installs it from his Mac over a cable in a few minutes (sideloading; the app is not in the App Store or on TestFlight). Find him at our table, or write to stafurik@gmail.com and we will arrange it.
+
+To build it yourself you need a Mac with Xcode and an iPhone. The face numbers need a phone with Face ID; everything else also runs in the simulator.
 
 1. Clone this repository and open `ios/Lanvi.xcodeproj` in Xcode.
 2. Under Signing & Capabilities choose your own team, pick your iPhone and press Run.
@@ -40,7 +44,7 @@ What an install sends (games, face numbers and, if you allow it, Apple Health da
 
 Rules we can explain notice a change and raise a flag. Two models weigh it: the clinic's own small model sets how soon someone should look, and Gemini agrees, raises or lowers. Plain code guards both, and a request for help never waits for a model.
 
-On 40 generated cases read by the real models, a worse case never got a lower level (0 of 107 flags). The same case read twice changed on 6 of 107.
+On 40 generated cases read by the real models, a worse case never got a lower level (0 of 107 flags). The same case read twice changed on 7 of 107.
 
 - Explained with a live example: https://lanvi.app/demo#/blueprint/mind
 - Code: [`engine/clinic_engine/mind/`](engine/clinic_engine/mind/) (start with `watchers.py`, `triage.py`, `gates.py`)
