@@ -359,3 +359,11 @@ ul.plain.big li, .d.big { font-size: 14.5px; line-height: 1.45; }
 .rb-bar { stroke: var(--amber); stroke-width: 8; stroke-linecap: round; }
 .ring { fill: none; stroke: var(--ink); stroke-width: 1.5; }
 .grid2 > figure { align-self: center; }
+.panel .bp-text { max-width: 96ch; }
+.bp.mini { max-width: 420px; margin-bottom: 8px; }
+.tg-ref.thin { stroke-width: 1.8; }
+.tg-avg.thin { stroke-width: 1.6; }
+.dotw { fill: var(--ink); opacity: 0.9; }
+.rb-bar { stroke: var(--ink); opacity: 0.85; }
+.rb-pt { fill: var(--amber); stroke: var(--panel); stroke-width: 2; }
+.thumbs { margin: 4px 0 10px; }
