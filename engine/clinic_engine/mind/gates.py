@@ -499,6 +499,104 @@ class InputGate:
         if pack.level != 2 or pack.images or pack.messages != want:
             raise GateError(GateRefusal("input", 2, "frames_reading", "messages_not_allowed"))
 
+    # ---- sensor reading (level 2 only) ---------------------------------------------------
+
+    _SENSORS_CHAR_LIMIT = 40_000
+
+    def sensors_pack(self, rec: dict, sensors: dict) -> Pack:
+        """One session's watch heart data, game moments, face summary and game numbers
+        (sensor_reading.build_payload). The system message is data/sensors_prompt.txt,
+        the user message the JSON object it describes. Numbers and fixed codes only."""
+        from .sensor_reading import ACTIVITIES, build_payload, prompt_text
+        if rec.get("type") not in ACTIVITIES:
+            raise GateError(GateRefusal("input", 2, "sensor_reading", "type_not_allowed"))
+        payload = build_payload(rec, sensors)
+        self.check_sensors_outbound(payload)
+        msgs = [{"role": "system", "content": prompt_text()},
+                {"role": "user", "content": json.dumps(payload, separators=(",", ":"))}]
+        return Pack(2, "sensor_reading", msgs, payload)
+
+    def check_sensors_outbound(self, payload: Any) -> None:
+        """Allowlist for the sensor reading: the fixed keys, the activity type, moment
+        codes from the fixed list, rows of rounded numbers in range and in time order,
+        times relative to the start (never a clock time), sizes within the limits."""
+        from . import sensor_reading as sr
+        from .sensors import HR_MAX, HR_MIN, HRV_MAX, HRV_MIN, MOMENT_NAMES
+
+        def refuse(reason: str):
+            raise GateError(GateRefusal("input", 2, "sensor_reading", reason))
+
+        def num(x) -> bool:
+            return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+
+        def rounded(x: float, nd: int) -> bool:
+            return abs(x * 10 ** nd - round(x * 10 ** nd)) <= 1e-6
+
+        if not isinstance(payload, dict) or not set(payload) <= set(sr.PAYLOAD_KEYS) or \
+                set(sr.PAYLOAD_KEYS) - set(payload) - {"face"}:
+            refuse("top_level_keys")
+        if payload["activity"] not in sr.ACTIVITIES:
+            refuse("string_not_allowed")
+        dur = payload["duration_s"]
+        if not num(dur) or not 0 <= dur <= 86400 or not rounded(dur, 1):
+            refuse("duration_not_allowed")
+        if not isinstance(payload["finished"], bool):
+            refuse("finished_not_bool")
+        lo, hi = -sr.BEFORE_S, dur + sr.AFTER_S
+
+        def rows(key: str, cap: int, vmin: float, vmax: float, nd: int) -> None:
+            lst = payload[key]
+            if not isinstance(lst, list) or len(lst) > cap:
+                refuse(f"{key}_count")
+            last = None
+            for row in lst:
+                if not isinstance(row, list) or len(row) != 2 or not all(num(x) for x in row):
+                    refuse(f"{key}_row_shape")
+                t, v = row
+                if not (lo <= t <= hi and rounded(t, 1)) or (last is not None and t < last):
+                    refuse(f"{key}_time_not_allowed")
+                if not (vmin <= v <= vmax and rounded(v, nd)):
+                    refuse(f"{key}_value_not_allowed")
+                last = t
+        rows("heart_rate", sr.MAX_HR_ROWS, HR_MIN, HR_MAX, 0)
+        rows("hrv_sdnn", 50, HRV_MIN, HRV_MAX, 1)
+        moments = payload["moments"]
+        if not isinstance(moments, list) or len(moments) > sr.MAX_MOMENT_ROWS:
+            refuse("moments_count")
+        for row in moments:
+            if not isinstance(row, list) or len(row) != 2 or not num(row[0]) or \
+                    not isinstance(row[1], str):
+                refuse("moments_row_shape")
+            if not (lo <= row[0] <= hi and rounded(row[0], 1)):
+                refuse("moments_time_not_allowed")
+            if row[1] not in MOMENT_NAMES:
+                refuse("moment_not_allowed")
+        game = payload["gameplay"]
+        if not isinstance(game, dict) or set(game) - set(sr.GAMEPLAY_KEYS[payload["activity"]]):
+            refuse("gameplay_keys")
+        for v in game.values():
+            if not num(v) or not 0 <= v <= 100_000 or not rounded(v, 2):
+                refuse("gameplay_value_not_allowed")
+        face = payload.get("face")
+        if face is not None:
+            if not isinstance(face, dict) or set(face) - set(sr.FACE_KEYS) or not face:
+                refuse("face_keys")
+            for v in face.values():
+                if not num(v) or not 0 <= v <= 120 or not rounded(v, 2):
+                    refuse("face_value_not_allowed")
+        if len(json.dumps(payload, separators=(",", ":"))) > self._SENSORS_CHAR_LIMIT:
+            refuse("too_large")
+
+    def check_sensors_pack(self, pack: Pack) -> None:
+        """Right before sending: the payload passes check_sensors_outbound and the
+        messages are exactly the prompt file and that payload, nothing more."""
+        from .sensor_reading import prompt_text
+        self.check_sensors_outbound(pack.payload)
+        want = [{"role": "system", "content": prompt_text()},
+                {"role": "user", "content": json.dumps(pack.payload, separators=(",", ":"))}]
+        if pack.level != 2 or pack.images or pack.messages != want:
+            raise GateError(GateRefusal("input", 2, "sensor_reading", "messages_not_allowed"))
+
     # ---- association appraisal (level 1 only) ----------------------------------------
 
     _ASSOC_KEYS = {"design", "reference", "rows", "data_notes", "caveat_codes", "type", "days",
@@ -695,6 +793,31 @@ class FramesReply(_Strict):
     segments: list[FramesSegment] = Field(max_length=12)
     moments: list[FramesMoment] = Field(max_length=20)
     overall: FramesOverall
+
+
+class SensorsHeartReply(_Strict):
+    trend: Literal["rising", "falling", "steady", "unclear"]
+    start_bpm: float | None = Field(ge=0, le=300)
+    end_bpm: float | None = Field(ge=0, le=300)
+    peak_bpm: float | None = Field(ge=0, le=300)
+    peak_at_s: float | None = Field(ge=-1000, le=10_000)
+
+
+class SensorsMomentReply(_Strict):
+    moment: Literal["focus_started", "spark_caught", "snow_tapped", "spark_missed", "focus_ended",
+                    "breathe_started", "breath_in", "breath_hold", "breath_out", "breathe_ended",
+                    "checkin_started", "checkin_step", "checkin_ended"]
+    heart_rate: Literal["higher", "lower", "same", "unclear"]
+
+
+class SensorsReply(_Strict):
+    heart_rate: SensorsHeartReply
+    around_moments: list[SensorsMomentReply] = Field(max_length=13)
+    breathing_pattern: Literal["slows_with_breaths", "no_change", "unclear", "not_applicable"]
+    hrv: Literal["present", "none"]
+    face_and_heart: Literal["lively_face_higher_hr", "still_face_lower_hr", "no_pattern", "unclear"]
+    data_quality: Literal["good", "partly", "poor"]
+    confidence: Literal["low", "medium", "high"]
 
 
 class AssocRowReply(_Strict):
@@ -970,6 +1093,34 @@ class OutputGate:
             return refuse(problem)
         out = verify(d, frames, pack.payload)
         refusals = [GateRefusal("output", 2, "frames_reading",
+                                f"item_dropped:{x['item']}:{x['reason']}") for x in out["dropped"]]
+        return GateResult(True, out, refusals)
+
+    # ---- sensor reading (level 2) --------------------------------------------------------
+
+    def sensor_reading(self, raw: str | None, pack: Pack) -> GateResult:
+        """Strict shape and enums exactly as data/sensors_prompt.txt defines them; then
+        every item checked by code against its own view of the same payload
+        (sensor_reading.verify)."""
+        from .sensor_reading import verify
+
+        def refuse(reason: str) -> GateResult:
+            return GateResult(False, refusals=[GateRefusal("output", 2, "sensor_reading", reason)])
+
+        if raw is None:
+            return refuse("no_reply")
+        raw = re.sub(r"^\s*<think>.*?</think>\s*", "", raw, flags=re.S)
+        obj = _parse_json_object(raw)
+        if obj is None:
+            return refuse("not_json_object")
+        try:
+            reply = SensorsReply.model_validate(obj)
+        except ValidationError as exc:
+            first = exc.errors()[0]
+            return refuse("schema:" + first["type"] + ":" +
+                          ".".join(str(x) for x in first["loc"])[:40])
+        out = verify(reply.model_dump(), pack.payload)
+        refusals = [GateRefusal("output", 2, "sensor_reading",
                                 f"item_dropped:{x['item']}:{x['reason']}") for x in out["dropped"]]
         return GateResult(True, out, refusals)
 

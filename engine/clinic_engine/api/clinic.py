@@ -138,6 +138,27 @@ async def patient_face_raw(request: Request, patient_id: str = Path(pattern=SID)
     return raw
 
 
+@router.get("/patients/{patient_id}/activities/{activity_id}/sensors",
+            responses=errors(401, 403, 404, 429),
+            summary="The watch's heart data and the game moments of one activity, as sent (research download)")
+async def patient_sensors(request: Request, patient_id: str = Path(pattern=SID),
+                          activity_id: str = Path(pattern=CID),
+                          p: Principal = Depends(clinician_only)):
+    """Only for activities sent with `sensors` (docs/sensors.md); 404 otherwise. Heart-rate
+    and HRV rows with HealthKit's own times (ms from started_at), every game moment on
+    both clocks, the clock anchor and the face offset. Each download is audited (which
+    activity, never any values)."""
+    ctx = ctx_of(request)
+    repo = _patient_repo(request, p, patient_id)
+    block = repo.get(f"sensors/{activity_id}.json")
+    if block is None:
+        raise ApiError(404, "not_found", "No sensor data for this activity.")
+    write_audit(ctx.store, ctx.clock.now(), clinic_id=p.clinic_id, patient_id=patient_id,
+                actor=p.actor, action="sensors_read", detail={"activity_id": activity_id},
+                request_id=rid_of(request))
+    return block
+
+
 @router.get("/patients/{patient_id}/exchanges", responses=errors(401, 403, 404, 422, 429),
             summary="Raw model exchanges: what was sent to a model and what it answered")
 async def patient_exchanges(request: Request, patient_id: str = Path(pattern=SID),

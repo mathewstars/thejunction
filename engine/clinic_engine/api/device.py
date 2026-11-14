@@ -58,6 +58,11 @@ async def activities(body: ActivityIn, request: Request, p: Principal = Depends(
     glow and one line from the fixed set. XP is for showing up: the same
     whatever the score.
 
+    Sensors: `sensors` (docs/sensors.md) carries the Apple Watch's heart-rate and
+    HRV samples during the activity and every game moment, with one clock anchor
+    that lines them up with `face_raw`. The server computes the summary and keeps
+    the rows.
+
     The face: send `face_raw` (raw ARKit frames, numbers only; the server
     computes every face measure, docs/face-raw.md) or, from older clients,
     `face` (a summary the phone computed). Not both (422). This route accepts
@@ -66,6 +71,8 @@ async def activities(body: ActivityIn, request: Request, p: Principal = Depends(
     rec = body.model_dump(mode="json")
     if rec.get("face_raw", "absent") is None:
         del rec["face_raw"]  # so a record without raw frames hashes as it always did
+    if rec.get("sensors", "absent") is None:
+        del rec["sensors"]  # the same for a record without watch data
     rec["started_at"] = body.started_at.astimezone(timezone.utc).isoformat()
     return await service.record_activity(ctx_of(request), p, rec, rid_of(request))
 

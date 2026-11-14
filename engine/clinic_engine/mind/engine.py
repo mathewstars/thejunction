@@ -46,8 +46,8 @@ log = logging.getLogger("clinic_engine.mind")
 # Audit actions of the clinician-only outputs (the association appraisal and its
 # ratings, the frame reading). The learning review never sees them.
 RESEARCH_ACTIONS = {"association_appraisal", "association_run", "rating_add", "rating_delete",
-                    "frames_reading"}
-RESEARCH_TASKS = {"association", "frames_reading"}
+                    "frames_reading", "sensor_reading", "sensors_read"}
+RESEARCH_TASKS = {"association", "frames_reading", "sensor_reading"}
 
 
 def is_research_event(ev: dict) -> bool:
@@ -992,6 +992,128 @@ class Mind:
                        status=result["status"], reason=result.get("reason"),
                        frames_sent=sent.get("frames"), dropped=len(result.get("dropped", [])),
                        **{k: v for k, v in counts.items() if v is not None})
+
+        if take_lock:
+            async with self.lock(repo.clinic_id, repo.patient_id):
+                await store()
+        else:
+            await store()
+        return result
+
+    # ---- the sensor reading (level 2 reads the watch's heart data with the game moments) --
+    #
+    # Clinician-only, like the frame reading. Reads the stored sensors block, writes ONLY
+    # the activity's `sensor_reading` field, the trace, the audit log and the refusal
+    # log. Never attention, suggestions, lessons, questions or mind state, never an
+    # event on the bus, never any patient-facing text.
+
+    def sensor_reading_state(self, repo: PatientRepo, rec: dict) -> str:
+        """pending | off | not_allowed | not_applicable."""
+        if rec.get("sensors_summary") is None:
+            return "not_applicable"
+        if getattr(self.settings, "sensor_reader", "auto") == "off" or \
+                self.outreach is None or not self.outreach.gemini_on:
+            return "off"
+        # The heart data leaves the private network: the patient's consent decides.
+        if not (repo.patient() or {}).get("allow_outside_processing"):
+            return "not_allowed"
+        return "pending"
+
+    async def schedule_sensor_reading(self, repo: PatientRepo, activity_id: str) -> None:
+        if self.settings.review_inline:
+            await self.run_sensor_reading(repo, activity_id)
+            return
+
+        async def bg() -> None:
+            try:
+                await self.run_sensor_reading(repo, activity_id, take_lock=True)
+            except Exception:  # noqa: BLE001
+                log.exception("sensor reading failed")
+
+        task = asyncio.get_running_loop().create_task(bg())
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    async def run_sensor_reading(self, repo: PatientRepo, activity_id: str,
+                                 take_lock: bool = False) -> dict:
+        with self.tracer.chain(repo.clinic_id, repo.patient_id, "sensor_reading", fresh=True):
+            return await self._run_sensor_reading(repo, activity_id, take_lock)
+
+    async def _run_sensor_reading(self, repo: PatientRepo, activity_id: str,
+                                  take_lock: bool) -> dict:
+        rec = repo.get(f"activities/{activity_id}.json")
+        if rec is None:
+            return {"status": "failed", "reason": "not_found"}
+        state = self.sensor_reading_state(repo, rec)
+        block = repo.get(f"sensors/{activity_id}.json") if state == "pending" else None
+        if state == "pending" and block is None:
+            state = "not_applicable"
+        if state != "pending":
+            out = {"status": state}
+
+            async def keep() -> None:
+                cur = repo.get(f"activities/{activity_id}.json")
+                if cur is not None and cur.get("sensors_summary") is not None and \
+                        (cur.get("sensor_reading") or {}).get("status") != state:
+                    cur["sensor_reading"] = out
+                    repo.put(f"activities/{activity_id}.json", cur)
+            if take_lock:
+                async with self.lock(repo.clinic_id, repo.patient_id):
+                    await keep()
+            else:
+                await keep()
+            return out
+        now = self.clock.now()
+        result: dict = {"status": "failed", "read_by": "level2",
+                        "model": self.outreach.level2_model, "checked_by": "code",
+                        "at": now.isoformat()}
+        refusals: list[GateRefusal] = []
+        sent: dict = {}
+        try:
+            pack = INPUT_GATE.sensors_pack(rec, block)
+            sent = {"heart_rate_rows": len(pack.payload["heart_rate"]),
+                    "hrv_rows": len(pack.payload["hrv_sdnn"]),
+                    "moments": len(pack.payload["moments"]), "face": "face" in pack.payload}
+            reply = await self.outreach.gemini_complete(pack)
+            if reply is None:
+                result["reason"] = "no_reply"
+            else:
+                res = OUTPUT_GATE.sensor_reading(reply, pack)
+                refusals.extend(res.refusals)
+                if res.ok:
+                    result.update(status="ready", reading=res.value["reading"],
+                                  agreement=res.value["agreement"], dropped=res.value["dropped"])
+                else:
+                    result["reason"] = res.refusals[0].reason if res.refusals else "refused"
+        except GateError as ge:
+            refusals.append(ge.refusal)
+            result["reason"] = "input_refused"
+        ag = result.get("agreement") or {}
+        try:
+            # Counts and codes only: never a sample value.
+            self.trace(repo, "level2", "accepted" if result["status"] == "ready" else
+                       "not_sent" if result.get("reason") == "input_refused" else
+                       "no_reply" if result.get("reason") == "no_reply" else "refused", {
+                           "task": "sensor_reading", "activity_id": activity_id,
+                           "type": rec["type"], "anonymized": True, **sent, **ag,
+                           "verdict": result["status"],
+                           "reasons": [r.reason for r in refusals][:20]},
+                       notable=bool(refusals))
+        except Exception:  # noqa: BLE001
+            pass
+
+        async def store() -> None:
+            cur = repo.get(f"activities/{activity_id}.json")
+            if cur is None:
+                return
+            cur["sensor_reading"] = result
+            repo.put(f"activities/{activity_id}.json", cur)
+            for r in refusals:
+                self.refuse(repo, r)
+            self.audit(repo, "sensor_reading", activity_id=activity_id,
+                       status=result["status"], reason=result.get("reason"),
+                       dropped=len(result.get("dropped", [])),
+                       **{k: v for k, v in ag.items() if v is not None})
 
         if take_lock:
             async with self.lock(repo.clinic_id, repo.patient_id):

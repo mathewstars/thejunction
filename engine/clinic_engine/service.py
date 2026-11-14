@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from .audit import write_audit
 from .config import Settings
 from .mind import face_features, lines, xp
+from .mind import sensors as sensor_logic
 from .mind import notes as note_logic
 from .mind.activities import check_activity, process_activity
 from .mind.engine import Clock, Mind
@@ -518,6 +519,13 @@ async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
                               face_raw_info=face_features.describe(raw))
             elif stored.get("face") is not None:
                 stored["face_source"] = "summary"
+            sensors = stored.pop("sensors", None)
+            if sensors is not None:
+                # The watch's heart data and the game moments: their own object, outside
+                # the record and every pack; the record keeps the summary (mind/sensors.py).
+                repo.put(f"sensors/{body['id']}.json", _sensors_object(body, sensors, now))
+                stored.update(sensors_summary=sensor_logic.summarize(sensors, body),
+                              sensors_info=sensor_logic.describe(sensors))
             previous = [a for a in repo.activities() if a["started_at"] < body["started_at"]]
             rec = process_activity(stored, previous)
             rec.update(received_at=now.isoformat(), example=False, content_sha256=sha,
@@ -525,6 +533,9 @@ async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
             if rec.get("face_source") == "raw":
                 # The frame reading (clinician-only): level 2 reads the frames, code checks.
                 rec["frames_reading"] = {"status": ctx.mind.frames_reading_state(repo, rec)}
+            if rec.get("sensors_summary") is not None:
+                # The sensor reading (clinician-only): the same for the watch's heart data.
+                rec["sensor_reading"] = {"status": ctx.mind.sensor_reading_state(repo, rec)}
             repo.put(f"activities/{rec['id']}.json", rec)
             if sug is not None:
                 sug["activity_id"] = rec["id"]
@@ -536,13 +547,16 @@ async def record_activity(ctx: Ctx, p: Principal, body: dict, rid: str) -> dict:
             gained = sum(a["xp"] for a in new if a.get("by") == rec["id"])
             _audit(ctx, p, "activity", "ok", None, rid, activity_id=rec["id"], type=rec["type"],
                    ended_by=rec["ended_by"], face_quality=rec["face_quality"],
-                   face_source=rec.get("face_source"), xp_gained=gained, crisis=crisis)
+                   face_source=rec.get("face_source"), sensors=sensors is not None,
+                   xp_gained=gained, crisis=crisis)
             await ctx.mind.publish("activity", p.clinic_id, p.patient_id, activity_id=rec["id"],
                                    xp_gained=gained)
         if rec["analysis"]["status"] == "pending":
             await ctx.mind.schedule_session_reading(repo, rec["id"])
         if (rec.get("frames_reading") or {}).get("status") == "pending":
             await ctx.mind.schedule_frames_reading(repo, rec["id"])
+        if (rec.get("sensor_reading") or {}).get("status") == "pending":
+            await ctx.mind.schedule_sensor_reading(repo, rec["id"])
         return _activity_out(ctx, repo, rec, gained, crisis)
 
 
@@ -555,6 +569,12 @@ def _raw_object(body: dict, raw: dict, now: datetime) -> dict:
             "moments_ms": raw.get("moments_ms"), "frames": len(raw["samples"]),
             "channel_count": len(raw["channels"]),
             "tracked_frames": len(raw["samples"]) if tracked is None else sum(tracked)}
+
+
+def _sensors_object(body: dict, sensors: dict, now: datetime) -> dict:
+    """The sensors block as sent, plus counts. Stored at sensors/{activity_id}.json."""
+    return {"activity_id": body["id"], "type": body["type"], "started_at": body["started_at"],
+            "received_at": now.isoformat(), **sensors, "counts": sensor_logic.describe(sensors)}
 
 
 def recompute_face(repo: PatientRepo, activity_id: str) -> bool:

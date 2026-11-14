@@ -237,6 +237,59 @@ class FaceRawIn(Strict):
         return self
 
 
+class SensorClockIn(Strict):
+    started_uptime_s: float = Field(ge=0, le=10**9, description="The phone's monotonic clock "
+                                    "(CACurrentMediaTime, the clock of ARFrame.timestamp) at "
+                                    "started_at. With started_at this anchors every time below.")
+
+
+class SensorWatchIn(Strict):
+    source: Literal["apple_watch"]
+    workout: bool = Field(description="Recorded inside an HKWorkoutSession with a live builder.")
+    started_ms: int = Field(ge=-3_600_000, le=3_600_000,
+                            description="When the watch began recording, ms from started_at.")
+
+
+class SensorMomentIn(Strict):
+    """One game moment (GameMoments.swift): the name, its time on both clocks, and the
+    small number it carried (reaction ms, breath number, finished 1 or 0) or the
+    check-in step. Never typed words or picked labels."""
+    name: Annotated[str, StringConstraints(pattern=r"^[a-z_]{3,32}$")]
+    t_ms: int = Field(ge=-3_600_000, le=3_600_000, description="Monotonic clock, ms from started_at.")
+    wall_ms: int = Field(ge=-3_600_000, le=3_600_000, description="Wall clock, ms from started_at.")
+    value: Optional[int] = Field(None, ge=0, le=100_000)
+    step: Optional[Annotated[str, StringConstraints(pattern=r"^[a-z_]{3,32}$")]] = None
+
+
+SensorRow = Annotated[list[float], Field(min_length=2, max_length=2)]
+
+
+class SensorsIn(Strict):
+    """What the Apple Watch and the game said during the activity (docs/sensors.md).
+    Times are milliseconds from started_at. Heart-rate and HRV rows keep HealthKit's
+    own sample times; the server computes every summary and keeps the rows."""
+    clock: SensorClockIn
+    watch: Optional[SensorWatchIn] = None
+    heart_rate: Optional[list[SensorRow]] = Field(
+        None, max_length=2000, description="[t_ms, bpm] rows, oldest first, wall clock.")
+    hrv_sdnn: Optional[list[SensorRow]] = Field(
+        None, max_length=100, description="[t_ms, sdnn_ms] rows, whenever the watch wrote one.")
+    moments: Optional[list[SensorMomentIn]] = Field(None, max_length=400)
+    face_offset_ms: Optional[int] = Field(
+        None, ge=-3_600_000, le=3_600_000,
+        description="The first face_raw frame, ms from started_at on the monotonic clock. "
+                    "Frame i is then at face_offset_ms + i * 1000 / rate_hz.")
+
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [{
+        "clock": {"started_uptime_s": 48213.412},
+        "watch": {"source": "apple_watch", "workout": True, "started_ms": -8200},
+        "heart_rate": [[-8000, 71.0], [-3000, 72.0], [2000, 74.0], [7000, 78.0]],
+        "hrv_sdnn": [],
+        "moments": [{"name": "focus_started", "t_ms": 0, "wall_ms": 0},
+                    {"name": "spark_caught", "t_ms": 1840, "wall_ms": 1841, "value": 512}],
+        "face_offset_ms": -412}]})
+
+
 class _FaceOneWay(Strict):
     @model_validator(mode="after")
     def _one_face(self):
@@ -255,6 +308,8 @@ class _ActivityBase(Strict):
     ended_by: Literal["finished", "user_stopped", "interrupted"]
     suggestion_id: Optional[ServerId] = Field(None, description="The suggestion this answers, "
                                                                 "if it was played from one.")
+    sensors: Optional[SensorsIn] = Field(None, description="The Apple Watch's heart data and "
+                                         "the game moments during the activity (docs/sensors.md).")
 
     @field_validator("started_at")
     @classmethod

@@ -128,6 +128,8 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
 
    `checkin` (evening, once a day): `good_things` (0 to 3 items), `plan` (one item or null), `plan_done` (`yes | no | not_asked`, about yesterday's plan). An item is either `{"catalog_id": "walked"}` (ids from `GET /v1/checkin/options`) or `{"text": "a few words"}` (at most 120 characters), never both.
 
+   `sensors` (any type, optional): what the Apple Watch measured during the activity and what happened in the game, and when: `[t_ms, bpm]` heart-rate rows and `[t_ms, sdnn_ms]` HRV rows with HealthKit's own times, every game moment on both clocks, and one clock anchor that lines them up with `face_raw`. **The phone computes nothing from it; the server checks, summarizes and keeps the rows.** Shape, limits and what the server does: [`docs/sensors.md`](../sensors.md).
+
    `face_raw` (only on focus and breathing, only when the person allowed the camera): the raw numbers ARKit gives per frame. **The phone computes nothing on the face; the server computes every face measure** and keeps the frames so the rules can change and sessions can be analysed again. Shape, channel list, limits and the rules the server applies: [`docs/face-raw.md`](../face-raw.md). In short:
 
    ```json

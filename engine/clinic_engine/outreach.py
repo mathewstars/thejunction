@@ -11,7 +11,8 @@ Rules enforced here, in code:
 - a host allowlist per purpose, https only
 - the level-2 pack is checked again by InputGate.check_outbound right before
   sending (the anonymizer itself is InputGate in mind/gates.py); the frame
-  reading, the only pack with face frames, by InputGate.check_frames_pack
+  reading, the only pack with face frames, by InputGate.check_frames_pack; the
+  sensor reading (watch heart data with the game moments) by check_sensors_pack
 - a notification text is built by notify.build_message from an allowlist of
   four fields and checked again here
 - timeouts everywhere, and no exception ever leaves this module
@@ -150,6 +151,8 @@ class Outreach:
                 INPUT_GATE.check_session_outbound(pack.payload)
             elif pack.task == "frames_reading":
                 INPUT_GATE.check_frames_pack(pack)  # the only pack that carries frames
+            elif pack.task == "sensor_reading":
+                INPUT_GATE.check_sensors_pack(pack)
             else:
                 INPUT_GATE.check_outbound(pack.payload)
             if self.standin:
@@ -162,6 +165,8 @@ class Outreach:
             schema = None
             if frames:
                 from .mind.frame_reading import RESPONSE_SCHEMA as schema
+            elif pack.task == "sensor_reading":
+                from .mind.sensor_reading import RESPONSE_SCHEMA as schema
             url, headers, body = gemini.build_request(self.settings, pack,
                                                       max_output_tokens=max_tokens or 4000,
                                                       response_schema=schema)

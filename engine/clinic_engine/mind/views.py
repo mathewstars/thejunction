@@ -378,6 +378,39 @@ _AGREEMENT_KEYS = ("smiles_reported", "smiles_confirmed", "smiles_corrected", "s
                    "moments_reported", "moments_agree", "overall_same")
 
 
+_SENSOR_HR_KEYS = ("samples", "samples_in_activity", "before_start_bpm", "mean_bpm", "min_bpm",
+                   "max_bpm", "first_bpm", "last_bpm", "change_bpm", "trend", "slope_bpm_per_min",
+                   "coverage_s", "mean_gap_s")
+
+
+def sensors_out(a: dict) -> dict | None:
+    """The watch's heart data during the session, as code summarized it (mind/sensors.py):
+    numbers and fixed words, never the rows (GET .../activities/{id}/sensors has them)."""
+    sm = a.get("sensors_summary")
+    if not sm:
+        return None
+    hr = sm.get("heart_rate") or {}
+    mo = sm.get("moments") or {}
+    return {"source": sm.get("source"), "watch_started_s": sm.get("watch_started_s"),
+            "heart_rate": {k: hr.get(k) for k in _SENSOR_HR_KEYS} if hr else None,
+            "hrv_sdnn": sm.get("hrv_sdnn"),
+            "moments": {"count": mo.get("count"), "by_name": mo.get("by_name"),
+                        "heart_rate_after": mo.get("heart_rate_after"),
+                        "max_clock_drift_ms": mo.get("max_clock_drift_ms")},
+            "breaths": sm.get("breaths"), "alignment": sm.get("alignment")}
+
+
+def sensor_reading_out(a: dict) -> dict:
+    """The sensor reading for the clinician: the model's items as code confirmed or
+    dropped them. Fixed words and counts only. The same keys in every state."""
+    sr = a.get("sensor_reading") or {"status": "not_applicable"}
+    return {"status": sr.get("status", "not_applicable"), "reason": sr.get("reason"),
+            "read_by": sr.get("read_by"), "model": sr.get("model"),
+            "checked_by": sr.get("checked_by"), "at": sr.get("at"),
+            "reading": sr.get("reading"), "agreement": sr.get("agreement"),
+            "dropped": sr.get("dropped") or []}
+
+
 def frames_reading_out(a: dict) -> dict:
     """The frame reading for the clinician: what the model reported, as code
     confirmed, corrected or dropped it; the faint smiles the model found under
@@ -457,6 +490,8 @@ def activities_block(mind, repo: PatientRepo, view: View, share: bool) -> dict:
                 s["plan"] = item(a.get("plan"), "plans")
                 s["plan_done"] = a.get("plan_done")
                 s["asked_for_help"] = bool(a.get("crisis"))
+            s["sensors"] = sensors_out(a)
+            s["sensor_reading"] = sensor_reading_out(a)
             sessions.append(s)
         usual = {}
         if sessions:

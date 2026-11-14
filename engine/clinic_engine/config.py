@@ -81,6 +81,9 @@ class Settings:
     # The frame reading (level 2 reads the raw face frames; code checks it).
     # Gemini thinks before it answers on a long stream: it gets more room.
     frames_reader: str = "auto"  # auto (when level 2 is on) | off
+    # The sensor reading (mind/sensor_reading.py): level 2 reads the watch's heart
+    # data with the game moments; code checks every item. Clinician-only.
+    sensor_reader: str = "auto"  # auto (when level 2 is on) | off
     gemini_frames_max_tokens: int = 16000  # the model's thinking counts against it
     gemini_frames_retry_wait_s: float = 2.0
     gemini_frames_timeout_s: float = 60.0
@@ -148,6 +151,7 @@ class Settings:
             gemini_model=_env("GEMINI_MODEL"),
             gemini_timeout_s=_env_float("GEMINI_TIMEOUT_S", 15.0),
             frames_reader=_env("FRAMES_READER", "auto").lower(),
+            sensor_reader=_env("SENSOR_READER", "auto").lower(),
             gemini_frames_max_tokens=_env_int("GEMINI_FRAMES_MAX_TOKENS", 16000),
             gemini_frames_retry_wait_s=_env_float("GEMINI_FRAMES_RETRY_WAIT_S", 2.0),
             gemini_frames_timeout_s=_env_float("GEMINI_FRAMES_TIMEOUT_S", 60.0),

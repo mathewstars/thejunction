@@ -68,6 +68,11 @@ def check_activity(a: dict, now: datetime) -> str | None:
     raw = a.get("face_raw")
     if raw is not None and len(raw["samples"]) / raw["rate_hz"] > dur * 1.2 + 5:
         return "face_frames_longer_than_activity"
+    if a.get("sensors") is not None:
+        from .sensors import check_sensors
+        problem = check_sensors(a["sensors"], a)
+        if problem:
+            return problem
     return None
 
 
