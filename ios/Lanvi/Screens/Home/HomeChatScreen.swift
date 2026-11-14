@@ -244,11 +244,18 @@ struct HomeChatScreen: View {
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1...4)
                     .focused($focused)
+                    .submitLabel(.send)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.white))
                     .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.line).offset(y: 3))
                     .onChange(of: draft) { _, v in
+                        // Return sends (a multi-line field turns it into a newline).
+                        if v.contains("\n") {
+                            draft = v.replacingOccurrences(of: "\n", with: "")
+                            send()
+                            return
+                        }
                         if v.count > limit { draft = String(v.prefix(limit)) }
                     }
                 Button(action: send) {
@@ -264,16 +271,25 @@ struct HomeChatScreen: View {
         .padding(.horizontal, 16)
         .padding(.top, 10)
         .padding(.bottom, 8)
-        .background(
-            LinearGradient(colors: [Color.white.opacity(0), Color.white.opacity(0.75)],
-                           startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-        )
+        // A solid snow-white strip under the field that runs to the very bottom,
+        // behind the keyboard too: nothing of the scene shows through there.
+        .background(alignment: .top) {
+            VStack(spacing: 0) {
+                LinearGradient(colors: [Color(hex: 0xF4F8FF).opacity(0), Color(hex: 0xF4F8FF)],
+                               startPoint: .top, endPoint: .bottom)
+                    .frame(height: 24)
+                Color(hex: 0xF4F8FF)
+            }
+            .padding(.top, -24)
+            .ignoresSafeArea(edges: .bottom)
+        }
         .animation(LanviTiming.swap, value: left <= 40)
     }
 
+    /// Sends, and keeps the keyboard up for the next message. Empty does nothing.
     private func send() {
-        let text = draft
+        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !store.chatWaiting else { return }
         draft = ""
         Task { await store.sendChat(text) }
     }
@@ -314,7 +330,8 @@ struct HomeChatScreen: View {
         case "long":
             focused = true
             draft = String(repeating: "Quiet day today, nothing much happened. ", count: 7)
-        case "talk", "help":
+        case "talk", "help", "kbtalk":
+            if args[i + 1] == "kbtalk" { focused = true; try? await Task.sleep(for: .milliseconds(900)) }
             let lines = args[i + 1] == "help"
                 ? ["I need help"]
                 : ["Slept badly last night", "The coffee outside was nice though", "Thanks Lanvi"]
