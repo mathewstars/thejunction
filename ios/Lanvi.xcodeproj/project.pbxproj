@@ -48,6 +48,7 @@
 		96313F278A5FBE5EEE2B2790 /* FrameMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A61DA24641E940F9CFBD0F37 /* FrameMeter.swift */; };
 		966709A0031A479E6D292413 /* HomeMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE73EA98004F1792CDBCB5C0 /* HomeMoments.swift */; };
 		9B687749D49A04C7081D4DFA /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3595C8C9C83D14C2B300184 /* JSONValue.swift */; };
+		9CC3E3C1AA7E2D00D7F3C812 /* LanviEyesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14332D1FBE2937C010FE068A /* LanviEyesTests.swift */; };
 		A08BD4324F5FA5ACA5C5B79E /* LanviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590D5D765C0AEABF60DD4DE0 /* LanviApp.swift */; };
 		A27DCC0E64CA203AB2636FFB /* FaceTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D91945D05F0DA6BDBC2AB0A /* FaceTracker.swift */; };
 		A2C3F617ED5E2B4ED0E105FC /* AppleHealthXMLImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23F7E4011FDEDCAD3A94ACB7 /* AppleHealthXMLImporter.swift */; };
@@ -133,6 +134,7 @@
 		043F24BD4810CC96B85B74B4 /* LanviTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviTiming.swift; sourceTree = "<group>"; };
 		0E369E41135184A2334A61A6 /* FocusResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusResult.swift; sourceTree = "<group>"; };
 		11CA1C956F7514A490E2C77E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		14332D1FBE2937C010FE068A /* LanviEyesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviEyesTests.swift; sourceTree = "<group>"; };
 		15B8C888729DE19EB41449A4 /* HomeOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOverlays.swift; sourceTree = "<group>"; };
 		166A2EF8FECA301AACE53B2A /* HomeSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSheets.swift; sourceTree = "<group>"; };
 		1B5C92796F5DE0B8D3DA00AF /* GameMoments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameMoments.swift; sourceTree = "<group>"; };
@@ -244,6 +246,7 @@
 			children = (
 				9880ABDFC5EF111BB77915E2 /* FaceRawTests.swift */,
 				F7415116ED3C0D377127D698 /* HealthTests.swift */,
+				14332D1FBE2937C010FE068A /* LanviEyesTests.swift */,
 			);
 			path = LanviTests;
 			sourceTree = "<group>";
@@ -689,6 +692,7 @@
 			files = (
 				42388E6A19E9972BFD34235B /* FaceRawTests.swift in Sources */,
 				3F11B1A55A50095524067A63 /* HealthTests.swift in Sources */,
+				9CC3E3C1AA7E2D00D7F3C812 /* LanviEyesTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
