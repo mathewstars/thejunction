@@ -1,6 +1,7 @@
 // Committed defaults. Every build talks to the team's live server, lanvi.app
 // (its address is public in the root README). A pairing code is never committed:
-// the app asks for the one-time code from the clinic on first run.
+// the app never asks for one. A code in the private Config.xcconfig pairs silently;
+// with no code and no earlier pairing the app quietly runs on offline sample data.
 //
 // A private, git-ignored Config.xcconfig next to this file may override both
 // (for example a local engine). Launch with -offline for sample data instead.
