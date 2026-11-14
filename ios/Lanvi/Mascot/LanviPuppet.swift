@@ -11,6 +11,7 @@ struct LanviPuppet: View {
     @Environment(\.lanviReactionRequest) private var reactionRequest
     @Environment(\.lanviLook) private var lookUnit
     @Environment(\.lanviMouth) private var mouthOverride
+    @Environment(\.lanviHops) private var hops
     @Environment(\.lanviDebugFreeze) private var freeze
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -97,6 +98,7 @@ struct LanviPuppet: View {
                             reaction: reaction, reactionAt: reactionAt, hopAt: hopAt, tapAt: tapAt,
                             tapSide: tapSide, look: tapLook ?? lookTo, lookFrom: lookFrom, lookAt: lookAt,
                             reduceMotion: reduceMotion)
+        m.hops = hops
         m.loving = moodOverride == nil && pose == .love
         if let freeze {
             // Proof stills: a fixed clock, a reaction held at a chosen moment.

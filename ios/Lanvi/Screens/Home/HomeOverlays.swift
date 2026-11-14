@@ -139,20 +139,11 @@ struct HomeStoryScreen: View {
                 .frame(width: fox * 2, height: fox * 2)
                 .position(x: geo.size.width / 2 + runX, y: hill - fox / 2 + 12)
 
-                VStack(spacing: 0) {
-                    Text(thanks ? "Thank you. I'll remember that on my next trip." : story.text)
-                        .font(Theme.rounded(19, .heavy))
-                        .foregroundStyle(Theme.ink)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(18)
-                        .frame(maxWidth: .infinity)
-                        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.white))
-                        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.line).offset(y: 4))
-                        .shadow(color: Theme.nightTop.opacity(0.3), radius: 16, y: 8)
-                        .id(thanks)
-                        .transition(.scale(scale: 0.85).combined(with: .opacity))
-                }
+                // Lanvi tells the story in its speech bubble; the thank-you replaces
+                // it without the two texts ever showing at once.
+                HomeSpeechBubble(text: thanks ? "Thank you. I'll remember that on my next trip." : story.text,
+                                 pointAt: 0.5)
+                    .frame(maxWidth: .infinity)
                 .opacity(arrived ? 1 : 0)
                 .scaleEffect(arrived ? 1 : 0.8, anchor: .bottom)
                 .padding(.horizontal, 24)
@@ -200,10 +191,9 @@ struct HomeStoryScreen: View {
             try? await Task.sleep(for: .milliseconds(250))
             withAnimation(.easeOut(duration: 1.0)) { runX = 0 }
             try? await Task.sleep(for: .milliseconds(1000))
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) { pose = .cheer }
-            bounce += 1
+            pose = .cheer
             try? await Task.sleep(for: .milliseconds(350))
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { arrived = true }
+            withAnimation(LanviTiming.screen) { arrived = true }
             // The -demo walk-through answers by itself.
             let auto = autoAnswer ?? (ProcessInfo.processInfo.arguments.contains("-demo") ? story.answers.first?.id : nil)
             if let auto {
@@ -216,18 +206,17 @@ struct HomeStoryScreen: View {
     private func answer(_ id: String) {
         guard !sending else { return }
         sending = true
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { chosen = id }
+        withAnimation(LanviTiming.pop) { chosen = id }
         Task {
             let ok = await onAnswer(id)
             sending = false
             guard ok else {
-                withAnimation { chosen = nil; pose = .meh }
+                withAnimation(LanviTiming.pop) { chosen = nil }
+                pose = .curious
                 return
             }
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.65)) {
-                pose = .love
-                thanks = true
-            }
+            pose = .love
+            thanks = true
             try? await Task.sleep(for: .seconds(2.2))
             onClose()
         }
