@@ -380,7 +380,7 @@ class RevontuletIn(Strict):
     times (docs/revontulet-measures.md). Numbers only: no touch paths, no
     positions, nothing that identifies a person. A record with this object is
     read as a Revontulet game and compared only with the person's earlier
-    Revontulet games: reaction times need three ember taps, the error rate is
+    Revontulet games: reaction times need two ember taps, the error rate is
     embers missed over embers shown, and a game where the wall burst counts as
     played to the end even when the person left during the strokes."""
     rounds: list[RevontuletRound] = Field(default_factory=list, max_length=3,

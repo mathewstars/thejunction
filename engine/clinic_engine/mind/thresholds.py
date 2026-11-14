@@ -73,10 +73,10 @@ class Thresholds:
     revontulet_start_from: int = 2
     revontulet_start_to: int = 12
     activity_min_reactions: int = 5  # a focus session needs this many reaction times
-    # Revontulet has six embers a game at most (two on each harder shot), and a
-    # real game on 14 November showed four: three reaction times are enough for
-    # a middle value that one odd tap cannot move. The spread still needs four.
-    revontulet_min_reactions: int = 3
+    # Revontulet gives few: three rounds, two embers on a hard round, so at most six
+    # ember taps a game, and none on an easy-only game. One hard round with both
+    # embers lit is enough for a median; the spread still needs four.
+    revontulet_min_reactions: int = 2
     # A touch on the sleeping fox shorter than this is a flick, not a stroke
     # (a real game sent one of 121 ms next to strokes of 763 and 4480 ms).
     revontulet_min_stroke_ms: int = 300
@@ -336,7 +336,7 @@ ACTIVITY_MIN_SCALE = {
     # Revontulet has few embers a game (four in a real game on 14 November), so
     # its floors are wider than Sparks and snow's: one ember missed of four is a
     # quarter and stays inside the usual range, and a middle reaction time from
-    # three to six taps moves more than one from sixteen.
+    # two to six taps moves more than one from sixteen.
     "revontulet.error_rate": 0.25, "revontulet.median_reaction_ms": 60.0,
     # Revontulet: with three rounds one choice is a third; the floor keeps a single
     # different choice inside the usual range (0.33 / 0.25 = 1.3) and two outside it.

@@ -63,23 +63,21 @@ def test_a_full_game_is_accepted_and_stored_whole(env):
     stored = env.repo().get("activities/rv-full-000001.json")
     assert stored["revontulet"] == MEASURES
     # Read as Revontulet: the error rate is embers missed over embers shown
-    # (1 of 4; the three launches cannot go wrong), and three ember taps are
-    # enough for a middle reaction time (revontulet_min_reactions).
+    # (1 of 4; the three launches cannot go wrong), and its three ember taps are
+    # enough for a middle reaction time (revontulet_min_reactions is 2).
     assert stored["features"]["error_rate"] == 0.25
     assert stored["features"]["reactions_used"] == 3
     assert stored["features"]["median_reaction_ms"] == 380.0
     assert stored["features"]["reaction_spread_ms"] is None  # the spread needs four
 
 
-def test_two_ember_taps_are_too_few_and_no_embers_means_no_error_rate(env):
+def test_no_embers_means_no_error_rate_and_sparks_keeps_its_own_rule(env):
     easy = copy.deepcopy(MEASURES)
     easy["rounds"] = [ROUND_EASY, ROUND_EASY, ROUND_EASY]
     assert post(env, game("rv-easy-000001", measures=easy, correct_taps=3, misses=0,
                           reaction_ms=[])).status_code == 200
     f = env.repo().get("activities/rv-easy-000001.json")["features"]
     assert f["error_rate"] is None and f["median_reaction_ms"] is None
-    assert post(env, game("rv-two-0000001", reaction_ms=[410, 380])).status_code == 200
-    assert env.repo().get("activities/rv-two-0000001.json")["features"]["median_reaction_ms"] is None
     # A Sparks and snow record keeps its own rule: five reaction times, taps over taps.
     assert post(env, game("rv-plain-00001", measures=None)).status_code == 200
     f = env.repo().get("activities/rv-plain-00001.json")["features"]
@@ -136,6 +134,27 @@ def test_a_coached_round_and_a_flick_are_left_out_of_the_four_numbers(env):
     assert f["choice_ms"] == 940.0 and f["trace_speed_cm_s"] == round(228.9 / 64.2, 3)
     assert f["stroke_speed_cm_s"] == round((282.8 + 229.9 + 211.6) / 3 / 64.2, 3)
     assert f["hard_share"] == round(2 / 3, 3)  # the choice in a coached round still counts
+
+
+def test_a_games_few_ember_taps_give_a_reaction_time(env):
+    """A game has at most six ember taps, so two are enough for the median (the
+    other focus game, with about seventeen taps, keeps needing five). The spread
+    needs four. An easy-only game sends none and gets none."""
+    post(env, game("rv-rt-00000001", reaction_ms=[410, 380]))
+    f = env.repo().get("activities/rv-rt-00000001.json")["features"]
+    assert f["median_reaction_ms"] == 395.0 and f["reactions_used"] == 2
+    assert f["reaction_spread_ms"] is None
+    post(env, game("rv-rt-00000002", reaction_ms=[410, 380, 350, 300, 420, 360], correct_taps=9))
+    f = env.repo().get("activities/rv-rt-00000002.json")["features"]
+    assert f["median_reaction_ms"] == 370.0 and f["reaction_spread_ms"] is not None
+    post(env, game("rv-rt-00000003", reaction_ms=[], misses=0, correct_taps=3))
+    assert env.repo().get("activities/rv-rt-00000003.json")["features"]["median_reaction_ms"] is None
+    # Anticipations (under 120 ms) still do not count.
+    post(env, game("rv-rt-00000004", reaction_ms=[80, 410]))
+    assert env.repo().get("activities/rv-rt-00000004.json")["features"]["median_reaction_ms"] is None
+    # Without the measures the record is the old game: five reactions or nothing.
+    post(env, game("rv-rt-00000005", measures=None, reaction_ms=[410, 380, 350]))
+    assert env.repo().get("activities/rv-rt-00000005.json")["features"]["median_reaction_ms"] is None
 
 
 def test_a_record_without_the_measures_means_what_it_always_did(env):
