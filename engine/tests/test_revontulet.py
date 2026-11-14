@@ -155,3 +155,72 @@ def test_round_trip_through_the_folder_and_packed_stores(env, tmp_path):
         assert back == rec and back["revontulet"] == MEASURES
         assert [d["id"] for d in store.list_docs("clinics/c1/patients/p1/activities/")] == [
             "rv-store-00001"]
+
+
+# ---- own normal for Revontulet ------------------------------------------------------------
+
+def _days_ago(n):
+    return (NOW - timedelta(days=n, minutes=5)).isoformat()
+
+
+def test_own_normal_needs_eight_earlier_revontulet_games(env):
+    for k in range(8):
+        assert post(env, game(f"rv-own-{k:06d}", started_at=_days_ago(12 - k))).status_code == 200
+    eighth = env.repo().get("activities/rv-own-000007.json")
+    assert eighth["revontulet_features"] == {"hard_share": round(2 / 3, 3), "choice_ms": 940.0,
+                                             "trace_speed_cm_s": round((174.8 + 228.9 + 228.9) / 3 / 64.2, 3),
+                                             "stroke_speed_cm_s": round((282.8 + 229.9 + 211.6) / 3 / 64.2, 3)}
+    assert eighth["revontulet_baseline_sessions"] == 7
+    assert all(v is None for v in eighth["revontulet_z"].values()) and eighth["revontulet_usual"] == {}
+    # The ninth game has eight earlier ones: an all-easy, slow game is far under own normal.
+    slow = copy.deepcopy(MEASURES)
+    for r in slow["rounds"]:
+        r.update(effort="easy", embers_shown=0, embers_hit=0, trace_mean_speed_pt_s=100.0)
+    assert post(env, game("rv-own-000008", measures=slow, started_at=_days_ago(1))).status_code == 200
+    ninth = env.repo().get("activities/rv-own-000008.json")
+    assert ninth["revontulet_usual"]["hard_share"]["n"] == 8
+    assert ninth["revontulet_z"]["hard_share"] < -2 and ninth["revontulet_z"]["trace_speed_cm_s"] < -2
+    # No fixed start yet: it needs twelve earlier games.
+    assert ninth["revontulet_start"] == {} and all(v is None for v in ninth["revontulet_start_z"].values())
+    # The day is judged as before: the focus z is untouched by these numbers.
+    assert set(ninth["z"]) == {"median_reaction_ms", "reaction_spread_ms", "error_rate"}
+
+
+def test_the_fixed_start_is_games_three_to_twelve_and_does_not_move(env):
+    slow = copy.deepcopy(MEASURES)
+    for r in slow["rounds"]:
+        r.update(trace_mean_speed_pt_s=100.0)
+    for k in range(12):
+        assert post(env, game(f"rv-start-{k:05d}", started_at=_days_ago(40 - k))).status_code == 200
+    for k in range(12, 34):  # a long slow stretch: the moving range follows it, the start does not
+        assert post(env, game(f"rv-start-{k:05d}", measures=slow, started_at=_days_ago(40 - k))).status_code == 200
+    last = env.repo().get("activities/rv-start-00033.json")
+    assert last["revontulet_start"]["trace_speed_cm_s"]["n"] == 10
+    assert abs(last["revontulet_z"]["trace_speed_cm_s"]) < 0.5        # usual among the recent games
+    assert last["revontulet_start_z"]["trace_speed_cm_s"] < -2        # far under the start
+
+
+def test_sparks_games_never_enter_revontulet_normal_and_get_no_such_keys(env):
+    for k in range(9):
+        assert post(env, game(f"rv-sparks-{k:06d}", measures=None, started_at=_days_ago(10 - k))).status_code == 200
+    assert post(env, game("rv-after-sparks-01", started_at=_days_ago(0))).status_code == 200
+    plain = env.repo().get("activities/rv-sparks-000008.json")
+    assert not [k for k in plain if k.startswith("revontulet")]
+    rv = env.repo().get("activities/rv-after-sparks-01.json")
+    assert rv["revontulet_baseline_sessions"] == 0 and rv["revontulet_usual"] == {}
+
+
+def test_speeds_are_none_without_the_phone_size(env):
+    m = copy.deepcopy(MEASURES)
+    m["pt_per_cm"] = None
+    assert post(env, game("rv-nosize-00001", measures=m)).status_code == 200
+    f = env.repo().get("activities/rv-nosize-00001.json")["revontulet_features"]
+    assert f["trace_speed_cm_s"] is None and f["stroke_speed_cm_s"] is None and f["hard_share"] is not None
+
+
+def test_a_game_cut_short_has_no_share_of_harder_choices(env):
+    m = copy.deepcopy(MEASURES)
+    m["rounds"] = [m["rounds"][1]]
+    assert post(env, game("rv-short-00001", measures=m)).status_code == 200
+    f = env.repo().get("activities/rv-short-00001.json")["revontulet_features"]
+    assert f["hard_share"] is None and f["choice_ms"] == 940.0
