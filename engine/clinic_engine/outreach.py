@@ -140,7 +140,7 @@ class Outreach:
     async def _level2(self, pack: Pack) -> str | None:
         # The frame reading sends a long stream and the model thinks before it
         # answers: it gets its own output limit and timeout; other tasks keep theirs.
-        frames = pack.task == "frames_reading"
+        frames = pack.task in ("frames_reading", "days_reading")  # the two long readings
         max_tokens = self.settings.gemini_frames_max_tokens if frames else None
         timeout = self.settings.gemini_frames_timeout_s if frames else self.settings.gemini_timeout_s
         try:
@@ -150,6 +150,8 @@ class Outreach:
                 INPUT_GATE.check_session_outbound(pack.payload)
             elif pack.task == "frames_reading":
                 INPUT_GATE.check_frames_pack(pack)  # the only pack that carries frames
+            elif pack.task == "days_reading":
+                INPUT_GATE.check_days_pack(pack)
             else:
                 INPUT_GATE.check_outbound(pack.payload)
             if self.standin:
@@ -160,8 +162,10 @@ class Outreach:
                     Pack(1, pack.task, pack.messages, pack.payload, pack.ref_map),
                     json_mode=True, max_tokens=max_tokens or 1500)
             schema = None
-            if frames:
+            if pack.task == "frames_reading":
                 from .mind.frame_reading import RESPONSE_SCHEMA as schema
+            elif pack.task == "days_reading":
+                from .mind.day_reading import RESPONSE_SCHEMA as schema
             url, headers, body = gemini.build_request(self.settings, pack,
                                                       max_output_tokens=max_tokens or 4000,
                                                       response_schema=schema)

@@ -255,7 +255,9 @@ def create_app(settings: Optional[Settings] = None, store: Optional[Store] = Non
                            allow_methods=["GET", "POST", "DELETE"],
                            allow_headers=["Authorization", "Content-Type"])
     app.add_middleware(Guard, max_body=settings.max_body_bytes, route_limits={
-        ("POST", "/v1/activities"): max(settings.max_body_bytes, settings.max_face_raw_body_bytes)})
+        ("POST", "/v1/activities"): max(settings.max_body_bytes, settings.max_face_raw_body_bytes),
+        ("POST", "/v1/health/summary"): max(settings.max_body_bytes,
+                                            settings.max_face_raw_body_bytes)})
     app.add_middleware(GZipMiddleware, minimum_size=1024)  # the patient page is ~170 KB of JSON
     return app
 

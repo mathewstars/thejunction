@@ -499,6 +499,74 @@ class InputGate:
         if pack.level != 2 or pack.images or pack.messages != want:
             raise GateError(GateRefusal("input", 2, "frames_reading", "messages_not_allowed"))
 
+    # ---- day reading (level 2 only) -----------------------------------------------------
+
+    _DAYS_CHAR_LIMIT = 40_000
+
+    def days_pack(self, days: dict, health: dict) -> Pack | None:
+        """The person's daily numbers of the last weeks (day_reading.reduce): a
+        day index and the weekday instead of dates, a few named channels,
+        rounded. None when there are too few days. Numbers and fixed codes only."""
+        from .day_reading import prompt_text, reduce
+        payload = reduce(days, health)
+        if payload is None:
+            return None
+        self.check_days_outbound(payload)
+        msgs = [{"role": "system", "content": prompt_text()},
+                {"role": "user", "content": json.dumps(payload, separators=(",", ":"))}]
+        return Pack(2, "days_reading", msgs, payload)
+
+    def check_days_outbound(self, payload: Any) -> None:
+        """Allowlist for the day reading: exactly the three keys, known channel
+        names in their fixed order, one row per day with a rising day index
+        from 0 and a weekday 1 to 7, every other value null or a rounded number
+        in its channel's range. Anything else is refused."""
+        from . import day_reading as dr
+        from .thresholds import T
+
+        def refuse(reason: str):
+            raise GateError(GateRefusal("input", 2, "days_reading", reason))
+
+        if not isinstance(payload, dict) or set(payload) != set(dr.PAYLOAD_KEYS):
+            refuse("top_level_keys")
+        ch, rows, n = payload["channels"], payload["rows"], payload["days"]
+        if not isinstance(ch, list) or any(not isinstance(c, str) for c in ch) or \
+                any(c not in dr.ORDER for c in ch):
+            refuse("channel_not_allowed")
+        if ch != [c for c in dr.ORDER if c in ch] or ch[:2] != ["d", "wd"] or "steps" not in ch:
+            refuse("channel_order")
+        if not isinstance(rows, list) or isinstance(n, bool) or not isinstance(n, int) or \
+                n != len(rows) or not 1 <= n <= T.dayr_max_days:
+            refuse("days_count")
+        for k, row in enumerate(rows):
+            if not isinstance(row, list) or len(row) != len(ch):
+                refuse("row_shape")
+            if row[0] != k or isinstance(row[0], bool) or not isinstance(row[0], int):
+                refuse("day_index_not_allowed")
+            if isinstance(row[1], bool) or not isinstance(row[1], int) or not 1 <= row[1] <= 7:
+                refuse("weekday_not_allowed")
+            for v, name in zip(row[2:], ch[2:]):
+                if v is None:
+                    continue
+                _src, nd, lo, hi = dr.CHANNELS[name]
+                if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
+                    refuse("value_not_a_number")
+                scale = 10 ** max(nd, 0)
+                if not lo <= v <= hi or abs(v * scale - round(v * scale)) > 1e-6:
+                    refuse("value_not_allowed")
+        if len(json.dumps(payload, separators=(",", ":"))) > self._DAYS_CHAR_LIMIT:
+            refuse("too_large")
+
+    def check_days_pack(self, pack: Pack) -> None:
+        """Right before sending: the payload passes check_days_outbound and the
+        messages are exactly the prompt file and that payload, nothing more."""
+        from .day_reading import prompt_text
+        self.check_days_outbound(pack.payload)
+        want = [{"role": "system", "content": prompt_text()},
+                {"role": "user", "content": json.dumps(pack.payload, separators=(",", ":"))}]
+        if pack.level != 2 or pack.images or pack.messages != want:
+            raise GateError(GateRefusal("input", 2, "days_reading", "messages_not_allowed"))
+
     # ---- association appraisal (level 1 only) ----------------------------------------
 
     _ASSOC_KEYS = {"design", "reference", "rows", "data_notes", "caveat_codes", "type", "days",
@@ -695,6 +763,39 @@ class FramesReply(_Strict):
     segments: list[FramesSegment] = Field(max_length=12)
     moments: list[FramesMoment] = Field(max_length=20)
     overall: FramesOverall
+
+
+class DaysStretch(_Strict):
+    start_d: int = Field(ge=0, le=400)
+    end_d: int = Field(ge=0, le=400)
+    channel: Literal["steps", "walk_speed", "sleep_h", "hrv", "rest_hr", "active_kcal",
+                     "exercise_min", "daylight_min"]
+    direction: Literal["lower", "higher"]
+    shape: Literal["sustained", "gradual"]
+
+
+class DaysWeekly(_Strict):
+    channel: Literal["steps", "walk_speed", "sleep_h", "hrv", "rest_hr", "active_kcal",
+                     "exercise_min", "daylight_min"]
+    low_weekdays: list[int] = Field(max_length=3)
+
+
+class DaysGap(_Strict):
+    start_d: int = Field(ge=0, le=400)
+    end_d: int = Field(ge=0, le=400)
+
+
+class DaysOverall(_Strict):
+    movement: Literal["lower", "as_usual", "higher", "unclear"]
+    sleep: Literal["lower", "as_usual", "higher", "unclear"]
+    confidence: Literal["low", "medium", "high"]
+
+
+class DaysReply(_Strict):
+    stretches: list[DaysStretch] = Field(max_length=12)
+    weekly: list[DaysWeekly] = Field(max_length=4)
+    gaps: list[DaysGap] = Field(max_length=8)
+    overall: DaysOverall
 
 
 class AssocRowReply(_Strict):
@@ -970,6 +1071,38 @@ class OutputGate:
             return refuse(problem)
         out = verify(d, frames, pack.payload)
         refusals = [GateRefusal("output", 2, "frames_reading",
+                                f"item_dropped:{x['item']}:{x['reason']}") for x in out["dropped"]]
+        return GateResult(True, out, refusals)
+
+    # ---- day reading (level 2) -----------------------------------------------------------
+
+    def days_reading(self, raw: str | None, pack: Pack) -> GateResult:
+        """Strict shape and enums exactly as data/days_prompt.txt defines them,
+        every day index inside the window; then every item checked by code
+        against the same numbers (day_reading.verify)."""
+        from .day_reading import range_problem, verify
+
+        def refuse(reason: str) -> GateResult:
+            return GateResult(False, refusals=[GateRefusal("output", 2, "days_reading", reason)])
+
+        if raw is None:
+            return refuse("no_reply")
+        raw = re.sub(r"^\s*<think>.*?</think>\s*", "", raw, flags=re.S)
+        obj = _parse_json_object(raw)
+        if obj is None:
+            return refuse("not_json_object")
+        try:
+            reply = DaysReply.model_validate(obj)
+        except ValidationError as exc:
+            first = exc.errors()[0]
+            return refuse("schema:" + first["type"] + ":" +
+                          ".".join(str(x) for x in first["loc"])[:40])
+        d = reply.model_dump()
+        problem = range_problem(d, pack.payload)
+        if problem:
+            return refuse(problem)
+        out = verify(d, pack.payload)
+        refusals = [GateRefusal("output", 2, "days_reading",
                                 f"item_dropped:{x['item']}:{x['reason']}") for x in out["dropped"]]
         return GateResult(True, out, refusals)
 
