@@ -24,6 +24,11 @@ struct HomeChatScreen: View {
     var body: some View {
         ZStack(alignment: .top) {
             PaintedWorld(scene: store.worldScene)
+            // A soft, even veil of deeper blue over the scene, the same on dawn, day
+            // and night, so white bubbles always read against it.
+            Color(hex: 0x1E3A9A).opacity(0.30)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
 
             VStack(spacing: 0) {
                 header
@@ -249,7 +254,10 @@ struct HomeChatScreen: View {
                     .transition(.opacity)
             }
             HStack(alignment: .bottom, spacing: 10) {
-                TextField("Write to Lanvi", text: $draft, axis: .vertical)
+                TextField("", text: $draft,
+                          prompt: Text("Write to Lanvi").foregroundStyle(Theme.inkSecondary),
+                          axis: .vertical)
+                    .accessibilityLabel("Write to Lanvi")
                     .font(Theme.rounded(17, .semibold))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1...4)
@@ -257,8 +265,13 @@ struct HomeChatScreen: View {
                     .submitLabel(.send)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
+                    // Like Lanvi's speech bubble: white, a 2-point blue-grey outline,
+                    // a slightly thicker darker bottom edge.
                     .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.white))
-                    .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.line).offset(y: 3))
+                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(LanviBubbleBackground.outline, lineWidth: 2))
+                    .background(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(LanviBubbleBackground.edge).offset(y: 3))
                     .onChange(of: draft) { _, v in
                         // Return sends (a multi-line field turns it into a newline);
                         // Return on an empty field puts the keyboard away.
