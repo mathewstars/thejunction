@@ -36,7 +36,7 @@ The jury are researchers. So: every claim can be checked, the demo is the real a
 
 **Who notices, and what the models do (1:20 to 1:40)**
 
-> The phone notices when a person drifts from their own normal. Rules we can explain tell the clinic. And Gemini reads the same numbers as a second pair of eyes: when it catches something the rules missed, and the numbers confirm it, the clinic gets a flag. What Lanvi says and offers comes from a short list we wrote ourselves. We tried to make the system learn something harmful. Here is the log of what it refused.
+> The phone notices when a person drifts from their own normal: rules we can explain raise the flag. Then two models decide how much it matters. A small one on the clinic's own hardware reads the whole picture and sets the level; Gemini, as the second reader, agrees, raises or lowers. A request for help never waits for a model: that is a rule. What Lanvi says and offers comes from a short list we wrote ourselves. We tried to make the system learn something harmful. Here is the log of what it refused.
 
 **What we know and do not know (1:40 to 1:52)**
 
@@ -213,7 +213,7 @@ Video:
 | needs review today | emergency |
 | numbers about how the face moves, never a picture | reads emotions, knows you are sad |
 | offers one small thing | treats, therapy |
-| the system notices; rules we can explain | the mind; the AI decides |
+| rules notice, two models weigh it, a request for help is a rule | the mind; the AI diagnoses |
 | a second pair of eyes (Gemini) | the AI brain |
 
 ## Questions we expect
