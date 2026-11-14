@@ -60,14 +60,14 @@ SIZE = 960              # output square, pixels
 # 24 -> 60 fps with motion-compensated in-betweens, per clip (False keeps 24 fps).
 INTERPOLATE = {name: True for name in ALL}
 FADE_FRAMES = 6         # source frames (at 24 fps) faded into the rest frame at the end
-THREADS = "4"
+THREADS = "2"          # the Mac is shared: two threads, low priority (nice 15)
 KEY_VERSION = 1         # bump when `key_filter` or the fade changes
 QUALITY = "60"          # hevc_videotoolbox -q:v (higher = better, bigger)
 ALPHA_Q = "0.8"         # quality of the alpha layer, 0...1
 
 
 def ff(*args, capture=False):
-    cmd = ["ffmpeg", "-hide_banner", "-v", "error", "-threads", THREADS,
+    cmd = ["nice", "-n", "15", "ffmpeg", "-hide_banner", "-v", "error", "-threads", THREADS,
            "-filter_threads", THREADS, "-filter_complex_threads", THREADS, "-y", *args]
     if capture:
         return subprocess.run(cmd, check=True, capture_output=True, text=True).stderr
@@ -77,7 +77,7 @@ def ff(*args, capture=False):
 def rgb_at(clip, frame, x, y, w, h):
     """Mean colour of a box in one frame."""
     out = subprocess.run(
-        ["ffmpeg", "-v", "error", "-threads", THREADS, "-i", str(clip), "-vf",
+        ["nice", "-n", "15", "ffmpeg", "-v", "error", "-threads", THREADS, "-i", str(clip), "-vf",
          f"select=eq(n\\,{frame}),scale=flags=bicubic+full_chroma_int+accurate_rnd,format=rgb24,"
          f"crop={w}:{h}:{x}:{y},scale=1:1:flags=area", "-frames:v", "1", "-f", "rawvideo", "-"],
         check=True, capture_output=True).stdout
@@ -117,7 +117,7 @@ def frames_of(clip):
 
 def bbox_per_frame(clip, bg):
     log = subprocess.run(
-        ["ffmpeg", "-hide_banner", "-v", "info", "-threads", THREADS, "-filter_threads", THREADS,
+        ["nice", "-n", "15", "ffmpeg", "-hide_banner", "-v", "info", "-threads", THREADS, "-filter_threads", THREADS,
          "-i", str(clip), "-vf",
          f"scale=720:720:flags=area,{to_rgb()},{key_filter(bg)},alphaextract,format=gray,bbox=min_val=96",
          "-f", "null", "-"], check=True, capture_output=True, text=True).stderr
@@ -129,7 +129,7 @@ def bbox_per_frame(clip, bg):
 
 def psnr(a, fa, b, fb):
     log = subprocess.run(
-        ["ffmpeg", "-hide_banner", "-v", "info", "-threads", THREADS, "-i", str(a), "-i", str(b),
+        ["nice", "-n", "15", "ffmpeg", "-hide_banner", "-v", "info", "-threads", THREADS, "-i", str(a), "-i", str(b),
          "-lavfi", f"[0]select=eq(n\\,{fa}),setpts=0[x];[1]select=eq(n\\,{fb}),setpts=0[y];[x][y]psnr",
          "-f", "null", "-"], check=True, capture_output=True, text=True).stderr
     m = re.search(r"average:([\d.]+|inf)", log)
@@ -214,7 +214,7 @@ def alpha_box(png, band=None):
     """Box of the solid part of a keyed picture (optionally of a band of rows)."""
     crop = f"crop=iw:{band[1] - band[0]}:0:{band[0]}," if band else ""
     log = subprocess.run(
-        ["ffmpeg", "-hide_banner", "-v", "info", "-i", str(png), "-vf",
+        ["nice", "-n", "15", "ffmpeg", "-hide_banner", "-v", "info", "-i", str(png), "-vf",
          f"{crop}alphaextract,format=gray,bbox=min_val=128", "-f", "null", "-"],
         check=True, capture_output=True, text=True).stderr
     m = re.search(r"x1:(\d+) x2:(\d+) y1:(\d+) y2:(\d+)", log)
