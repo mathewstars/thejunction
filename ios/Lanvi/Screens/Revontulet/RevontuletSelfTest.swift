@@ -126,6 +126,17 @@ enum RevontuletSelfTest {
         if rts.contains(where: { $0 < 0 || $0 > 10_000 }) { return "a reaction outside 0...10000" }
         if a.durationS > 0, Double(correct + wrong) > a.durationS * 10 { return "taps too fast" }
         if a.completed != r.completed { return "completed flag lost" }
+        // The measures, within the contract's ranges.
+        guard let m = a.revontulet else { return "no measures" }
+        if m.rounds.count > 3 || m.strokes.count > 10 { return "too many rounds or strokes" }
+        for round in m.rounds {
+            if !(0...120_000).contains(round.choiceMs) { return "choice_ms out of range" }
+            if round.embersHit > round.embersShown || round.embersShown > 5 { return "embers out of range" }
+            if round.traceLengthPt > 20_000 || (round.traceMeanSpeedPtS ?? 0) > 20_000 || (round.tracePeakSpeedPtS ?? 0) > 50_000 { return "trace out of range" }
+            if (round.pullPt ?? 0) > 2000 || round.traceLifts > 100 { return "pull or lifts out of range" }
+        }
+        if let b = m.brokeThroughS, b > a.durationS + 1 { return "broke_through_s after the end" }
+        if rts.count != r.embersHit { return "reaction_ms is not exactly the ember taps" }
         return nil
     }
 

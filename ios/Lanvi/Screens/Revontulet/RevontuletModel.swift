@@ -350,6 +350,11 @@ struct RevontuletResult: Equatable {
         var embersShown: Int = 0
         var emberHits: [EmberHit] = []
         var impactUptime: Double?
+        /// The surprise ribbon (more than was promised) came with this round's impact.
+        var bonus = false
+        /// A first-time coach showed this round's move, so its first-touch time measures
+        /// reading, not the person: it is left out of the record.
+        var coached = false
     }
 
     struct Stroke: Equatable {
@@ -379,14 +384,21 @@ struct RevontuletResult: Equatable {
     var surpriseRibbons: Int
     /// The app left the foreground mid-game.
     var interrupted = false
+    /// Mean and variance of `UITouch.majorRadius` over the whole game, points (nil from
+    /// the auto-play, which has no real touches).
+    var touchRadiusMean: Double?
+    var touchRadiusVar: Double?
+    /// Screen points per centimetre on this phone (set by the screen; nil when unsure).
+    var ptPerCm: Double?
 
     // What goes into the `focus` record.
     var launches: Int { rounds.filter { $0.launchUptime != nil }.count }
     var embersShown: Int { rounds.reduce(0) { $0 + $1.embersShown } }
     var embersHit: Int { rounds.reduce(0) { $0 + $1.emberHits.count } }
-    /// For each launch the half-circle's first touch, then each ember hit's reaction.
+    /// Only the ember taps, flash to finger, in order (the server compares them with the
+    /// person's normal tap reactions; the slow first touch on a half-circle goes in the
+    /// measures as `trace_start_ms` instead).
     var reactionMs: [Int] {
-        rounds.compactMap { $0.launchUptime != nil ? $0.firstTouchMs : nil }
-            + rounds.flatMap { $0.emberHits.map(\.reactionMs) }
+        rounds.flatMap { $0.emberHits.map(\.reactionMs) }
     }
 }

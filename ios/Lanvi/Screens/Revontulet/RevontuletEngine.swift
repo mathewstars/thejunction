@@ -96,6 +96,8 @@ struct RevontuletEngine: Equatable {
     private var speed: Double = 0
 
     private var rng: Rng
+    /// Every touch radius of the game, for its mean and variance.
+    private var radiusSum = 0.0, radiusSquares = 0.0, radiusCount = 0
 
     init(layout: RevontuletLayout, seed: UInt64 = UInt64.random(in: 1...UInt64.max)) {
         self.layout = layout
@@ -154,6 +156,7 @@ struct RevontuletEngine: Equatable {
             completed = false
             ev.append(.ended(completed: false))
         case let .down(p, r):
+            noteRadius(r)
             // One finger plays. A second finger landing while one is down is ignored (unless
             // the first went quiet long ago: then its lift was lost, so lift it now).
             if let f = finger {
@@ -176,6 +179,7 @@ struct RevontuletEngine: Equatable {
             ev += down(p, radius: r, at: now)
         case let .move(p, r):
             guard finger != nil else { return ev }
+            noteRadius(r)
             ev += move(p, radius: r, at: now)
             finger = p
             lastInputAt = now
@@ -442,7 +446,10 @@ struct RevontuletEngine: Equatable {
         let hits = outcome.embersHit, breaking = outcome.breaking, pieces = outcome.pieces, ribbon = outcome.ribbon
         impacts.append(RevontuletImpact(time: time, point: f.to, round: round, pieces: pieces, hard: f.hard,
                                         embersHit: hits, breaking: breaking, ribbon: ribbon, foxOwn: f.foxOwn))
-        if !f.foxOwn { records[round].impactUptime = time }
+        if !f.foxOwn {
+            records[round].impactUptime = time
+            records[round].bonus = ribbon
+        }
         skyLight = min(0.85, skyLight + (f.hard ? 0.2 + 0.08 * Double(hits) : 0.13))
         setBeat(.impact, at: time)
         return [.impact(round: round, pieces: pieces, breaking: breaking)]
@@ -584,10 +591,23 @@ struct RevontuletEngine: Equatable {
                                 completed: completed, rounds: records.filter { $0.effort != nil || $0.number == 1 },
                                 strokes: strokes, burstUptime: burstAt, celebrateUptime: celebrateAt,
                                 foxFinishedWall: foxFinished, surpriseRibbons: impacts.filter(\.ribbon).count,
-                                interrupted: interrupted)
+                                interrupted: interrupted, touchRadiusMean: radiusCount > 0 ? radiusSum / Double(radiusCount) : nil,
+                                touchRadiusVar: radiusCount > 1 ? max(0, radiusSquares / Double(radiusCount) - pow(radiusSum / Double(radiusCount), 2)) : nil)
     }
 
     // MARK: Helpers
+
+    private mutating func noteRadius(_ r: CGFloat?) {
+        guard let r, r.isFinite, r > 0 else { return }
+        radiusSum += Double(r)
+        radiusSquares += Double(r * r)
+        radiusCount += 1
+    }
+
+    /// Marks the current round's move as shown by a first-time coach.
+    mutating func markCoached() {
+        if records.indices.contains(round) { records[round].coached = true }
+    }
 
     private mutating func setBeat(_ b: RevontuletBeat, at time: Double) {
         beat = b

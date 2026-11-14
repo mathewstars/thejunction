@@ -177,6 +177,8 @@ enum API {
         var goodThings: [CheckinItem]?
         var plan: CheckinItem?
         var planDone: PlanDone?
+        // focus from Revontulet: its measures (optional; see ios/REVONTULET.md)
+        var revontulet: Revontulet? = nil
 
         /// A fresh id the server accepts (8 to 64 of A-Z a-z 0-9 _ -).
         static func newId() -> String { UUID().uuidString.lowercased() }

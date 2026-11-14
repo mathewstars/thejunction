@@ -40,6 +40,7 @@
 		559778D7817C23DE20017C0F /* LanviOverlayHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B006DA55F144DD2BA237BBE /* LanviOverlayHost.swift */; };
 		5EA7564E777D847ABE8686EA /* FocusGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7645B36F2B4F7AD7644E588 /* FocusGameView.swift */; };
 		63F055804A5075D00F92CCF8 /* FaceSense.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0FB8AE15346D15FAA5BA3AF /* FaceSense.swift */; };
+		65C54BD206B6EA73A157288C /* RevontuletMeasures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FA6F39FA7B8EDFDD18AB261 /* RevontuletMeasures.swift */; };
 		65D2DC99CA91B8EF96FAEC64 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC334EE89ADCF793E4BC0D9B /* SharedModels.swift */; };
 		6ED5E6C6908681928159A9E4 /* RevontuletArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AF5D037379E7DAC80011C4A /* RevontuletArt.swift */; };
 		70C6A7B3EB4DC1265714772A /* CheckinModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C049B0C402500302F08D494 /* CheckinModels.swift */; };
@@ -68,6 +69,7 @@
 		B4BC08728B75F8796B8AB2CE /* HomeOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B8C888729DE19EB41449A4 /* HomeOverlays.swift */; };
 		B50D10905664FAEB774A40AE /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 883989149D83098DC4D7155A /* AppStore.swift */; };
 		B6A861C26917D5B2F511CE9C /* BreatheResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455B1F65C7973CFFB5D41825 /* BreatheResult.swift */; };
+		B7F3D3AC39FC358C2FB2D5F9 /* RevontuletMeasuresTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 753C4D1AA1DF18A98D5B915B /* RevontuletMeasuresTests.swift */; };
 		BBAC5B88ECB37DA269B8DC96 /* RevontuletView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30D65962C210BD7D97A7B255 /* RevontuletView.swift */; };
 		BC1B1DE3FDB56F877CB09FE4 /* LanviTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 043F24BD4810CC96B85B74B4 /* LanviTiming.swift */; };
 		BED78E7017B94186F183E51E /* LocalStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85FD261A32144F8643C6EE7E /* LocalStatistics.swift */; };
@@ -162,6 +164,7 @@
 		455B1F65C7973CFFB5D41825 /* BreatheResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreatheResult.swift; sourceTree = "<group>"; };
 		47EB2CBCF8B846132146AC4C /* Harness.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Harness.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4A2759DCEF87679E894DADAF /* ActivityOutbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityOutbox.swift; sourceTree = "<group>"; };
+		4FA6F39FA7B8EDFDD18AB261 /* RevontuletMeasures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevontuletMeasures.swift; sourceTree = "<group>"; };
 		55866B9F718B556BABB20541 /* WhatHelpsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatHelpsView.swift; sourceTree = "<group>"; };
 		561A37AABE894380B546DE42 /* TokenKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenKeychain.swift; sourceTree = "<group>"; };
 		575A49BAC44D679FBA763541 /* DemoBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoBackend.swift; sourceTree = "<group>"; };
@@ -179,6 +182,7 @@
 		6AF5D037379E7DAC80011C4A /* RevontuletArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevontuletArt.swift; sourceTree = "<group>"; };
 		6E7FB0E06C454380ECB20FD9 /* RevontuletFeel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevontuletFeel.swift; sourceTree = "<group>"; };
 		743C0B865552B2E8824FA20B /* LanviRig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanviRig.swift; sourceTree = "<group>"; };
+		753C4D1AA1DF18A98D5B915B /* RevontuletMeasuresTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevontuletMeasuresTests.swift; sourceTree = "<group>"; };
 		7726B251A5F3DA944BA275A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7BA53779F15A4ADCEAB144D6 /* ServerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfig.swift; sourceTree = "<group>"; };
 		7D93B9957583CC3DB996A3C8 /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
@@ -267,6 +271,7 @@
 				9880ABDFC5EF111BB77915E2 /* FaceRawTests.swift */,
 				F7415116ED3C0D377127D698 /* HealthTests.swift */,
 				14332D1FBE2937C010FE068A /* LanviEyesTests.swift */,
+				753C4D1AA1DF18A98D5B915B /* RevontuletMeasuresTests.swift */,
 			);
 			path = LanviTests;
 			sourceTree = "<group>";
@@ -492,6 +497,7 @@
 				ED29D543DC313AABB988967F /* RevontuletEngine.swift */,
 				6E7FB0E06C454380ECB20FD9 /* RevontuletFeel.swift */,
 				DEA3B1DFBEFDF89BAD28FF08 /* RevontuletFox.swift */,
+				4FA6F39FA7B8EDFDD18AB261 /* RevontuletMeasures.swift */,
 				F4F6CF2EF1D602B235A66678 /* RevontuletModel.swift */,
 				87C90F6628A3C4C92BF26F7B /* RevontuletPainter.swift */,
 				EDF2740C606A86FAAC112A3E /* RevontuletSelfTest.swift */,
@@ -719,6 +725,7 @@
 				F67B6544CC99447BBF65A7BE /* RevontuletEngine.swift in Sources */,
 				25BF8E17E15D212C9C743A28 /* RevontuletFeel.swift in Sources */,
 				1EAF38B3C0A01E43512FEE9B /* RevontuletFox.swift in Sources */,
+				65C54BD206B6EA73A157288C /* RevontuletMeasures.swift in Sources */,
 				53DFDA41B96A5436FE6B9BD6 /* RevontuletModel.swift in Sources */,
 				F663114BD46241E2D55F4938 /* RevontuletPainter.swift in Sources */,
 				3C10F67A103CC5DEF15647CD /* RevontuletSelfTest.swift in Sources */,
@@ -741,6 +748,7 @@
 				42388E6A19E9972BFD34235B /* FaceRawTests.swift in Sources */,
 				3F11B1A55A50095524067A63 /* HealthTests.swift in Sources */,
 				9CC3E3C1AA7E2D00D7F3C812 /* LanviEyesTests.swift in Sources */,
+				B7F3D3AC39FC358C2FB2D5F9 /* RevontuletMeasuresTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

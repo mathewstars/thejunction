@@ -31,37 +31,28 @@ Every instant is kept as a date and as `CACurrentMediaTime()` seconds (the face 
 - Per round: easy or hard; decision time (fault lines lit to the tap); the half-circle appearing and the first touch on it; trace duration (first touch to the end), length of the finger's path, mean speed (path over finger-down time), peak speed (smoothed), lifts, mean `UITouch.majorRadius`; pull distance (spark, after the soft limit) and the farthest the finger went, hold time; launch time; embers shown, and per ember lit its reaction time and instant; impact time.
 - Per stroke: start, duration, length, mean and peak speed, how much of it went downwards, mean touch radius.
 
-## How it maps to the `focus` record (fields of today only)
+## How it reaches the server (`focus` record plus the `revontulet` object)
 
 | `focus` field | From the game |
 |---|---|
 | `correct_taps` | launches + embers lit |
 | `wrong_taps` | 0 (there is nothing wrong to tap) |
 | `misses` | embers that flashed and passed |
-| `reaction_ms` | per launch: half-circle appearing to the first touch on it; then per lit ember: its flash to the tap (each 0 to 10,000) |
-| `duration_s`, `completed`, `ended_by` | as for every activity |
+| `reaction_ms` | only the ember taps, flash to finger (each 0 to 10,000); an easy-only game sends `[]` |
+| `duration_s`, `completed`, `ended_by` | as for every activity; leaving the app mid-game is `interrupted` |
 
-`reaction_ms` never has more entries than `correct_taps`, so the server's plausibility check passes. Built in `ActivityRouter.record(_: RevontuletResult)`.
+Everything else rides in one optional object, `revontulet`, fixed by the contract agreed with the server side (`data/lanvi-game-data/contract.md` in the firstmate home). Built in `RevontuletMeasures.swift`; every value is clamped to the contract's range.
 
-## Proposal: optional fields to store the rest (for dad's server)
+| Field | What |
+|---|---|
+| `rounds[]` | per round where a line was picked: `effort` (`easy`/`hard`), `choice_ms`, `trace_start_ms` (half-circle appearing to the first touch; left out when a first-time coach showed the move), `trace_ms`, `trace_length_pt`, `trace_mean_speed_pt_s`, `trace_peak_speed_pt_s`, `trace_lifts`, `pull_pt`, `pull_hold_ms`, `embers_shown`, `embers_hit`, `bonus` (the surprise ribbon) |
+| `strokes[]` | `ms`, `length_pt`, `mean_speed_pt_s` |
+| `broke_through_s` | start to the wall bursting |
+| `fox_finished` | the fox's own spark broke the wall at 1:12 |
+| `pt_per_cm` | 60.4 on 3x iPhones, 64.2 on 2x (from the display scale) |
+| `touch_radius_mean_pt`, `touch_radius_var` | `UITouch.majorRadius` over the whole game; left out from the auto-play |
 
-All optional on `focus`, all numbers, so old clients are unaffected.
-
-| Name | Type | Range |
-|---|---|---|
-| `game` | string | `"sparks"` or `"revontulet"` |
-| `effort_choices` | list of string | 0 to 3 items, `"easy"` or `"hard"` |
-| `decision_ms` | list of int | 0 to 3 items, 0 to 60,000 |
-| `trace_ms` | list of int | 0 to 3 items, 0 to 60,000 |
-| `trace_length_pt` | list of number | 0 to 3 items, 0 to 5,000 |
-| `trace_speed_pt_s` | list of number (mean) | 0 to 3 items, 0 to 10,000 |
-| `trace_peak_speed_pt_s` | list of number | 0 to 3 items, 0 to 20,000 |
-| `trace_lifts` | list of int | 0 to 3 items, 0 to 50 |
-| `pull_pt` | list of number | 0 to 3 items, 0 to 400 |
-| `pull_hold_ms` | list of int | 0 to 3 items, 0 to 60,000 |
-| `touch_radius_pt` | number | 0 to 100 |
-| `strokes` | list of `{ms, length_pt, speed_pt_s}` | 0 to 3 items |
-| `wall_finished_by_fox` | bool | |
+**Safe fallback.** The live server refuses unknown fields until dad's change goes live. If a record carrying `revontulet` is refused, `LanviClient.send` sends the same record (same id) once more without it, and the rest of that app run sends records plain straight away; the next launch tries again (`RevontuletSendGate`). The outbox sends through the same function, so a refused record never gets stuck. Tests: `LanviTests/RevontuletMeasuresTests.swift` (the JSON matches the contract's example key for key; the fallback). Lines touched in `Net/`: one optional property on `API.ActivityIn` (`APIModels.swift`) and the body of `LanviClient.send`.
 
 ## Testing without a finger (launch arguments)
 

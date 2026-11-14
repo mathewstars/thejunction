@@ -37,6 +37,7 @@ struct RevontuletView: View {
     @State private var finger: CGPoint?
     @State private var saidEmbers = false
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.displayScale) private var displayScale
 
     /// Not drawn from: the pretend finger and a frame counter, kept out of SwiftUI's sight.
     private final class Box {
@@ -513,7 +514,8 @@ struct RevontuletView: View {
         guard !handedBack else { return }
         handedBack = true
         feel.stop()
-        let result = e.result()
+        var result = e.result()
+        result?.ptPerCm = API.Revontulet.pointsPerCentimetre(displayScale: displayScale)
         print("revontulet: handed back \(result == nil ? "nothing" : result!.completed ? "a finished game" : "a stopped game")")
         if box.auto != nil, let r = result {
             print("revontulet: result completed=\(r.completed) interrupted=\(r.interrupted) seconds=\(String(format: "%.1f", r.endUptime - r.startUptime)) launches=\(r.launches) embers=\(r.embersHit)/\(r.embersShown) reactions=\(r.reactionMs) strokes=\(r.strokes.count) foxFinished=\(r.foxFinishedWall)")

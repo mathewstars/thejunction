@@ -72,11 +72,11 @@ struct ActivityRouter: View {
                               reactionMs: Array(r.reactionMs.prefix(min(200, taps))).map { min(max($0, 0), 10_000) })
     }
 
-    /// Revontulet as a `focus` record, with exactly the fields `focus` has today (the server
-    /// refuses unknown ones; everything else stays on the phone in the result):
-    /// correct taps = launches + embers lit; wrong taps = 0 (there is nothing wrong to tap);
-    /// misses = embers that flashed and passed; reactions = per launch, the half-circle
-    /// appearing to the first touch on it, then per lit ember, its flash to the tap.
+    /// Revontulet as a `focus` record: correct taps = launches + embers lit; wrong taps = 0
+    /// (there is nothing wrong to tap); misses = embers that flashed and passed; reactions =
+    /// only the ember taps, flash to finger. The rest of the measures ride along in the
+    /// optional `revontulet` object (contract: `ios/REVONTULET.md`); a server that does not
+    /// take it yet gets the plain record (`RevontuletSendGate`).
     static func record(_ r: RevontuletResult) -> API.ActivityIn {
         let duration = max(0, r.endedAt.timeIntervalSince(r.startedAt))
         let correct = r.launches + r.embersHit
@@ -84,7 +84,8 @@ struct ActivityRouter: View {
                               startedAt: API.isoString(r.startedAt), durationS: (duration * 10).rounded() / 10,
                               completed: r.completed, endedBy: r.completed ? .finished : r.interrupted ? .interrupted : .userStopped,
                               correctTaps: correct, wrongTaps: 0, misses: max(0, r.embersShown - r.embersHit),
-                              reactionMs: Array(r.reactionMs.prefix(min(200, correct))).map { min(max($0, 0), 10_000) })
+                              reactionMs: Array(r.reactionMs.prefix(min(200, correct))).map { min(max($0, 0), 10_000) },
+                              revontulet: API.Revontulet(r))
     }
 
     static func record(_ r: BreatheResult) -> API.ActivityIn {
