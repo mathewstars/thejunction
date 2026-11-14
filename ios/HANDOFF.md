@@ -8,7 +8,7 @@ Lanvi is our Junction 2026 entry for the Aalto challenge "Beyond the Clinic": he
 
 - Judged 25% each: usefulness, ease of use, smart sensing, creativity.
 - Final submission: **Sunday 15 Nov, 10:00** (2-minute video, demo, source, PDF deck). Peer review 10:30 to 14:00.
-- The repo is public and MIT. All code is written at the event. No keys, pairing codes or server addresses in code, ever.
+- The repo is public and MIT. All code is written at the event. No keys or pairing codes in code, ever. The one exception to "no server addresses": the live server `lanvi.app`, which is public in the root README and is the app's default.
 
 ## Who owns what
 
@@ -22,7 +22,7 @@ Changes to `engine/` or `docs/` go to dad as a pull request. Do not merge them y
 
 ## What dad's side does (so the app fits it)
 
-- **Server** in `engine/` (Python). How to run it and every call: `docs/api/README.md`, exact contract `docs/api/openapi.json`. Demo server: lanvi.app (ask dad for the pairing code; it is not in the repo).
+- **Server** in `engine/` (Python). How to run it and every call: `docs/api/README.md`, exact contract `docs/api/openapi.json`. Live server: lanvi.app. **Every build talks to it by default.** Pairing codes are one-time and come from dad; they are never in the repo.
 - It compares each day with that person's own normal, picks **at most one suggestion a day**, counts XP and growth, sends Lanvi's lines and wandering stories, and learns from what the person did.
 - **Clinician web page** (one line per patient, timeline, Conversation tab showing what the patient wrote and what Lanvi answered, Research tab).
 - **Face data** (new on Saturday): the phone sends raw face frames and the server computes the measures. Read `docs/face-raw.md`.
@@ -83,9 +83,9 @@ The fox art comes from Matthew's own fox, sharpened and split into parts on the 
 
 1. `cd ios && xcodegen generate` (needed after adding files; commit the regenerated `Lanvi.xcodeproj`). On a project-file merge conflict take main's version and regenerate; never hand-merge it.
 2. Open `ios/Lanvi.xcodeproj`, pick an iPhone simulator, Run. iOS 17, SwiftUI, no third-party packages.
-3. With no config the app runs in **offline demo mode** with sample data. To talk to a server, copy `ios/Config.example.xcconfig` to `ios/Config.xcconfig` (git-ignored) and fill in the two values.
+3. **Builds talk to the live server, `lanvi.app`.** On first run the app asks for a one-time pairing code (get one from Mathew, dad). Codes work once; Help has "Disconnect this phone" to pair again with a new one. For sample data with no server, launch with `-offline` (UI tests and screenshot runs must always pass `-offline`, so automated runs never send fake activity to the live clinic). To use another server (a local engine), copy `ios/Config.example.xcconfig` to `ios/Config.xcconfig` (git-ignored).
 
-Launch arguments (Scheme, Arguments): `-demo` plays the whole story by itself; `-screen home|whathelps|focus|breathe|puppet` opens one screen; `-hour <0-23>` forces the time of day; `-offline` forces sample data. More demo switches exist (`-demoXP`, `-demoGlow`, `-demoDone`, `-demoSuggestion`, `-demoWandering`, `-chatDemo` and others): read `App/LanviApp.swift` and `Net/DemoBackend.swift`.
+Launch arguments (Scheme, Arguments): `-demo` plays the whole story by itself; `-screen home|whathelps|focus|breathe|puppet` opens one screen; `-hour <0-23>` forces the time of day; `-offline` uses sample data instead of the server. More demo switches exist (`-demoXP`, `-demoGlow`, `-demoDone`, `-demoSuggestion`, `-demoWandering`, `-chatDemo` and others): read `App/LanviApp.swift` and `Net/DemoBackend.swift`.
 
 ## How the app talks to the server
 
