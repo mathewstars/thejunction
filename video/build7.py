@@ -80,27 +80,6 @@ def windows(src, d, wins, ss=0.0, tag=None, dim=-0.10, fin=0.0, fout=0.0):
     fades = (f",fade=t=in:d={fin}" if fin else "") + (f",fade=t=out:st={d - fout:.3f}:d={fout}" if fout else "")
     ins += ["-i", tag or f"{OLD}/tag_gen.png"]; vf += f"{cur}[{len(wins)+1}:v]overlay=0:0{fades}[v]"
     run(ins + ["-filter_complex", vf, "-map", "[v]", "-t", str(d)] + V + [o]); check(o, d)
-MONO = "/System/Library/Fonts/Menlo.ttc"
-def hud(name, label, value, unit="", base=None, col=(112, 224, 170), pos=(840, 286), sub=None):
-    """A small glowing readout: what the phone was counting in this moment."""
-    im = Image.open(base).convert("RGBA") if base else Image.new("RGBA", (1280, 720), (0, 0, 0, 0)); g = ImageDraw.Draw(im)
-    x, y = pos; fv = ImageFont.truetype(MONO, 54); fl = ImageFont.truetype(F, 20); fu = ImageFont.truetype(F, 24)
-    w = max(g.textlength(label, font=fl), g.textlength(value, font=fv) + g.textlength(" " + unit, font=fu), g.textlength(sub or "", font=fl)) + 44; h = 128 + (30 if sub else 0)
-    glow = Image.new("RGBA", (1280, 720), (0, 0, 0, 0)); ImageDraw.Draw(glow).rounded_rectangle((x - 4, y - 4, x + w + 4, y + h + 4), 16, outline=col + (150,), width=6)
-    from PIL import ImageFilter
-    im.alpha_composite(glow.filter(ImageFilter.GaussianBlur(7))); g = ImageDraw.Draw(im)
-    g.rounded_rectangle((x, y, x + w, y + h), 14, fill=(8, 14, 22, 225), outline=col + (255,), width=2)
-    g.ellipse((x + 20, y + 22, x + 30, y + 32), fill=col + (255,)); g.text((x + 40, y + 15), label, font=fl, fill=(200, 208, 222, 255))
-    g.text((x + 20, y + 48), value, font=fv, fill=col + (255,)); g.text((x + 24 + g.textlength(value, font=fv), y + 76), unit, font=fu, fill=(200, 208, 222, 255))
-    if sub: g.text((x + 20, y + 122), sub, font=fl, fill=(200, 208, 222, 255))
-    im.save(name); return name
-GEN = f"{OLD}/tag_gen.png"
-hud("h_react.png", "Reaction time, his game", "0.41", "s", base="cap_app.png")
-hud("h_smile.png", "Smile movements, breathing with him", "7", "per minute", base="cap_app.png")
-hud("h_steps.png", "Steps today", "7,410", "", base=GEN, pos=(820, 150))
-hud("h_good.png", "Good things told tonight", "3", "of 3", base=GEN, pos=(820, 150))
-hud("h_day.png", "Every day is compared with", "her own normal", "", base=GEN, pos=(760, 470))
-hud("h_low.png", "Steps today", "2,778", "", base=GEN, col=(240, 110, 70), pos=(800, 140), sub="her usual: 7,347")
 n = [0]
 def out(): n[0] += 1; return f"seg7/{n[0]:03d}.mp4"
 def check(o, d):
@@ -157,12 +136,7 @@ at(27.0, lambda d: phone(A("checkin"), d, ss=2.0))
 at(28.3, lambda d: clip(G("g4"), d, ss=0.2))                          # "Some days, she would stay in bed."
 at(31.5, lambda d: still(S("s5"), d, z0=1.0, z1=1.14, fx=0.4, fy=0.7))   # "For him, she gets up."
 # 4 she said yes; every moment with him is a number
-# The reveal: the moments we have just watched come back, each with what the phone was counting in it.
-at(35.4, lambda d: phone(A("focus"), d, ss=2.4, cap="h_react.png"))
-at(36.8, lambda d: phone(A("breathe"), d, ss=2.4, cap="h_smile.png"))
-at(38.2, lambda d: still(S("s5"), d, z0=1.06, z1=1.14, fx=0.4, fy=0.7, tag="h_steps.png"))
-at(39.7, lambda d: clip(K("k6"), d, ss=2.0, tag="h_good.png"))
-at(41.1, lambda d: clip(K("k1"), d, ss=0.4, tag="h_day.png"))
+at(35.4, lambda d: over(K("k6"), "c_yes.png", d, speed=0.6))
 at(42.5, lambda d: split(A("focus"), "single1.mp4", d, ss=3.5))
 at(45.6, lambda d: split(A("breathe"), "single0.mp4", d, ss=3.5))
 at(49.2, lambda d: split(G("g6"), "single2.mp4", d, ss=0.5, app=False))
@@ -173,7 +147,7 @@ at(60.8, lambda d: chart("chart_a.mp4", d))
 at(64.6, lambda d: chart("chart_b.mp4", d))
 # 6 November
 at(75.5, lambda d: still("chart_end.png", d, z0=1.0, z1=1.07, fx=1.0, fy=0.5, tag="tag_ex.png"))
-at(77.1, lambda d: clip(K("k5"), d, ss=0.2, zoom=1.9, fx=0.12, fy=0.8, tag="h_low.png"))                                   # the boots alone
+at(77.1, lambda d: clip(K("k5"), d, ss=0.2, zoom=1.9, fx=0.12, fy=0.8))                                   # the boots alone
 at(78.6, lambda d: clip(K("k4"), d, ss=0.2, cap=("cap_help.png", 2.3)))                                   # "At one a.m. she writes: I need help."
 at(83.5, lambda d: windows(K("k7"), d, [("w_tg.png", 0.3, d + 0.3)], ss=0.4))                             # "Her words go straight to her clinic": the real alert
 at(87.1, lambda d: windows(K("k8"), d, [("w_anna.png", 0.5, 4.6)], dim=0.0, fout=0.9))       # the nurse calls; her profile on the clinician page comes up over the morning
@@ -204,7 +178,6 @@ SUBS = [
  (0.6, 2.9, "The clinic door closes behind Anna."), (3.2, 6.0, "Her treatment for depression is over."), (6.9, 9.9, "The next appointment is six weeks away."),
  (11.8, 14.4, "On the way home, she finds him."), (14.4, 17.2, "A fox cub, alone in the snow."), (18.1, 20.0, "She takes him home."), (20.7, 23.0, "He lives in her phone now."),
  (24.5, 27.6, "Every day she does one small thing for him."), (28.3, 31.1, "Some days, she would stay in bed."), (31.5, 33.9, "For him, she gets up."),
- (35.4, 38.2, "And she said yes to one more thing:"), (38.8, 42.3, "while she cares for him, the phone keeps count."),
  (42.5, 44.9, "Her reactions in his game."), (45.6, 48.9, "How her face moves when she breathes with him."), (49.2, 50.6, "Her steps."),
  (60.8, 64.2, "Every week, the clinic\u2019s questionnaire."), (64.6, 70.8, "In this example, when her score climbs, the other lines fall."), (71.4, 74.4, "That is the pattern we would look for."),
  (75.5, 77.4, "Then, November."), (78.3, 80.6, "At one a.m. she writes:"), (83.5, 86.4, "Her words go straight to her clinic."),
