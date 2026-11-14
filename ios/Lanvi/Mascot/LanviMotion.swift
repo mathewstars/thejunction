@@ -78,7 +78,7 @@ struct LanviMotion {
     var momentAt: Double = -100
     var momentSide: Double = 1
     var appearAt: Double = -100          // when this fox appeared (no idle moment for 3 s)
-    var evening = false                  // the evening set of idle moments (yawns)
+    var evening = false                  // late: the evening set of idle moments (yawns)
     var reduceMotion: Bool
     var freezeBlink: Double? = nil       // debug: hold a blink at this phase (s)
     var loving = false                   // the `love` pose: soft happy eyes
@@ -206,18 +206,27 @@ struct LanviMotion {
 
     // MARK: Idle base: breath, tail drift, the head never perfectly frozen
 
-    private func breathe(_ x: Double) -> Double {
-        let sleepy = held == .sleepy
-        return sin(2 * .pi * (x + s) / (sleepy ? 5.2 : 4.5))
+    /// How sleepy the breath is, 0...1, blended over 1.2 s when the held mood changes
+    /// (so the slower sleepy breath never jumps in).
+    private func sleepiness(_ x: Double) -> Double {
+        let from = heldFrom == .sleepy ? 1.0 : 0, to = held == .sleepy ? 1.0 : 0
+        return from + (to - from) * Motion.smooth(heldSince, heldSince + 1.2, x)
     }
 
-    private var breathAmp: Double { held == .sleepy ? 0.016 : 0.014 }
+    /// The breath, -1...1: a plain smooth sine, 4.5 s (5.2 s when sleepy).
+    private func breathe(_ x: Double) -> Double {
+        let z = sleepiness(x)
+        let calm = sin(2 * .pi * (x + s) / 4.5), sleepy = sin(2 * .pi * (x + s) / 5.2)
+        return calm + (sleepy - calm) * z
+    }
+
+    private func breathAmp(_ x: Double) -> Double { 0.014 + 0.002 * sleepiness(x) }
 
     /// The head stays on the neck: it rides every stretch of the body (yawns, pride,
     /// hops) at once, and the breath 0.18 s late, so it settles a hair after the chest.
     private func rideNeck(_ x: Double, _ p: inout Pose) {
-        let b = breathe(x), late = breathe(x - 0.18)
-        let sy = p.bodySY - breathAmp * b + breathAmp * late
+        let b = breathe(x), late = breathe(x - 0.18), amp = breathAmp(x)
+        let sy = p.bodySY - amp * b + amp * late
         let chest = p.chest - 0.012 * (b + 1) + 0.012 * (late + 1)
         p.headY -= sy * Self.bodyHeight * 0.85 + 55 * chest
     }
@@ -225,9 +234,9 @@ struct LanviMotion {
     private func idle(_ x: Double, _ p: inout Pose) {
         // Breath: the chest fills (2.8 % from out to in over 4.5 s, a plain smooth sine)
         // and lifts the shoulders; the head rides it 0.18 s late and lifts its chin a hair.
-        let b = breathe(x)
-        p.bodySY += breathAmp * b
-        p.bodySX += breathAmp * 0.4 * b
+        let b = breathe(x), amp = breathAmp(x)
+        p.bodySY += amp * b
+        p.bodySX += amp * 0.4 * b
         p.chest += 0.012 * (b + 1)
         p.dirY -= 0.035 * breathe(x - 0.25)
 
@@ -259,7 +268,7 @@ struct LanviMotion {
     }
 
     private func stance(_ m: LanviMood, _ x: Double, _ p: inout Pose, weight w: Double) {
-        guard w > 0.0005 else { return }
+        guard abs(w) > 0.0005 else { return }
         switch m {
         case .calm, .greeting: break
         case .happy: p.earL += 3 * w; p.earR += 3 * w
@@ -362,7 +371,9 @@ struct LanviMotion {
         let off = Double(seed % 97) * 0.731
         let k = Int(floor((x + off) / slot))
         let start = Double(k) * slot + 1 + 3 * Motion.rnd(k, seed &+ 41) - off
-        let kind = momentKind(k)
+        // the evening set if it is late, or if the fox was sleepy when this moment began
+        let sleepy = (start >= heldSince ? held : heldFrom) == .sleepy
+        let kind = momentKind(k, evening: evening || sleepy)
         guard x >= start, x < start + kind.duration, start > appearAt + 3 else { return nil }
         guard busy(start) < 0.01 else { return nil }   // never start on top of something else
         let w = 1 - busy(x)
@@ -371,7 +382,7 @@ struct LanviMotion {
     }
 
     /// Shuffled bags of moments: every moment once per round, never the same twice in a row.
-    private func momentKind(_ k: Int) -> LanviMoment {
+    private func momentKind(_ k: Int, evening: Bool) -> LanviMoment {
         let bag: [LanviMoment] = evening
             ? [.yawn, .slowBlink, .ears, .tailCurl, .glance, .sniff]
             : [.glance, .glanceUp, .tilt, .ears, .tailCurl, .sniff, .slowBlink, .invite]
@@ -505,7 +516,6 @@ struct LanviMotion {
             face.mouth = m
             let bob = Motion.bump(x, mouthTickAt, mouthTickAt + 0.22)
             p.headY += 1.6 * bob; p.dirY += 0.04 * bob
-            p.earL -= 2; p.earR -= 2
             return
         }
         let lt = x - talkingSince
@@ -552,7 +562,7 @@ struct LanviMotion {
         if let r = reaction { react(r, x - reactionAt, &p, &face) }
     }
 
-    /// A tail wag that shrinks: `n` swings of `period`, gone smoothly by `end`.
+    /// A tail wag that shrinks, one swing per `period`, gone smoothly by `end`.
     private func wag(_ x: Double, amp: Double, period: Double, end: Double) -> Double {
         guard x > 0, x < end else { return 0 }
         return amp * (1 - exp(-x * 14)) * exp(-x * 1.5) * sin(2 * .pi * x / period) * (1 - Motion.smooth(end - 0.4, end, x))

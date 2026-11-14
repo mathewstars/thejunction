@@ -138,7 +138,7 @@ struct LanviPuppet: View {
         m.momentAt = momentAt
         m.momentSide = momentSide
         m.appearAt = appearAt
-        m.evening = lateHour || held == .sleepy
+        m.evening = lateHour
         m.loving = moodOverride == nil && pose == .love
         if let freeze {
             // Proof stills: a fixed clock, a reaction or moment held at a chosen moment.
