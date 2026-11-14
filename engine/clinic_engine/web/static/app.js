@@ -1325,6 +1325,10 @@
   const BP_FACE_FRESH = [["Code, fixed rule (in the product)", "44 of 59", "0 of 31", "6 of 50"],
     ["Code, simple rule relative to the person's rest", "59 of 59", "31 of 31", "32 of 122"],
     ["Gemini", "59 of 59", "31 of 31", "0 of 90"]];
+  // The third face set: disturbances the instruction does not name, each session read three times.
+  const BP_FACE_UNNAMED = [["Code, fixed rule (in the product)", "34 of 34", "0 of 20", "0 of 34"],
+    ["Code, simple rule relative to the person's rest", "34 of 34", "20 of 20", "12 of 66"],
+    ["Gemini (three reads of each session)", "102 of 102", "58 of 60", "0 of 160"]];
   const BP_DAYS_FRESH = [["Code, fixed rule (in the product)", "8 of 8", "3 of 8", "5 of 16"],
     ["Code, simple trend scan (written for this comparison)", "0 of 8", "8 of 8", "27 of 35"],
     ["Gemini, as reported", "8 of 8", "8 of 8", "2 of 18"],
@@ -1355,9 +1359,9 @@
 
     wrap.appendChild(panel("What Gemini adds over code", null, el("div", { class: "bp-say" },
       el("p", null, "On clean generated sessions a short code rule, relative to the person's own resting level, finds exactly what Gemini finds. Gemini is ahead in two places."),
-      el("p", null, el("b", null, "When something else moves the same numbers. "), "With talking or a moved phone in the session, Gemini made 0 wrong reports of 41; the short rule made 22 of 63. On a second set made afterwards: 0 of 90 against 32 of 122."),
+      el("p", null, el("b", null, "When something else moves the same numbers. "), "With talking or a moved phone in the session, Gemini made 0 wrong reports of 41; the short rule made 22 of 63. On a second set made afterwards: 0 of 90 against 32 of 122. On a third set with yawning, chewing and fading light, which Gemini's instruction does not mention: 0 of 160 against 12 of 66, and Gemini missed 2 faint smiles of 60."),
       el("p", null, el("b", null, "On slow declines in the daily numbers. "), "In the steps Gemini named 8 of 8 on both sets, with 2 wrong reports of 18 each time. After code's check the clinician is shown 8 of 8 on the first set and 5 of 8 on the second, because the check dropped three correct ones. Our fixed rule found 2 of 8 and 3 of 8. A simple trend scan we wrote for this comparison saw every planted change, but its stretches were too wide to count as a match in 9 cases, and it made 20 reports where nothing was planted."),
-      el("p", { class: "muted" }, "In both cases Gemini had been told in its instruction what to look for, and the code rules had not; a more careful rule would do better than these. Whether Gemini's lead survives real recordings decides whether it stays. That is the first step of the study we propose."))));
+      el("p", { class: "muted" }, "For talking, a moved phone and slow declines, Gemini had been told in its instruction what to look for and the code rules had not; the third face set is the one where it had not been told either. A more careful code rule would do better than these simple ones. Whether Gemini's lead survives real recordings decides whether it stays. That is the first step of the study we propose."))));
 
     const th = (t) => ({ t, r: 1 });
     const rowsOf = (data, mark) => data.map((r, ri) => el("tr", null, r.map((v, i) => el("td", { class: i ? "r num" : null }, mark && mark[0] === i && mark[1].indexOf(ri) >= 0 ? el("b", null, v) : v))));
@@ -1365,7 +1369,7 @@
       el("p", null, "Nobody can collect real recordings of patients in a weekend, so we did not pretend to. We generated face sessions and daily series with events planted at known places, let every reader go through them through the same gates as real data, and counted."),
       el("ul", { class: "plain" },
         el("li", null, "This shows how the readers handle a known signal. It shows nothing about real faces or real lives: generated data is cleaner than any recording."),
-        el("li", null, "Counted on 14 November 2026 with gemini-3.8-flash on the setting the server uses (thinking set low, about 4 seconds a call). All 118 calls were answered. Each item was read once."),
+        el("li", null, "Counted on 14 November 2026 with gemini-3.8-flash on the setting the server uses (thinking set low, about 4 seconds a call). All 154 calls were answered. Each item was read once, except in the third face set."),
         el("li", null, "The first sets are the ones we looked at while writing the instruction and code's check. The second sets were generated afterwards on new seeds and read once; nothing was changed after seeing them."),
         el("li", null, "With the model's default thinking (about 28 to 40 seconds a call) the face counts were the same, and the daily count had no wrong report where the fast setting has 2."))),
       el("h3", { class: "fr-h" }, "Face numbers, clean set: 40 generated sessions"),
@@ -1374,6 +1378,9 @@
       table(["Reader", th("Strong smiles found"), th("Faint smiles found"), th("Reports with no planted smile")], rowsOf(BP_FACE_HARD, [3, [1, 2]]), "bp-table", { plain: true }),
       el("h3", { class: "fr-h" }, "Face numbers, second hard set: 20 new sessions ", el("span", { class: "chip" }, "read once, after the freeze")),
       table(["Reader", th("Strong smiles found"), th("Faint smiles found"), th("Reports with no planted smile")], rowsOf(BP_FACE_FRESH, [3, [1, 2]]), "bp-table", { plain: true }),
+      el("h3", { class: "fr-h" }, "Face numbers, third hard set: 12 sessions with a yawn, chewing or fading light ", el("span", { class: "chip" }, "not named in the instruction, read three times")),
+      table(["Reader", th("Strong smiles found"), th("Faint smiles found"), th("Reports with no planted smile")], rowsOf(BP_FACE_UNNAMED, [3, [1, 2]]), "bp-table", { plain: true }),
+      el("p", { class: "small" }, "The same smiles came back in all three reads in 11 of the 12 sessions."),
       el("h3", { class: "fr-h" }, "Daily numbers: 24 generated series of 84 days"),
       el("p", { class: "small" }, "8 with a sudden dip, 8 with a slow decline, 8 with no change planted (4 plain, 2 with single odd days, 2 with a gap). Scored on the steps."),
       table(["Reader", th("Sudden dips found"), th("Slow declines found"), th("Reports with nothing planted")], rowsOf(BP_DAYS, [3, [1, 2]]), "bp-table", { plain: true }),
@@ -1382,7 +1389,7 @@
       el("div", { class: "bp-say bp-gap" },
         el("p", null, el("b", null, "Does code's check of Gemini do anything? "), "On the first daily set it removed both of Gemini's wrong reports in the steps and kept every correct one. On the second set it did worse: it removed one wrong report, let one through, and dropped three slow declines Gemini had named correctly. So the check is not yet a judge we would trust over Gemini on slow declines; we left it as it is rather than adjust it after seeing the second set. On the face numbers it changed nothing in either set. In an earlier face run it had wrongly dropped 8 correct smiles; that was fixed on the first set."),
         el("p", null, el("b", null, "What the fast setting costs. "), "Blink counts: on the same 50 sessions Gemini's count agreed with code's in 50 with default thinking and in 29 on the fast setting; on the second hard set in 8 of 20. The rows are the same, so this is the price of less thinking. The blink rate in the clinician's face summary is code's own."),
-        el("p", { class: "muted" }, "The fixed rule's wrong reports in the daily table are mostly short pieces of a slow decline. The trend scan covers the planted change in all 16 series; 7 count as found because the others are too wide, so its 0 of 8 on sudden dips is that width, not blindness. Of 35 planted low weekdays on the first daily set, code and Gemini each named 34; on the second, of 34 planted, code named 31 and Gemini 33. Gemini named none that was not planted. The second sets use new seeds from the same generator and the same kinds of disturbance: they test whether the result was fitted to the first sessions, not whether Gemini handles disturbances it was never told about. The session comparison and the second opinion (jobs 3 and 4 below) have not been measured this way."))));
+        el("p", { class: "muted" }, "The fixed rule's wrong reports in the daily table are mostly short pieces of a slow decline. The trend scan covers the planted change in all 16 series; 7 count as found because the others are too wide, so its 0 of 8 on sudden dips is that width, not blindness. Of 35 planted low weekdays on the first daily set, code and Gemini each named 34; on the second, of 34 planted, code named 31 and Gemini 33. Gemini named none that was not planted. The second sets use new seeds from the same generator and the same kinds of disturbance: they test whether the result was fitted to the first sessions. The third face set tests disturbances Gemini was never told about; there is no such set for the daily numbers yet. The session comparison and the second opinion (jobs 3 and 4 below) have not been measured this way."))));
 
     const ex = el("details", { class: "bp-ex", open: true }, el("summary", null, "One call, as sent and as answered (the last session of the generated example)"),
       el("div", { class: "exch-h" }, "Sent: instruction (the first lines of 4,600 characters)"),
