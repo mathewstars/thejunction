@@ -6,11 +6,11 @@ from datetime import timedelta
 
 from conftest import NOW
 
-ROUND_EASY = {"effort": "easy", "choice_ms": 2310, "trace_ms": 1650, "trace_length_pt": 288.4,
+ROUND_EASY = {"effort": "easy", "choice_ms": 2310, "trace_start_ms": 1840, "trace_ms": 1650, "trace_length_pt": 288.4,
               "trace_mean_speed_pt_s": 174.8, "trace_peak_speed_pt_s": 362.0, "trace_lifts": 0,
               "pull_pt": 96.5, "pull_hold_ms": 820, "embers_shown": 0, "embers_hit": 0,
               "bonus": False}
-ROUND_HARD = {"effort": "hard", "choice_ms": 940, "trace_ms": 1220, "trace_length_pt": 279.3,
+ROUND_HARD = {"effort": "hard", "choice_ms": 940, "trace_start_ms": 960, "trace_ms": 1220, "trace_length_pt": 279.3,
               "trace_mean_speed_pt_s": 228.9, "trace_peak_speed_pt_s": 455.0, "trace_lifts": 1,
               "pull_pt": 108.2, "pull_hold_ms": 540, "embers_shown": 2, "embers_hit": 1,
               "bonus": True}
@@ -27,11 +27,12 @@ MEASURES = {
 def game(aid, measures=MEASURES, **kw):
     """A focus record shaped as the app sends a Revontulet game today
     (ActivityRouter.record): about 90 s, launches + embers hit as correct
-    taps, no wrong taps, untapped embers as misses, a short reaction list."""
+    taps, no wrong taps, untapped embers as misses, and only the ember taps
+    in reaction_ms (the first touch on each half-circle is trace_start_ms)."""
     rec = {"id": aid, "type": "focus", "started_at": (NOW - timedelta(minutes=5)).isoformat(),
            "duration_s": 90.2, "completed": True, "ended_by": "finished",
            "correct_taps": 6, "wrong_taps": 0, "misses": 1,
-           "reaction_ms": [1840, 1210, 960, 410, 380, 350]}
+           "reaction_ms": [410, 380, 350]}
     if measures is not None:
         rec["revontulet"] = copy.deepcopy(measures)
     rec.update(kw)
@@ -50,7 +51,9 @@ def test_a_full_game_is_accepted_and_stored_whole(env):
     assert stored["revontulet"] == MEASURES
     # The taps and reactions are read exactly as before.
     assert stored["features"]["error_rate"] == round(1 / 7, 3)
-    assert stored["features"]["reactions_used"] == 6
+    assert stored["features"]["reactions_used"] == 3
+    # Fewer than activity_min_reactions (5): no median, so no z for this game.
+    assert stored["features"]["median_reaction_ms"] is None
 
 
 def test_a_record_without_the_measures_means_what_it_always_did(env):
@@ -68,6 +71,7 @@ def test_optional_fields_may_be_left_out(env):
     assert post(env, game("rv-slim-000001", measures=slim)).status_code == 200
     rv = env.repo().get("activities/rv-slim-000001.json")["revontulet"]
     assert rv["rounds"][0]["embers_shown"] == 0 and rv["rounds"][0]["bonus"] is False
+    assert rv["rounds"][0]["trace_start_ms"] is None
     assert rv["strokes"] == [] and rv["pt_per_cm"] is None and rv["fox_finished"] is None
 
 
@@ -94,6 +98,9 @@ def test_out_of_range_values_are_refused(env):
     m = copy.deepcopy(MEASURES)
     m["rounds"][1].update(embers_shown=1, embers_hit=2)
     assert post(env, game("rv-range-embers", measures=m)).status_code == 422
+    m = copy.deepcopy(MEASURES)
+    m["rounds"][0].update(trace_start_ms=120001)
+    assert post(env, game("rv-range-start", measures=m)).status_code == 422
     m = copy.deepcopy(MEASURES)
     m["strokes"][0].update(ms=60001)
     assert post(env, game("rv-range-stroke", measures=m)).status_code == 422

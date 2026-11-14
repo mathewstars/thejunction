@@ -6578,7 +6578,8 @@
                 "trace_lifts": 0,
                 "trace_mean_speed_pt_s": 174.8,
                 "trace_ms": 1650,
-                "trace_peak_speed_pt_s": 362.0
+                "trace_peak_speed_pt_s": 362.0,
+                "trace_start_ms": 1840
               },
               {
                 "bonus": true,
@@ -6592,7 +6593,8 @@
                 "trace_lifts": 0,
                 "trace_mean_speed_pt_s": 228.9,
                 "trace_ms": 1220,
-                "trace_peak_speed_pt_s": 455.0
+                "trace_peak_speed_pt_s": 455.0,
+                "trace_start_ms": 960
               }
             ],
             "strokes": [
@@ -6624,6 +6626,20 @@
             "minimum": 0.0,
             "title": "Choice Ms",
             "description": "Fault lines shown to the tap that picked one."
+          },
+          "trace_start_ms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 120000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Start Ms",
+            "description": "The half-circle appearing to the first touch on it."
           },
           "trace_ms": {
             "anyOf": [

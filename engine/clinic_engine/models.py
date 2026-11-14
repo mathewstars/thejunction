@@ -330,6 +330,9 @@ class RevontuletRound(Strict):
                                                         "crack (easy) or the thick vein (hard).")
     choice_ms: int = Field(ge=0, le=120000, description="Fault lines shown to the tap that "
                                                         "picked one.")
+    trace_start_ms: Optional[int] = Field(None, ge=0, le=120000,
+                                          description="The half-circle appearing to the first "
+                                                      "touch on it.")
     trace_ms: Optional[int] = Field(None, ge=0, le=120000,
                                     description="First touch on the half-circle to the light "
                                                 "reaching its end. Null if not finished.")
@@ -399,11 +402,11 @@ class RevontuletIn(Strict):
 
     model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [{
         "rounds": [
-            {"effort": "easy", "choice_ms": 2310, "trace_ms": 1650, "trace_length_pt": 288.4,
+            {"effort": "easy", "choice_ms": 2310, "trace_start_ms": 1840, "trace_ms": 1650, "trace_length_pt": 288.4,
              "trace_mean_speed_pt_s": 174.8, "trace_peak_speed_pt_s": 362.0, "trace_lifts": 0,
              "pull_pt": 96.5, "pull_hold_ms": 820, "embers_shown": 0, "embers_hit": 0,
              "bonus": False},
-            {"effort": "hard", "choice_ms": 940, "trace_ms": 1220, "trace_length_pt": 279.3,
+            {"effort": "hard", "choice_ms": 940, "trace_start_ms": 960, "trace_ms": 1220, "trace_length_pt": 279.3,
              "trace_mean_speed_pt_s": 228.9, "trace_peak_speed_pt_s": 455.0, "trace_lifts": 0,
              "pull_pt": 108.2, "pull_hold_ms": 540, "embers_shown": 2, "embers_hit": 2,
              "bonus": True}],

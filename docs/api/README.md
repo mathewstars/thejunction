@@ -130,7 +130,7 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
 
    ```json
    "revontulet": {
-     "rounds": [{"effort": "hard", "choice_ms": 940, "trace_ms": 1220, "trace_length_pt": 279.3,
+     "rounds": [{"effort": "hard", "choice_ms": 940, "trace_start_ms": 960, "trace_ms": 1220, "trace_length_pt": 279.3,
                  "trace_mean_speed_pt_s": 228.9, "trace_peak_speed_pt_s": 455.0, "trace_lifts": 0,
                  "pull_pt": 108.2, "pull_hold_ms": 540, "embers_shown": 2, "embers_hit": 2, "bonus": true}],
      "strokes": [{"ms": 1450, "length_pt": 410.0, "mean_speed_pt_s": 282.8}],
@@ -139,14 +139,14 @@ Tokens are 256-bit random strings. The server stores only their SHA-256 hash. Ke
 
    | Field | Limits |
    |---|---|
-   | `rounds` | 0 to 3. `effort` `easy` or `hard` and `choice_ms` (0 to 120000) required. Optional: `trace_ms` (0 to 120000), `trace_length_pt` (0 to 20000, default 0), `trace_mean_speed_pt_s` (0 to 20000), `trace_peak_speed_pt_s` (0 to 50000), `trace_lifts` (0 to 100, default 0), `pull_pt` (0 to 2000), `pull_hold_ms` (0 to 120000), `embers_shown` and `embers_hit` (0 to 5, default 0, hit at most shown), `bonus` (default false) |
+   | `rounds` | 0 to 3. `effort` `easy` or `hard` and `choice_ms` (0 to 120000) required. Optional: `trace_start_ms` (0 to 120000, the half-circle appearing to the first touch on it), `trace_ms` (0 to 120000), `trace_length_pt` (0 to 20000, default 0), `trace_mean_speed_pt_s` (0 to 20000), `trace_peak_speed_pt_s` (0 to 50000), `trace_lifts` (0 to 100, default 0), `pull_pt` (0 to 2000), `pull_hold_ms` (0 to 120000), `embers_shown` and `embers_hit` (0 to 5, default 0, hit at most shown), `bonus` (default false) |
    | `strokes` | 0 to 10, each `ms` (0 to 60000), `length_pt` (0 to 20000), `mean_speed_pt_s` (0 to 20000) |
    | `broke_through_s` | 0 to 600 or null. More than `duration_s` + 1: 422 `implausible_activity` (`broke_through_after_end`) |
    | `fox_finished` | true when time ran out and the fox's own spark broke the wall; false or null otherwise |
    | `pt_per_cm` | 10 to 400 or null |
    | `touch_radius_mean_pt`, `touch_radius_var` | 0 to 200 and 0 to 10000, or null |
 
-   Stored with the activity and returned on the clinician's focus sessions. Not yet used for the day, suggestions, XP or the own normal.
+   With `revontulet`, `reaction_ms` holds only the ember taps (flash to finger); the first touch on each half-circle is `trace_start_ms`. Stored with the activity and returned on the clinician's focus sessions. Not yet used for the day, suggestions, XP or the own normal.
 
    `breathing` (Breathe with Lanvi): `time_played_s`, optional `breaths_completed`, optional `face_raw` (or `face`).
 
