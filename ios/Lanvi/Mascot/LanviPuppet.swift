@@ -676,8 +676,8 @@ struct LanviPuppet: View {
         let others = f.eyes.filter { !$0.0.isLidded }
         return ZStack(alignment: .topLeading) {
             ZStack(alignment: .topLeading) {
-                lidEye(left: true, down: down, f.pose)
-                lidEye(left: false, down: down, f.pose)
+                lidEye(left: true, down: down, lashes: 1 - Motion.smooth(0, 0.35, happy), f.pose)
+                lidEye(left: false, down: down, lashes: 1 - Motion.smooth(0, 0.35, happy), f.pose)
             }
             .frame(width: Rig.canvas.width * k, height: Rig.canvas.height * k, alignment: .topLeading)
             .opacity(lidded)
@@ -730,8 +730,8 @@ struct LanviPuppet: View {
     /// lowers a hair when looking down). Over it the lid (the fur and lid line cut from
     /// the half-closed eye, clipped to the eye) slides down to half and then stretches to
     /// shut, and the shut eye's lashes come in at the end, over the fur. `down`: 0 open,
-    /// 0.5 half, 1 shut.
-    private func lidEye(left: Bool, down: Double, _ q: Pose) -> some View {
+    /// 0.5 half, 1 shut. `lashes`: less while the happy arcs come in or go (never both).
+    private func lidEye(left: Bool, down: Double, lashes lashShare: Double = 1, _ q: Pose) -> some View {
         let side = left ? "l" : "r"
         let openName = "eyes-open-" + side
         let pupil = Rig.pupil(left: left, pose: q)
@@ -795,7 +795,7 @@ struct LanviPuppet: View {
                         .resizable()
                         .interpolation(.high)
                         .frame(width: lashes.width, height: lashes.height)
-                        .opacity(Motion.smooth(0.75, 0.9, d))
+                        .opacity(Motion.smooth(0.75, 0.9, d) * lashShare)
                         .transformEffect(CGAffineTransform(translationX: lashes.minX, y: lashes.minY))
                 }
             }
