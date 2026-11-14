@@ -250,6 +250,8 @@ struct RevontuletFlight: Equatable {
     var emberU: [Double] = []
     var emberT: [Double] = []
     var emberShownAt: [Double?] = []
+    /// The real-clock instant each ember flashed (reaction times are measured from it).
+    var emberShownReal: [Double?] = []
     var emberHitAt: [Double?] = []
     var emberMissed: [Bool] = []
     /// Worked out once the last ember can no longer be tapped (at once for an easy shot).
@@ -268,9 +270,9 @@ struct RevontuletFlight: Equatable {
         return launch + last + Self.emberGrace
     }
 
-    static let emberLead = 0.42      // an ember flashes this long before the spark reaches it
-    static let emberGrace = 0.32     // and can still be tapped this long after
-    static let emberEarly = 0.12     // a tap this much before the flash still counts
+    static let emberLead = 0.6       // an ember flashes this long before the spark reaches it
+    static let emberGrace = 0.3      // and can still be tapped this long after
+    static let emberEarly = 0.15     // a tap this much before the flash still counts
 
     func bezier(_ u: Double) -> CGPoint {
         let a = 1 - u
@@ -412,10 +414,10 @@ struct RevontuletResult: Equatable {
     var launches: Int { rounds.filter { $0.launchUptime != nil }.count }
     var embersShown: Int { rounds.reduce(0) { $0 + $1.embersShown } }
     var embersHit: Int { rounds.reduce(0) { $0 + $1.emberHits.count } }
-    /// Only the ember taps, flash to finger, in order (the server compares them with the
-    /// person's normal tap reactions; the slow first touch on a half-circle goes in the
-    /// measures as `trace_start_ms` instead).
+    /// Every ember tap, flash to finger on the real clock, in order (the first-ever coached
+    /// ember included: it is a real tap, only slower). The slow first touch on a half-circle
+    /// goes in the measures as `trace_start_ms` instead. An easy-only game sends `[]`.
     var reactionMs: [Int] {
-        rounds.flatMap { $0.emberHits.filter { !$0.coached }.map(\.reactionMs) }
+        rounds.flatMap { $0.emberHits.map(\.reactionMs) }
     }
 }
