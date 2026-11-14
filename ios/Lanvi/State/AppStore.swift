@@ -70,6 +70,9 @@ final class AppStore {
 
     // Moments for Home
     var celebration: HomeCelebration?
+    /// Bumped the moment an activity hands back to Home: Lanvi cheers at once,
+    /// before any answer from the server.
+    var cheer = 0
     /// Set when the server says typed words asked for help: Home opens Help at once.
     var crisisNow: API.CrisisBlock?
     /// Set when the stage went up with the last activity: Home celebrates it.
@@ -417,32 +420,96 @@ final class AppStore {
         if let sid = record.suggestionId { suggestionsPlayed.insert(sid) }
         outbox.add(record)
 
-        do {
-            let out = try await backend.send(record)
-            outbox.remove(id: record.id)
-            link = .online
+        // The reward never waits for the network (a game's record carries 90 s of
+        // face numbers and can take long to upload): Lanvi cheers at once, the
+        // server's XP is used if it answers within 2 s, else the expected amount.
+        cheer &+= 1
+        let box = SendBox()
+        Task { @MainActor in
+            do { box.result = .success(try await backend.send(record)) } catch { box.result = .failure(error) }
+            if box.late, let r = box.result { settleLate(r, record: record) }
+        }
+        for _ in 0..<20 where box.result == nil { try? await Task.sleep(for: .milliseconds(100)) }
+
+        switch box.result {
+        case .success(let out)?:
+            sent(record)
             await celebrate(out, kind: kind)
-            markDone(kind, seconds: record.durationS, thing: thing)
-        } catch let e as APIError where e.isTemporary {
+        case .failure(let e)?:
+            failed(e, record: record)
+            await celebrateExpected(record, kind: kind)
+        case nil:
+            box.late = true
+            await celebrateExpected(record, kind: kind)
+        }
+        markDone(kind, seconds: record.durationS, thing: thing)
+    }
+
+    private func sent(_ record: API.ActivityIn) {
+        outbox.remove(id: record.id)
+        link = .online
+    }
+
+    private func failed(_ error: Error, record: API.ActivityIn) {
+        if let e = error as? APIError, e.isTemporary {
             LanviClient.log("activity \(record.type.rawValue) \(record.id) kept for later (\(e)), face frames: \(record.faceRaw?.samples.count ?? 0)")
             link = .offline
-            celebrateOffline(kind: kind)
-            markDone(kind, seconds: record.durationS, thing: thing)
-        } catch {
+        } else {
             // Refused for good (shape, plausibility, reused id): drop it, still thank them.
             LanviClient.log("activity \(record.type.rawValue) \(record.id) refused and dropped (\(error)), face frames: \(record.faceRaw?.samples.count ?? 0)")
             outbox.remove(id: record.id)
-            celebrateOffline(kind: kind)
-            markDone(kind, seconds: record.durationS, thing: thing)
+        }
+    }
+
+    /// The server answered after the reward already played: take its numbers quietly.
+    private func settleLate(_ result: Result<API.ActivityOut, Error>, record: API.ActivityIn) {
+        switch result {
+        case .success(let out):
+            sent(record)
+            guard var t = today else { return }
+            let oldStage = t.lanvi.stage
+            withAnimation(.spring(response: 1.1, dampingFraction: 0.82)) {
+                t.lanvi.xp = out.xpTotal
+                t.lanvi.stage = out.stage
+                t.lanvi.nextStageAt = out.nextStageAt
+                t.lanvi.glow = out.glow
+                today = t
+            }
+            if out.crisis == true, let block = out.crisisBlock { crisisNow = block }
+            if out.stage != oldStage, out.xpTotal > 0 { grewUp = out.stage }
+            if mode == .live { LanviDisk.save(t, "today.json") }
+        case .failure(let e):
+            failed(e, record: record)
+        }
+    }
+
+    /// The XP an activity earns by the server's rule, for a reward that can't wait.
+    static func expectedXP(_ record: API.ActivityIn) -> Int {
+        guard record.durationS >= 5 else { return 0 }
+        return record.type == .checkin && record.planDone == .yes ? 25 : 10
+    }
+
+    /// The reward without the server's answer: the expected XP pops and the growth
+    /// strip fills; the real numbers replace it quietly when they arrive.
+    private func celebrateExpected(_ record: API.ActivityIn, kind: ActivityKind) async {
+        let gained = Self.expectedXP(record)
+        line = link == .offline
+            ? "Thanks for coming by. I'll tell the sky when we're back online."
+            : "That was our thing for today. I'm glad you came."
+        celebration = HomeCelebration(kind: kind, xpGained: gained, line: line)
+        guard gained > 0, var t = today else { return }
+        try? await Task.sleep(for: .milliseconds(500))
+        withAnimation(.spring(response: 1.1, dampingFraction: 0.82)) {
+            t.lanvi.xp += gained
+            today = t
         }
     }
 
     private func celebrate(_ out: API.ActivityOut, kind: ActivityKind) async {
-        guard var t = today else { return }
-        let oldStage = t.lanvi.stage
-        line = out.line.text
         line = Self.careLine(out.line)
         celebration = HomeCelebration(kind: kind, xpGained: out.xpGained, line: line)
+        guard var t = today else { return }
+        let oldStage = t.lanvi.stage
         // Let Lanvi's happy hop start, then the numbers move.
         try? await Task.sleep(for: .milliseconds(out.xpGained > 0 ? 500 : 300))
         #if DEBUG
@@ -464,10 +531,6 @@ final class AppStore {
         if mode == .live { LanviDisk.save(t, "today.json") }
     }
 
-    private func celebrateOffline(kind: ActivityKind) {
-        line = "Thanks for coming by. I'll tell the sky when we're back online."
-        celebration = HomeCelebration(kind: kind, xpGained: 0, line: line)
-    }
 
     private func flushOutbox() async {
         for item in outbox.items {
@@ -563,4 +626,11 @@ final class AppStore {
                             line: API.LineOut(templateId: "hello.1", text: "Hi. The snow is quiet today."),
                             planToAsk: nil),
         roundConfig: nil, attention: "", crisis: DemoBackend.crisis, productName: "Lanvi")
+}
+
+/// Where a background send leaves its answer for the reward that is waiting on it.
+@MainActor
+private final class SendBox {
+    var result: Result<API.ActivityOut, Error>?
+    var late = false
 }
