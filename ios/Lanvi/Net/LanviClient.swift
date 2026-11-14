@@ -211,6 +211,14 @@ actor LanviClient: LanviBackend {
         guard let http = response as? HTTPURLResponse else { throw APIError.offline }
         guard (200..<300).contains(http.statusCode) else {
             if big { Self.log("\(method) \(path): \(bodyBytes / 1024) KB answered \(http.statusCode)") }
+            // Debug console: the server's own reason for a refusal (its code, the field and
+            // problem it names, the request id to find it in the server log).
+            if [400, 409, 413, 422].contains(http.statusCode) {
+                let reason = (try? API.decoder.decode(API.ErrorResponse.self, from: data))
+                    .map { "\($0.error.code): \($0.error.message) (request \($0.error.requestId))" }
+                    ?? String(decoding: data.prefix(400), as: UTF8.self)
+                Self.log("\(method) \(path) refused \(http.statusCode): \(reason)")
+            }
             throw Self.error(status: http.statusCode, data: data)
         }
         do {
