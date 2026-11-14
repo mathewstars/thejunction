@@ -4393,6 +4393,12 @@
             "title": "Change N",
             "description": "Pairs of neighbouring ratings behind change_rho."
           },
+          "task_bound": {
+            "type": "boolean",
+            "title": "Task Bound",
+            "description": "The task itself moves this measure (looking down at the phone, head angle). Set by code from the key, whatever caveats a model adds; the page's headline passes over such a measure when another will do.",
+            "default": false
+          },
           "quality": {
             "anyOf": [
               {
