@@ -159,6 +159,11 @@ The project reads the frames with a model (level 2: Gemini, or the local stand-i
 
   What this shows: on a clean signal a rule relative to the person's rest does as well as the model. On the hard set that rule reports 22 things that are not smiles, the fixed rule misses 8 strong smiles (it reads a mouth that rests high as one long smile), and the model makes neither mistake. Against the fixed rule the model's agreement is: clean set, all 121 of code's smiles reported and matched, mean difference in start 0.16 s; hard set, 20 of code's 23 smiles reported (the 3 it left out were not planted smiles).
 
+  Counted again later the same day, 70 of 70 calls answered:
+
+  - **On the setting the server now uses** (the model asked to think little, about 4 seconds a call instead of about 28), the same 50 sessions: the smile counts are identical to the table above in every cell. Blink counts are worse: Gemini's count agreed with code's in 29 of 50 sessions, against 50 of 50 with default thinking.
+  - **A second hard set**, 20 sessions on new seeds (`--sessions 0 --hard-seed 5000 --hard-count 20`), generated after the instruction and the check were frozen and read once on the fast setting: the fixed rule 44 of 59 strong, 0 of 31 faint, 6 wrong reports of 50; the rule relative to rest 59 of 59, 31 of 31, 32 wrong of 122; Gemini 59 of 59, 31 of 31, 0 wrong of 90, unchanged by code's check. Blink counts agreed in 8 of 20.
+
   What it does not show:
   - Anything about real faces. The streams are made by that file: smooth rises, simple noise. Real recordings will be worse for every reader, and no number here says how well any of them reads a person.
   - A blind test of the hard set. The prompt names talking and a shift of the resting level as things that are not smiles, and the hard set contains exactly those. The model was told what to look for; the two code rules were not changed to handle them.

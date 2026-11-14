@@ -1319,7 +1319,16 @@
     ["Gemini", "28 of 28", "13 of 13", "0 of 41"]];
   const BP_DAYS = [["Code, fixed rule (in the product)", "8 of 8", "2 of 8", "10 of 20"],
     ["Code, simple trend scan (written for this comparison)", "0 of 8", "7 of 8", "29 of 36"],
-    ["Gemini", "8 of 8", "8 of 8", "0 of 16"]];
+    ["Gemini, as reported", "8 of 8", "8 of 8", "2 of 18"],
+    ["Gemini, after code's check", "8 of 8", "8 of 8", "0 of 16"]];
+  // The second sets: generated on new seeds after the instruction and the check were frozen, read once.
+  const BP_FACE_FRESH = [["Code, fixed rule (in the product)", "44 of 59", "0 of 31", "6 of 50"],
+    ["Code, simple rule relative to the person's rest", "59 of 59", "31 of 31", "32 of 122"],
+    ["Gemini", "59 of 59", "31 of 31", "0 of 90"]];
+  const BP_DAYS_FRESH = [["Code, fixed rule (in the product)", "8 of 8", "3 of 8", "5 of 16"],
+    ["Code, simple trend scan (written for this comparison)", "0 of 8", "8 of 8", "27 of 35"],
+    ["Gemini, as reported", "8 of 8", "8 of 8", "2 of 18"],
+    ["Gemini, after code's check", "8 of 8", "5 of 8", "1 of 14"]];
   function bpGemini(wrap) {
     wrap.appendChild(el("p", { class: "lead" }, "Gemini is the second reader. It reads numbers that plain code has already read with fixed rules. In the three reading jobs code checks every item it reports, and the result is shown only to the clinician. In the fourth job it may stop a lesson that code accepted; it cannot add one. It gets no name, no date, no photo or video of the person and, unless the clinic turns on the chat mode, none of the person's words."));
     const W = 960, H = 150, BW = 176, BH = 96, GAP = 19;
@@ -1346,8 +1355,8 @@
 
     wrap.appendChild(panel("What Gemini adds over code", null, el("div", { class: "bp-say" },
       el("p", null, "On clean generated sessions a short code rule, relative to the person's own resting level, finds exactly what Gemini finds. Gemini is ahead in two places."),
-      el("p", null, el("b", null, "When something else moves the same numbers. "), "With talking or a moved phone in the session, Gemini made 0 wrong reports of 41; the short rule made 22 of 63."),
-      el("p", null, el("b", null, "On slow declines in the daily numbers. "), "In the steps, Gemini found 8 of 8 and reported nothing that was not planted. Our fixed rule found 2 of 8. A simple trend scan we wrote for this comparison saw every planted change, but its stretches were too wide to count as a match in 9 cases, and it made 20 reports where nothing was planted."),
+      el("p", null, el("b", null, "When something else moves the same numbers. "), "With talking or a moved phone in the session, Gemini made 0 wrong reports of 41; the short rule made 22 of 63. On a second set made afterwards: 0 of 90 against 32 of 122."),
+      el("p", null, el("b", null, "On slow declines in the daily numbers. "), "In the steps, Gemini found 8 of 8 on both sets, with 2 wrong reports of 18 each time. Our fixed rule found 2 of 8 and 3 of 8. A simple trend scan we wrote for this comparison saw every planted change, but its stretches were too wide to count as a match in 9 cases, and it made 20 reports where nothing was planted."),
       el("p", { class: "muted" }, "In both cases Gemini had been told in its instruction what to look for, and the code rules had not; a more careful rule would do better than these. Whether Gemini's lead survives real recordings decides whether it stays. That is the first step of the study we propose."))));
 
     const th = (t) => ({ t, r: 1 });
@@ -1356,18 +1365,23 @@
       el("p", null, "Nobody can collect real recordings of patients in a weekend, so we did not pretend to. We generated face sessions and daily series with events planted at known places, let every reader go through them through the same gates as real data, and counted."),
       el("ul", { class: "plain" },
         el("li", null, "This shows how the readers handle a known signal. It shows nothing about real faces or real lives: generated data is cleaner than any recording."),
-        el("li", null, "Run on 14 November 2026 with gemini-3.8-flash. All calls were answered: 50 of 50 face sessions and 24 of 24 daily series. Each item was read once."),
-        el("li", null, "These counts were made with the model's default thinking, about 28 seconds a call for a face session and about 40 for a daily series. The server now asks it to think little, about 4 seconds a call. The same count on that setting has not been made yet."),
-        el("li", null, "The instruction and code's check were written and adjusted while looking at these same generated sets. A second set, generated afterwards and read once, has not been run yet."))),
+        el("li", null, "Counted on 14 November 2026 with gemini-3.8-flash on the setting the server uses (thinking set low, about 4 seconds a call). All 118 calls were answered. Each item was read once."),
+        el("li", null, "The first sets are the ones we looked at while writing the instruction and code's check. The second sets were generated afterwards on new seeds and read once; nothing was changed after seeing them."),
+        el("li", null, "With the model's default thinking (about 28 to 40 seconds a call) the face counts were the same, and the daily count had no wrong report where the fast setting has 2."))),
       el("h3", { class: "fr-h" }, "Face numbers, clean set: 40 generated sessions"),
       table(["Reader", th("Strong smiles found"), th("Faint smiles found"), th("Reports with no planted smile")], rowsOf(BP_FACE_CLEAN), "bp-table", { plain: true }),
       el("h3", { class: "fr-h" }, "Face numbers, hard set: 10 sessions with talking, the phone moving, or a mouth that rests high"),
       table(["Reader", th("Strong smiles found"), th("Faint smiles found"), th("Reports with no planted smile")], rowsOf(BP_FACE_HARD, [3, [1, 2]]), "bp-table", { plain: true }),
+      el("h3", { class: "fr-h" }, "Face numbers, second hard set: 20 new sessions, read once"),
+      table(["Reader", th("Strong smiles found"), th("Faint smiles found"), th("Reports with no planted smile")], rowsOf(BP_FACE_FRESH, [3, [1, 2]]), "bp-table", { plain: true }),
       el("h3", { class: "fr-h" }, "Daily numbers: 24 generated series of 84 days"),
       el("p", { class: "small" }, "8 with a sudden dip, 8 with a slow decline, 8 with no change planted (4 plain, 2 with single odd days, 2 with a gap). Scored on the steps."),
       table(["Reader", th("Sudden dips found"), th("Slow declines found"), th("Reports with nothing planted")], rowsOf(BP_DAYS, [3, [1, 2]]), "bp-table", { plain: true }),
+      el("h3", { class: "fr-h" }, "Daily numbers, second set: 24 new series, read once"),
+      table(["Reader", th("Sudden dips found"), th("Slow declines found"), th("Reports with nothing planted")], rowsOf(BP_DAYS_FRESH, [2, [3]]), "bp-table", { plain: true }),
       el("div", { class: "bp-say" },
-        el("p", null, el("b", null, "Does code's check of Gemini do anything? "), "In the daily run it dropped 4 stretches Gemini named on other channels that were not in the numbers, and confirmed 5 that only Gemini had named. It is not strict: the same test passes some windows where nothing was planted, so here the low number of wrong reports comes from Gemini, not from the check. In the first face run the check wrongly dropped 8 correct smiles; we fixed it and read those sessions again, so the check, like the instruction, was adjusted on this test set."),
+        el("p", null, el("b", null, "Does code's check of Gemini do anything? "), "On the first daily set it removed both of Gemini's wrong reports in the steps and kept every correct one. On the second set it did worse: it removed one wrong report, let one through, and dropped three slow declines Gemini had named correctly. So the check is not yet a judge we would trust over Gemini on slow declines; we left it as it is rather than adjust it after seeing the second set. On the face numbers it changed nothing in either set. In an earlier face run it had wrongly dropped 8 correct smiles; that was fixed on the first set."),
+        el("p", null, el("b", null, "What the fast setting costs. "), "Blink counts: with default thinking Gemini's count agreed with code's in all 50 sessions of the first sets, on the fast setting in 37 of 70. A blink lasts under a fifth of a second and Gemini sees five rows a second."),
         el("p", { class: "muted" }, "The fixed rule's wrong reports in the daily table are mostly short pieces of a slow decline. The trend scan covers the planted change in all 16 series; 7 count as found because the others are too wide, so its 0 of 8 on sudden dips is that width, not blindness. Of 35 planted low weekdays, code and Gemini each named 34, and Gemini named none that was not planted. The session comparison and the second opinion (jobs 3 and 4 below) have not been measured this way."))));
 
     const ex = el("details", { class: "bp-ex", open: true }, el("summary", null, "One call, as sent and as answered (the last session of the generated example)"),

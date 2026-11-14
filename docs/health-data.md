@@ -92,6 +92,19 @@ The same idea as the frame reading for the face numbers (`docs/face-raw.md`), on
 
   The trend scan slides windows of 10 to 28 days over the steps and keeps those that pass code's own test for a slow decline or a dip; it was written after the model's result, to answer "could code find the slow declines alone?". It finds 7 of the 8 declines but marks long stretches around every change, so most of its reports do not line up with what was planted (which is also why it scores 0 on the short dips). A more careful rule would do better. Code's ten wrong reports are mostly short pieces of a slow decline that it flagged without seeing the whole (a piece overlaps the planted span by less than 0.3 of their union, so it counts as wrong). Of 35 planted low weekdays code named 34, and the model named 34 and none that was not planted. Against code's own stretches the model named 13 of 25 and added 5 that only it named and code confirmed; 4 of its stretches on other channels were not in the numbers and were dropped.
 
-  What this does not show: anything about real lives. The series are made by that file, with simple noise and one planted change each; real series have illness, travel, holidays and missing weeks. Each series was read once. The run used the model's default thinking; the server now asks it to think little (a reading in about 4 seconds instead of about 40), and the same count on that setting has not been made yet.
+  Counted again later the same day on the setting the server now uses (the model asked to think little, about 4 seconds a call), 48 of 48 calls answered:
+
+  | Set | Reader | Sudden dips found | Slow declines found | Reported with nothing planted |
+  |---|---|---|---|---|
+  | The same 24 series | Gemini, as reported | 8 of 8 | 8 of 8 | 2 of 18 |
+  | The same 24 series | Gemini, after code's check | 8 of 8 | 8 of 8 | 0 of 16 |
+  | 24 new series (`--seed 6000`), read once | Code, fixed rule | 8 of 8 | 3 of 8 | 5 of 16 |
+  | 24 new series | Code, simple trend scan | 0 of 8 | 8 of 8 | 27 of 35 |
+  | 24 new series | Gemini, as reported | 8 of 8 | 8 of 8 | 2 of 18 |
+  | 24 new series | Gemini, after code's check | 8 of 8 | 5 of 8 | 1 of 14 |
+
+  The new series were generated after the instruction and the check were frozen, and nothing was changed after seeing them. On them code's check did worse than on the first set: it removed one of Gemini's two wrong reports, let the other through, and dropped three slow declines Gemini had named correctly. The check is not yet a judge to trust over the model on slow declines. Low weekdays on the new series: 34 planted, code named 31, the model 33 and none that was not planted.
+
+  What this does not show: anything about real lives. The series are made by that file, with simple noise and one planted change each; real series have illness, travel, holidays and missing weeks. Each series was read once. The first run used the model's default thinking; the later counts above used the fast setting the server now runs.
 
 All thresholds here are estimates. None is calibrated on real series; that is part of the study (`docs/research-proposal.md`).
