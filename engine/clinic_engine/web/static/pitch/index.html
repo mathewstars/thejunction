@@ -17,7 +17,7 @@
  TEXT        Change any words between the tags. Nothing else depends on them.
  TIME        data-seconds="24" is the time planned for the scene.
              All scenes together must stay at or under 180 (the microphone
-             is cut at 3:00). Today they add up to 174, so there are 6
+             is cut at 3:00). Today they add up to 168, so there are 12
              seconds of air. The page shows the sum and warns when it is over.
  CLICKS      data-step="1", "2", "3" ... is the click on which a thing appears.
              Things without data-step are there when the scene opens.
@@ -68,7 +68,7 @@
   </section>
 
   <!-- ============ 1 · THE DOOR ============ -->
-  <section class="scene door-scene" data-title="The door" data-seconds="22" data-aurora="0">
+  <section class="scene door-scene" data-title="The door" data-seconds="19" data-aurora="0">
     <video class="bgv" src="clips/exit.mp4" poster="clips/exit.jpg" muted playsinline preload="auto"></video>
     <div class="shade" aria-hidden="true"></div>
     <div class="col left">
@@ -81,13 +81,13 @@
     <aside>
       This is Anna. We made her up. [breath]
       For six weeks, every weekday, she went to the clinic, and every day somebody looked at her.
-      On the last day they said: you did great. Then the door closed. [two seconds of silence]
+      Then the door closed. [two seconds of silence]
       Her next appointment is six weeks away.
     </aside>
   </section>
 
   <!-- ============ 2 · THE FOX ============ -->
-  <section class="scene fox-scene" data-title="The fox" data-seconds="21" data-aurora="0">
+  <section class="scene fox-scene" data-title="The fox" data-seconds="20" data-aurora="0">
     <video class="bgv" src="clips/cub.mp4" poster="clips/cub.jpg" muted playsinline preload="auto" data-gone="1"></video>
     <video class="bgv" src="clips/pickup.mp4" poster="clips/pickup.jpg" muted playsinline preload="auto" data-step="1" data-gone="2"></video>
     <video class="bgv" src="clips/reveal.mp4" poster="clips/reveal.jpg" muted playsinline preload="auto" data-step="2"></video>
@@ -114,7 +114,7 @@
       On the way home she finds a fox cub, alone in the snow.
       [click] She picks him up. [click] And he steps into her phone.
       [click] He asks for one small thing a day.
-      No score, no streak. A bad day costs her nothing.
+      A bad day costs her nothing.
     </aside>
   </section>
 
@@ -230,7 +230,7 @@
   </section>
 
   <!-- ============ 6 · THE MIND (the proof comes after the story) ============ -->
-  <section class="scene mind-scene" data-title="The mind" data-seconds="26" data-aurora="0.3">
+  <section class="scene mind-scene" data-title="The mind" data-seconds="25" data-aurora="0.3">
     <h2 class="l center">Behind the fox: what we call the mind.</h2>
     <div class="layers">
       <div class="layer code" data-step="1">
@@ -253,43 +253,40 @@
     </div>
     <div class="stats" data-step="4">
       <div class="stat"><b>0 of 107</b><span>flags ended lower when the case got worse</span></div>
-      <div class="stat honest"><b>6 of 107</b><span>changed when the same case was read twice. So no model may lower what the rules call urgent.</span></div>
-      <div class="stat gem"><b>50 of 50</b><span>generated face sessions where Gemini found every planted smile and reported nothing else</span></div>
+      <div class="stat honest"><b>6 of 107</b><span>changed on a second read, so no model may lower an urgent flag</span></div>
+      <div class="stat gem"><b>50 of 50</b><span>face sessions: Gemini found every planted smile and nothing else</span></div>
       <p class="s dim">Generated cases and sessions, read by the real models.</p>
     </div>
     <aside>
-      Behind the fox, the mind.
       Rules we can explain raise the flag.
       Two models weigh it: the clinic's own, and Gemini.
       Code guards both.
       On forty generated cases, a worse case never got a lower level.
-      But six in a hundred and seven changed on a second read, so no model may lower what the rules call urgent.
+      Six in a hundred and seven changed on a second read, so no model may lower an urgent flag.
+      And Gemini found every planted smile. [point at fifty of fifty]
     </aside>
   </section>
 
   <!-- ============ 7 · THE RESEARCH ============ -->
-  <section class="scene real-scene" data-title="The research" data-seconds="21" data-aurora="0.25">
+  <section class="scene real-scene" data-title="The research" data-seconds="20" data-aurora="0.25">
     <div class="shots swap">
       <figure class="realshot" data-gone="1">
         <img src="img/clinician-page.webp" alt="The clinician page: Anna Korhonen outside her normal, movement down five days">
-        <figcaption>It runs. This is the clinician page itself, with example data. Open it now: lanvi.app</figcaption>
+        <figcaption>The clinician page itself, with example data.</figcaption>
       </figure>
       <figure class="realshot" data-step="1">
         <img src="img/research-verdict.webp" alt="The research page for Elina: her score stayed between 5 and 9, too little change to tell whether anything moves with it">
-        <figcaption>The research page for Elina, who stayed well: the same tool refuses to conclude.</figcaption>
+        <figcaption>The research page for Elina, whose score stayed stable: the same tool refuses to conclude.</figcaption>
       </figure>
     </div>
     <div class="hypslot swap">
       <p class="l center" data-gone="1">It runs. Open it now: <span class="accent">lanvi.app</span></p>
-      <div class="hypslot swap">
-      <p class="l center" data-gone="1">It runs. Open it now: <span class="accent">lanvi.app</span></p>
-      <p class="l center hyp" data-step="1"><span class="accent">24 hypotheses</span>, written before any data.</p>
-    </div>
+      <p class="l center hyp" data-step="1"><span class="accent">24 hypotheses</span>, fixed before any data.<span class="s dim hypnote">Three were redefined on 14 November, when the game changed.</span></p>
     </div>
     <p class="l center study" data-step="2">Whether these numbers follow depression<br>is the study we want to run with you.<br><span class="dim">30 people after TMS · 12 weeks · each compared only with themselves · nothing tested with patients yet</span></p>
     <aside>
-      It runs: you can open it now.
-      [click] We wrote twenty-four hypotheses before any data. For Elina, who stayed well, the same tool refuses to conclude.
+      [point at the row; say nothing]
+      [click] We fixed twenty-four hypotheses before any data. For Elina, whose score stayed stable, the same tool refuses to conclude.
       [click] Nothing is tested with patients. Whether these numbers follow depression is the study we want to run with you.
     </aside>
   </section>
