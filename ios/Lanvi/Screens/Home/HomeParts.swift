@@ -31,7 +31,7 @@ struct HomeRoundButtonStyle: ButtonStyle {
             )
             .offset(y: pressed ? 4 : 0)
             .background(Circle().fill(edge).offset(y: 4))
-            .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
+            .animation(LanviTiming.press, value: pressed)
             .sensoryFeedback(.impact(weight: .light), trigger: pressed)
     }
 }

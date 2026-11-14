@@ -25,16 +25,27 @@ What it does, in plain words:
    head's own eye patches (they are further apart on the head than on the sheet).
 5. Bakes the soft fades in (neck stub under the cheeks, top of the front legs), so
    the phone draws plain pictures with no masks.
+6. Cuts depth layers (see `depth_layers`): the face markings (eye patches, brow marks,
+   nose) come off the head so they can slide around it when the head turns, and the
+   head is split in two halves so the far cheek can tuck in; each open eye is split
+   into its white, the whole iris (a full oval), the glints and the lid line, so the
+   pupils can move; the half-closed eye's lid is cut out to lower over a moving pupil; the chest
+   bib comes off the body so it can swell with each breath; the tail and ears are split
+   into overlapping bands along their length (each fading in over the one before) so
+   they can bend. Where a marking
+   came off, the head is filled with the fur around it.
 
 Only Pillow is needed. Re-run it whenever better art arrives.
 """
 import json
+import math
 import os
+import re
 import shutil
 import sys
 from collections import deque
 
-from PIL import Image, ImageChops, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.normpath(os.path.join(HERE, "..", "Lanvi", "Assets.xcassets"))
@@ -175,6 +186,377 @@ def save_asset(img, name):
                    "info": {"author": "xcode", "version": 1}}, f, indent=2)
 
 
+# ---------------------------------------------------------------------------------
+# Depth layers. All boxes are shares (0...1) of the part's own picture, measured on
+# the painted head, body, tail and ears. Brightness is 0.3 R + 0.59 G + 0.11 B: white
+# fur is about 235, the blue fur 175, the brow marks 130, the nose 72.
+
+FACE = {
+    # name: (box x0, y0, x1, y1, seed x, y, brightness test, grow px, soften px)
+    "face-patch-l": ((0.13, 0.28, 0.49, 0.585), (0.31, 0.45), lambda v: v > 205, 16, 5),
+    "face-patch-r": ((0.51, 0.28, 0.87, 0.585), (0.69, 0.45), lambda v: v > 205, 16, 5),
+    "face-brow-l": ((0.26, 0.2, 0.43, 0.31), (0.342, 0.255), lambda v: v < 155, 8, 3),
+    "face-brow-r": ((0.57, 0.2, 0.74, 0.31), (0.665, 0.255), lambda v: v < 155, 8, 3),
+    "face-nose": ((0.4, 0.48, 0.6, 0.64), (0.5, 0.565), lambda v: v < 120, 12, 3),
+}
+BIB = ((0.24, 0.16, 0.76, 0.66), (0.496, 0.366), lambda v: v > 205, 12, 5)
+# Bands: drawn in order, each over the last (see `bands`).
+# Pivot (share of the part), distance measured in shares of `by` (width or
+# height), band centres from `a` to `b`, `n` bands. A band's bend weight grows evenly from 0
+# at the base to 1 at the tip, so neighbouring bands never differ by much.
+BANDS = {
+    "tail": ((0.88, 0.66), "w", 0.16, 0.93, 12),
+    "ear-left": ((0.36, 0.8), "h", 0.1, 0.82, 10),
+    "ear-right": ((0.64, 0.8), "h", 0.1, 0.82, 10),
+}
+
+
+def brightness(img):
+    r, g, b = img.convert("RGB").split()
+    return Image.merge("RGB", (r, g, b)).convert("L", (0.3, 0.59, 0.11, 0))
+
+
+def feature_mask(img, box, seed, test, grow, soft, cut_bottom=True):
+    """A soft mask of one painted marking: the pixels passing `test` inside `box` that
+    touch `seed`, grown by `grow` px into the fur around it, softened by `soft` px."""
+    W, H = img.size
+    x0, y0, x1, y1 = int(box[0] * W), int(box[1] * H), int(box[2] * W), int(box[3] * H)
+    lum = brightness(img).load()
+    alpha = img.getchannel("A").load()
+    m = Image.new("L", img.size, 0)
+    mp = m.load()
+    sx, sy = int(seed[0] * W), int(seed[1] * H)
+    q = deque([(sx, sy)])
+    seen = {(sx, sy)}
+    while q:
+        x, y = q.popleft()
+        if not (x0 <= x < x1 and y0 <= y < y1) or alpha[x, y] < 250 or not test(lum[x, y]):
+            continue
+        mp[x, y] = 255
+        for n in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if n not in seen:
+                seen.add(n)
+                q.append(n)
+    for _ in range(grow // 2):
+        m = m.filter(ImageFilter.MaxFilter(5))
+    if cut_bottom:
+        # a straight cut at the bottom of the box (the patches run into the white cheeks)
+        m.paste(0, (0, y1, W, H))
+    m = m.filter(ImageFilter.GaussianBlur(soft))
+    return ImageChops.multiply(m, img.getchannel("A"))
+
+
+def inpaint(img, core):
+    """Fill the `core` pixels from the fur around them (a smooth pull-push fill)."""
+    rgb = img.convert("RGB")
+    known = ImageChops.multiply(ImageChops.invert(core), img.getchannel("A").point(lambda v: 255 if v > 250 else 0))
+    levels = [(ImageChops.multiply(rgb, Image.merge("RGB", [known] * 3)), known)]
+    while min(levels[-1][0].size) > 6:
+        c, w = levels[-1]
+        size = (max(1, c.width // 2), max(1, c.height // 2))
+        levels.append((c.resize(size, Image.BOX), w.resize(size, Image.BOX)))
+    c, w = levels[-1]
+    cp, wp = c.load(), w.load()
+    total, n = [0, 0, 0], 0
+    for y in range(c.height):
+        for x in range(c.width):
+            if wp[x, y] > 0:
+                for i in range(3):
+                    total[i] += cp[x, y][i] * 255 / wp[x, y]
+                n += 1
+    avg = tuple(int(t / max(n, 1)) for t in total)
+    f = Image.new("RGB", c.size)
+    fp = f.load()
+    for y in range(c.height):
+        for x in range(c.width):
+            w = wp[x, y]
+            fp[x, y] = tuple(min(255, int(cp[x, y][i] * 255 / w)) for i in range(3)) if w > 0 else avg
+    for c, w in reversed(levels[:-1]):
+        up = f.resize(c.size, Image.BILINEAR)
+        f = ImageChops.add(c, ImageChops.multiply(up, Image.merge("RGB", [ImageChops.invert(w)] * 3)))
+    out = Image.composite(f, rgb, core).convert("RGBA")
+    out.putalpha(img.getchannel("A"))
+    return out
+
+
+def layer(img, mask):
+    """The part's pixels under `mask`, trimmed. Returns the picture and its box."""
+    out = img.copy()
+    out.putalpha(ImageChops.multiply(img.getchannel("A"), mask))
+    box = out.getchannel("A").point(lambda v: 255 if v > 2 else 0).getbbox()
+    return out.crop(box), box
+
+
+def bands(img, pivot, by, a, b, n):
+    """Overlapping bands around `pivot`, from the base outwards, made to be drawn one on
+    top of the next with plain layering: band i fades in over band i - 1 (which is solid
+    there) across [c - s/2, c + s/2], stays solid to the next band's fade-in, then fades
+    out under it. At rest that rebuilds the painted part exactly; bent, neighbouring bands
+    differ by one small step. Returns [(picture, box, bend weight)]."""
+    W, H = img.size
+    unit = W if by == "w" else H
+    px, py = pivot[0] * W, pivot[1] * H
+    reach = math.hypot(max(px, W - px), max(py, H - py))
+    dist = Image.new("L", img.size)
+    dp = dist.load()
+    for y in range(H):
+        for x in range(W):
+            dp[x, y] = min(255, int(math.hypot(x - px, y - py) / reach * 255))
+    s = (b - a) / (n - 1)
+    out = []
+    for i in range(n):
+        c = a + i * s
+
+        def weight(v, c=c, i=i):
+            r = v / 255 * reach / unit
+            rise = 1.0 if i == 0 else smooth((r - (c - s / 2)) / s)
+            fall = 1.0 if i == n - 1 else 1 - smooth((r - (c + 1.5 * s)) / (0.5 * s))
+            return int(round(255 * rise * fall))
+
+        mask = dist.point(weight)
+        pic, box = layer(img, mask)
+        out.append((pic, box, i / (n - 1)))   # the bend grows evenly along the length
+    return out
+
+
+def fill_holes(mask):
+    """Mask with every enclosed hole filled (what the outside cannot reach)."""
+    W, H = mask.size
+    m = mask.load()
+    outside = Image.new("L", mask.size, 0)
+    o = outside.load()
+    q = deque((x, y) for x in range(W) for y in (0, H - 1)) + deque((x, y) for y in range(H) for x in (0, W - 1))
+    while q:
+        x, y = q.popleft()
+        if not (0 <= x < W and 0 <= y < H) or o[x, y] or m[x, y]:
+            continue
+        o[x, y] = 255
+        q.extend(((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)))
+    return ImageChops.invert(outside)
+
+
+def solve(a, b):
+    """Gaussian elimination for a small linear system a x = b."""
+    n = len(b)
+    m = [row[:] + [b[i]] for i, row in enumerate(a)]
+    for c in range(n):
+        piv = max(range(c, n), key=lambda r: abs(m[r][c]))
+        m[c], m[piv] = m[piv], m[c]
+        for r in range(n):
+            if r != c:
+                f = m[r][c] / m[c][c]
+                m[r] = [x - f * y for x, y in zip(m[r], m[c])]
+    return [m[i][n] / m[i][i] for i in range(n)]
+
+
+def fit_ellipse(points):
+    """Axis-aligned ellipse through points: A x^2 + B y^2 + C x + D y = 1."""
+    rows = [(x * x, y * y, x, y) for x, y in points]
+    ata = [[sum(r[i] * r[j] for r in rows) for j in range(4)] for i in range(4)]
+    atb = [sum(r[i] for r in rows) for i in range(4)]
+    A, B, C, D = solve(ata, atb)
+    cx, cy = -C / (2 * A), -D / (2 * B)
+    k = 1 + C * C / (4 * A) + D * D / (4 * B)
+    return cx, cy, (k / A) ** 0.5, (k / B) ** 0.5
+
+
+def ellipse_mask(size, cx, cy, a, b, ss=4):
+    """Anti-aliased filled ellipse (4 x 4 samples per pixel)."""
+    big = Image.new("L", (size[0] * ss, size[1] * ss), 0)
+    ImageDraw.Draw(big).ellipse(((cx - a) * ss, (cy - b) * ss, (cx + a) * ss, (cy + b) * ss), fill=255)
+    return big.resize(size, Image.BOX)
+
+
+def eye_layers(eye):
+    """Split an open eye into its white (iris and lid line filled with the white's own
+    colour), the whole iris (rebuilt as a full oval where the art crops it, glints
+    removed), the glints and the lid line. Returns pictures on one canvas, padded so the
+    iris can move, and the padding."""
+    W, H = eye.size
+    lum = brightness(eye)
+    alpha = eye.getchannel("A")
+    dark = ImageChops.multiply(lum.point(lambda v: 255 if v < 120 else 0), alpha.point(lambda v: 255 if v > 200 else 0))
+    # The iris: measure the dark run across the middle row and down the middle column
+    # (gaps of up to 12 px are glints). If the art crops it at the eye's edge, its width
+    # comes from its height (the iris is 0.9 as wide as it is tall).
+    dp = dark.load()
+    ap = alpha.load()
+
+    def run(points):
+        best, cur, gap = None, None, 0
+        for i, on in points:
+            if on:
+                cur = [i, i] if cur is None else [cur[0], i]
+                gap = 0
+            elif cur is not None:
+                gap += 1
+                if gap > 12:
+                    if best is None or cur[1] - cur[0] > best[1] - best[0]:
+                        best = cur
+                    cur, gap = None, 0
+        if cur is not None and (best is None or cur[1] - cur[0] > best[1] - best[0]):
+            best = cur
+        return best
+
+    my = H // 2
+    x0, x1 = run((x, dp[x, my]) for x in range(W))
+    mx = (x0 + x1) // 2
+    y0, y1 = run((y, dp[mx, y]) for y in range(H // 6, H))
+    b = (y1 - y0 + 1) / 2
+    cy = (y0 + y1 + 1) / 2
+    edge_l = next(x for x in range(W) if ap[x, my] > 128)
+    edge_r = max(x for x in range(W) if ap[x, my] > 128)
+    a = (x1 - x0 + 1) / 2
+    if x1 >= edge_r - 3:
+        a = 0.9 * b
+        cx = x0 + a
+    elif x0 <= edge_l + 3:
+        a = 0.9 * b
+        cx = x1 + 1 - a
+    else:
+        cx = (x0 + x1 + 1) / 2
+    a += 1
+    b += 1
+    oval_here = ellipse_mask(eye.size, cx, cy, a, b)
+    iris = fill_holes(ImageChops.multiply(dark, oval_here.point(lambda v: 255 if v > 128 else 0)))
+    pad = int(max(a, b) * 0.5)
+    size = (W + 2 * pad, H + 2 * pad)
+    oval = ellipse_mask(size, cx + pad, cy + pad, a, b)
+    oval_eye = oval.crop((pad, pad, pad + W, pad + H))
+    inside = iris.filter(ImageFilter.MaxFilter(3))
+    glint = ImageChops.multiply(lum.point(lambda v: max(0, min(255, int((v - 135) * 255 / 80)))),
+                                ImageChops.multiply(fill_holes(iris), oval_eye.point(lambda v: 255 if v > 128 else 0)))
+    # lid line: dark paint outside the iris
+    lid = ImageChops.multiply(lum.point(lambda v: max(0, min(255, int((165 - v) * 255 / 60)))),
+                              ImageChops.multiply(alpha, ImageChops.invert(inside.filter(ImageFilter.MaxFilter(3)))))
+    # the white: fill the iris and the lid line from the white around them
+    white_core = ImageChops.lighter(oval_eye.point(lambda v: 255 if v > 0 else 0).filter(ImageFilter.MaxFilter(5)),
+                                    lid.point(lambda v: 255 if v > 20 else 0).filter(ImageFilter.MaxFilter(3)))
+    white = inpaint(eye, ImageChops.multiply(white_core, alpha.point(lambda v: 255 if v > 0 else 0)))
+    # the iris on the padded canvas: its own paint where it shows, the rest filled from it
+    canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+    known = ImageChops.multiply(iris, ImageChops.invert(glint.point(lambda v: 255 if v > 10 else 0).filter(ImageFilter.MaxFilter(5))))
+    known = known.filter(ImageFilter.MinFilter(3))
+    src = eye.copy()
+    src.putalpha(known)
+    canvas.paste(src, (pad, pad), src)
+    full_alpha = Image.new("L", size, 0)
+    full_alpha.paste(known, (pad, pad))
+    canvas.putalpha(full_alpha)
+    iris_img = inpaint(Image.merge("RGBA", (*canvas.convert("RGB").split(), oval.point(lambda v: 255 if v > 0 else 0))),
+                       ImageChops.multiply(oval.point(lambda v: 255 if v > 0 else 0), ImageChops.invert(full_alpha)))
+    iris_img.putalpha(oval)
+
+    def on_canvas(img, a_mask):
+        out = Image.new("RGBA", size, (0, 0, 0, 0))
+        tmp = img.copy()
+        tmp.putalpha(a_mask)
+        out.paste(tmp, (pad, pad))
+        return out
+
+    return {"white": on_canvas(white, alpha), "iris": iris_img, "glint": on_canvas(eye, glint),
+            "lid": on_canvas(eye, lid)}, pad
+
+
+def half_lid(eye):
+    """The lid of the half-closed eye: the fur dome and the dark lid line under it."""
+    W, H = eye.size
+    lum = brightness(eye).load()
+    alpha = eye.getchannel("A").load()
+    mask = Image.new("L", eye.size, 0)
+    mp = mask.load()
+    for x in range(W):
+        y, state, end, first = 0, "air", None, 0
+        while y < H:
+            if alpha[x, y] < 60:
+                if state != "air":
+                    break
+            elif state in ("air", "fur") and lum[x, y] >= 125:
+                state = "fur"
+            elif lum[x, y] < 125:
+                if state != "line":
+                    first = y
+                state = "line"
+                end = y
+                if y - first >= 7:          # the lid line is thin; the iris below is not it
+                    break
+            elif state == "line":
+                break
+            y += 1
+        if end is not None:
+            for yy in range(0, end + 2):
+                mp[x, yy] = 255
+    mask = mask.filter(ImageFilter.GaussianBlur(0.8))
+    return ImageChops.multiply(mask, eye.getchannel("A"))
+
+
+def depth_layers(pieces, preview):
+    """Cut the depth layers. Returns {asset name: (box shares x, y, w, h, bend weight)}."""
+    found = {}
+
+    def keep(name, pic, box, parent, weight=0.0):
+        W, H = parent.size
+        save_asset(pic, "puppet-" + name)
+        found[name] = (box[0] / W, box[1] / H, (box[2] - box[0]) / W, (box[3] - box[1]) / H, weight)
+        if preview:
+            pic.save(os.path.join(preview, name + ".png"))
+
+    head = pieces["head"]
+    masks = {name: feature_mask(head, *spec) for name, spec in FACE.items()}
+    # the patches never take the nose or brows with them
+    nose_zone = masks["face-nose"].filter(ImageFilter.MaxFilter(9))
+    brow_zone = ImageChops.lighter(masks["face-brow-l"], masks["face-brow-r"]).filter(ImageFilter.MaxFilter(9))
+    for side in ("face-patch-l", "face-patch-r"):
+        masks[side] = ImageChops.subtract(masks[side], ImageChops.lighter(nose_zone, brow_zone))
+    core = Image.new("L", head.size, 0)
+    for name, m in masks.items():
+        keep(name, *layer(head, m), head)
+        core = ImageChops.lighter(core, m.point(lambda v: 255 if v >= 254 else 0))
+    base = inpaint(head, core)
+    # where a marking is only partly there (its soft rim), the head keeps its own paint
+    save_asset(base, "puppet-head-base")
+    if preview:
+        base.save(os.path.join(preview, "head-base.png"))
+
+    body = pieces["body"]
+    bib = feature_mask(body, *BIB)
+    keep("body-bib", *layer(body, bib), body)
+    body_base = inpaint(body, bib.point(lambda v: 255 if v >= 254 else 0))
+    save_asset(body_base, "puppet-body-base")
+
+    # The head in two halves (left drawn first, the right fading in over a narrow band
+    # in the middle), so the far cheek can tuck in and the near one come forward.
+    W, H = base.size
+    f = 0.04 * W
+    left = Image.new("L", base.size, 0)
+    ImageDraw.Draw(left).rectangle((0, 0, int(W / 2 + f) + 2, H), fill=255)
+    right = Image.new("L", base.size, 0)
+    rp = right.load()
+    for x in range(W):
+        v = int(round(255 * smooth((x - (W / 2 - f)) / (2 * f))))
+        for y in range(H):
+            rp[x, y] = v
+    keep("head-base-l", *layer(base, left), head)
+    keep("head-base-r", *layer(base, right), head)
+
+    # Moving pupils: each open eye in four layers; the half-closed eye's lid on its own.
+    for side in ("l", "r"):
+        eye = pieces[f"eyes-open-{side}"]
+        layers, pad = eye_layers(eye)
+        for kind, pic in layers.items():
+            box = pic.getchannel("A").point(lambda v: 255 if v > 2 else 0).getbbox()
+            pic = pic.crop(box)
+            # boxes relative to the open eye picture (the padded canvas starts at -pad)
+            keep(f"eye-{kind}-{side}", pic, (box[0] - pad, box[1] - pad, box[2] - pad, box[3] - pad), eye)
+        half = pieces[f"eyes-half-{side}"]
+        keep(f"eye-halflid-{side}", *layer(half, half_lid(half)), half)
+
+    for part, (pivot, by, a, b, n) in BANDS.items():
+        for i, (pic, box, w) in enumerate(bands(pieces[part], pivot, by, a, b, n)):
+            keep(f"{part}-b{i}", pic, box, pieces[part], w)
+    return found
+
+
 def main():
     args = sys.argv[1:]
     if len(args) < 2:
@@ -191,6 +573,7 @@ def main():
 
     sizes = {}
     eyes = {}
+    full = {}   # each part at full size, for the depth layers
     for path, names, gap in ((args[0], PART_NAMES, 0), (args[1], FACE_NAMES, PAIR_GAP)):
         sheet = Image.open(path).convert("RGBA")
         found, small_size = blobs(sheet.getchannel("A"))
@@ -209,6 +592,7 @@ def main():
                 for side, b, x0, x1 in (("l", l, 0, split), ("r", r, split, img.width)):
                     half = img.crop((x0, 0, x1, img.height))
                     save_asset(half, f"puppet-{name}-{side}")
+                    full[f"{name}-{side}"] = half
                     cx = (b["box"][0] + b["box"][2]) / 2 - box[0] - x0
                     cy = (b["box"][1] + b["box"][3]) / 2 - box[1]
                     sizes[f"{name}-{side}"] = (half.width, half.height, 0, 0)
@@ -217,6 +601,7 @@ def main():
                     img.save(os.path.join(preview, name + ".png"))
                 continue
             save_asset(img, "puppet-" + name)
+            full[name] = img
             sizes[name] = (img.width, img.height, box[0], box[1])
             if preview:
                 img.save(os.path.join(preview, name + ".png"))
@@ -231,6 +616,19 @@ def main():
               "    static let eyeCenter: [String: CGPoint] = ["]
     for name, (cx, cy) in eyes.items():
         lines.append(f'        "{name}": CGPoint(x: {cx:.0f}, y: {cy:.0f}),')
+    layers = depth_layers(full, preview)
+    lines += ["    ]", "",
+              "    /// Depth layers cut from a part (face markings, chest bib, bands of the tail and",
+              "    /// ears): where each sits in its part's picture, as shares (x, y, width, height).",
+              "    static let layer: [String: CGRect] = ["]
+    for name, (x, y, w, h, _) in layers.items():
+        lines.append(f'        "{name}": CGRect(x: {x:.5f}, y: {y:.5f}, width: {w:.5f}, height: {h:.5f}),')
+    lines += ["    ]", "",
+              "    /// Each band's share of its part's bend: 0 at the base, 1 at the tip.",
+              "    static let bend: [String: CGFloat] = ["]
+    for name, (_, _, _, _, wgt) in layers.items():
+        if re.search(r"-b\d+$", name):
+            lines.append(f'        "{name}": {wgt:.4f},')
     lines += ["    ]", "", "    static func px(_ name: String) -> CGSize { size[name] ?? CGSize(width: 1, height: 1) }", "}", ""]
     with open(SWIFT, "w") as f:
         f.write("\n".join(lines))

@@ -70,7 +70,7 @@ struct HomePrimaryStyle: ButtonStyle {
             }
             .offset(y: pressed ? 5 : 0)
             .background(shape.fill(edge).offset(y: 5))
-            .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
+            .animation(LanviTiming.press, value: pressed)
             .sensoryFeedback(.impact(weight: .light), trigger: pressed)
     }
 }
@@ -88,7 +88,7 @@ struct HomeCornerRoundStyle: ButtonStyle {
             .frame(width: 44, height: 44)
             .background(Circle().fill(Color(hex: 0xFFFEFB)).shadow(color: Theme.ink.opacity(0.12), radius: 8, y: 3))
             .scaleEffect(pressed ? 0.94 : 1)
-            .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
+            .animation(LanviTiming.press, value: pressed)
             .sensoryFeedback(.impact(weight: .light), trigger: pressed)
     }
 }
@@ -106,7 +106,7 @@ struct HomeQuietRoundStyle: ButtonStyle {
             .overlay(Circle().stroke(Theme.line, lineWidth: 2))
             .offset(y: pressed ? 5 : 0)
             .background(Circle().fill(Theme.line).offset(y: 5))
-            .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
+            .animation(LanviTiming.press, value: pressed)
             .sensoryFeedback(.impact(weight: .light), trigger: pressed)
     }
 }
@@ -158,12 +158,8 @@ struct HomeMoreSheet: View {
                 }
                 .buttonStyle(SheetRowStyle())
             }
-            Spacer(minLength: 0)
+            Color.clear.frame(height: 20)
         }
-        .presentationDetents([.height(372)])
-        .presentationCornerRadius(32)
-        .presentationDragIndicator(.visible)
-        .presentationBackground(.white)
     }
 }
 
@@ -226,14 +222,10 @@ struct HomeGrowthSheet: View {
                     .stroke(Theme.line, lineWidth: 2).allowsHitTesting(false)
             }
             .padding(.top, 8)
-            Spacer(minLength: 0)
+            Color.clear.frame(height: 20)
         }
         .padding(.horizontal, 24)
         .padding(.top, 32)
-        .presentationDetents([.height(340)])
-        .presentationCornerRadius(32)
-        .presentationDragIndicator(.visible)
-        .presentationBackground(.white)
     }
 }
 

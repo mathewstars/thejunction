@@ -104,7 +104,7 @@ struct HomeGrowUpMoment: View {
         .sensoryFeedback(.success, trigger: shown)
         .onAppear {
             start = Date()
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.7)) { shown = true }
+            withAnimation(LanviTiming.screen) { shown = true }
             Task {
                 try? await Task.sleep(for: .milliseconds(450))
                 bounce += 1
@@ -122,7 +122,7 @@ struct HomeGrowUpMoment: View {
 
     private func close() {
         guard shown else { return }
-        withAnimation(.easeOut(duration: 0.35)) { shown = false }
+        withAnimation(LanviTiming.swap) { shown = false }
         Task {
             try? await Task.sleep(for: .milliseconds(380))
             onDone()
@@ -130,16 +130,4 @@ struct HomeGrowUpMoment: View {
     }
 
     private func frac(_ v: Double) -> Double { v - floor(v) }
-}
-
-// MARK: - Zoom from the tapped card (iOS 18 and later; a normal slide on 17)
-
-extension View {
-    @ViewBuilder func homeZoomSource(_ id: String, in ns: Namespace.ID) -> some View {
-        if #available(iOS 18.0, *) { matchedTransitionSource(id: id, in: ns) } else { self }
-    }
-
-    @ViewBuilder func homeZoomTarget(_ id: String, in ns: Namespace.ID) -> some View {
-        if #available(iOS 18.0, *) { navigationTransition(.zoom(sourceID: id, in: ns)) } else { self }
-    }
 }

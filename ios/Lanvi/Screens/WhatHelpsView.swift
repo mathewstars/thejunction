@@ -10,8 +10,10 @@ struct WhatHelpsView: View {
     @Environment(AppStore.self) private var store
     @State private var chosen: [String] = []
     @State private var say = "What usually helps you? Pick as many as you like."
-    @State private var pose: LanviPose = .curious
-    @State private var bounce = 0
+    /// One reaction at a time; never the same one twice in a row.
+    @State private var reaction: LanviMood = .listening
+    @State private var reactTick = 0
+    @State private var proud = false
     @State private var sending = false
 
     private struct Choice: Identifiable {
@@ -37,16 +39,17 @@ struct WhatHelpsView: View {
                 PaintedWorld(scene: store.worldScene)
 
                 ZStack {
-                    LanviView(pose: pose, size: fox, bounceTrigger: bounce)
+                    LanviView(pose: .curious, size: fox)
+                        .lanviReaction(reaction, trigger: reactTick)
+                        .lanviMood(proud ? .happy : nil)
+                        .lanviHops(false)
                 }
                 .frame(width: fox * 2, height: fox * 2)
                 .position(x: geo.size.width / 2, y: hill - fox / 2 + 14)
-                .animation(.spring(response: 0.8, dampingFraction: 0.8), value: chosen.count)
 
                 VStack {
                     Spacer(minLength: 0)
                     HomeSpeechBubble(text: say)
-                        .animation(.spring(response: 0.45, dampingFraction: 0.7), value: say)
                 }
                 .frame(width: geo.size.width - 40, height: max(hill + 14 - fox - 30, 60))
                 .padding(.top, 20)
@@ -69,14 +72,19 @@ struct WhatHelpsView: View {
                             }
                         }
                         .disabled(sending)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: chosen.isEmpty)
+                        .animation(LanviTiming.swap, value: chosen.isEmpty)
                 }
                 .padding(.horizontal, 24)   // the same margins as Welcome, so the button never moves
                 .padding(.top, hill + (compact ? 26 : 36))
                 .padding(.bottom, 12)
             }
         }
-        .task { await runDemo() }
+        .task {
+            // Arriving: ears up and a small nod, "I'm listening".
+            try? await Task.sleep(for: .milliseconds(450))
+            reactTick += 1
+            await runDemo()
+        }
     }
 
     private func chip(_ c: Choice) -> some View {
@@ -93,20 +101,25 @@ struct WhatHelpsView: View {
                         .foregroundStyle(on ? .white : Theme.brand)
                 }
                 .frame(width: 42, height: 42)
+                // One line, always, at one weight: a selected chip keeps exactly its size.
                 Text(c.title)
                     .font(Theme.rounded(18, .heavy))
                     .foregroundStyle(on ? .white : Theme.ink)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                 Spacer(minLength: 0)
-                if let order {
-                    Text("\(order)")
-                        .font(Theme.rounded(14, .black))
-                        .foregroundStyle(Theme.brand)
-                        .frame(width: 26, height: 26)
-                        .background(Circle().fill(.white))
-                        .transition(.scale.combined(with: .opacity))
-                }
+                // The order badge's place is always reserved; it only fades in and pops.
+                Text("\(order ?? 1)")
+                    .font(Theme.rounded(14, .black))
+                    .foregroundStyle(Theme.brand)
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(.white))
+                    .scaleEffect(on ? 1 : 0.4)
+                    .opacity(on ? 1 : 0)
+                    .animation(LanviTiming.pop, value: on)
             }
             .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity)
             .frame(height: 66)
         }
         .buttonStyle(HelpsChipStyle(on: on))
@@ -114,30 +127,38 @@ struct WhatHelpsView: View {
     }
 
     private func toggle(_ id: String) {
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.65)) {
-            if let i = chosen.firstIndex(of: id) { chosen.remove(at: i) } else if chosen.count < 4 { chosen.append(id) }
-            pose = chosen.isEmpty ? .curious : .love
-        }
-        bounce += 1
+        // No transaction around the change: only each chip's own colour and badge
+        // animate, so no chip can ever travel to a new place.
+        if let i = chosen.firstIndex(of: id) { chosen.remove(at: i) } else if chosen.count < 4 { chosen.append(id) }
+        // A happy squint for a choice, a head tilt for the next one, and so on.
+        react(reaction == .happy ? .curious : .happy)
     }
 
     private func finish() {
         guard !sending else { return }
         if chosen.isEmpty { onDone(); return }
         sending = true
-        Task {
-            let line = await store.setPreferences(chosen)
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) {
-                say = line ?? "Got it. Thank you for telling me."
-                pose = .cheer
-            }
-            bounce += 1
-            try? await Task.sleep(for: .seconds(demo ? 2.6 : 1.9))
-            onDone()
-        }
+        react(.listening)          // a nod: thank you, noted
+        // Never wait for the server: Lanvi answers at once, the choice is sent in the
+        // background (and again on the next open if it does not get through).
+        store.sendPreferences(chosen)
+        onDone()
+    }
+
+    private func react(_ mood: LanviMood) {
+        reaction = mood
+        reactTick += 1
     }
 
     private func runDemo() async {
+        // `-chipsTest`: select every chip, then clear each one (recordings of the chips).
+        if ProcessInfo.processInfo.arguments.contains("-chipsTest") {
+            for id in ["music", "moving", "people", "quiet", "music", "moving", "people", "quiet"] {
+                try? await Task.sleep(for: .seconds(0.8))
+                toggle(id)
+            }
+            return
+        }
         guard demo else { return }
         try? await Task.sleep(for: .seconds(1.6))
         toggle("quiet")
@@ -160,7 +181,7 @@ private struct HelpsChipStyle: ButtonStyle {
             .overlay(shape.stroke(on ? .white.opacity(0.25) : Theme.line, lineWidth: 2))
             .offset(y: pressed ? 4 : 0)
             .background(shape.fill(on ? Theme.brandEdge : Theme.line).offset(y: 4))
-            .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
+            .animation(LanviTiming.press, value: pressed)
             .sensoryFeedback(.impact(weight: .light), trigger: pressed)
     }
 }

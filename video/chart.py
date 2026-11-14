@@ -13,7 +13,7 @@ def zs(pts, flip):
     v = [p[1] for p in pts]; m = sum(v) / len(v); sd = (sum((q - m) ** 2 for q in v) / max(1, len(v) - 1)) ** 0.5 or 1
     z = [[p[0], ((p[1] - m) / sd) * (-1 if flip else 1)] for p in pts]
     return [[p[0], sum(q[1] for q in z if abs(q[0] - p[0]) <= 3) / len([q for q in z if abs(q[0] - p[0]) <= 3])] for p in z]
-rows = [("Smiling less", zs(d["m"]["face.smile_rate_per_min"], True)), ("Reacting slower", zs(d["m"]["focus.median_reaction_ms"], False)), ("Walking less", zs(d["m"]["daily.steps"], True))]
+rows = [("Smile movements", zs(d["m"]["face.smile_rate_per_min"], False)), ("Reaction speed", zs(d["m"]["focus.median_reaction_ms"], True)), ("Steps per day", zs(d["m"]["daily.steps"], False))]
 AT, AH = 120 * S, 190 * S
 def ya(v): return AT + (1 - v / 20) * AH
 LT = [360 * S, 465 * S, 570 * S]; LH = 92 * S
@@ -22,7 +22,7 @@ big, mid, small = ImageFont.truetype(F, 34 * S), ImageFont.truetype(F, 22 * S), 
 def frame(t, title):   # t in 0..1: how much of the 84 days is drawn
     im = Image.new("RGB", (W, H), BG); g = ImageDraw.Draw(im)
     upto = t * (N - 1) + 0.001
-    g.text((PL, 40 * S), title, font=big, fill=INK)
+    g.text((262 * S, 40 * S), title, font=big, fill=INK)   # clear of the corner logo
     # shaded weeks at or over 10 (only as far as drawn)
     for i, p in enumerate(ref):
         if p[1] < 10 or p[0] > upto: continue
@@ -30,8 +30,8 @@ def frame(t, title):   # t in 0..1: how much of the 84 days is drawn
         xb = x(p[0] + 3) if i == len(ref) - 1 else (x(p[0]) + x(ref[i + 1][0])) / 2
         g.rectangle((xa, AT, min(xb, x(upto) + 20 * S), LT[2] + LH), fill=(34, 26, 22))
     g.line((PL, ya(10), W - PR, ya(10)), fill=(110, 70, 30), width=S)
-    g.text((W - PR - 330 * S, ya(10) - 26 * S), "10: the line clinics watch", font=small, fill=MUTED)
-    g.text((30 * S, AT + 60 * S), "Weekly", font=mid, fill=INK); g.text((30 * S, AT + 88 * S), "score", font=mid, fill=INK)
+    g.text((W - PR - 300 * S, ya(10) - 26 * S), "10: the usual cut-off", font=small, fill=MUTED)
+    g.text((30 * S, AT + 50 * S), "Weekly", font=mid, fill=INK); g.text((30 * S, AT + 78 * S), "questionnaire", font=mid, fill=INK); g.text((30 * S, AT + 110 * S), "higher = worse", font=small, fill=MUTED)
     pts = [(x(p[0]), ya(p[1])) for p in ref if p[0] <= upto]
     # partial segment to the moving tip
     nxt = [p for p in ref if p[0] > upto]
@@ -53,13 +53,43 @@ def frame(t, title):   # t in 0..1: how much of the 84 days is drawn
                 if len(run) > 1: g.line([(a, b) for a, b, _ in run], fill=INK, width=3 * S, joint="curve")
                 run = []
             run.append((x(p[0]), yl(i, p[1]), p[0]))
+        nx = [p for p in zz if p[0] > upto]
+        if run and nx and nx[0][0] - run[-1][2] <= 7:            # the tip moves smoothly towards the next day
+            lastp = [p for p in zz if p[0] <= upto][-1]; f = (upto - lastp[0]) / (nx[0][0] - lastp[0])
+            run.append((x(upto), yl(i, lastp[1] + (nx[0][1] - lastp[1]) * f), upto))
         if len(run) > 1: g.line([(a, b) for a, b, _ in run], fill=INK, width=3 * S, joint="curve")
-    g.text((PL, H - 62 * S), "Example data. Lower lines: this person's own spread, turned so that up means worse.", font=small, fill=MUTED)
+    g.text((PL, H - 62 * S), "Invented patient, example data. Lower lines: her own spread; down means less.", font=small, fill=MUTED)
     return im.resize((1280, 720), Image.LANCZOS)
+GLOW = (112, 224, 170)
+def single(i, t, head):          # one measure on its own, for the split screens (640x720)
+    w, h = 640 * S, 720 * S; im = Image.new("RGB", (w, h), BG); g = ImageDraw.Draw(im)
+    g.text((40 * S, 200 * S), head, font=big, fill=INK); g.text((40 * S, 250 * S), rows[i][0] + ", week by week", font=mid, fill=MUTED)
+    zz = rows[i][1]; upto = t * (N - 1); x0, x1, ym, amp = 40 * S, w - 40 * S, 430 * S, 70 * S
+    g.line((x0, ym, x1, ym), fill=LINE, width=S); run = []
+    for p in zz:
+        if p[0] > upto: break
+        if run and p[0] - run[-1][2] > 7:
+            if len(run) > 1: g.line([(a, b) for a, b, _ in run], fill=GLOW, width=4 * S, joint="curve")
+            run = []
+        run.append((x0 + p[0] / (N - 1) * (x1 - x0), ym - max(-1.9, min(1.9, p[1])) * amp / 1.9, p[0]))
+    nx = [p for p in zz if p[0] > upto]
+    if run and nx and nx[0][0] - run[-1][2] <= 7:
+        lastp = [p for p in zz if p[0] <= upto][-1]; f = (upto - lastp[0]) / (nx[0][0] - lastp[0]); zv = lastp[1] + (nx[0][1] - lastp[1]) * f
+        run.append((x0 + upto / (N - 1) * (x1 - x0), ym - max(-1.9, min(1.9, zv)) * amp / 1.9, upto))
+    if len(run) > 1: g.line([(a, b) for a, b, _ in run], fill=GLOW, width=4 * S, joint="curve")
+    if run: g.ellipse((run[-1][0] - 7 * S, run[-1][1] - 7 * S, run[-1][0] + 7 * S, run[-1][1] + 7 * S), fill=GLOW)
+    g.text((40 * S, 560 * S), "Example data, invented patient", font=small, fill=MUTED)
+    return im.resize((640, 720), Image.LANCZOS)
+if sys.argv[1] == "single":
+    i, out, secs, head = int(sys.argv[2]), sys.argv[3], float(sys.argv[4]), sys.argv[5]
+    os.makedirs(out, exist_ok=True); n = int(secs * 24)
+    for k in range(n):
+        e = k / max(1, n - 1); single(i, 0.86 * e, head).save(f"{out}/{k:04d}.png")
+    print(out, n); sys.exit()
 out, secs, title, t0, t1 = sys.argv[1], float(sys.argv[2]), sys.argv[3], float(sys.argv[4]), float(sys.argv[5])
 os.makedirs(out, exist_ok=True)
 n = int(secs * 24)
 for k in range(n):
-    e = k / max(1, n - 1); e = e * e * (3 - 2 * e)
+    e = k / max(1, n - 1); e = 0.5 * e + 0.5 * (e * e * (3 - 2 * e))
     frame(t0 + (t1 - t0) * e, title).save(f"{out}/{k:04d}.png")
 print(out, n, "frames")

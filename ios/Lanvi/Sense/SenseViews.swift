@@ -34,7 +34,10 @@ struct SenseScene<Actions: View>: View {
             ZStack(alignment: .top) {
                 PaintedWorld(scene: night ? .night : .at(hour: Calendar.current.component(.hour, from: Date())))
 
-                LanviView(pose: pose, size: fox, bounceTrigger: bounce)
+                // No hops in first run: the first cue is a nod, the next a happy squint.
+                LanviView(pose: pose, size: fox)
+                    .lanviReaction(bounce % 2 == 1 ? .listening : .happy, trigger: bounce)
+                    .lanviHops(false)
                     .frame(width: fox * 2, height: fox * 2)
                     .position(foxCenter)
                     .allowsHitTesting(false)
@@ -42,16 +45,10 @@ struct SenseScene<Actions: View>: View {
 
                 VStack {
                     Spacer(minLength: 0)
-                    Text(line)
-                        .font(Theme.rounded(compact ? 23 : 26, .heavy))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(5)
-                        .minimumScaleFactor(0.8)
-                        .shadow(color: Theme.nightTop.opacity(0.45), radius: 10, y: 2)
+                    // Lanvi's words in the speech bubble (navy on white), as on Home:
+                    // never free white text on a pale sky.
+                    HomeSpeechBubble(text: line)
                         .frame(maxWidth: .infinity)
-                        .id(line)
-                        .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: 10)), removal: .opacity))
                 }
                 .padding(.horizontal, 24)
                 .frame(height: max(foxCenter.y - fox / 2 - 40 - top, 90))

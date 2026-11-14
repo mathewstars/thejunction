@@ -29,7 +29,6 @@ protocol LanviBackend: Sendable {
     func send(_ activity: API.ActivityIn) async throws -> API.ActivityOut
     func checkinOptions() async throws -> API.CheckinOptionsOut
     func setPreferences(_ helps: [String]) async throws -> API.PreferencesOut
-    func answerWandering(id: String, answer: String) async throws -> API.WanderingAnswerOut
     func mind() async throws -> API.MindOut
     func feedback(_ f: API.FeedbackIn) async throws -> API.FeedbackOut
     func note(_ n: API.NoteIn) async throws -> API.NoteOut
@@ -49,7 +48,7 @@ actor LanviClient: LanviBackend {
         self.base = base
         self.pairingCode = pairingCode
         let cfg = URLSessionConfiguration.ephemeral
-        cfg.timeoutIntervalForRequest = 12
+        cfg.timeoutIntervalForRequest = 6
         cfg.waitsForConnectivity = false
         self.session = URLSession(configuration: cfg)
         self.token = TokenKeychain.token(for: base)
@@ -57,11 +56,6 @@ actor LanviClient: LanviBackend {
 
     var isPaired: Bool { token != nil }
 
-    /// Forget this phone's token (Help, "Disconnect this phone").
-    func forget() {
-        token = nil
-        TokenKeychain.delete(for: base)
-    }
 
     // MARK: Calls
 
@@ -94,11 +88,6 @@ actor LanviClient: LanviBackend {
         try await call("PUT", "/v1/preferences", body: API.PreferencesIn(helps: helps))
     }
 
-    func answerWandering(id: String, answer: String) async throws -> API.WanderingAnswerOut {
-        let safe = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
-        return try await call("POST", "/v1/lanvi/wanderings/\(safe)/answer",
-                              body: API.WanderingAnswerIn(answer: answer))
-    }
 
     func mind() async throws -> API.MindOut {
         try await call("GET", "/v1/mind", body: Optional<API.PairIn>.none)

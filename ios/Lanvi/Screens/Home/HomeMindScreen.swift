@@ -8,7 +8,6 @@ struct HomeMindScreen: View {
 
     @Environment(AppStore.self) private var store
     @State private var pose: LanviPose = .curious
-    @State private var bounce = 0
     @State private var say = "Here is what I've noticed so far. Tell me if I got something wrong."
     @State private var busy: String?
 
@@ -24,9 +23,9 @@ struct HomeMindScreen: View {
                     HomeSpeechBubble(text: say, pointAt: 0.92)
                         .frame(maxWidth: .infinity)
                         .padding(.bottom, fox * 0.55)
-                        .animation(.spring(response: 0.45, dampingFraction: 0.7), value: say)
                     ZStack {
-                        LanviView(pose: pose, size: fox, bounceTrigger: bounce)
+                        LanviView(pose: pose, size: fox)
+                            .lanviHops(false)
                     }
                     .frame(width: fox, height: fox)
                 }
@@ -161,7 +160,7 @@ struct HomeMindScreen: View {
             let ok = await store.rejectLesson(lesson.id)
             busy = nil
             react(ok ? "Thanks for telling me. I'll forget that one." : "I couldn't save that just now. Can we try again in a bit?",
-                  ok ? .love : .meh)
+                  ok ? .love : .curious)
         }
     }
 
@@ -171,16 +170,13 @@ struct HomeMindScreen: View {
             let ok = await store.answerQuestion(q.id, answer: a)
             busy = nil
             react(ok ? "Thank you. That helps me a lot." : "I couldn't save that just now. Can we try again in a bit?",
-                  ok ? .cheer : .meh)
+                  ok ? .cheer : .curious)
         }
     }
 
     private func react(_ text: String, _ newPose: LanviPose) {
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) {
-            say = text
-            pose = newPose
-        }
-        bounce += 1
+        say = text
+        pose = newPose
     }
 }
 
@@ -223,7 +219,7 @@ private struct MindSmallButtonStyle: ButtonStyle {
             .overlay(shape.stroke(filled ? .clear : Theme.line, lineWidth: 2))
             .offset(y: pressed ? 3 : 0)
             .background(shape.fill(filled ? Theme.brandEdge : Theme.line).offset(y: 3))
-            .animation(.spring(response: 0.16, dampingFraction: 0.7), value: pressed)
+            .animation(LanviTiming.press, value: pressed)
             .sensoryFeedback(.impact(weight: .light), trigger: pressed)
     }
 }

@@ -3,7 +3,8 @@ import SwiftUI
 /// Lanvi as video clips, in exactly the puppet's place: the same square, ears at the
 /// top edge, paws on the bottom edge, head and body on the centre line, the same soft
 /// contact shadow. Takes the same inputs as the puppet (`.lanviMood`,
-/// `.lanviReaction`, `.lanviLookAt`, `.lanviMouth`, `bounceTrigger`, taps), so no
+/// `.lanviReaction`, `.lanviLookAt`, `.lanviMouth`, `.lanviTalking`, `.lanviMoment`,
+/// `bounceTrigger`, taps), so no
 /// screen changes. Use it through `LanviView` (with `-foxClips YES`).
 ///
 /// - Idle plays the idle clip with a look, a nod or a listen between (a yawn in the
@@ -22,6 +23,8 @@ struct LanviClipView: View {
     @Environment(\.lanviReactionRequest) private var reactionRequest
     @Environment(\.lanviLook) private var look
     @Environment(\.lanviMouth) private var mouth
+    @Environment(\.lanviTalking) private var talking
+    @Environment(\.lanviMomentRequest) private var momentRequest
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.foxClipRequest) private var testRequest
@@ -100,13 +103,21 @@ struct LanviClipView: View {
         }
         .onChange(of: bounceTrigger) { bounced() }
         .onChange(of: look) { _, new in if new != nil { react(.look) } }
+        .onChange(of: momentRequest) { _, new in
+            guard let new else { return }
+            switch new.moment.rawValue {
+            case "yawn": react(.sleepy)
+            case "slowBlink", "sniff", "ears": react(.nod)
+            default: react(.look)
+            }
+        }
         .onChange(of: testRequest) { _, new in if let new { director.request(new.clip, urgent: true) } }
         .accessibilityElement()
         .accessibilityLabel("Lanvi the fox")
     }
 
     private var held: FoxClipDirector.Held {
-        if mouth != nil { return .talking }
+        if talking || mouth != nil { return .talking }
         switch (moodOverride ?? pose.puppetMood).rawValue {
         case "sleepy": return .sleepy
         case "listening": return .listening

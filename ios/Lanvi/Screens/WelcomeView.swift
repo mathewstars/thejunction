@@ -6,7 +6,8 @@ struct WelcomeView: View {
 
     @Environment(AppStore.self) private var store
 
-    @State private var bounce = 0
+    /// One greeting when the screen arrives (a happy squint and a tail wag, no hop).
+    @State private var greet = 0
 
     var body: some View {
         GeometryReader { geo in
@@ -14,9 +15,10 @@ struct WelcomeView: View {
             ZStack(alignment: .top) {
                 PaintedWorld(scene: store.worldScene)
 
-                LanviView(pose: .cheer, size: 250, bounceTrigger: bounce)
+                LanviView(pose: .curious, size: 250)
+                    .lanviReaction(.happy, trigger: greet)
+                    .lanviHops(false)
                     .position(x: geo.size.width / 2, y: hill - 125 + 16)
-                    .onTapGesture { bounce += 1 }
 
                 VStack(spacing: 6) {
                     Spacer().frame(height: hill + 40)
@@ -37,11 +39,8 @@ struct WelcomeView: View {
             }
         }
         .task {
-            guard demo else { return }
-            try? await Task.sleep(for: .seconds(1.2))
-            bounce += 1
-            try? await Task.sleep(for: .seconds(1.4))
-            bounce += 1
+            try? await Task.sleep(for: .milliseconds(demo ? 1200 : 600))
+            greet += 1
         }
     }
 }

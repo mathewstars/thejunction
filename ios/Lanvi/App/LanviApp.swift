@@ -29,25 +29,27 @@ struct LanviApp: App {
 /// Launch arguments:
 /// - `-demo`: the whole story by itself for the pitch video (under a minute):
 ///   Welcome, Home with today's one thing, Breathe with Lanvi, the XP and glow
-///   moment, growing up, done for today, a wandering and its story, a word with
-///   Lanvi. Always uses the offline demo data.
+///   moment, growing up, done for today, a word with Lanvi. Always uses the offline demo data.
 /// - `-screen <name>`: open one screen straight away: `home`, `whathelps`,
-///   `focus`, `breathe`, `checkin`, `checkin-plan`, `puppet`, `clips`, `pair`.
+///   `focus`, `breathe`, `checkin`, `checkin-plan`, `puppet`, `clips`.
+/// - `-flow`: the first run and a short tour of Home (chat, more, growth, Help) play
+///   by themselves, at a person's pace, with nothing attached: for smooth recordings.
+///   Use it with `-offline`.
 /// - `-offline`: use the offline demo data even when a server is configured.
 /// - Screenshot moments on Home: see `DemoBackend` and `HomeView.runDemo`.
 struct RootView: View {
-    private enum Step { case welcome, pair, helps, home }
+    private enum Step { case welcome, helps, home }
 
     @Environment(AppStore.self) private var store
     @Environment(\.scenePhase) private var scenePhase
     private let demo = ProcessInfo.processInfo.arguments.contains("-demo")
+    /// `-flow`: the first run and a short tour of Home play by themselves (for recordings).
+    private let flow = ProcessInfo.processInfo.arguments.contains("-flow")
     @State private var step: Step = {
         let args = ProcessInfo.processInfo.arguments
-        if args.contains("-demo") { return .welcome }
+        if args.contains("-demo") || args.contains("-flow") { return .welcome }
         return UserDefaults.standard.bool(forKey: "lanvi.welcomed") ? .home : .welcome
     }()
-    /// Through the first run before (so after pairing, straight back to Home).
-    private let welcomedBefore = UserDefaults.standard.bool(forKey: "lanvi.welcomed")
     /// `-screen <name>` (UserDefaults reads launch arguments of this form).
     private let screen = UserDefaults.standard.string(forKey: "screen")
 
@@ -58,8 +60,6 @@ struct RootView: View {
                 HomeView(demo: demo)
             case "whathelps":
                 WhatHelpsView(demo: demo) {}
-            case "pair":
-                PairView {}
             case "focus":
                 FocusGameView { print("focus: done \(String(describing: $0))") }
             case "breathe":
@@ -74,13 +74,10 @@ struct RootView: View {
                 switch step {
                 // Every first-run step arrives the same calm way: it rises a little and fades in.
                 case .welcome:
-                    WelcomeView(demo: demo) { go(demo ? .home : (store.needsPairing ? .pair : .helps)) }
-                        .transition(LanviTiming.arrive)
-                case .pair:
-                    PairView { go(welcomedBefore ? .home : .helps) }
+                    WelcomeView(demo: demo) { go(demo ? .home : .helps) }
                         .transition(LanviTiming.arrive)
                 case .helps:
-                    WhatHelpsView(demo: demo) { go(.home) }
+                    WhatHelpsView(demo: demo || flow) { go(.home) }
                         .transition(LanviTiming.arrive)
                 case .home:
                     HomeView(demo: demo)
@@ -93,17 +90,9 @@ struct RootView: View {
             await store.start()
         }
         .task {
-            guard demo else { return }
-            try? await Task.sleep(for: .seconds(4.2))
-            go(.home)
-        }
-        .onAppear {
-            // Already through the welcome before, but this phone is not paired (a new
-            // build, or the phone was disconnected): the code comes first.
-            if step == .home, store.needsPairing { step = .pair }
-        }
-        .onChange(of: store.needsPairing) { _, needs in
-            if needs, step == .home { go(.pair) }
+            guard demo || flow else { return }
+            try? await Task.sleep(for: .seconds(flow ? 3.5 : 4.2))
+            go(flow ? .helps : .home)
         }
         .onChange(of: scenePhase) { old, phase in
             if phase == .active, old == .background { Task { await store.resume() } }

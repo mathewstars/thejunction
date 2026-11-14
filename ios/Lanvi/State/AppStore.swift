@@ -22,7 +22,6 @@ enum DayPart { case morning, day, evening, night }
 
 /// What the big "For today" card on Home shows.
 enum TodayThing: Equatable {
-    case story                          // a wandering story waits: always first
     case game(ActivityKind)             // one of the three activities
     case realWorld(API.SuggestionOut)   // walk, daylight, call someone: "I did it" / "Not today"
     case done(DoneToday)                // today's one thing is done
@@ -34,7 +33,6 @@ struct HomeCelebration: Equatable, Identifiable {
     var kind: ActivityKind
     var xpGained: Int
     var line: String
-    var startedWandering: Bool
 }
 
 /// One observable store for the whole app: today's state from the server (or the
@@ -46,12 +44,6 @@ final class AppStore {
 
     let mode: Mode
     private let backend: any LanviBackend
-    /// The real server's client (nil in the offline demo), for pairing.
-    private var client: LanviClient?
-    /// Live, but this phone has no token yet: first run shows the pairing step.
-    private(set) var needsPairing = false
-    /// A person can type a code (no tester code in the private config).
-    private var canTypeCode = false
     private var outbox = ActivityOutbox()
     private var feedbackOutbox = FeedbackOutbox()
 
@@ -96,14 +88,13 @@ final class AppStore {
             ?? (arguments.contains("-demo") ? 20 : nil)
         let config = ServerConfig.current
         // The -demo walk-through always uses the offline demo, so the video is the same every time.
-        if config.isLive, !arguments.contains("-demo"), let url = config.serverURL {
+        // The app never asks for a pairing code (the captain): it talks to the server only
+        // when this phone is already paired or a tester code sits in the private config;
+        // otherwise it quietly runs on offline sample data.
+        let canPair = config.serverURL.map { TokenKeychain.token(for: $0) != nil } == true || config.pairingCode != nil
+        if config.isLive, canPair, !arguments.contains("-demo"), let url = config.serverURL {
             mode = .live
-            let c = LanviClient(base: url, pairingCode: config.pairingCode)
-            client = c
-            backend = c
-            // No token yet and no tester code in the private config: first run asks for the code.
-            needsPairing = TokenKeychain.token(for: url) == nil && config.pairingCode == nil
-            canTypeCode = config.pairingCode == nil
+            backend = LanviClient(base: url, pairingCode: config.pairingCode)
             daysFile = "days.json"
             days = DaysTogether.load("days.json")
             chatFile = "chat.json"
@@ -154,11 +145,9 @@ final class AppStore {
 
     var daysTogether: Int { max(days.dates.count, 1) }   // today counts as day one
 
-    /// Today's one thing. A waiting story comes first; then what is done stays
-    /// done; then the server's suggestion; then the clock (morning breathing,
-    /// afternoon Sparks and snow, evening the check-in).
+    /// Today's one thing. What is done stays done; then the server's suggestion;
+    /// then the clock (morning breathing, afternoon Sparks and snow, evening the check-in).
     var todayThing: TodayThing {
-        if wandering?.state == .back, wandering?.story != nil { return .story }
         if let d = days.done, days.today == DaysTogether.key(Date()) { return .done(d) }
         if let s = suggestion {
             if let k = suggestedKind { return .game(k) }
@@ -317,7 +306,6 @@ final class AppStore {
     var glow: Double { min(max(today?.lanvi.glow ?? 0, 0), 1) }
     var stage: API.Stage { today?.lanvi.stage ?? .kit }
     var crisis: API.CrisisBlock { today?.crisis ?? DemoBackend.crisis }
-    var wandering: API.WanderingOut? { today?.lanvi.wandering }
     var planToAsk: API.PlanToAsk? { today?.lanvi.planToAsk }
     var pendingCount: Int { outbox.items.count }
 
@@ -339,42 +327,6 @@ final class AppStore {
         return (starts[stage] ?? 0, today?.lanvi.nextStageAt)
     }
 
-    // MARK: Pairing
-
-    enum PairResult: Equatable { case ok, badCode, offline, busy, failed }
-
-    /// Pair this phone with the code the clinic gave the person, then load today.
-    func pair(code: String) async -> PairResult {
-        guard let client else { return .failed }
-        do {
-            try await client.pair(code: code)
-            needsPairing = false
-            link = .online
-            await load()
-            return .ok
-        } catch APIError.badPairingCode {
-            return .badCode
-        } catch APIError.rejected {
-            return .badCode            // a code in the wrong shape
-        } catch APIError.offline {
-            return .offline
-        } catch APIError.rateLimited {
-            return .busy
-        } catch {
-            return .failed
-        }
-    }
-
-    /// Help, "Disconnect this phone": forget the token so the phone can pair again.
-    func disconnect() async {
-        await client?.forget()
-        LanviDisk.remove("today.json")
-        needsPairing = canTypeCode
-    }
-
-    /// Whether this build talks to a server and is paired (for Help's disconnect action).
-    var isConnected: Bool { mode == .live && !needsPairing }
-
     // MARK: Loading
 
     private var startTask: Task<Void, Never>?
@@ -394,14 +346,14 @@ final class AppStore {
         days.roll(to: Date())
         await flushOutbox()
         await flushFeedback()
+        await flushPreferences()
         await refresh()
     }
 
     private func load() async {
-        // Nothing to ask the server until this phone is paired.
-        guard !needsPairing else { return }
         await flushOutbox()
         await flushFeedback()
+        await flushPreferences()
         await refresh()
         if checkinOptions == nil { checkinOptions = try? await backend.checkinOptions() }
     }
@@ -412,9 +364,6 @@ final class AppStore {
             apply(t)
             link = .online
             if mode == .live { LanviDisk.save(t, "today.json") }
-        } catch APIError.unauthorized where mode == .live && canTypeCode {
-            // The server no longer knows this phone (or it was never paired): ask for a code.
-            needsPairing = true
         } catch {
             link = .offline
             if today == nil, mode == .live {
@@ -426,7 +375,21 @@ final class AppStore {
 
     private func apply(_ t: API.TodayOut) {
         today = t
-        line = t.lanvi.line.text
+        line = Self.careLine(t.lanvi.line)
+    }
+
+    /// The wandering and its stories are cut (the captain, Saturday): Lanvi never
+    /// leaves and never has a story. The server may still send its wandering lines
+    /// (`away.*`, `back.*` in engine/clinic_engine/data/lanvi_lines.json); those are
+    /// swapped for a plain line in the care voice. The `wandering` object is ignored.
+    static func careLine(_ l: API.LineOut) -> String {
+        let id = l.templateId
+        guard id.hasPrefix("away.") || id.hasPrefix("back.") else { return l.text }
+        let lines = ["Hi. I'm glad you're here.",
+                     "The snow is soft today. Stay a while?",
+                     "There you are. I kept a spot warm for you."]
+        let day = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
+        return lines[day % lines.count]           // the same line all day
     }
 
     // MARK: Activities
@@ -448,7 +411,6 @@ final class AppStore {
             link = .online
             await celebrate(out, kind: kind)
             markDone(kind, seconds: record.durationS, thing: thing)
-            if out.wandering != wandering?.state { await refresh() }
         } catch let e as APIError where e.isTemporary {
             link = .offline
             celebrateOffline(kind: kind)
@@ -465,8 +427,8 @@ final class AppStore {
         guard var t = today else { return }
         let oldStage = t.lanvi.stage
         line = out.line.text
-        celebration = HomeCelebration(kind: kind, xpGained: out.xpGained, line: out.line.text,
-                                  startedWandering: out.wandering == .away && t.lanvi.wandering.state != .away)
+        line = Self.careLine(out.line)
+        celebration = HomeCelebration(kind: kind, xpGained: out.xpGained, line: line)
         // Let Lanvi's happy hop start, then the numbers move.
         try? await Task.sleep(for: .milliseconds(out.xpGained > 0 ? 500 : 300))
         #if DEBUG
@@ -477,7 +439,7 @@ final class AppStore {
             t.lanvi.stage = out.stage
             t.lanvi.nextStageAt = out.nextStageAt
             t.lanvi.glow = out.glow
-            t.lanvi.line = out.line
+            t.lanvi.line = API.LineOut(templateId: out.line.templateId, text: line)
             today = t
         }
         if out.crisis == true, let block = out.crisisBlock { crisisNow = block }
@@ -490,7 +452,7 @@ final class AppStore {
 
     private func celebrateOffline(kind: ActivityKind) {
         line = "Thanks for coming by. I'll tell the sky when we're back online."
-        celebration = HomeCelebration(kind: kind, xpGained: 0, line: line, startedWandering: false)
+        celebration = HomeCelebration(kind: kind, xpGained: 0, line: line)
     }
 
     private func flushOutbox() async {
@@ -506,29 +468,7 @@ final class AppStore {
         }
     }
 
-    // MARK: Wandering, preferences
-
-    /// Answer the story Lanvi brought back ("a" or "b").
-    func answerStory(_ answer: String) async -> Bool {
-        guard let w = wandering, w.state == .back, let id = w.id else { return false }
-        do {
-            let out = try await backend.answerWandering(id: id, answer: answer)
-            if var t = today {
-                t.lanvi.wandering = out.wandering ?? API.WanderingOut(state: .home, id: nil, returnsAt: nil, story: nil)
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { today = t }
-            }
-            line = "Thank you. I'll remember that on my next trip."
-            await refresh()
-            line = "Thank you. I'll remember that on my next trip."
-            return true
-        } catch APIError.notFound {
-            await refresh()   // the story was already answered elsewhere
-            return true
-        } catch {
-            link = .offline
-            return false
-        }
-    }
+    // MARK: Preferences
 
     // MARK: What Lanvi has learned
 
@@ -571,16 +511,23 @@ final class AppStore {
         return true
     }
 
-    /// Demo walk-through only: Lanvi comes back from the wandering now.
-    func demoComeBack() async {
-        guard let demo = backend as? DemoBackend else { return }
-        await demo.comeBack()
-        await refresh()
-    }
-
     @discardableResult
     func setPreferences(_ helps: [String]) async -> String? {
         try? await backend.setPreferences(helps).line.text
+    }
+
+    /// First run: remember what helps and send it in the background, never blocking
+    /// the person. If it does not get through, it is sent again on the next open.
+    func sendPreferences(_ helps: [String]) {
+        UserDefaults.standard.set(helps, forKey: "lanvi.pendingHelps")
+        Task { await flushPreferences() }
+    }
+
+    private func flushPreferences() async {
+        guard let helps = UserDefaults.standard.stringArray(forKey: "lanvi.pendingHelps") else { return }
+        if (try? await backend.setPreferences(helps)) != nil {
+            UserDefaults.standard.removeObject(forKey: "lanvi.pendingHelps")
+        }
     }
 
     // MARK: Demo helpers
