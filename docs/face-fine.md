@@ -109,7 +109,7 @@ The summary (`clinic_engine/mind/face_fine.py`), on tracked frames only, after a
 
 And for each left and right pair, `asymmetry`: -1 when only the right side moves, 0 when both move alike, +1 when only the left side moves.
 
-`quality` is `good`, `partly` (under nine tenths of the frames tracked), `noisy` (`noise_mm` above 1) or `short` (under 5 seconds tracked; every measure is then null). Only `good` sessions count toward the person's own usual on the clinician page. On the first five real games (14 November, one phone) the two fully tracked games agreed with each other and the partly tracked ones gave up to eight times their reach, so a partly tracked session is shown but not counted.
+`quality` is `good`, `partly` (under nine tenths of the frames tracked), `noisy` (`noise_mm` above 1) or `short` (under 5 seconds tracked; every measure is then null). Every session with numbers counts toward the person's own usual on the clinician page, whatever its label; the page shows the label and the reason beside a `partly` or `noisy` session. On the first five real games (14 November, one phone) the values differed widely between games, so the usual is a rough middle for now.
 
 These thresholds are first guesses. They are not set on recordings of people. Because the stream is kept, the summary can be computed again when they change.
 
