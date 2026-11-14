@@ -51,6 +51,16 @@
         el.classList.toggle("gone", Number(el.getAttribute("data-gone")) <= step);
       });
     });
+    // Film clips and app recordings: play what is on screen, from its start, and stop the rest.
+    document.querySelectorAll("video").forEach(function (v) {
+      var sc = v.closest(".scene"), host = v.closest("[data-step],[data-gone]") || v;
+      var s0 = Number(host.getAttribute("data-step")) || 0, g = host.hasAttribute("data-gone") ? Number(host.getAttribute("data-gone")) : Infinity;
+      var seen = sc === scenes[cur] && step >= s0 && step < g;
+      v.muted = true;
+      if (seen && !v._seen) { try { v.currentTime = 0; } catch (e) {} if (!reduce) { var pr = v.play(); if (pr && pr.catch) pr.catch(function () {}); } }
+      if (!seen && v._seen) v.pause();
+      v._seen = seen;
+    });
     document.body.classList.toggle("at-cover", cur === 0);
     var s = scenes[cur];
     target.aurora = Number(s.getAttribute("data-aurora")) || 0;
