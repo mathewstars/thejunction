@@ -211,11 +211,15 @@ BIB = ((0.24, 0.16, 0.76, 0.66), (0.496, 0.366), lambda v: v > 205, 12, 5)
 # Pivot (share of the part), distance measured in shares of `by` (width or
 # height), band centres from `a` to `b`, `n` bands. A band's bend weight grows evenly from 0
 # at the base to 1 at the tip, so neighbouring bands never differ by much.
+# Neighbouring bands turn apart by bend / (n - 1) and cross-fade over `RISE` of a band's
+# spacing; where they cross-fade both show, so a bend draws a faint second edge there.
+# Enough bands and a short cross-fade keep that edge under a pixel or so on a phone.
 BANDS = {
-    "tail": ((0.88, 0.66), "w", 0.16, 0.93, 12),
-    "ear-left": ((0.36, 0.8), "h", 0.1, 0.82, 10),
-    "ear-right": ((0.64, 0.8), "h", 0.1, 0.82, 10),
+    "tail": ((0.88, 0.66), "w", 0.16, 0.93, 18),
+    "ear-left": ((0.36, 0.8), "h", 0.1, 0.82, 15),
+    "ear-right": ((0.64, 0.8), "h", 0.1, 0.82, 15),
 }
+RISE = 0.5
 
 
 def brightness(img):
@@ -349,32 +353,47 @@ def layer(img, mask):
 
 def bands(img, pivot, by, a, b, n):
     """Overlapping bands around `pivot`, from the base outwards, made to be drawn one on
-    top of the next with plain layering: band i fades in over band i - 1 (which is solid
-    there) across [c - s/2, c + s/2], stays solid to the next band's fade-in, then fades
-    out under it. At rest that rebuilds the painted part exactly; bent, neighbouring bands
-    differ by one small step. Returns [(picture, box, bend weight)]."""
+    top of the next with plain layering: band i fades in over band i - 1 across
+    [c - RISE s/2, c + RISE s/2] and runs on under band i + 1 until that one is solid,
+    then fades out under it. Where the paint is see-through (the outline) a band thins
+    out under the next one, so the two together are exactly as see-through as the
+    painting (next r a over this l a gives a when l = (1 - r) / (1 - r a)). At rest that
+    rebuilds the painted part exactly; bent, neighbouring bands differ by one small step.
+    Returns [(picture, box, bend weight)]."""
     W, H = img.size
     unit = W if by == "w" else H
     px, py = pivot[0] * W, pivot[1] * H
-    reach = math.hypot(max(px, W - px), max(py, H - py))
-    dist = Image.new("L", img.size)
-    dp = dist.load()
-    for y in range(H):
-        for x in range(W):
-            dp[x, y] = min(255, int(math.hypot(x - px, y - py) / reach * 255))
     s = (b - a) / (n - 1)
+    al = img.getchannel("A").load()
+    dist = [[math.hypot(x - px, y - py) / unit for x in range(W)] for y in range(H)]
+
+    def rise(i, r):
+        return 1.0 if i == 0 else smooth((r - (a + i * s - RISE * s / 2)) / (RISE * s))
+
+    def fall(i, r):
+        return 1.0 if i == n - 1 else 1 - smooth((r - (a + i * s + 1.5 * s)) / (0.5 * s))
+
     out = []
     for i in range(n):
-        c = a + i * s
-
-        def weight(v, c=c, i=i):
-            r = v / 255 * reach / unit
-            rise = 1.0 if i == 0 else smooth((r - (c - s / 2)) / s)
-            fall = 1.0 if i == n - 1 else 1 - smooth((r - (c + 1.5 * s)) / (0.5 * s))
-            return int(round(255 * rise * fall))
-
-        mask = dist.point(weight)
+        mask = Image.new("L", img.size, 0)
+        mp = mask.load()
+        for y in range(H):
+            row = dist[y]
+            for x in range(W):
+                av = al[x, y]
+                if not av:
+                    continue
+                r = row[x]
+                w = rise(i, r) * fall(i, r)
+                if w <= 0:
+                    continue
+                if i < n - 1 and av < 255:
+                    nxt = rise(i + 1, r) * av / 255
+                    w = w if nxt >= 0.999 else min(w, (1 - rise(i + 1, r)) / (1 - nxt))
+                mp[x, y] = int(round(255 * w))
         pic, box = layer(img, mask)
+        if box is None:       # past the tip: nothing left to cut
+            break
         out.append((pic, box, i / (n - 1)))   # the bend grows evenly along the length
     return out
 
@@ -704,9 +723,17 @@ def main():
     lines += ["    ]", "",
               "    /// Each band's share of its part's bend: 0 at the base, 1 at the tip.",
               "    static let bend: [String: CGFloat] = ["]
+    counts = {}
     for name, (_, _, _, _, wgt) in layers.items():
         if re.search(r"-b\d+$", name):
             lines.append(f'        "{name}": {wgt:.4f},')
+            part = re.sub(r"-b\d+$", "", name)
+            counts[part] = counts.get(part, 0) + 1
+    lines += ["    ]", "",
+              "    /// How many bands each banded part (tail, ears) is cut into.",
+              "    static let bands: [String: Int] = ["]
+    for part, n in counts.items():
+        lines.append(f'        "{part}": {n},')
     lines += ["    ]", "", "    static func px(_ name: String) -> CGSize { size[name] ?? CGSize(width: 1, height: 1) }", "}", ""]
     with open(SWIFT, "w") as f:
         f.write("\n".join(lines))

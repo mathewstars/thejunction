@@ -27,6 +27,9 @@ SEAMS = [   # name, offset from the eyes' midpoint (along the eyes, down), at re
     ("cheek-l-outline", (-266, 27)), ("cheek-r-outline", (274, 27)),
     ("neck-middle", (0, 147)), ("neck-l", (-106, 147)),
 ]
+# The tail and body seams sit still on the screen when the head turns (screen pixels).
+FIXED = [("tail-top", (250, 1000)), ("tail-tip", (230, 1150)), ("tail-low", (150, 1250)),
+         ("bib-side", (560, 1180)), ("bib-top", (480, 1050))]
 TILE = 100    # source pixels; 400 on the sheet
 ZOOM = 4
 
@@ -52,13 +55,18 @@ def main():
     cols = 7
     rows = math.ceil(len(frames) / cols)
     T = TILE * ZOOM
-    for name, (a, b) in SEAMS:
+    for name, (a, b) in SEAMS + [(n, (0, None)) for n, _ in FIXED]:
         sheet = Image.new("RGB", (cols * (T + 8) + 8, rows * (T + 40) + 60), (24, 24, 28))
         d = ImageDraw.Draw(sheet)
         d.text((10, 14), f"{label}: {name} at 4x", fill=(255, 255, 255), font=font)
         for i, f in enumerate(frames):
             x0, y0 = 8 + (i % cols) * (T + 8), 60 + (i // cols) * (T + 40)
             d.text((x0, y0), f[:-4], fill=(200, 200, 200), font=font)
+            if b is None:
+                fx, fy = dict(FIXED)[name]
+                box = (fx - TILE // 2, fy - TILE // 2, fx + TILE // 2, fy + TILE // 2)
+                sheet.paste(pics[f].crop(box).resize((T, T), Image.NEAREST), (x0, y0 + 34))
+                continue
             if f not in where:
                 d.text((x0, y0 + 40), "eyes not found", fill=(255, 80, 80), font=font)
                 continue
@@ -69,7 +77,7 @@ def main():
             box = (round(px - TILE / 2), round(py - TILE / 2), round(px + TILE / 2), round(py + TILE / 2))
             sheet.paste(im.crop(box).resize((T, T), Image.NEAREST), (x0, y0 + 34))
         sheet.save(os.path.join(out, f"{label}-{name}.png"), optimize=True)
-    print(f"{len(SEAMS)} sheets, {len(frames)} frames, eyes found in {len(where)}")
+    print(f"{len(SEAMS) + len(FIXED)} sheets, {len(frames)} frames, eyes found in {len(where)}")
 
 
 if __name__ == "__main__":
