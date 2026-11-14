@@ -12,7 +12,7 @@ The platform does not read this file. After a change here, the same change has t
 |---|---|---|
 | Project name | 30 characters | Lanvi |
 | Punchline | 200 characters | See below (181 characters) |
-| Description | 5,000 characters | See below (4,997 characters) |
+| Description | 5,000 characters | See below (4,996 characters) |
 | Challenge | one | Aalto University, Beyond the Clinic |
 | Tech challenge | any number | Google DeepMind, Best Use of Gemini API |
 | Project demo | link | https://lanvi.app/demo (no login, read only; https://lanvi.app itself needs a login, which is no longer published) |
@@ -40,18 +40,18 @@ After TMS for depression, a rescued fox asks one small thing a day. The phone co
 Plain text on purpose. The form says it supports markdown, but we keep it without markdown symbols so it reads the same everywhere. Rewritten on Saturday night at Matej's word: its headings are the jury's four questions, it is brief on the clinic software and long on what the phone measures and on how the mind was tested; the film carries the whole prototype. An independent reader scored it as a juror against the earlier version and its edits are in.
 
 ```
-After TMS the daily clinic visits end and nobody sees a slow slide back. Lanvi is a small Arctic fox on the phone, named for revontulet, fox fires, that asks for one small thing a day. While the person plays, the phone measures, and the clinic hears when someone starts to slide.
+After TMS the daily clinic visits end and nobody sees a slow slide back. Lanvi is a small Arctic fox on the phone (northern lights in Finnish: revontulet, fox fires). He asks for one small thing a day. While the person plays, the phone measures, and the clinic hears when someone starts to slide.
 
 What we can show:
 - It runs. The film shows the app; lanvi.app/demo opens the clinic page, no login.
 - The face and the game are measured as numbers only. Gemini reads them and code checks it: 41 of 41 planted smiles found, nothing invented.
 - The decision layer (rules, two models, code that guards) is tested: on 40 cases worse never meant lower, 0 of 107.
 - Real people: in public data of 1,390 Fitbit wearers our movement hypothesis holds within a person, and it is small.
-- Not shown: that any of it follows depression in a patient. That is the study we propose.
+- Not shown: that any of it follows depression in a patient. That is the study.
 
 COULD IT HELP PEOPLE STAY WELL AT HOME?
 
-The clinic hears before the next appointment, in two ways. When someone drifts from their own normal for days, their name moves to the top of the clinic's list and, if it is serious, the clinic gets a message the same day. When someone writes that they need help, help numbers open on the phone at once and the clinic is told, with no model in between. Lanvi is not a crisis service; the help wording still needs a clinician's review. Then one small offer, chosen from what helped before: sense, respond, learn.
+The clinic hears before the next appointment, in two ways. When someone drifts from their own normal for days, their name moves to the top of the clinic's list and, if it is serious, the clinic gets a message the same day. When someone writes that they need help, help numbers open on the phone at once and the clinic is told, with no model in between. Lanvi is not a crisis service; the help wording still needs a clinician's review. Then one small offer, from what helped before: sense, respond, learn.
 
 WOULD SOMEONE RECOVERING FROM DEPRESSION USE IT EVERY DAY?
 
