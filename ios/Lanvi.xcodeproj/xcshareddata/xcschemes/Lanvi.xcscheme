@@ -50,6 +50,17 @@
                ReferencedContainer = "container:Lanvi.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "6FF1566663B03BFADDEC2D63"
+               BuildableName = "LanviUITests.xctest"
+               BlueprintName = "LanviUITests"
+               ReferencedContainer = "container:Lanvi.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>
