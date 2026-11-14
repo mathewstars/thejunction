@@ -743,3 +743,14 @@ def test_what_the_page_headline_rests_on_does_not_depend_on_the_model():
     strengths, pattern, lines, look_down_caveats = next(iter(seen))
     assert strengths == tuple(r["strength"] for r in rows) and pattern == code_ov["pattern"]
     assert "task_confound" in look_down_caveats
+
+
+def test_task_bound_is_set_by_code_whatever_caveats_a_model_adds(env):
+    """A model that tags every face measure as depending on how the phone is held must not
+    change which measures the page's headline may name."""
+    from clinic_engine.mind.associations import _TASK_CONFOUND
+    C, pid = env.C(), env.demo["patient_id"]
+    out = env.client.post(f"/v1/clinic/patients/{pid}/associations/run", headers=C).json()
+    flags = {r["key"]: r["task_bound"] for r in out["rows"]}
+    assert flags and all(v == (k in _TASK_CONFOUND) for k, v in flags.items())
+    assert flags.get("face.look_down_share") is True and flags.get("face.smile_intensity") is False

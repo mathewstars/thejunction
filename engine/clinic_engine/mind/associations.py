@@ -797,16 +797,20 @@ def merge(reply: dict, code_rows: list[dict], code_ov: dict, ref_kind: str,
     by_row = {r["key"]: r for r in tested}
     min_n = min((by_row[k]["n"] for k in kept), default=0)
     cap = _confidence_cap(ref_kind, lines, min_n, th, unit, n_obs)
-    if CONFIDENCE.index(mo["confidence"]) <= CONFIDENCE.index(cap):
-        ov["confidence"], src["confidence"] = mo["confidence"], "model"
+    # Code's value, always, like the pattern: the page says confidence is set by
+    # code, and that has to hold with twenty ratings too.
+    code_conf = code_ov["confidence"]
+    if CONFIDENCE.index(code_conf) > CONFIDENCE.index(cap):
+        code_conf = cap
+    if mo["confidence"] == code_conf:
+        ov["confidence"], src["confidence"] = code_conf, "model"
     else:
-        code_conf = code_ov["confidence"]
-        if CONFIDENCE.index(code_conf) > CONFIDENCE.index(cap):
-            code_conf = cap
         ov["confidence"], src["confidence"] = code_conf, "code_corrected"
         fix("overall", None, "confidence", mo["confidence"], code_conf,
             "confidence_above_cap_for_" + ("proxy" if ref_kind == "proxy" else
-                                            "few_ratings" if cap == "low" else "data"))
+                                            "few_ratings" if cap == "low" else "data")
+            if CONFIDENCE.index(mo["confidence"]) > CONFIDENCE.index(cap)
+            else "confidence_set_by_code")
 
     # leads_reference: a claim of an early signal needs consistent rows that lead.
     if mo["leads_reference"] and not any((r.get("lead_days") or 0) < 0 for r in cons):
@@ -897,6 +901,10 @@ def assemble(ds: dict, rows: list[dict], overall: dict, corrections: list[dict],
     out_rows = []
     for r in rows:
         o = {k: r.get(k) for k in ROW_OUT}
+        # Set by code from the key, not from the caveat list: a model may add the
+        # phone-position caveat to every face measure, and the page's headline
+        # must still know which measures the task itself moves.
+        o["task_bound"] = r["key"] in _TASK_CONFOUND
         o["caveats"] = [{"code": c["code"], "text": note_text(c["code"]), "by": c["by"]}
                         for c in r.get("caveats", [])]
         out_rows.append(o)

@@ -2064,7 +2064,8 @@
     // largest number: with a dozen ratings the top few are a coin toss). "Every measure" pins them first.
     const SUP = { stronger: 0, moderate: 1, weaker: 2, mixed: 3 };
     // A measure the task itself moves (looking down at the phone, head angle) does not stand for the person when another will do.
-    const taskBound = (r) => ((r.caveats || []).some((c) => c.code === "task_confound") ? 1 : 0);
+    // The engine's own flag, not the caveat list: a model may add that caveat to every face measure.
+    const taskBound = (r) => (r.task_bound ? 1 : 0);
     // Only rows that count as a line in the engine: as expected AND at least weak. A row whose range
     // only just clears zero ("negligible") does not carry a headline or a chart.
     const cons = usable.filter((r) => r.agreement === "consistent" && r.strength && r.strength !== "negligible").sort((x, y) => (taskBound(x) - taskBound(y)) || (SUP[x.support] - SUP[y.support]) || (y.rho - x.rho));
