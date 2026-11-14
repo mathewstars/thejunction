@@ -59,7 +59,7 @@ func numbers(_ f: RigFrame) -> [Double] {
 /// One scene. `rest` is the largest gap between the scene and the same clock with no
 /// event (the plain idle underneath): it must end at 0 (back exactly to rest).
 func write(_ name: String, from t0: Double, seconds: Double, _ configure: (inout LanviMotion) -> Void) {
-    var rows = ["t,rootY,rootSY,rootTilt,bodySY,chest,spread,headX,headY,headTilt,dirX,dirY,earL,earR,earLBend,earRBend,tail,tailBend,headSY,eyeX,eyeY,mouthScale,pupilX,pupilY,rest,eyes,mouth,eyeFade,mouthFade"]
+    var rows = ["t,rootY,rootSY,rootTilt,bodySY,chest,spread,headX,headY,headTilt,dirX,dirY,earL,earR,earLBend,earRBend,tail,tailBend,headSY,eyeX,eyeY,mouthScale,pupilX,pupilY,rest,eyes,mouth,eyeFade,mouthFade,talk"]
     let frames = Int(seconds * 60)
     for i in 0..<frames {
         let t = t0 + Double(i) / 60
@@ -71,7 +71,7 @@ func write(_ name: String, from t0: Double, seconds: Double, _ configure: (inout
         plain.evening = m.evening
         let nums = numbers(f)
         let rest = zip(nums, numbers(plain.frame())).map { abs($0 - $1) }.max() ?? 0
-        let face = "\(f.face.eyes),\(f.face.mouth),\(f.eyes.count > 1 ? f.eyes[1].1 : 1),\(f.mouths.count > 1 ? f.mouths[1].1 : 1)"
+        let face = "\(f.face.eyes),\(f.face.mouth),\(f.eyes.count > 1 ? f.eyes[1].1 : 1),\(f.mouths.count > 1 ? f.mouths[1].1 : 1),\(m.talkingMouth(t) ? 1 : 0)"
         rows.append(([Double(i) / 60] + nums + [rest]).map { String(format: "%.4f", $0) }.joined(separator: ",") + "," + face)
     }
     try? rows.joined(separator: "\n").write(toFile: "\(out)/\(name).csv", atomically: true, encoding: .utf8)

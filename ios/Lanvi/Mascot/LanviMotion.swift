@@ -136,6 +136,9 @@ struct LanviMotion {
         let faces = [now.face] + past.prefix(3).map(\.face)
         f.eyes = Self.fade(faces.map(\.eyes))
         f.mouths = Self.fade(faces.map(\.mouth))
+        // A talking mouth changes shape many times a second: it swaps at once (the swaps
+        // fall where it is smallest), so it is never left half see-through between two.
+        if talkingMouth(t) { f.mouths = [(now.face.mouth, 1)] }
         if reduceMotion { return f }
 
         // Follow-through: each tip trails where its base was a moment ago, springs past
@@ -680,6 +683,13 @@ struct LanviMotion {
         let drift = Motion.rnd(word - 1, seed &+ 53) + (Motion.rnd(word, seed &+ 53) - Motion.rnd(word - 1, seed &+ 53)) * wp
         p.dirX += 0.12 * (drift - 0.5) * on
         p.earL -= 2 * on; p.earR -= 2 * on
+    }
+
+    /// The mouth is talking at `x` (saying a line, talking, or a bubble driving it).
+    func talkingMouth(_ x: Double) -> Bool {
+        if let end = speech.last?.end, x >= speechAt, x < speechAt + end { return true }
+        if mouthOverride != nil { return true }
+        return talking ? x >= talkingSince : x < talkingSince && x >= talkStart
     }
 
     /// Saying a line (`.lanviSays`): the mouth follows its syllables (round on o and u,
