@@ -12,8 +12,11 @@ import ARKit
 /// beyond the callback.
 ///
 /// Any trouble (no TrueDepth camera, camera denied, an interruption, a session error)
-/// and `finish` answers nil, so the game goes on exactly as before and no `face_raw`
-/// is sent.
+/// and `finish` answers with nothing, so the game goes on exactly as before and no
+/// `face_raw` is sent.
+///
+/// Beside the raw frames it feeds a `FaceFineRecorder` from the face mesh (research
+/// only, `docs/face-fine.md`): one distance per region and frame, computed here.
 final class FaceTracker: NSObject, @unchecked Sendable {
 
     /// True on a phone with a TrueDepth camera. Always false in the simulator.
@@ -27,6 +30,14 @@ final class FaceTracker: NSObject, @unchecked Sendable {
 
     private let queue = DispatchQueue(label: "app.lanvi.face", qos: .userInitiated)
     private var recorder = FaceRawRecorder()
+    private var fine = FaceFineRecorder()
+    private var fineOn = false
+
+    /// What one game gave: the raw frames and, beside them, the fine movement stream.
+    struct Captured {
+        var raw: API.FaceRaw?
+        var fine: API.FaceFine?
+    }
     private var spoiled = false
     private var running = false
     #if canImport(ARKit) && !targetEnvironment(simulator)
@@ -49,6 +60,8 @@ final class FaceTracker: NSObject, @unchecked Sendable {
         }
         queue.sync {
             recorder = FaceRawRecorder(rateHz: 30)
+            fine = FaceFineRecorder(rateHz: 30)
+            fineOn = FaceFineRecorder.isEnabled
             spoiled = false
             running = true
         }
@@ -74,7 +87,7 @@ final class FaceTracker: NSObject, @unchecked Sendable {
 
     /// Stops tracking and gives the frames, or nil when there is nothing trustworthy.
     /// `seconds` is the activity's `duration_s`: only that much of the end is kept.
-    func finish(seconds: Double?) -> API.FaceRaw? {
+    func finish(seconds: Double?) -> Captured {
         #if canImport(ARKit) && !targetEnvironment(simulator)
         session?.pause()
         session?.delegate = nil
@@ -84,9 +97,15 @@ final class FaceTracker: NSObject, @unchecked Sendable {
             defer {
                 running = false
                 recorder = FaceRawRecorder()   // forget the frames once handed over
+                fine = FaceFineRecorder()      // and the resting shape with them
             }
-            guard running, !spoiled else { return nil }
-            return recorder.faceRaw(lastSeconds: seconds.map { $0 + 1 })
+            guard running, !spoiled else { return Captured() }
+            let keep = seconds.map { $0 + 1 }
+            #if DEBUG
+            if fineOn { print("lanvi-sense: face_fine regions \(fine.regionSizes.sorted { $0.key < $1.key })") }
+            #endif
+            return Captured(raw: recorder.faceRaw(lastSeconds: keep),
+                            fine: fineOn ? fine.faceFine(lastSeconds: keep) : nil)
         }
     }
 
@@ -104,6 +123,7 @@ extension FaceTracker: ARSessionDelegate {
         let time = frame.timestamp
         guard let anchor = frame.anchors.lazy.compactMap({ $0 as? ARFaceAnchor }).first, anchor.isTracked else {
             recorder.add(time: time, tracked: false, shapes: [:], pitch: 0, yaw: 0, roll: 0)
+            if fineOn { fine.add(time: time, tracked: false) { [] } }
             return
         }
         var shapes: [String: Float] = [:]
@@ -116,6 +136,9 @@ extension FaceTracker: ARSessionDelegate {
         let deg = 180 / Double.pi
         recorder.add(time: time, tracked: true, shapes: shapes,
                      pitch: Double(e.x) * deg, yaw: Double(e.y) * deg, roll: Double(e.z) * deg)
+        // The mesh is read here and reduced to one number per region at once; it is
+        // never kept beyond the resting shape of this game, and never sent.
+        if fineOn { fine.add(time: time, tracked: true) { Array(anchor.geometry.vertices) } }
     }
 
     func sessionWasInterrupted(_ session: ARSession) {

@@ -50,4 +50,5 @@ To try it against a local engine: run it as in `docs/api/README.md` (seed with `
 - `-demo`: the whole story by itself for the pitch video (about a minute): Welcome, what helps, Home, Breathe with Lanvi, the XP and glow moment, growing up, a wandering and its story. Always offline.
 - `-screen home | whathelps | focus | breathe | checkin | checkin-plan`: open one screen.
 - `-offline`: sample data, no server (always use it for tests and screenshots).
+- `-noperf`: turn off the speed log. Debug builds print `lanvi-perf:` lines (launch, every tap, screens opening, keyboard, main-thread blocks, frame times every 5 s) to the device log and `tmp/lanvi-perf.log`; what each line means is at the top of `Lanvi/State/PerfProbe.swift`.
 - Home moments for screenshots: `-demoGlow 0.9`, `-demoXP 295`, `-demoSuggestion breathing`, `-demoPlay focus|breathing|checkin`, `-demoOpen help|mind|chat|more|growth|focus|breathing|checkin`. Lanvi never wanders and has no stories (cut by the captain); the app ignores the server's `wandering`.

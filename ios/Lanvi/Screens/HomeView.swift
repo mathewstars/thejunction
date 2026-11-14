@@ -221,9 +221,18 @@ struct HomeView: View {
                 if cover?.id == id { hidden = true }
             }
         }
+        #if DEBUG
+        // PerfProbe: name each change a tap asks for, so it can be timed, and the light.
+        .onChange(of: store.worldScene.rawValue, initial: true) { _, w in PerfProbe.shared.world = w }
+        .onChange(of: cover?.id) { _, id in FrameMeter.mark("cover \(id ?? "closed")") }
+        .onChange(of: sheet?.id) { _, id in FrameMeter.mark("sheet \(id ?? "closed")") }
+        .onChange(of: store.chat.messages.count) { _, n in FrameMeter.mark("chat messages \(n)") }
+        .onChange(of: actionsKey) { _, k in FrameMeter.mark("today \(k)") }
+        #endif
         .onAppear {
             #if DEBUG
             FrameMeter.shared.start()
+            PerfProbe.shared.homeAppeared()
             #endif
             settle()
             withAnimation(LanviTiming.screen.delay(0.2)) { arrived = true }

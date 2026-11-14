@@ -90,10 +90,14 @@ final class FaceSense {
         tracker = nil
         isOn = false
         var r = record
-        guard r.type == .focus || r.type == .breathing,
-              let raw = t.finish(seconds: r.durationS) else { return r }
+        let got = t.finish(seconds: r.durationS)
+        guard r.type == .focus || r.type == .breathing, let raw = got.raw else { return r }
         r.faceRaw = raw
+        r.faceFine = got.fine   // research only; nil when the resting shape was not learned
         #if DEBUG
+        if let f = got.fine {
+            print("lanvi-sense: face_fine \(f.samples.count) rows, \(f.regions.count) regions, noise \(f.noiseMm.map { String($0) } ?? "-") mm")
+        }
         print("lanvi-sense: face_raw \(raw.samples.count) frames at \(raw.rateHz) Hz, \(raw.tracked?.filter { $0 == 1 }.count ?? raw.samples.count) tracked, \(raw.momentsMs?.count ?? 0) moments")
         #endif
         return r
