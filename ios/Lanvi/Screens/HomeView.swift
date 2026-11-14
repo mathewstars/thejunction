@@ -84,6 +84,8 @@ struct HomeView: View {
     @State private var reaction: LanviMood = .happy
     @State private var reactTick = 0
     @State private var look: UnitPoint?
+    /// The mouth Lanvi shows while saying a new line (nil = the puppet decides).
+    @State private var mouth: MouthShape?
 
     var body: some View {
         #if DEBUG
@@ -102,6 +104,7 @@ struct HomeView: View {
                         .lanviReaction(reaction, trigger: reactTick)
                         .lanviMood(restingMood)
                         .lanviLookAt(look)
+                        .lanviMouth(mouth)
                         .onTapGesture { tapFox() }
                 }
                 .frame(width: L.fox * 2, height: L.fox * 2)
@@ -228,18 +231,19 @@ struct HomeView: View {
 
     // MARK: Pieces
 
+    /// Lanvi's line in its speech bubble: up and to the right of the head, the
+    /// tail pointing down to the face. During the reward it lifts a little to make
+    /// room for "+10 XP" (an offset, so nothing is laid out again while it moves).
     private func speech(_ L: Layout) -> some View {
-        let top: CGFloat = L.compact ? 64 : 80
-        // Clear air above the ear tips (and the little marks) in every pose.
-        // During the reward the bubble lifts a little to make room for "+10 XP"
-        // (an offset, so nothing is laid out again while it moves).
         let lift: CGFloat = pop != nil ? 58 : 0
-        let bottom = max(away ? L.foxCenter.y - L.fox / 2 - 14 : L.foxTop - 14, top + 90)
-        return VStack {
-            Spacer(minLength: 0)
-            Button { open(.chat) } label: {
-                HomeSpeechBubble(text: bubbleText, pointAt: away ? 0.78 : 0.5, size: L.compact ? 20 : 21)
-            }
+        let target = away
+            ? CGPoint(x: L.foxCenter.x - L.fox * 0.1, y: L.foxCenter.y - L.fox * 0.55)
+            : CGPoint(x: L.foxCenter.x + L.fox * 0.10, y: L.foxTop + L.fox * 0.04)
+        return HomeSpeech(text: bubbleText, target: target, width: L.size.width, mouth: $mouth) { open(.chat) }
+            .homeZoomSource("speech", in: zoom)
+            .offset(y: -lift)
+            .opacity(arrived ? 1 : 0)
+    }
             .buttonStyle(SpeechPressStyle())
             .homeZoomSource("speech", in: zoom)
             .accessibilityHint("Opens a chat with Lanvi")
@@ -388,7 +392,7 @@ struct HomeView: View {
         #if DEBUG
         FrameMeter.mark("glance at bubble")
         #endif
-        look = UnitPoint(x: 0.5, y: -0.35)
+        look = UnitPoint(x: 0.8, y: -0.25)
         Task {
             try? await Task.sleep(for: .seconds(1.3))
             look = nil

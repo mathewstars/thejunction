@@ -111,6 +111,7 @@ struct LanviDebugFreeze: Equatable {
 private struct MoodKey: EnvironmentKey { static let defaultValue: LanviMood? = nil }
 private struct ReactionKey: EnvironmentKey { static let defaultValue: LanviReactionRequest? = nil }
 private struct LookKey: EnvironmentKey { static let defaultValue: UnitPoint? = nil }
+private struct MouthKey: EnvironmentKey { static let defaultValue: MouthShape? = nil }
 private struct FreezeKey: EnvironmentKey { static let defaultValue: LanviDebugFreeze? = nil }
 
 extension EnvironmentValues {
@@ -121,6 +122,10 @@ extension EnvironmentValues {
     var lanviReactionRequest: LanviReactionRequest? {
         get { self[ReactionKey.self] }
         set { self[ReactionKey.self] = newValue }
+    }
+    var lanviMouth: MouthShape? {
+        get { self[MouthKey.self] }
+        set { self[MouthKey.self] = newValue }
     }
     var lanviLook: UnitPoint? {
         get { self[LookKey.self] }
@@ -141,6 +146,11 @@ extension View {
     /// Play `mood` once each time `trigger` changes. The idle keeps going underneath.
     func lanviReaction<T: Hashable>(_ mood: LanviMood, trigger: T) -> some View {
         environment(\.lanviReactionRequest, LanviReactionRequest(mood: mood, token: AnyHashable(trigger)))
+    }
+
+    /// Show one of the existing mouth shapes while set (talking); nil = the puppet decides.
+    func lanviMouth(_ mouth: MouthShape?) -> some View {
+        environment(\.lanviMouth, mouth)
     }
 
     /// Make Lanvi look at a point in his own square (can be outside 0...1). nil = ahead.
