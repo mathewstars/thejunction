@@ -41,6 +41,21 @@ def build_request(settings: Settings, pack: Pack, max_output_tokens: int = 4000,
     return url, headers, body
 
 
+def reply_meta(data: dict) -> dict:
+    """Why the model stopped and how many tokens it used: codes and counts only."""
+    out: dict = {}
+    try:
+        out["finish"] = str(data["candidates"][0].get("finishReason") or "")[:30] or None
+    except (KeyError, IndexError, TypeError, AttributeError):
+        out["finish"] = None
+    usage = data.get("usageMetadata") if isinstance(data, dict) else None
+    for key, name in (("promptTokenCount", "prompt_tokens"), ("thoughtsTokenCount", "thought_tokens"),
+                      ("candidatesTokenCount", "output_tokens")):
+        v = usage.get(key) if isinstance(usage, dict) else None
+        out[name] = v if isinstance(v, int) and not isinstance(v, bool) else None
+    return out
+
+
 def parse_response(data: dict) -> str | None:
     try:
         parts = data["candidates"][0]["content"]["parts"]

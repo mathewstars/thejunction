@@ -309,6 +309,7 @@ struct FocusGameView: View {
                 pose = .cheer
                 look = UnitPoint(x: 0.5, y: -0.7)
             }
+            FaceSense.mark()
         }
     }
 
@@ -337,7 +338,10 @@ struct FocusGameView: View {
                 guard !Task.isCancelled else { return }
                 if engine.fed > seenFed {
                     // Every fifth light that lands in the aurora, a happy little hop.
-                    if engine.fed / 5 > seenFed / 5 { reactTick += 1 }
+                    if engine.fed / 5 > seenFed / 5 {
+                        reactTick += 1
+                        FaceSense.mark()   // a pleasant moment for the face sensor
+                    }
                     seenFed = engine.fed
                 }
                 if engine.misses > seenMisses {

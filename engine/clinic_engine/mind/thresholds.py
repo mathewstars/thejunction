@@ -148,6 +148,13 @@ class Thresholds:
     # ARKit jitter on a resting mouth is about 0.02.
     frames_faint_mean_rise: float = 0.05
     frames_faint_peak_rise: float = 0.10
+    # The resting level a faint smile is measured against is local: the median
+    # of the smile signal within this many seconds before the span and after it
+    # (code's smiles left out), the higher of the two, so a step in the baseline
+    # (the phone moved) is not read as a smile. Each mouth corner must carry at
+    # least this share of the mean rise: jitter in one corner is not a smile.
+    frames_faint_window_s: float = 8.0
+    frames_faint_side_share: float = 0.5
     # A reported segment must last this long (the prompt asks for two seconds);
     # eyes_closed and not_tracked may be shorter.
     frames_segment_min_s: float = 2.0

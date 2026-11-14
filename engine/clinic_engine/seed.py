@@ -229,6 +229,13 @@ ACTIVITY_PLAN = [
     (0, "08:30", "breathing", "finished"),
 ]
 DIP_ACTIVITY_DAYS = 3  # the dip makes sessions from this many days back slower and flatter
+# The evening check-in tells the slide in the person's own terms (docs/pitch.md):
+# three good things every evening for two weeks, then two, then one, and in the
+# dip the last evenings without a check-in at all.
+EARLY_CHECKIN_OFFSETS = range(-27, -13)  # one every evening, three good things each
+EARLY_PLANS = ("walk", "call_someone", "music", "daylight", "coffee_outside")
+DIP_GOOD_THINGS = {-12: 2, -9: 2, -7: 2, -5: 1, -3: 1}  # day offset -> good things named
+DIP_NO_CHECKIN_FROM = -2  # in the dip: no check-in from this day on
 GOOD_THINGS = ["walked", "good_food", "talked_to_someone", "music", "rested", "laughed",
                "outside", "got_something_done"]
 
@@ -266,7 +273,10 @@ def _face(rng: random.Random, flat: float = 1.0, rx: random.Random | None = None
 
 
 def make_activity(rng: random.Random, aid: str, started: datetime, typ: str, how: str,
-                  dip: bool, prev_plan: bool, rx: random.Random | None = None) -> dict:
+                  dip: bool, prev_plan: bool, rx: random.Random | None = None,
+                  good: int | None = None) -> dict:
+    """`good` sets how many good things a check-in names, after the usual draws,
+    so every other example value stays exactly as it was."""
     rec = {"id": aid, "type": typ, "started_at": started.isoformat(), "suggestion_id": None}
     if typ == "focus":
         slow = 1.35 if dip else 1.0
@@ -284,8 +294,11 @@ def make_activity(rng: random.Random, aid: str, started: datetime, typ: str, how
                    face=_face(rng, 0.5 if dip else 1.0, rx))
     else:
         k = 1 if dip else rng.choice([2, 3, 3])
+        things = rng.sample(GOOD_THINGS, k)
+        if good is not None:
+            things = (things + [g for g in GOOD_THINGS if g not in things])[:good]
         rec.update(duration_s=round(rng.uniform(40, 80), 1),
-                   good_things=[{"catalog_id": g} for g in rng.sample(GOOD_THINGS, k)],
+                   good_things=[{"catalog_id": g} for g in things],
                    plan={"catalog_id": how},
                    plan_done=("no" if dip else rng.choice(["yes", "yes", "no"]))
                    if prev_plan else "not_asked")
@@ -308,6 +321,21 @@ def write_activities(store: Store, clinic_id: str, patient_id: str, today, tz: Z
             store.delete(key)
     now = now or datetime.now(timezone.utc)
     previous: list[dict] = []
+
+    def keep(a: dict) -> None:
+        rec = process_activity(a, previous)
+        rec.update(example=True, received_at=a["started_at"], content_sha256="example",
+                   crisis=False, analysis={"status": "not_applicable"})
+        store.put(base + f"{rec['id']}.json", rec)
+        previous.append(rec)
+
+    # The two weeks before: a check-in every evening, three good things each.
+    # Drawn from their own generator, so everything below stays as it was.
+    early = random.Random(seed + 41)
+    for k, off in enumerate(EARLY_CHECKIN_OFFSETS):
+        started = datetime.combine(today + timedelta(days=off), time(21, 30), tzinfo=tz)
+        keep(make_activity(early, f"example-chk-{k:03d}", started.astimezone(timezone.utc),
+                           "checkin", EARLY_PLANS[k % len(EARLY_PLANS)], False, k > 0, good=3))
     had_plan = False
     for n, (off, hm, typ, how) in enumerate(ACTIVITY_PLAN):
         h, m = (int(x) for x in hm.split(":"))
@@ -315,9 +343,12 @@ def write_activities(store: Store, clinic_id: str, patient_id: str, today, tz: Z
         if started.astimezone(timezone.utc) > now:
             continue
         a = make_activity(rng, f"example-act-{n:03d}", started.astimezone(timezone.utc), typ, how,
-                          dip and off > -DIP_ACTIVITY_DAYS, had_plan, rx)
+                          dip and off > -DIP_ACTIVITY_DAYS, had_plan, rx,
+                          good=DIP_GOOD_THINGS.get(off) if dip and typ == "checkin" else None)
         if typ == "checkin":
             had_plan = True
+            if dip and off >= DIP_NO_CHECKIN_FROM:
+                continue  # drawn (the values after it stay the same), not kept
         rec = process_activity(a, previous)
         rec.update(example=True, received_at=a["started_at"], content_sha256="example",
                    crisis=False, analysis={"status": "not_applicable" if typ == "checkin"

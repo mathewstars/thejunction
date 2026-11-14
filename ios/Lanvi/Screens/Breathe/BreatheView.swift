@@ -268,6 +268,7 @@ struct BreatheView: View {
         }
         withAnimation(.easeInOut(duration: 2.8).delay(0.4)) { aurora = 1 }
         withAnimation(.easeOut(duration: 2.6)) { flare = 1 }
+        FaceSense.mark()   // a pleasant moment for the face sensor
     }
 
     /// Sleeps for `seconds`; false when the session was cancelled meanwhile.

@@ -14,9 +14,13 @@ struct ActivityRouter: View {
     var body: some View {
         switch kind {
         case .focus:
-            FocusGameView { result in onDone(result.map(Self.record)) }
+            FaceSenseHost {
+                FocusGameView { result in onDone(result.map { FaceSense.shared.attach(to: Self.record($0)) }) }
+            }
         case .breathing:
-            BreatheView { result in onDone(result.map(Self.record)) }
+            FaceSenseHost {
+                BreatheView { result in onDone(result.map { FaceSense.shared.attach(to: Self.record($0)) }) }
+            }
         case .checkin:
             checkin
         }
