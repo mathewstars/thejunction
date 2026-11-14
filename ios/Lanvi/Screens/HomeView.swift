@@ -175,6 +175,11 @@ struct HomeView: View {
         .onChange(of: store.celebration) { _, c in
             if let c { celebrate(c) }
         }
+        // The moment a game or activity hands back: Lanvi is glad at once.
+        .onChange(of: store.cheer) { _, _ in
+            react(.happy)
+            haptic &+= 1
+        }
         .onChange(of: store.crisisNow) { _, block in
             guard let block else { return }
             helpBlock = block

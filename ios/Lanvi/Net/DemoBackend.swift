@@ -65,7 +65,10 @@ actor DemoBackend: LanviBackend {
     }
 
     func send(_ a: API.ActivityIn) async throws -> API.ActivityOut {
-        try await Task.sleep(for: .milliseconds(450))
+        // `-slowSend <seconds>`: answer late, like a long face-frame upload on a real
+        // phone (to check the reward never waits for it).
+        let slow = UserDefaults.standard.double(forKey: "slowSend")
+        try await Task.sleep(for: .milliseconds(slow > 0 ? Int(slow * 1000) : 450))
         if let old = seen[a.id] {
             var again = old
             again.xpGained = 0
