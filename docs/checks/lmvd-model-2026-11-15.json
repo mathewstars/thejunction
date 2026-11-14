@@ -1,0 +1,62 @@
+{
+ "dataset": "LMVD per-video measures (see lmvd_check.py)",
+ "videos": 1684,
+ "all_twelve": {
+  "measures": 12,
+  "auc_on_unseen_videos": 0.757,
+  "auc_range_over_repeats": [
+   0.755,
+   0.758
+  ],
+  "accuracy_at_half": 0.698,
+  "weights_on_standardised_measures": {
+   "facial_activity": -0.82,
+   "head_pitch_deg": -0.69,
+   "head_movement": -0.69,
+   "blink_rate_per_min": 0.38,
+   "look_down_share": 0.38,
+   "brow_down_share": 0.29,
+   "smile_time_share": -0.22,
+   "inner_brow_up_share": -0.21,
+   "blink_duration_ms": -0.11,
+   "eye_smile_share": -0.1,
+   "smile_intensity": 0.05,
+   "smile_rate_per_min": 0.04
+  }
+ },
+ "without_camera_dependent": {
+  "measures": 10,
+  "auc_on_unseen_videos": 0.742,
+  "auc_range_over_repeats": [
+   0.74,
+   0.743
+  ],
+  "accuracy_at_half": 0.688,
+  "weights_on_standardised_measures": {
+   "head_movement": -0.91,
+   "facial_activity": -0.72,
+   "blink_rate_per_min": 0.38,
+   "brow_down_share": 0.26,
+   "smile_time_share": -0.22,
+   "inner_brow_up_share": -0.16,
+   "blink_duration_ms": -0.07,
+   "smile_intensity": 0.06,
+   "eye_smile_share": -0.06,
+   "smile_rate_per_min": 0.02
+  }
+ },
+ "three_best_supported_only": {
+  "measures": 3,
+  "auc_on_unseen_videos": 0.686,
+  "auc_range_over_repeats": [
+   0.686,
+   0.687
+  ],
+  "accuracy_at_half": 0.639,
+  "weights_on_standardised_measures": {
+   "facial_activity": -0.69,
+   "smile_time_share": -0.18,
+   "smile_rate_per_min": -0.16
+  }
+ }
+}

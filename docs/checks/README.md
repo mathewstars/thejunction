@@ -125,3 +125,17 @@ What this does and does not show. It is the first evidence on real faces that th
 | Between people: PHQ-9 at the end against how much the person moved (198 people, 51 at 10 or more)? | Rank correlation -0.04, no relation (permutation p 0.60). |
 
 Beside LifeSnaps this gives a second, lower false-alarm figure (about 4% of people in ten days against a third in three months; the two are not the same length), and the same picture for mood: low-movement days lean the expected way and do not stand out.
+
+### A face score fitted on LMVD
+
+`lmvd_model.py`, output `lmvd-model-2026-11-15.json`. A plain logistic regression on our measures of each video, scored only on videos it was not fitted on (10 folds, repeated 5 times). The number is the chance that the score ranks a video from the depression group above one from the other group; 0.50 is a coin, 1.00 is perfect.
+
+| Measures used | On unseen videos |
+|---|---|
+| All twelve | 0.76 |
+| Without the two that depend on where the camera stands (looking down, head angle) | 0.74 |
+| Only the three hypotheses we rated best supported before any data (time smiling, smiles per minute, facial movement) | 0.69 |
+
+The score leans most on how little the face and the head move, then on blinking and the brows; the smile measures add little once movement is in. Published models on this dataset that read the raw frame sequences reach roughly 0.72 to 0.77 accuracy; ours, from a dozen summary numbers, gets 0.70 at the same cut.
+
+This score is not in the server and should not be: it was fitted on OpenFace numbers from video logs, the server computes its measures from ARKit during a game, and a weight fitted on one does not carry over to the other. It also learns whatever else separates the two groups of videos (topic, filming, platform). What it gives us is an order of magnitude for how much is in these measures on real faces, and which of them to look at first when our own recordings exist.
